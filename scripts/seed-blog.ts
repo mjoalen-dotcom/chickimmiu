@@ -27,13 +27,13 @@ async function main() {
 
   // Check blog_posts schema
   const cols = await db.execute("PRAGMA table_info('blog_posts')")
-  const colNames = cols.rows.map(c => c.name as string)
+  const colNames = cols.rows.map((c: any) => c.name as string)
   console.log('blog_posts columns:', colNames.join(', '))
 
   // Check blog_categories
   try {
     const catCols = await db.execute("PRAGMA table_info('blog_categories')")
-    console.log('blog_categories columns:', catCols.rows.map(c => c.name).join(', '))
+    console.log('blog_categories columns:', catCols.rows.map((c: any) => c.name).join(', '))
   } catch { console.log('No blog_categories table') }
 
   // Create blog categories if table exists
@@ -63,7 +63,7 @@ async function main() {
 
   // Get existing media for featured images (use product images)
   const media = await db.execute('SELECT id FROM media WHERE filename NOT LIKE \'hero%\' AND filename NOT LIKE \'about%\' ORDER BY id LIMIT 3')
-  const mediaIds = media.rows.map(r => r.id as number)
+  const mediaIds = media.rows.map((r: any) => r.id as number)
   console.log('Media IDs for blog images:', mediaIds)
 
   // Determine required columns
