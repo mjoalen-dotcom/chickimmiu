@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <defs>
+    <style>
+      .logo-text { font-family: 'Arial Black', 'Helvetica Neue', Arial, sans-serif; font-weight: 900; }
+    </style>
+  </defs>
+  <!-- Outer circle -->
+  <circle cx="250" cy="220" r="180" fill="none" stroke="white" stroke-width="18"/>
+  <!-- Inner circle -->
+  <circle cx="250" cy="220" r="145" fill="none" stroke="white" stroke-width="4"/>
+  <!-- C shape (left arc) -->
+  <path d="M 160,220 A 90,90 0 1,1 250,310" fill="none" stroke="white" stroke-width="16" stroke-linecap="round"/>
+  <!-- CKMU grid -->
+  <g transform="translate(210, 165)">
+    <!-- Grid boxes -->
+    <rect x="0" y="0" width="38" height="38" rx="4" fill="white"/>
+    <rect x="42" y="0" width="38" height="38" rx="4" fill="white"/>
+    <rect x="0" y="42" width="38" height="38" rx="4" fill="white"/>
+    <rect x="42" y="42" width="38" height="38" rx="4" fill="white"/>
+    <!-- Letters -->
+    <text x="19" y="28" text-anchor="middle" class="logo-text" fill="black" font-size="22">K</text>
+    <text x="61" y="28" text-anchor="middle" class="logo-text" fill="black" font-size="22">M</text>
+    <text x="19" y="70" text-anchor="middle" class="logo-text" fill="black" font-size="22">M</text>
+    <text x="61" y="70" text-anchor="middle" class="logo-text" fill="black" font-size="22">U</text>
+  </g>
+  <!-- Brand text -->
+  <text x="250" y="440" text-anchor="middle" class="logo-text" fill="white" font-size="36" letter-spacing="4">CHIC KIM &amp; MIU</text>
+  <!-- URL -->
+  <text x="250" y="475" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="18" letter-spacing="2" opacity="0.8">www.ckmu.co</text>
+</svg>

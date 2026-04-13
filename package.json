@@ -1,0 +1,65 @@
+{
+  "name": "chickimmiu",
+  "version": "0.1.0",
+  "description": "CHIC KIM & MIU | 靚秀國際有限公司 - 電商網站",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev",
+    "devsafe": "rimraf .next && cross-env NODE_OPTIONS=--no-deprecation next dev",
+    "build": "cross-env NODE_OPTIONS=--no-deprecation next build",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
+    "lint": "cross-env NODE_OPTIONS=--no-deprecation next lint",
+    "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
+    "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
+    "payload": "cross-env NODE_OPTIONS=--no-deprecation payload"
+  },
+  "dependencies": {
+    "@payloadcms/db-postgres": "^3.0.0",
+    "@payloadcms/db-sqlite": "^3.82.1",
+    "@payloadcms/next": "^3.0.0",
+    "@payloadcms/richtext-lexical": "^3.0.0",
+    "@payloadcms/ui": "^3.0.0",
+    "@paypal/react-paypal-js": "^9.1.1",
+    "@radix-ui/react-slot": "^1.1.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cross-env": "^7.0.3",
+    "exceljs": "^4.4.0",
+    "framer-motion": "^11.11.0",
+    "graphql": "^16.9.0",
+    "lucide-react": "^0.453.0",
+    "next": "15.4.11",
+    "next-auth": "5.0.0-beta.25",
+    "payload": "^3.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sharp": "0.33.5",
+    "tailwind-merge": "^2.5.4",
+    "tailwindcss-animate": "^1.0.7",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.12.0",
+    "eslint-config-next": "15.4.11",
+    "postcss": "^8.4.47",
+    "rimraf": "^6.0.1",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=18.20.2",
+    "pnpm": "^9 || ^10"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp",
+      "esbuild",
+      "unrs-resolver"
+    ]
+  }
+}

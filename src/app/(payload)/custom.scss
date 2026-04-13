@@ -1,0 +1,983 @@
+/**
+ * CHIC KIM & MIU Admin Style
+ *
+ * Design:
+ *   - Left nav: Navy (#1a1f36) + gold (#C19A5B) active indicators
+ *   - Right content: Cream (#FAFAF7) background
+ *   - Fixed: Text visibility, sidebar tab spacing, content padding
+ */
+
+// ─── Global CSS Variables ──────────────────────────────────────────
+
+:root {
+  --color-brand-gold: #c19a5b;
+  --color-brand-gold-light: #d4b47a;
+  --color-brand-gold-dim: rgba(193, 154, 91, 0.18);
+  --color-brand-navy: #1a1f36;
+  --color-brand-navy-mid: #242a45;
+  --color-brand-navy-light: #2e3558;
+  --color-brand-cream: #fafaf7;
+  --color-brand-cream-mid: #f2f0eb;
+
+  --nav-width: 240px;
+
+  // Payload theme color overrides - cream content area
+  --theme-elevation-0: #fafaf7;
+  --theme-elevation-50: #f5f3ee;
+  --theme-elevation-100: #eeede8;
+  --theme-elevation-150: #e6e4de;
+  --theme-elevation-200: #dddbd5;
+  --theme-elevation-250: #d4d2cc;
+  --theme-elevation-300: #c9c7c1;
+  --theme-elevation-400: #b8b6b0;
+  --theme-elevation-500: #9a9892;
+  --theme-elevation-600: #7a7872;
+  --theme-elevation-700: #5a5854;
+  --theme-elevation-800: #3a3835;
+  --theme-elevation-900: #1f1e1c;
+  --theme-elevation-1000: #111110;
+
+  // Main text color - DARK for readability
+  --theme-text: #1a1f36;
+
+  --theme-success-500: #2e7d32;
+  --theme-warning-500: #c19a5b;
+  --theme-error-500: #c62828;
+}
+
+// ─── Global Base ────────────────────────────────────────────────────────────────
+
+body,
+html {
+  font-family: 'Inter', 'PingFang TC', 'Noto Sans TC', sans-serif;
+}
+
+// ─── CRITICAL: Text Color Visibility Fixes ──────────────────────────────────
+
+// Ensure all text in the main content area is dark and readable
+.template-default__content,
+.render-fields,
+main,
+.collection-list,
+.document-fields,
+.dashboard {
+  color: #1a1f36 !important;
+}
+
+// Fix generic text color across admin
+p, span, div, h1, h2, h3, h4, h5, h6, li, td, th, label, a {
+  &:not([class*='nav']) {
+    // Don't override nav elements
+  }
+}
+
+// Main content area text must be dark
+.template-default__content *:not(.nav *):not([class*='nav']):not([class*='btn']):not([class*='pill']):not([class*='badge']):not([style*='color']) {
+  color: inherit;
+}
+
+// Ensure document titles, field labels are clearly visible
+.doc-controls__label,
+[class*='doc-controls'] span,
+[class*='list-header'] span,
+[class*='collection-list__header'] {
+  color: #1a1f36 !important;
+}
+
+// Field values in list table
+.table tbody td,
+[class*='table'] tbody td,
+.cell {
+  color: #1a1f36 !important;
+  font-size: 13px !important;
+  padding: 10px 16px !important;
+}
+
+// Section titles, group labels in document view
+.group-field__label,
+[class*='group-field__label'],
+.field-type .field-label,
+[class*='group__title'],
+[class*='array-field__header'],
+[class*='tabs-field__tab'] {
+  color: #1a1f36 !important;
+  font-weight: 600 !important;
+}
+
+// Description text should be medium-dark gray, not light
+.field-description,
+[class*='field-description'],
+[class*='description'] {
+  color: #5a5854 !important;
+  font-size: 11.5px !important;
+}
+
+// Breadcrumb / step-nav text
+.step-nav span,
+[class*='stepNav'] span {
+  color: #1a1f36 !important;
+}
+
+// Tab labels in document edit view
+[class*='tabs-field'] button,
+[class*='tabs-field__tab-button'] {
+  color: #5a5854 !important;
+  font-weight: 500 !important;
+
+  &:hover {
+    color: #1a1f36 !important;
+  }
+
+  &[aria-selected='true'],
+  &.active,
+  &[class*='active'] {
+    color: var(--color-brand-gold) !important;
+    font-weight: 700 !important;
+  }
+}
+
+// ─── Left Nav (Dark Block) ──────────────────────────────────────────────────
+
+.nav,
+.template-default__nav {
+  background-color: var(--color-brand-navy) !important;
+  border-right: none !important;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.18) !important;
+}
+
+// Prevent the app-header (44px high, z-index:30) from clipping nav groups.
+// The <aside.nav> is position:sticky top:0 — shift it below the header.
+aside.nav {
+  top: 44px !important;
+  height: calc(100vh - 44px) !important;
+}
+
+// Nav header / brand area
+.nav__header,
+.nav__brand {
+  background-color: var(--color-brand-navy) !important;
+  border-bottom: 1px solid var(--color-brand-navy-light) !important;
+  padding: 0 !important;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Brand text
+.nav__brand-title,
+.nav__brand a,
+.nav__brand span {
+  color: var(--color-brand-gold) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  font-size: 13px !important;
+  text-transform: uppercase !important;
+}
+
+// Nav group labels / toggle headings (e.g. Globals, 會員管理)
+.nav__group-label,
+.nav__groups-label,
+[class*='groupLabel'],
+.nav-group__toggle,
+button.nav-group__toggle--collapsed,
+button.nav-group__toggle--open {
+  color: var(--color-brand-gold) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.10em !important;
+  text-transform: uppercase !important;
+  padding: 14px 20px 6px !important;
+}
+
+// Chevron inside nav-group toggle
+.nav-group__toggle svg,
+button[class*='nav-group__toggle'] svg {
+  color: var(--color-brand-gold-light) !important;
+}
+
+// Nav links — bright white for readability on navy
+.nav__link,
+.nav-item,
+[class*='nav__link'],
+.nav a,
+aside.nav a {
+  color: rgba(255, 255, 255, 0.92) !important;
+  border-radius: 0 !important;
+  padding: 10px 20px !important;
+  margin: 1px 0 !important;
+  font-size: 13.5px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.01em !important;
+  border-left: 3px solid transparent !important;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease !important;
+
+  &:hover {
+    background-color: var(--color-brand-navy-mid) !important;
+    color: #ffffff !important;
+    border-left-color: rgba(193, 154, 91, 0.5) !important;
+  }
+}
+
+// Active nav link
+.nav__link--active,
+.nav__link[aria-current='page'],
+[class*='nav__link'][class*='active'],
+.nav a[aria-current='page'],
+.nav a.active {
+  background-color: var(--color-brand-gold-dim) !important;
+  color: var(--color-brand-gold) !important;
+  border-left-color: var(--color-brand-gold) !important;
+  font-weight: 600 !important;
+}
+
+// Nav footer
+.nav__footer,
+.nav__controls {
+  background-color: var(--color-brand-navy) !important;
+  border-top: 1px solid var(--color-brand-navy-light) !important;
+}
+
+// Nav footer links
+.nav__account-controls a,
+.nav__footer a {
+  color: rgba(255, 255, 255, 0.55) !important;
+  font-size: 12px !important;
+
+  &:hover {
+    color: var(--color-brand-gold) !important;
+  }
+}
+
+// ─── Header / AppBar ────────────────────────────────────────────────
+
+.app-header,
+.template-default__header,
+header[class*='header'] {
+  background-color: var(--color-brand-cream) !important;
+  border-bottom: 1px solid var(--color-brand-cream-mid) !important;
+  box-shadow: 0 -3px 0 var(--color-brand-gold) inset !important;
+}
+
+// Breadcrumb / page title
+.step-nav,
+[class*='stepNav'],
+.app-header__content {
+  color: var(--color-brand-navy) !important;
+}
+
+.step-nav a,
+[class*='stepNav'] a {
+  color: var(--color-brand-navy) !important;
+  opacity: 0.6;
+
+  &:hover {
+    opacity: 1;
+    color: var(--color-brand-gold) !important;
+  }
+}
+
+// ─── Right Content Area ──────────────────────────────────────────────────
+
+.template-default__content,
+.render-fields,
+main[class*='main'],
+.collection-list,
+.document-fields {
+  background-color: var(--color-brand-cream) !important;
+}
+
+// ─── SIDEBAR TABS FIX: More space, no clipping ──────────────────────────────
+
+// Sidebar content needs more breathing room
+.document-sidebar,
+[class*='sidebar'],
+.render-fields--sidebar {
+  background-color: var(--color-brand-cream-mid) !important;
+  border-left: 1px solid var(--color-brand-cream-mid) !important;
+  padding-bottom: 80px !important; // Extra space at bottom
+  overflow-y: auto !important;
+  min-width: 320px !important;
+}
+
+// Sidebar tabs should not be clipped
+[class*='sidebar'] [class*='tabs-field'],
+[class*='sidebar'] [class*='collapsible'] {
+  overflow: visible !important;
+}
+
+// Sidebar groups need proper spacing
+[class*='sidebar'] .field-type {
+  margin-bottom: 12px !important;
+}
+
+// Document edit main content - add bottom padding
+.document-fields,
+.render-fields,
+[class*='render-fields'] {
+  padding-bottom: 60px !important;
+}
+
+// ─── Form Fields ──────────────────────────────────────────────────────
+
+// Input fields
+.field-type input[type='text'],
+.field-type input[type='number'],
+.field-type input[type='email'],
+.field-type input[type='password'],
+.field-type textarea,
+.field-type select,
+input.field-type,
+textarea.field-type,
+[class*='text-field__input'],
+[class*='textarea__input'] {
+  background-color: #ffffff !important;
+  border-color: var(--color-brand-cream-mid) !important;
+  color: #1a1f36 !important;
+  border-radius: 6px !important;
+
+  &:focus {
+    border-color: var(--color-brand-gold) !important;
+    box-shadow: 0 0 0 2px var(--color-brand-gold-dim) !important;
+    outline: none !important;
+  }
+}
+
+// Field labels - ensure dark and visible
+.field-label,
+label[class*='label'],
+[class*='field-label'] {
+  color: #1a1f36 !important;
+  font-weight: 600 !important;
+  font-size: 12.5px !important;
+  letter-spacing: 0.03em !important;
+}
+
+// ─── Buttons ─────────────────────────────────────────────────────────
+
+// Primary buttons
+.btn--style-primary,
+button[class*='btn--style-primary'],
+.pill[class*='style--primary'],
+[class*='submit-button'],
+button[type='submit'].btn {
+  background-color: var(--color-brand-gold) !important;
+  border-color: var(--color-brand-gold) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.03em !important;
+  border-radius: 6px !important;
+  transition: background-color 0.15s ease !important;
+
+  &:hover {
+    background-color: var(--color-brand-gold-light) !important;
+    border-color: var(--color-brand-gold-light) !important;
+  }
+
+  &:active {
+    background-color: #a8844e !important;
+  }
+}
+
+// Secondary buttons
+.btn--style-secondary,
+button[class*='btn--style-secondary'],
+.pill[class*='style--secondary'] {
+  border-color: var(--color-brand-gold) !important;
+  color: var(--color-brand-gold) !important;
+  background-color: transparent !important;
+  border-radius: 6px !important;
+
+  &:hover {
+    background-color: var(--color-brand-gold-dim) !important;
+  }
+}
+
+// Error buttons
+.btn--style-error,
+button[class*='btn--style-error'] {
+  background-color: #c62828 !important;
+  border-color: #c62828 !important;
+
+  &:hover {
+    background-color: #b71c1c !important;
+  }
+}
+
+// ─── Tables ──────────────────────────────────────────────────────
+
+.table,
+[class*='table'] table {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+// Table headers — force white on ALL children (a, button, span, svg)
+.table thead th,
+[class*='table'] thead th,
+.cell--header {
+  background-color: var(--color-brand-navy) !important;
+  color: #ffffff !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  padding: 12px 16px !important;
+  border-bottom: 2px solid var(--color-brand-gold) !important;
+
+  // Force ALL nested elements in header to be white (sortable links, buttons, icons)
+  a, button, span, div, svg, label {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+  }
+}
+
+// Sort column header button (Payload uses button for sortable columns)
+[class*='sort-column'],
+[class*='SortColumn'],
+.table thead button,
+[class*='table'] thead button {
+  color: #ffffff !important;
+}
+
+// Table rows
+.table tbody tr,
+[class*='table'] tbody tr {
+  transition: background-color 0.1s ease;
+
+  &:hover {
+    background-color: rgba(193, 154, 91, 0.06) !important;
+  }
+}
+
+// Table cells - dark text
+.table tbody td,
+[class*='table'] tbody td,
+.cell {
+  border-bottom: 1px solid var(--color-brand-cream-mid) !important;
+  color: #1a1f36 !important;
+  font-size: 13px !important;
+  padding: 10px 16px !important;
+}
+
+// Selected rows
+[class*='row--selected'] {
+  background-color: var(--color-brand-gold-dim) !important;
+}
+
+// ─── Cards / Panels ────────────────────────────────────────────────────────────
+
+.card,
+[class*='card'],
+.render-fields__sections > *,
+[class*='collapsible'],
+.field-type.group > .group-field__wrap,
+[class*='group-field'] {
+  background-color: #ffffff !important;
+  border: 1px solid var(--color-brand-cream-mid) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 4px rgba(26, 31, 54, 0.06) !important;
+}
+
+// Collapsible headers
+.collapsible__toggle,
+[class*='collapsible__toggle'] {
+  background-color: var(--color-brand-cream) !important;
+  border-bottom: 1px solid var(--color-brand-cream-mid) !important;
+  color: #1a1f36 !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  border-radius: 8px 8px 0 0 !important;
+}
+
+// ─── Dropdown Overflow Fix ───────────────────────────────────────────
+// Prevent parent containers from clipping select dropdown menus
+.react-select__menu,
+[class*='rs__menu'] {
+  z-index: 9999 !important;
+}
+
+// Ensure field-type containers don't clip dropdown menus
+.field-type,
+[class*='field-type'],
+.render-fields,
+[class*='render-fields'],
+[class*='group-field__wrap'],
+[class*='tab__fields'],
+[class*='collapsible__content'] {
+  overflow: visible !important;
+}
+
+// Only apply overflow hidden to specific elements that need it
+.table,
+[class*='table'] table {
+  overflow: hidden !important;
+}
+
+// ─── Selectors / Dropdowns ───────────────────────────────────────────
+
+.react-select__control,
+[class*='rs__control'] {
+  background-color: #ffffff !important;
+  border-color: var(--color-brand-cream-mid) !important;
+  border-radius: 6px !important;
+
+  &:hover {
+    border-color: var(--color-brand-gold) !important;
+  }
+}
+
+.react-select__control--is-focused,
+[class*='rs__control--is-focused'] {
+  border-color: var(--color-brand-gold) !important;
+  box-shadow: 0 0 0 2px var(--color-brand-gold-dim) !important;
+}
+
+// Dropdown selected option
+.react-select__option--is-selected,
+[class*='rs__option--is-selected'] {
+  background-color: var(--color-brand-gold) !important;
+  color: #ffffff !important;
+}
+
+// Dropdown focused option
+.react-select__option--is-focused,
+[class*='rs__option--is-focused'] {
+  background-color: var(--color-brand-gold-dim) !important;
+  color: #1a1f36 !important;
+}
+
+// Dropdown menu text
+.react-select__option,
+[class*='rs__option'] {
+  color: #1a1f36 !important;
+}
+
+// Dropdown single value and placeholder
+.react-select__single-value,
+[class*='rs__single-value'] {
+  color: #1a1f36 !important;
+}
+
+.react-select__placeholder,
+[class*='rs__placeholder'] {
+  color: #9a9892 !important;
+}
+
+// ─── Status Badges ────────────────────────────────────────────────
+
+[class*='pill'][class*='published'],
+.pill--style-success,
+[class*='badge--success'] {
+  background-color: rgba(46, 125, 50, 0.12) !important;
+  color: #2e7d32 !important;
+  border-color: rgba(46, 125, 50, 0.3) !important;
+}
+
+[class*='pill'][class*='draft'],
+.pill--style-warning,
+[class*='badge--warning'] {
+  background-color: var(--color-brand-gold-dim) !important;
+  color: #8b6914 !important;
+  border-color: rgba(193, 154, 91, 0.4) !important;
+}
+
+[class*='pill'][class*='archived'],
+.pill--style-error,
+[class*='badge--error'] {
+  background-color: rgba(198, 40, 40, 0.08) !important;
+  color: #c62828 !important;
+  border-color: rgba(198, 40, 40, 0.25) !important;
+}
+
+// ─── Toast Notifications ──────────────────────────────────────────────────
+
+.toast,
+[class*='toast'] {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 20px rgba(26, 31, 54, 0.15) !important;
+}
+
+[class*='toast--success'] {
+  border-left: 4px solid #2e7d32 !important;
+}
+
+[class*='toast--error'] {
+  border-left: 4px solid #c62828 !important;
+}
+
+[class*='toast--warning'] {
+  border-left: 4px solid var(--color-brand-gold) !important;
+}
+
+// ─── Pagination ─────────────────────────────────────────────────────
+
+.pagination button,
+[class*='pagination'] button {
+  border-radius: 4px !important;
+  color: #1a1f36 !important;
+
+  &:hover {
+    background-color: var(--color-brand-gold-dim) !important;
+    color: var(--color-brand-gold) !important;
+  }
+}
+
+.pagination__page--active,
+[class*='pagination'][class*='active'] {
+  background-color: var(--color-brand-gold) !important;
+  color: #ffffff !important;
+}
+
+// ─── Search ─────────────────────────────────────────────────────
+
+.search-filter,
+[class*='search-filter'],
+.list-controls__search {
+  background-color: #ffffff !important;
+  border-color: var(--color-brand-cream-mid) !important;
+  border-radius: 6px !important;
+
+  &:focus-within {
+    border-color: var(--color-brand-gold) !important;
+    box-shadow: 0 0 0 2px var(--color-brand-gold-dim) !important;
+  }
+}
+
+// ─── Modals ─────────────────────────────────────────────────────
+
+.modal,
+[class*='modal__content'],
+[class*='popup__content'],
+[class*='drawer__content'] {
+  background-color: var(--color-brand-cream) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 40px rgba(26, 31, 54, 0.2) !important;
+}
+
+.modal__header,
+[class*='modal__header'] {
+  border-bottom: 1px solid var(--color-brand-cream-mid) !important;
+  color: #1a1f36 !important;
+  font-weight: 700 !important;
+}
+
+.modal__overlay,
+[class*='modal__blur-bg'],
+[class*='overlay'] {
+  background-color: rgba(26, 31, 54, 0.55) !important;
+  backdrop-filter: blur(3px) !important;
+}
+
+// ─── Rich Text Editor ────────────────────────────────────────────────
+
+.rich-text-lexical,
+[class*='editorContainer'],
+[class*='editor-shell'] {
+  background-color: #ffffff !important;
+  border-color: var(--color-brand-cream-mid) !important;
+  border-radius: 6px !important;
+}
+
+.rich-text-lexical .toolbar,
+[class*='toolbar'],
+[class*='editorToolbar'] {
+  background-color: var(--color-brand-cream) !important;
+  border-bottom: 1px solid var(--color-brand-cream-mid) !important;
+  border-radius: 6px 6px 0 0 !important;
+}
+
+// ─── Login Page ────────────────────────────────────────────────────────────
+
+.login,
+[class*='login'],
+.template-minimal {
+  background: linear-gradient(135deg, var(--color-brand-navy) 0%, #0d1020 100%) !important;
+}
+
+.login__form,
+[class*='login'] form,
+.template-minimal__wrap {
+  background-color: rgba(255, 255, 255, 0.97) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+  padding: 40px !important;
+}
+
+.login__brand,
+[class*='login'] [class*='brand'],
+.template-minimal__content h1,
+.template-minimal__content h2 {
+  color: var(--color-brand-navy) !important;
+
+  &::before {
+    content: 'CHIC KIM & MIU';
+    display: block;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--color-brand-gold);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+}
+
+// ─── Media Uploads ──────────────────────────────────────────────────
+
+.file-details,
+[class*='upload__handler'],
+.upload__thumbnail-wrap {
+  border: 1px dashed var(--color-brand-cream-mid) !important;
+  border-radius: 8px !important;
+  background-color: #ffffff !important;
+
+  &:hover {
+    border-color: var(--color-brand-gold) !important;
+    background-color: var(--color-brand-gold-dim) !important;
+  }
+}
+
+// ─── List Controls ──────────────────────────────────────────────────
+
+.list-controls,
+[class*='list-controls'] {
+  background-color: var(--color-brand-cream) !important;
+  border-bottom: 1px solid var(--color-brand-cream-mid) !important;
+}
+
+// Total count / results info text
+[class*='list-controls'] span,
+[class*='list-header'] span,
+[class*='per-page'] span,
+[class*='pagination'] span {
+  color: #5a5854 !important;
+}
+
+// ─── Document Header ───────────────────────────────────────────
+
+.doc-header,
+[class*='doc-header'],
+.document__header,
+[class*='document-header'] {
+  background-color: var(--color-brand-cream) !important;
+  border-bottom: 1px solid var(--color-brand-cream-mid) !important;
+}
+
+.doc-header__title,
+[class*='doc-header__title'] {
+  color: #1a1f36 !important;
+  font-weight: 700 !important;
+}
+
+// ─── Checkboxes ─────────────────────────────────────────────────────────
+
+input[type='checkbox'] {
+  accent-color: var(--color-brand-gold) !important;
+}
+
+[class*='toggle__input']:checked + [class*='toggle__label'],
+[class*='checkbox--checked'] {
+  background-color: var(--color-brand-gold) !important;
+  border-color: var(--color-brand-gold) !important;
+}
+
+// ─── Scrollbars ─────────────────────────────────────────────────────────
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-brand-cream-mid);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(193, 154, 91, 0.45);
+  border-radius: 3px;
+
+  &:hover {
+    background: var(--color-brand-gold);
+  }
+}
+
+// Nav scrollbar
+.nav ::-webkit-scrollbar-track,
+.template-default__nav ::-webkit-scrollbar-track {
+  background: var(--color-brand-navy-mid);
+}
+
+.nav ::-webkit-scrollbar-thumb,
+.template-default__nav ::-webkit-scrollbar-thumb {
+  background: rgba(193, 154, 91, 0.35);
+}
+
+// ─── Focus Accessibility ─────────────────────────────────────────────────────
+
+*:focus-visible {
+  outline: 2px solid var(--color-brand-gold) !important;
+  outline-offset: 2px !important;
+}
+
+// ─── Dashboard Specific ──────────────────────────────────────────────────
+
+// Default dashboard content area
+.dashboard,
+.dashboard__wrap,
+[class*='dashboard'] {
+  color: #1a1f36 !important;
+}
+
+// Dashboard cards - CRITICAL: ensure text visible inside default Payload cards
+.dashboard .card a,
+.dashboard [class*='card'] a,
+.dashboard [class*='card'] span,
+.dashboard [class*='card'] p,
+.dashboard [class*='card'] h2,
+.dashboard [class*='card'] h3,
+.dashboard [class*='card'] h4,
+[class*='dashboard'] .card a,
+[class*='dashboard'] [class*='card'] a,
+[class*='dashboard'] [class*='card'] span,
+[id='dashboard-default'] a,
+[id='dashboard-default'] span {
+  color: #1a1f36 !important;
+  text-decoration: none !important;
+}
+
+// Dashboard group headings (Globals, collection groups)
+.dashboard h2,
+.dashboard h3,
+.dashboard h4,
+[class*='dashboard'] h2,
+[class*='dashboard'] h3 {
+  color: #1a1f36 !important;
+  font-weight: 700 !important;
+}
+
+// Dashboard card hover
+.dashboard .card:hover a,
+.dashboard [class*='card']:hover a {
+  color: var(--color-brand-gold) !important;
+}
+
+// ─── Relationship field value text ──────────────────────────────────────────
+
+[class*='relationship-field'] [class*='value'],
+[class*='relationship'] .react-select__single-value,
+[class*='select-field'] .react-select__single-value {
+  color: #1a1f36 !important;
+}
+
+// ─── Array field items ──────────────────────────────────────────────────
+
+[class*='array-field'] [class*='array-field__row'] {
+  border: 1px solid var(--color-brand-cream-mid) !important;
+  margin-bottom: 8px !important;
+}
+
+[class*='array-field__header'] {
+  background-color: var(--color-brand-cream) !important;
+  color: #1a1f36 !important;
+}
+
+// ─── Empty state text ──────────────────────────────────────────────────
+
+[class*='no-results'],
+[class*='empty'] {
+  color: #5a5854 !important;
+}
+
+// ─── Version / ID label text ──────────────────────────────────────────────────
+
+[class*='id-label'],
+[class*='version__header'],
+[class*='meta__label'] {
+  color: #5a5854 !important;
+}
+
+// ─── CATCH-ALL: Force dark text in ALL content areas ──────────────────────────
+// Payload uses hashed CSS module class names. This ensures NO text is invisible.
+
+// Every link/span/div in the main content area must be dark
+.template-default__content a:not([class*='btn']):not([class*='pill']):not([class*='badge']) {
+  color: #1a1f36 !important;
+
+  &:hover {
+    color: var(--color-brand-gold) !important;
+  }
+}
+
+// Document sidebar labels and values
+.document-fields__sidebar,
+[class*='sidebar'] label,
+[class*='sidebar'] span,
+[class*='sidebar'] p,
+[class*='sidebar'] h4,
+[class*='sidebar'] h5 {
+  color: #1a1f36 !important;
+}
+
+// Status label in sidebar ("狀態", "草稿")
+[class*='status'] {
+  color: #1a1f36 !important;
+}
+
+// Dropdown menus / popups — dark text
+[class*='popup'] a,
+[class*='popup'] button,
+[class*='popup'] span,
+[class*='dropdown'] a,
+[class*='dropdown'] button,
+[class*='dropdown'] span {
+  color: #1a1f36 !important;
+}
+
+// Collection list column labels (sortable column buttons in table head)
+// These render as <button> inside <th> and default to blue link color
+.table thead th button,
+.table thead th a,
+.table thead th span,
+[class*='table'] thead th button,
+[class*='table'] thead th a,
+[class*='table'] thead th span,
+[class*='table-columns'] button,
+[class*='heading-cell'] button,
+[class*='heading-cell'] a,
+[class*='heading-cell'] span {
+  color: #ffffff !important;
+}
+
+// Chevron/sort icons in table headers
+.table thead svg,
+[class*='table'] thead svg {
+  color: rgba(255, 255, 255, 0.7) !important;
+  fill: rgba(255, 255, 255, 0.7) !important;
+}
+
+// Per-page selector text
+[class*='per-page'],
+[class*='perPage'] {
+  color: #5a5854 !important;
+
+  select, button, span {
+    color: #1a1f36 !important;
+  }
+}
+
+// Select fields text
+select,
+.react-select__control,
+[class*='select__control'] {
+  color: #1a1f36 !important;
+}
+
+// Ensure relationship values show dark text
+.react-select__single-value,
+[class*='single-value'],
+[class*='value-container'] {
+  color: #1a1f36 !important;
+}

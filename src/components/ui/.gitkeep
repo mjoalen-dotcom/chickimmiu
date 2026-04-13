@@ -1,0 +1,1 @@
+# shadcn/ui 元件將透過 `pnpm dlx shadcn@latest add button card ...` 自動放入此資料夾

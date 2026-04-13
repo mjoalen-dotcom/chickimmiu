@@ -1,0 +1,5 @@
+export { ProductPageUpsell } from './ProductPageUpsell'
+export { CartCrossSell } from './CartCrossSell'
+export { CheckoutLastChance } from './CheckoutLastChance'
+export { ThankYouRecommendations } from './ThankYouRecommendations'
+export { ExitIntentPopup } from './ExitIntentPopup'

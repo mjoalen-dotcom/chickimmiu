@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * CHIC KIM & MIU 設計 Token
+ * ──────────────────────────
+ * 品牌色彩：
+ *   米白 #F8F1E9 → background
+ *   米杏 #E8D9C8 → secondary / accent
+ *   深黑 #2C2C2C → foreground
+ *   金色 #C19A5B → primary
+ *
+ * 使用 HSL 以便 shadcn/ui 的色彩系統相容
+ */
+@layer base {
+  :root {
+    --background: 32 42% 94%; /* #F8F1E9 米白 */
+    --foreground: 0 0% 17%; /* #2C2C2C 深黑 */
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 17%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 17%;
+
+    --primary: 35 42% 55%; /* #C19A5B 金色 */
+    --primary-foreground: 32 42% 94%;
+
+    --secondary: 30 30% 85%; /* #E8D9C8 米杏 */
+    --secondary-foreground: 0 0% 17%;
+
+    --muted: 32 24% 91%;
+    --muted-foreground: 30 8% 45%;
+
+    --accent: 35 50% 88%;
+    --accent-foreground: 0 0% 17%;
+
+    --destructive: 0 72% 52%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 32 22% 87%;
+    --input: 32 22% 87%;
+    --ring: 35 42% 55%;
+
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    --background: 30 10% 8%;
+    --foreground: 40 30% 96%;
+    --card: 30 10% 10%;
+    --card-foreground: 40 30% 96%;
+    --popover: 30 10% 10%;
+    --popover-foreground: 40 30% 96%;
+    --primary: 35 42% 62%;
+    --primary-foreground: 30 10% 8%;
+    --secondary: 30 8% 16%;
+    --secondary-foreground: 40 30% 96%;
+    --muted: 30 8% 16%;
+    --muted-foreground: 40 12% 65%;
+    --accent: 30 8% 16%;
+    --accent-foreground: 40 30% 96%;
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 40 30% 96%;
+    --border: 30 8% 18%;
+    --input: 30 8% 18%;
+    --ring: 35 42% 62%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background-color: hsl(35 42% 55% / 0.25);
+    color: hsl(0 0% 17%);
+  }
+}
+
+/* ── Admin Tool Page (隱藏前台 Navbar/Footer/浮動元件) ── */
+body.admin-tool-page {
+  background-color: #0a0a0f !important;
+  color: #e5e7eb !important;
+}
+
+body.admin-tool-page [data-component="navbar"],
+body.admin-tool-page [data-component="footer"],
+body.admin-tool-page [data-component="floating-chat"],
+body.admin-tool-page [data-component="floating-menu"] {
+  display: none !important;
+}
