@@ -197,10 +197,11 @@ async function main() {
     const sizes = isAccessory ? ['F'] : ['S', 'M', 'L']
     for (let i = 0; i < sizes.length; i++) {
       const colorName = isAccessory ? '黑色' : (i === 0 ? '白色' : i === 1 ? '黑色' : '粉色')
+      const colorCode = colorName === '白色' ? '#FFFFFF' : colorName === '粉色' ? '#FFB6C1' : '#000000'
       const sku = `CKMU-${slug.slice(0, 8).toUpperCase()}-${sizes[i]}`
       await db.execute({
         sql: 'INSERT INTO products_variants (_order, _parent_id, id, color_name, color_code, size, sku, stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        args: [i + 1, p.id, uid(), colorName, '#000000', sizes[i], sku, Math.floor(Math.random() * 20) + 5],
+        args: [i + 1, p.id, uid(), colorName, colorCode, sizes[i], sku, Math.floor(Math.random() * 20) + 5],
       })
     }
   }

@@ -107,7 +107,7 @@ export function HeroCarousel({ banners, slides }: HeroCarouselProps) {
             </motion.div>
           </AnimatePresence>
 
-          <div className="hidden md:flex items-center justify-center">
+          <div className="flex items-center justify-center order-first md:order-last">
             <AnimatePresence mode="wait">
               <motion.div
                 key={current}
@@ -115,7 +115,7 @@ export function HeroCarousel({ banners, slides }: HeroCarouselProps) {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 1.05 }}
                 transition={{ duration: 0.5 }}
-                className="w-full max-w-lg aspect-[3/4] rounded-3xl overflow-hidden relative border border-cream-200 shadow-xl"
+                className="w-full max-w-[280px] md:max-w-lg aspect-[3/4] rounded-3xl overflow-hidden relative border border-cream-200 shadow-xl"
               >
                 <Image
                   src={slide.image}
@@ -179,7 +179,7 @@ export function HeroCarousel({ banners, slides }: HeroCarouselProps) {
           </motion.div>
         </AnimatePresence>
 
-        <div className="hidden md:flex items-center justify-center">
+        <div className="flex items-center justify-center order-first md:order-last">
           <AnimatePresence mode="wait">
             <motion.div
               key={current}
@@ -187,7 +187,7 @@ export function HeroCarousel({ banners, slides }: HeroCarouselProps) {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.05 }}
               transition={{ duration: 0.5 }}
-              className="w-full max-w-lg aspect-[3/4] rounded-3xl overflow-hidden relative border border-cream-200 shadow-xl"
+              className="w-full max-w-[280px] md:max-w-lg aspect-[3/4] rounded-3xl overflow-hidden relative border border-cream-200 shadow-xl"
             >
               <Image
                 src={banners[current]}
