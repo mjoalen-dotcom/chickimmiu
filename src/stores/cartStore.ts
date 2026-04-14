@@ -3,6 +3,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { trackAddToCart } from '@/lib/tracking'
+import { safeLocalStorage } from '@/lib/safe-storage'
 
 export interface CartVariant {
   colorName: string
@@ -116,6 +117,7 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: 'ckm-cart',
+      storage: safeLocalStorage,
       // Only persist items, not drawer state
       partialize: (state) => ({ items: state.items }),
     },

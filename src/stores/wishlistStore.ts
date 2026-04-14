@@ -2,6 +2,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { safeLocalStorage } from '@/lib/safe-storage'
 
 export interface WishlistItem {
   productId: string
@@ -53,6 +54,9 @@ export const useWishlistStore = create<WishlistState>()(
 
       count: () => get().items.length,
     }),
-    { name: 'ckm-wishlist' },
+    {
+      name: 'ckm-wishlist',
+      storage: safeLocalStorage,
+    },
   ),
 )
