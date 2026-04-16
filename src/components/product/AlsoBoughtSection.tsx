@@ -3,71 +3,80 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Users, TrendingUp } from 'lucide-react'
+import { normalizeMediaUrl } from '@/lib/media-url'
 
 /**
  * 「同樣的人也買了」推薦區塊
- * 根據購買紀錄、身形相似度、熱門搭配自動產生
- * 可嵌入：商品頁、購物車、感謝頁
+ * 從 server 取得真實 Payload 商品（而非 hardcode demo），
+ * 由父層傳入 `products` 陣列。當沒有資料時不渲染。
  */
 
-interface RecommendedProduct {
+export interface AlsoBoughtProduct {
   slug: string
   name: string
   price: number
   salePrice?: number
   image: string
-  matchScore: number // 0-100 匹配度
-  reason: string     // "身形相似買家最愛" / "經常一起購買" / "熱銷推薦"
+  reason?: string
 }
-
-// Demo data — 正式上線後從 API 取得
-const DEMO_RECOMMENDATIONS: RecommendedProduct[] = [
-  {
-    slug: 'serene-elegant-lace-layered-dress',
-    name: 'Serene 名媛蕾絲層次洋裝',
-    price: 2980,
-    image: 'https://shoplineimg.com/559df3efe37ec64e9f000092/69c140b9f04a564933f21f59/1500x.webp?source_format=png',
-    matchScore: 95,
-    reason: '身形相似買家最愛',
-  },
-  {
-    slug: 'amelia-elegant-tulle-button-dress',
-    name: 'Amelia 優雅疊紗包釦洋裝',
-    price: 2680,
-    image: 'https://shoplineimg.com/559df3efe37ec64e9f000092/69aea7b58f3bc8e1bdf32201/1500x.webp?source_format=png',
-    matchScore: 88,
-    reason: '經常一起購買',
-  },
-  {
-    slug: 'ant-waist-urban-straight-pants',
-    name: '螞蟻腰都會修身直筒褲',
-    price: 1480,
-    image: 'https://shoplineimg.com/559df3efe37ec64e9f000092/69c1521fa96d6491182ab509/1500x.webp?source_format=png',
-    matchScore: 82,
-    reason: '熱銷搭配',
-  },
-  {
-    slug: 'y2k-oval-sunglasses',
-    name: 'Y2K個性橢圓墨鏡',
-    price: 780,
-    image: 'https://shoplineimg.com/559df3efe37ec64e9f000092/69bd18487d7f9fb65f0f78b4/1500x.webp?source_format=png',
-    matchScore: 75,
-    reason: '完美搭配單品',
-  },
-]
 
 interface Props {
   title?: string
   context?: 'product_page' | 'cart' | 'thank_you' | 'email'
   maxItems?: number
+  /** Real Payload product docs (depth ≥ 1 so images are populated) */
+  products?: Record<string, unknown>[]
+}
+
+/* ── Reasons we cycle through, purely cosmetic ── */
+const REASONS = [
+  '身形相似買家最愛',
+  '經常一起購買',
+  '熱銷搭配',
+  '完美搭配單品',
+]
+
+function payloadToCard(
+  product: Record<string, unknown>,
+  index: number,
+): AlsoBoughtProduct | null {
+  const slug = product.slug as string | undefined
+  const name = product.name as string | undefined
+  const price = product.price as number | undefined
+  if (!slug || !name || typeof price !== 'number') return null
+
+  const images = product.images as
+    | { image?: { url?: string } | number }[]
+    | undefined
+  const firstImg = images?.[0]?.image
+  const rawUrl =
+    firstImg && typeof firstImg === 'object' ? firstImg.url : undefined
+  const image = normalizeMediaUrl(rawUrl) || ''
+  if (!image) return null
+
+  return {
+    slug,
+    name,
+    price,
+    salePrice: (product.salePrice as number | undefined) ?? undefined,
+    image,
+    reason: REASONS[index % REASONS.length],
+  }
 }
 
 export function AlsoBoughtSection({
   title = '同樣的人也買了',
   context = 'product_page',
   maxItems = 4,
+  products,
 }: Props) {
-  const items = DEMO_RECOMMENDATIONS.slice(0, maxItems)
+  const items: AlsoBoughtProduct[] = (products || [])
+    .map((p, i) => payloadToCard(p, i))
+    .filter((p): p is AlsoBoughtProduct => p !== null)
+    .slice(0, maxItems)
+
+  // No real recommendations to show — render nothing instead of broken demo links
+  if (items.length === 0) return null
 
   return (
     <section className={context === 'cart' ? 'py-6' : 'py-12 md:py-16'}>
@@ -80,11 +89,13 @@ export function AlsoBoughtSection({
         </span>
       </div>
 
-      <div className={`grid gap-4 ${
-        context === 'cart'
-          ? 'grid-cols-2 md:grid-cols-4'
-          : 'grid-cols-2 md:grid-cols-4'
-      }`}>
+      <div
+        className={`grid gap-4 ${
+          context === 'cart'
+            ? 'grid-cols-2 md:grid-cols-4'
+            : 'grid-cols-2 md:grid-cols-4'
+        }`}
+      >
         {items.map((product) => (
           <Link
             key={product.slug}
@@ -100,10 +111,11 @@ export function AlsoBoughtSection({
                 sizes="(max-width: 768px) 50vw, 25vw"
                 unoptimized
               />
-              {/* Match badge */}
-              <span className="absolute top-2 left-2 px-2 py-0.5 bg-white/90 backdrop-blur-sm text-[10px] text-gold-600 rounded-full">
-                {product.reason}
-              </span>
+              {product.reason && (
+                <span className="absolute top-2 left-2 px-2 py-0.5 bg-white/90 backdrop-blur-sm text-[10px] text-gold-600 rounded-full">
+                  {product.reason}
+                </span>
+              )}
             </div>
             <p className="text-sm font-medium truncate group-hover:text-gold-600 transition-colors">
               {product.name}
@@ -111,11 +123,17 @@ export function AlsoBoughtSection({
             <div className="flex items-center gap-2 mt-0.5">
               {product.salePrice ? (
                 <>
-                  <span className="text-sm text-gold-600">NT$ {product.salePrice.toLocaleString()}</span>
-                  <span className="text-xs text-muted-foreground line-through">NT$ {product.price.toLocaleString()}</span>
+                  <span className="text-sm text-gold-600">
+                    NT$ {product.salePrice.toLocaleString()}
+                  </span>
+                  <span className="text-xs text-muted-foreground line-through">
+                    NT$ {product.price.toLocaleString()}
+                  </span>
                 </>
               ) : (
-                <span className="text-sm text-gold-600">NT$ {product.price.toLocaleString()}</span>
+                <span className="text-sm text-gold-600">
+                  NT$ {product.price.toLocaleString()}
+                </span>
               )}
             </div>
           </Link>

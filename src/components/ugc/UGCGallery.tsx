@@ -109,11 +109,37 @@ interface Props {
   maxItems?: number
   showHeader?: boolean
   title?: string
+  /** Real Payload products to attach to each UGC slot (in order, cycled). */
+  taggedProducts?: { slug: string; name: string; price: number; image: string }[]
 }
 
-export function UGCGallery({ layout = 'grid', maxItems = 6, showHeader = true, title = '穿搭靈感' }: Props) {
+/**
+ * Replace the demo `taggedProducts` on each UGC item with real Payload
+ * products (cycled in order). When no real products are passed in, drop
+ * the broken demo links so we never link to slugs that 404.
+ */
+function applyRealProducts(
+  items: UGCItem[],
+  realProducts?: { slug: string; name: string; price: number; image: string }[],
+): UGCItem[] {
+  if (!realProducts || realProducts.length === 0) {
+    return items.map((it) => ({ ...it, taggedProducts: undefined }))
+  }
+  return items.map((it, i) => ({
+    ...it,
+    taggedProducts: [realProducts[i % realProducts.length]],
+  }))
+}
+
+export function UGCGallery({
+  layout = 'grid',
+  maxItems = 6,
+  showHeader = true,
+  title = '穿搭靈感',
+  taggedProducts,
+}: Props) {
   const [selectedItem, setSelectedItem] = useState<UGCItem | null>(null)
-  const items = DEMO_UGC.slice(0, maxItems)
+  const items = applyRealProducts(DEMO_UGC.slice(0, maxItems), taggedProducts)
 
   return (
     <section>

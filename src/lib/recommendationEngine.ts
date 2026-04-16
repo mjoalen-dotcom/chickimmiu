@@ -36,24 +36,12 @@ export interface RecommendationContext {
   userId?: string
 }
 
-// ── Demo 推薦商品池（上線後由 Payload API 提供） ──
-const IMG = (id: string) =>
-  `https://shoplineimg.com/559df3efe37ec64e9f000092/${id}/1500x.webp?source_format=png`
-
-const PRODUCT_POOL: RecommendedItem[] = [
-  { id: 'p1', slug: 'dream-silk-ribbon-dress', name: 'Dream 拼接絲緞蝴蝶結洋裝', price: 2680, salePrice: 2480, image: IMG('69d3d8324c5226e1bcda99eb'), category: 'dress', matchScore: 95, reason: '身形相似買家最愛', type: 'cross_sell' },
-  { id: 'p2', slug: 'estelle-pearl-dress', name: 'Estelle 小香珍珠洋裝', price: 3680, salePrice: 3380, image: IMG('69d3d83b4ef225a55ea202e5'), category: 'dress', matchScore: 90, reason: '升級版推薦', type: 'upsell' },
-  { id: 'p3', slug: 'colette-waistline-lifting-dress', name: 'Colette 修身提腰氣質洋裝', price: 3080, salePrice: 2880, image: IMG('69d3d850293e6404cf30e5ce'), category: 'dress', matchScore: 88, reason: '經常一起購買', type: 'cross_sell' },
-  { id: 'p4', slug: 'amelia-elegant-lace-lined-dress', name: 'Amelia 優雅疊紗包釦洋裝', price: 2780, salePrice: 2580, image: IMG('69ca4f60043ccd59ea96d5db'), category: 'dress', matchScore: 85, reason: '完美搭配', type: 'cross_sell' },
-  { id: 'p5', slug: 'bertha-urban-gold-button-shirt', name: 'Bertha 都會金釦翻領襯衫', price: 1180, salePrice: 1080, image: IMG('69d3e0b795013e15481a46c5'), category: 'top', matchScore: 82, reason: '百搭上衣', type: 'cross_sell' },
-  { id: 'p6', slug: 'irene-refined-pearl-button-blouse', name: 'Irene 名媛風珍珠釦上衣', price: 1380, salePrice: 1280, image: IMG('69ca53a3584149d3b5f646f9'), category: 'top', matchScore: 80, reason: '經常一起購買', type: 'cross_sell' },
-  { id: 'p7', slug: 'ant-waist-sculpting-wide-leg-slacks', name: '螞蟻腰修身線條寬管西裝褲', price: 1580, image: IMG('69c14f3531bca7a037d363d1'), category: 'pants', matchScore: 78, reason: '熱銷搭配', type: 'cross_sell' },
-  { id: 'p8', slug: 'myrca-fine-cropped-blazer', name: 'Myrca 精緻短版西裝外套', price: 2480, salePrice: 2280, image: IMG('69d3d8d557f177d12573967d'), category: 'outer', matchScore: 75, reason: '完美搭配外套', type: 'cross_sell' },
-  { id: 'p9', slug: 'vintage-stone-necklace', name: '古著風洞石項鏈', price: 580, image: IMG('69c1070caaf4c85cd754a0da'), category: 'accessories', matchScore: 70, reason: '加購小物', type: 'addon' },
-  { id: 'p10', slug: 'retro-oval-frame-glasses', name: '復古風橢圓造型眼鏡', price: 780, salePrice: 680, image: IMG('69ca47fb9253ac5f950cdc99'), category: 'accessories', matchScore: 68, reason: '加購配件', type: 'addon' },
-  { id: 'p11', slug: 'bold-polished-open-ring', name: '粗獷鏡面開口戒', price: 480, image: IMG('69b80435883bd693aa0220bd'), category: 'accessories', matchScore: 65, reason: '小額加購', type: 'addon' },
-  { id: 'p12', slug: 'miriam-elegant-high-waist-wide-leg-suit-set', name: 'Miriam 優雅高腰寬褲西裝套裝', price: 4780, salePrice: 4280, image: IMG('69ca5266dd7f90b1732e8a5d'), category: 'set', matchScore: 92, reason: '超值套裝升級', type: 'upsell' },
-]
+// ── 推薦商品池 ──
+// 之前是 hardcode demo（slug 全部 404），現在改為空陣列。
+// 每個 recommendation 元件遇到空結果時都會 return null，所以不會顯示
+// 壞掉的卡片或斷掉的連結。後續會由 Payload API 直接餵真實商品給元件，
+// 屆時這個 helper 也可以整批刪除。
+const PRODUCT_POOL: RecommendedItem[] = []
 
 /**
  * 取得商品頁推薦
