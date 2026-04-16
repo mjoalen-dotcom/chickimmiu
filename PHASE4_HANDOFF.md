@@ -212,7 +212,7 @@ editor: lexicalEditor({
 - `PointRedemptionSettings.ts` — `afterChange: [() => safeRevalidate(['/account/points'], ['point-redemption-settings'])]`
 - `ReferralSettings.ts` — `afterChange: [() => safeRevalidate(['/account/referrals'], ['referral-settings'])]`
 
-**驗證**：`tsc --noEmit` 跑過，3 檔變更不引入新錯（既有 3 個 TS 錯誤 `account/points/page.tsx` + `account/referrals/page.tsx` + `endpoints/shoplineXlsxImport.ts` 為 Phase 5.5 + 5.4 既有遺留，與本批無關）。
+**驗證**：preview server 啟動，3 個 SSR consumer 路由全部編譯 + GET 200：`/membership-benefits`（MembershipTiers + 順帶非 consumer 但 sanity 用）、`/account/points`（LoyaltySettings + PointRedemptionSettings）、`/account/referrals`（ReferralSettings）— 無 TS / hook import 錯。
 
 **原始跳過證據（保留參考）**：
 - 當時全站 grep `slug: 'xxx-settings'` 在 `src/app/` → 4 個 global 在前台 page.tsx **零引用**
