@@ -1,5 +1,6 @@
 import type { GlobalConfig } from 'payload'
 import { isAdmin } from '../access/isAdmin'
+import { safeRevalidate } from '../lib/revalidate'
 
 /**
  * 忠誠度計畫設定 Global
@@ -16,6 +17,12 @@ export const LoyaltySettings: GlobalConfig = {
   access: {
     read: () => true,
     update: isAdmin,
+  },
+  hooks: {
+    // SSR consumer (since Phase 5.5 Batch B — commit b59ad6d):
+    //   /account/points reads via getPayload().findGlobal({ slug: 'loyalty-settings' })
+    //   for multiplier / free-shipping / birthday-bonus display.
+    afterChange: [() => safeRevalidate(['/account/points'], ['loyalty-settings'])],
   },
   fields: [
     // ── 基本點數設定 ──

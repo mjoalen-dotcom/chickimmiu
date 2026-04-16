@@ -2,7 +2,7 @@
 
 > 臨時交接文件，Phase 4 完成後可刪除（或加進 .gitignore）。
 > 用途：跨對話傳遞任務脈絡，避免重新解釋。
-> **最後更新**: 2026-04-16 — Phase 4 完成、Phase 5.1 Batch 1 完成、加入 Cloudflare Tunnel 部署事實
+> **最後更新**: 2026-04-16 — Phase 5.1 Batch 2 完成（3 global hooks）、Phase 5.5 全部完成、加入 Cloudflare Tunnel 部署事實
 
 ---
 
@@ -196,22 +196,27 @@ editor: lexicalEditor({
 
 驗證：6 路徑全部 200，TS compile 零錯，Payload schema 正常載入。
 
-**⏸️ Batch 2 — 會員/忠誠度 globals（SKIPPED 2026-04-16，等 Phase 5.5 完成後回來補）**
+**✅ Batch 2 — 會員/忠誠度 globals（DONE 2026-04-16 對話 5，3/4 加 hook / 1 跳過）**
 
-跳過原因：套用前置驗證原則後，4 個 global 全部不滿足條件 → 加 hook 會是 NOP 死代碼。
+原 2026-04-16 對話 1 套用前置驗證原則後，4 個 global 全部為 NOP → 全部跳過。Phase 5.5 Batch B/C 把前台接通後，3 個 global 升級成真實 SSR consumer，本對話補上 hook。
 
-| Global | 原計畫對應頁 | 實際狀況 |
+| Global | 前台 consumer | 狀態 |
 |---|---|---|
-| `LoyaltySettings` | `/membership-benefits`, `/account/points` | `/membership-benefits` const TIERS hardcoded；`/account/points` 是 `'use client'` 整頁 hardcoded |
-| `ReferralSettings` | `/account/referrals` | `'use client'` + hardcoded `DEMO_REFERRAL`/`DEMO_HISTORY`/`TIER_BONUSES` |
-| `PointRedemptionSettings` | `/account/points` | 同上，client + hardcoded |
-| `RecommendationSettings` | `/products` | `force-dynamic` + `getPayload().find()` 直接打 DB，不吃 Next fetch cache |
+| `LoyaltySettings` | `/account/points` 走 `getPayload().findGlobal({ slug: 'loyalty-settings' })` | ✅ 加 hook（本對話完成） |
+| `PointRedemptionSettings` | `/account/points` 走 `getPayload().findGlobal({ slug: 'point-redemption-settings' })` | ✅ 加 hook（本對話完成） |
+| `ReferralSettings` | `/account/referrals` 走 `getPayload().findGlobal({ slug: 'referral-settings' })`（Phase 5.5 Batch C） | ✅ 加 hook（本對話完成） |
+| `RecommendationSettings` | `/products` 仍是 `force-dynamic` + `getPayload().find()` | ⏸️ 繼續跳過（`force-dynamic` 模式下 revalidatePath 無效；若將來改成 ISR 再補） |
 
-驗證證據：
-- 全站 grep `slug: 'xxx-settings'` 在 `src/app/` → 4 個 global 在前台 page.tsx **零引用**
+**加 hook 內容**（3 檔皆相同 pattern）：
+- `LoyaltySettings.ts` — `afterChange: [() => safeRevalidate(['/account/points'], ['loyalty-settings'])]`
+- `PointRedemptionSettings.ts` — `afterChange: [() => safeRevalidate(['/account/points'], ['point-redemption-settings'])]`
+- `ReferralSettings.ts` — `afterChange: [() => safeRevalidate(['/account/referrals'], ['referral-settings'])]`
+
+**驗證**：`tsc --noEmit` 跑過，3 檔變更不引入新錯（既有 3 個 TS 錯誤 `account/points/page.tsx` + `account/referrals/page.tsx` + `endpoints/shoplineXlsxImport.ts` 為 Phase 5.5 + 5.4 既有遺留，與本批無關）。
+
+**原始跳過證據（保留參考）**：
+- 當時全站 grep `slug: 'xxx-settings'` 在 `src/app/` → 4 個 global 在前台 page.tsx **零引用**
 - 真實使用點僅 `Orders.ts` hook、`ProductReviews.ts` hook、`/api/v1/recommendations` API route — 都不吃 Next fetch cache
-
-**Phase 5.5 完成後回來做**：那時前台會真的 fetch 這些 global，hook 才有實際效果。
 
 **✅ Batch 3 — 其餘 globals + 公開 collections（DONE 2026-04-16 對話 3，10 檔驗證、2 加 hook / 8 跳過）**
 
@@ -239,9 +244,9 @@ editor: lexicalEditor({
 
 **Phase 5.1 整體進度**：
 - ✅ Batch 1：6 檔（公開 globals）
-- ⏸️ Batch 2：4 檔跳過（等 Phase 5.5 完成）
+- ✅ Batch 2：3/4 檔加 hook（LoyaltySettings / PointRedemptionSettings / ReferralSettings），1 檔跳過（RecommendationSettings — `/products` 仍是 `force-dynamic`，hook NOP）
 - ✅ Batch 3：3/10 檔加 hook（BlogPosts、Pages、MembershipTiers），7 檔跳過（NOP）
-- 📝 **未來再做**：7 個跳過目標等相關前台接通再補（特別是 Phase 5.5 Batch B/C 後的 LoyaltySettings / PointRedemptionSettings / ReferralSettings 會升級為加 hook 候選 — 參考 Batch 2 skipped list）
+- 📝 **未來再做**：剩 8 個跳過目標等相關前台接通再補（4 個無 SSR consumer + 1 force-dynamic / RecommendationSettings + UGCPosts 改 SSR / SubscriptionPlans 接通即可）
 
 **刻意不加 hook 的 collections**（純後台 / log / 私有資料）：
 Users, Exchanges, Refunds, Invoices, CreditScoreHistory, PointsTransactions, PointsRedemptions, MemberSegments, ConciergeServiceRequests, CustomerServiceTickets, MarketingCampaigns, MessageTemplates, ABTests, MarketingExecutionLogs, FestivalTemplates, BirthdayCampaigns, AutomationJourneys, AutomationLogs, MiniGameRecords, CardBattles, GameLeaderboard, ShippingMethods, Affiliates
@@ -401,8 +406,8 @@ const newDays = (state.lastDate && dayDiff > 1)
 - ✅ Batch C `<下一個>` — account/referrals 接通 ReferralSettings + user referral data（SSR 清淨，redirect 正常）
 
 **⏭️ 下個對話要做（未完成）**：
-- `MembershipTiers` 加 revalidate hook（Phase 5.1 Batch 3 留下來的 follow-up，本對話未做）
-- Phase 5.1 Batch 2（LoyaltySettings / PointRedemptionSettings / ReferralSettings 3 個 hook × 5 行）— 現在前台有真實 SSR consumer，hook 有效
+- ~~`MembershipTiers` 加 revalidate hook~~ ✅ 已完成於 commit `7f09c22`
+- ~~Phase 5.1 Batch 2（3 個 global hook × 5 行）~~ ✅ 已完成於 2026-04-16 對話 5（LoyaltySettings / PointRedemptionSettings / ReferralSettings）
 - `RecommendationSettings` 繼續跳過（`/products` 仍是 `force-dynamic` + `getPayload`，hook 無效）
 - **手填男性稱號**：到後台 `/admin/collections/membership-tiers` 每筆 tier 填 `frontNameMale`（建議值見下表）
 - Client hydration webpack error 是 pre-existing P0，見 `HANDOFF_PHASE5.4.md`

@@ -1,5 +1,6 @@
 import type { GlobalConfig } from 'payload'
 import { isAdmin } from '../access/isAdmin'
+import { safeRevalidate } from '../lib/revalidate'
 
 /**
  * 點數消耗心理學設定 Global
@@ -17,6 +18,12 @@ export const PointRedemptionSettings: GlobalConfig = {
   access: {
     read: () => true,
     update: isAdmin,
+  },
+  hooks: {
+    // SSR consumer (since Phase 5.5 Batch B — commit b59ad6d):
+    //   /account/points reads via getPayload().findGlobal({ slug: 'point-redemption-settings' })
+    //   for scarcity / limited-time / expiry-reminder display params.
+    afterChange: [() => safeRevalidate(['/account/points'], ['point-redemption-settings'])],
   },
   fields: [
     // ── 到期提醒（損失規避） ──

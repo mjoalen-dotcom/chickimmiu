@@ -1,5 +1,6 @@
 import type { GlobalConfig } from 'payload'
 import { isAdmin } from '../access/isAdmin'
+import { safeRevalidate } from '../lib/revalidate'
 
 /**
  * 推薦計畫設定 Global
@@ -15,6 +16,12 @@ export const ReferralSettings: GlobalConfig = {
   access: {
     read: () => true,
     update: isAdmin,
+  },
+  hooks: {
+    // SSR consumer (since Phase 5.5 Batch C — commit b5cded0):
+    //   /account/referrals reads via getPayload().findGlobal({ slug: 'referral-settings' })
+    //   for rewards / tierBonus / linkSettings / antiAbuse display.
+    afterChange: [() => safeRevalidate(['/account/referrals'], ['referral-settings'])],
   },
   fields: [
     // ── 基本獎勵 ──
