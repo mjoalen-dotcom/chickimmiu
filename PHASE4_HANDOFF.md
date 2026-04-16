@@ -408,8 +408,8 @@ const newDays = (state.lastDate && dayDiff > 1)
 **⏭️ 下個對話要做（未完成）**：
 - ~~`MembershipTiers` 加 revalidate hook~~ ✅ 已完成於 commit `7f09c22`
 - ~~Phase 5.1 Batch 2（3 個 global hook × 5 行）~~ ✅ 已完成於 2026-04-16 對話 5（LoyaltySettings / PointRedemptionSettings / ReferralSettings）
+- ~~**手填男性稱號**~~ ✅ 已完成於 2026-04-16 對話 5：6 個 `frontNameMale` 加進 `src/seed/data/membershipTiers.ts` + `pnpm seed:core` upsert 全 6 筆 update 成功（翩翩紳士 / 溫雅學者 / 雋永騎士 / 金曜貴公子 / 星耀侯爵 / 璀璨國王）
 - `RecommendationSettings` 繼續跳過（`/products` 仍是 `force-dynamic` + `getPayload`，hook 無效）
-- **手填男性稱號**：到後台 `/admin/collections/membership-tiers` 每筆 tier 填 `frontNameMale`（建議值見下表）
 - Client hydration webpack error 是 pre-existing P0，見 `HANDOFF_PHASE5.4.md`
 
 **Batch A 接通欄位對照**（`/membership-benefits`）：

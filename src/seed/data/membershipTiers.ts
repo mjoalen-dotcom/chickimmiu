@@ -11,6 +11,7 @@ export type TierSeed = {
   slug: string
   name: string
   frontName: string
+  frontNameMale?: string
   frontSubtitle: string
   level: number
   minSpent: number
@@ -35,6 +36,7 @@ export const membershipTiers: TierSeed[] = [
     slug: 'ordinary',
     name: '普通會員',
     frontName: '優雅初遇者',
+    frontNameMale: '翩翩紳士',
     frontSubtitle: '歡迎加入 CHIC KIM & MIU 大家庭',
     level: 0,
     minSpent: 0,
@@ -55,6 +57,7 @@ export const membershipTiers: TierSeed[] = [
     slug: 'bronze',
     name: '銅牌會員',
     frontName: '曦漾仙子',
+    frontNameMale: '溫雅學者',
     frontSubtitle: '初次綻放的優雅',
     level: 1,
     minSpent: 5000,
@@ -76,6 +79,7 @@ export const membershipTiers: TierSeed[] = [
     slug: 'silver',
     name: '銀牌會員',
     frontName: '優漾女神',
+    frontNameMale: '雋永騎士',
     frontSubtitle: '從容自信的姿態',
     level: 2,
     minSpent: 15000,
@@ -98,6 +102,7 @@ export const membershipTiers: TierSeed[] = [
     slug: 'gold',
     name: '金牌會員',
     frontName: '金曦女王',
+    frontNameMale: '金曜貴公子',
     frontSubtitle: '閃耀動人的風采',
     level: 3,
     minSpent: 40000,
@@ -120,6 +125,7 @@ export const membershipTiers: TierSeed[] = [
     slug: 'platinum',
     name: '白金會員',
     frontName: '星耀皇后',
+    frontNameMale: '星耀侯爵',
     frontSubtitle: '卓越超凡的氣質',
     level: 4,
     minSpent: 100000,
@@ -142,6 +148,7 @@ export const membershipTiers: TierSeed[] = [
     slug: 'diamond',
     name: '鑽石會員',
     frontName: '璀璨天后',
+    frontNameMale: '璀璨國王',
     frontSubtitle: '巔峰無可取代',
     level: 5,
     minSpent: 300000,
