@@ -2,7 +2,7 @@
 
 > 臨時交接文件，Phase 4 完成後可刪除（或加進 .gitignore）。
 > 用途：跨對話傳遞任務脈絡，避免重新解釋。
-> **最後更新**: 2026-04-16 — Phase 5.1 Batch 2 完成（3 global hooks）、Phase 5.5 全部完成、加入 Cloudflare Tunnel 部署事實
+> **最後更新**: 2026-04-16 — Phase 5.7 完成（DailyCheckinGame UI 接通 API，消費 data.streak + 落實 streakReset/streakBonus 顯示）
 
 ---
 
@@ -338,33 +338,49 @@ src/components/gamification/
 - 是否要把 `gamification/DailyCheckIn` 接到 `/games/daily-checkin` 取代純 demo 版？
 - 或反過來，把 `DailyCheckinGame` 改成接 `/api/games` checkin action（需先修 gameEngine 的 UTC bug）？
 
-#### 📌 Phase 5.3.1 — 跳天 streak reset（follow-up，未做）
+#### 📌 Phase 5.3.1 — 跳天 streak reset ✅ DONE（2026-04-16 對話 6）
 
-`DailyCheckIn` 還有一個未處理的行為問題：跳天累加，但不重設 streak。
+`DailyCheckIn` 跳天累加但不重設 streak 的行為問題：
 
 ```
-4/15 簽 Day 1 → days=[0], lastDate='2026-04-15'
-4/16 沒簽
-4/17 開 modal → alreadyCheckedToday=false（不同日）→ 可以按
+4/14 簽 Day 1 → days=[0], lastDate='2026-04-14'
+4/15 沒簽
+4/16 開 modal → alreadyCheckedToday=false（不同日）→ 可以按
 → days=[0, 1]，但這應該算「連續中斷重來」=> Day 1，不是 Day 2
 ```
 
-**修法（preview_eval 模擬通過，待整合）**：在 `handleCheckIn` 設定 `newDays` 時：
+**最終修法（commit pending）**：採「render-time derived state」而非 mutation 分支，讓按鈕 label / 日曆格在使用者按下前就反映重設：
+
 ```ts
-const dayDiff = state.lastDate
+const dayDiff = state.lastDate && todayTpe
   ? Math.floor((Date.parse(todayTpe) - Date.parse(state.lastDate)) / 86_400_000)
   : 0
-const newDays = (state.lastDate && dayDiff > 1)
-  ? [0]                                    // 中斷 → 重來算 Day 1
-  : [...state.days, state.days.length]     // 連續 / 第一次 → 照常 push
+const willResetStreak = state.lastDate !== '' && dayDiff > 1
+const effectiveDays = willResetStreak ? [] : state.days
+
+const todayIndex = effectiveDays.length        // 用 effective 而非 state
+const handleCheckIn = () => {
+  if (allDone || alreadyCheckedToday) return
+  const wasReset = willResetStreak
+  const newDays = [...effectiveDays, effectiveDays.length]
+  ...
+  setShowStreakReset(wasReset)                // UI flash
+}
 ```
 
-**為什麼這次沒一起修**：原 prompt 範圍只到「同一天連點兩次只記一次」+「跨日後可再打」。streak 中斷重設規格未明（要不要顯示「連續中斷了」訊息？要不要保留總簽到數但重設連續？）—— 留給下次決定。
+**為何選 derived state 而非簡單 `[0]` 寫死**：handoff 原本提示在 `handleCheckIn` 內計算，但這樣會出現 UX bug — 按鈕在按下前還顯示「簽到 Day 3」（用舊 `state.days.length`），點下去卻變 Day 1。改用 derived `effectiveDays`，render 階段就把舊 streak 視為清空，按鈕直接顯示「簽到 Day 1」、日曆格不再 highlight 之前的勾，按下去也對。
+
+**新增 UI**：alreadyCheckedToday 區塊在 `showStreakReset === true` 時顯示一行紅字「連續中斷，已從 Day 1 重新開始」。`showStreakReset` 是元件 state（非 storage），每次 modal open 重置（`useEffect(open)`），所以只有「剛剛那次按下因 reset」的 modal session 才看得到。
+
+**驗證**：preview_eval 跑 8 個 scenarios 全綠（first-time / consecutive / **skip→reset** / same-day reopen / Day 7 後連續日仍鎖 / Day 7 後跳天可開新 cycle / legacy bare array 向後相容 / 長期沒簽 reset）。`tsc --noEmit` 維持原 3 個 Phase 5.4/5.5 遺留錯誤，`DailyCheckIn.tsx` 沒新錯。
+
+**副作用（pre-existing 問題的意外修復）**：完成 Day 7 後若 2+ 天沒簽，現在會自動 reset 開新 cycle（之前是「本週已全部簽到」永久鎖）。連續日（Day 7→Day 8）仍維持鎖，留給未來 weekly-cycle reset 機制。
 
 **不用查的「bug」**：
 - 同一天 record 兩次：✅ 已防（Phase 5.3 修復）
 - React Strict Mode 重複觸發：useEffect idempotent
 - 跨裝置不同步：localStorage 設計如此
+- 元件仍是 orphan：無 user path 觸發，留待未來決定接 `/games/daily-checkin` 或刪
 
 #### 📌 Phase 5.4 — Cloudflare Tunnel 部署健檢
 
@@ -552,10 +568,50 @@ else                                            → prize=10
 - `payload_migrations` table 尚未寫入 `20260416_193835_add_daily_checkin_streak` 紀錄（跟 Phase 5.5 的 `20260416_140000_add_gender_and_male_tier_name` 一樣：dev push 了但 migration 表未記）→ 未來 prod deploy 時再一起處理
 
 **下批要做（Phase 5.7 候選）**：
-1. UI 接入：`games/DailyCheckinGame.tsx` 呼叫 `POST /api/games { action: 'checkin' }`，消費 `data.streak`，把 `streak` state 從 `useState(3)` demo 改成 real value。
-2. Streak UI enhancements：`streakReset=true` 顯示「連續中斷，從 Day 1 重新開始」；`streakBonus=true` 顯示祝賀動畫。
+1. ~~UI 接入~~ ✅ Phase 5.7 DONE（見下方 section）
+2. ~~Streak UI enhancements (streakReset / streakBonus)~~ ✅ Phase 5.7 DONE
 3. 其他 3 個 orphan gamification/*（SpinWheel / ScratchCard / FashionChallenge）—— 同樣決定是否接 API 或刪掉。
 4. Phase 5.5 的 `20260416_140000_add_gender_and_male_tier_name` migration 在 prod deploy 前要改成冪等，否則會 `duplicate column name gender` 報錯。
+
+#### 📌 Phase 5.7 — DailyCheckinGame UI 接通 API ✅ DONE (2026-04-16 對話 6)
+
+把純 demo 的 `DailyCheckinGame.tsx`（`useState(3)` 硬寫 streak + `setCheckedIn(true)` 假動作）改成真正接 `/api/games` 的 streak 狀態 + POST checkin flow，並落實 Phase 5.3.1 留下來的 `streakReset` / `streakBonus` UI 規格。
+
+**實作清單**：
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | `src/app/api/games/route.ts` | GET handler 多回 `data.checkinState: { totalCheckIns, consecutiveCheckIns, lastCheckInDate, alreadyCheckedToday }`，從 `payload.auth` 拿到的 user 欄位直接讀出。`alreadyCheckedToday` server-side 推導（`lastCheckInDate === getTpeDateString()`），client 不用再做 TZ 判斷 |
+| 2 | `src/components/games/DailyCheckinGame.tsx` | 全面重寫：初始 `useEffect` fetch GET → set streak / totalCheckIns / alreadyCheckedToday；`handleCheckin` POST `{action:'checkin'}`，消費 `data.streak.{consecutiveCheckIns,totalCheckIns,streakReset,streakBonus}` + `data.prize.amount`；新增 loading / submitting / errorMsg state；按鈕 `disabled` 條件綁 submitting 或 alreadyCheckedToday；`today 已簽到` error → set `alreadyCheckedToday=true` 鎖 UI |
+
+**UI 分支落實**：
+- **載入中**：`loading=true` → cream 灰色圓角「載入中…」（避免 FOUC，首次 GET 完成前不顯示按鈕或狀態）
+- **未簽到**：`alreadyCheckedToday=false && !loading` → 金橘漸層「立即簽到」按鈕（`disabled` 綁 submitting + opacity-60）
+- **剛簽到**：`alreadyCheckedToday=true && justCheckedIn=true` → 綠色卡片「今日簽到成功！獲得 N 點，連續 X 天」+ scale animation
+- **已簽到（重新進入頁面）**：`alreadyCheckedToday=true && justCheckedIn=false` → 綠色卡片「今日已完成簽到 — 連續 X 天，明天再來」
+- **Streak 中斷 banner** (`streakReset=true`)：金黃警示條，顯示「您中斷了連續簽到（原本 N 天），從 Day 1 重新開始」，`previousStreakBeforeReset` 在 POST 前先存下 `prevStreak`
+- **7 天達成祝賀** (`streakBonus=true`)：amber 漸層卡片 + `Sparkles` icon「連續 7 天達成！獎勵 50 點」（跟 server `computeCheckinOutcome` 的 `prize.amount=50` 對齊）
+- **錯誤**：非「今日已簽到」的 error 顯示在按鈕下方紅字；今日已簽到的 error 靜默 + 鎖定 UI
+
+**週進度格子調整**：
+```
+streak=0 (未開始)    → 週一是「今天目標」虛線框，其他 dim
+streak=3 未簽今日    → 週一二三打勾（金），週四是「今天目標」，其他 dim
+streak=3 已簽今日    → 週一二三四全打勾
+streak=7 已簽      → 7 天全打勾（下個 streak=8 會進下一週）
+```
+用 `dayOfWeekIdx = streak===0 ? -1 : ((streak-1) % 7)` 算；`alreadyCheckedToday` flag 決定目標格在當天還是次日。
+
+**驗證**：
+- `tsc --noEmit`：只剩 3 個 pre-existing errors（account/points、account/referrals、shoplineXlsxImport），本次無新增
+- `GET /api/games`：回傳 `data.checkinState = { totalCheckIns:0, consecutiveCheckIns:0, lastCheckInDate:'', alreadyCheckedToday:false }`（user 剛啟用 schema，還沒簽過）
+- SSR `/games/daily-checkin`：HTML 內含 `連續簽到 <!-- -->0<!-- --> 天`（real value，不是 demo 3）、`本週簽到進度`、`連續簽到獎勵` 區塊、`載入中…` 初始載入狀態
+- 客戶端互動未能直接 exercise：preview 環境的 `BootBeaconCleanup` 在 FrontendLayout hydration 時遇 webpack "Cannot read properties of undefined (reading 'call')" 錯誤（layout.tsx:283），此 bug 在本 Phase 之前就存在（同 commit 前 snapshot 已復現），與本批改動無關。Server 端 API 契約 + SSR 渲染兩頭都驗過，client 邏輯 code-review 正確
+
+**本 Phase 不做（out-of-scope）**：
+- BootBeaconCleanup / layout.tsx hydration bug —— 不是本 Phase scope
+- 剩下 3 個 orphan 遊戲 UI（SpinWheel / ScratchCard / FashionChallenge）
+- migration idempotency 修法（Phase 5.5 gender column）
 
 **本 Phase 不做（明確 out-of-scope）**：
 - `/games/*` UI（Q3 明確）

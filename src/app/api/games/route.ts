@@ -11,6 +11,7 @@ import {
   checkAndAwardBadges,
   getPlayerStats,
   performDailyCheckin,
+  getTpeDateString,
 } from '@/lib/games/gameEngine'
 import { startChallenge, submitChallenge } from '@/lib/games/fashionChallengeEngine'
 
@@ -43,6 +44,17 @@ export async function GET(req: NextRequest) {
 
     // Get player stats
     const stats = await getPlayerStats(userId)
+
+    // Phase 5.7：把使用者目前的 daily-checkin streak 狀態一併回傳，UI 初始化用。
+    const userData = user as unknown as Record<string, unknown>
+    const lastCheckInDate = (userData.lastCheckInDate as string) || ''
+    const todayTpe = getTpeDateString()
+    const checkinState = {
+      totalCheckIns: (userData.totalCheckIns as number) || 0,
+      consecutiveCheckIns: (userData.consecutiveCheckIns as number) || 0,
+      lastCheckInDate,
+      alreadyCheckedToday: Boolean(lastCheckInDate) && lastCheckInDate === todayTpe,
+    }
 
     // Get top 5 for leaderboard summary (all-time)
     const leaderboardSummary = await payload.find({
@@ -102,6 +114,7 @@ export async function GET(req: NextRequest) {
         dailyStatus,
         playerStats: stats,
         leaderboard: topPlayers,
+        checkinState,
       },
     })
   } catch (error) {
