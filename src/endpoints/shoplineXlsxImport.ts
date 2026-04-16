@@ -1,6 +1,10 @@
-import type { Endpoint, PayloadRequest } from 'payload'
+import type { Endpoint, PayloadRequest, RequiredDataFromCollectionSlug } from 'payload'
 import { parseShoplineXlsx, type ShoplineProduct } from '../lib/shopline/xlsxParser'
 import { safeRevalidate } from '../lib/revalidate'
+
+// Payload 的 create / update 對 data 要求嚴格 typed 形狀。我們匯入時用
+// Record<string, unknown> 動態拼 data，因此需要一次統一 cast 給 Payload。
+type ProductData = RequiredDataFromCollectionSlug<'products'>
 
 /**
  * POST /api/products/shopline-xlsx
@@ -196,7 +200,7 @@ export const shoplineXlsxImportEndpoint: Endpoint = {
           const updatedDoc = await req.payload.update({
             collection: 'products',
             id: existing.docs[0].id as number,
-            data,
+            data: data as ProductData,
           })
           updated++
           results.push({
@@ -208,7 +212,7 @@ export const shoplineXlsxImportEndpoint: Endpoint = {
         } else {
           const createdDoc = await req.payload.create({
             collection: 'products',
-            data,
+            data: data as ProductData,
           })
           created++
           results.push({

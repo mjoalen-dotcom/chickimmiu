@@ -273,6 +273,22 @@ export const Users: CollectionConfig = {
                 },
               ],
             },
+            // 儲值金（Phase 5.5 N2）—— 與購物金概念區分：
+            //   - shoppingCredit 購物金：平台贈送（簽到/推薦/生日等），不可退現、僅抵扣
+            //   - storedValueBalance 儲值金：使用者真金白銀儲值進來，可退現
+            // 當下僅加欄位與管理 UI；退現 API / 對帳流程另案（需金流 partner + 發票作廢 UI）
+            {
+              name: 'storedValueBalance',
+              label: '儲值金餘額',
+              type: 'number',
+              defaultValue: 0,
+              min: 0,
+              access: { update: isAdminFieldLevel },
+              admin: {
+                description:
+                  '使用者自行儲值的現金額度，理論上可退現。與「購物金餘額」不同——購物金為平台贈送、不可退現。退現流程尚未開通，目前僅提供餘額管理。',
+              },
+            },
             // Daily check-in streak (Asia/Taipei timezone, see lib/games/gameEngine.ts performDailyCheckin)
             {
               type: 'row',

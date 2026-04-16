@@ -113,7 +113,7 @@ P4 還有 **G4 / G5 / G6 / G8 / G9 / G10** 沒做。下次開新對話繼續。
 
 ---
 
-### N2 — Users collection 新增「儲值金」欄位
+### ~~N2 — Users collection 新增「儲值金」欄位~~ ✅ DONE (2026-04-17 session 4)
 **概念區分**：
 - **購物金 (shoppingCredit)** — 平台贈送（簽到、推薦、生日等），**不可退現**，只能抵扣。**已有欄位**在 Users.ts:257。
 - **儲值金 (wallet / cashCredit / storedValue — 名字由你定)** — 使用者**真金白銀儲值進來**，**可退現**。**新欄位**。
@@ -127,6 +127,14 @@ P4 還有 **G4 / G5 / G6 / G8 / G9 / G10** 沒做。下次開新對話繼續。
 **規模評估**：欄位本身很小；migration 也小；WalletTransactions 若做是中等規模（需 collection + endpoint + admin UI）。建議**先做 1+2+3 最小切片**，帳務流水之後再擴。
 
 **⚠️ 風險提示**：退現功能牽涉金流、發票作廢、會計對帳 —— 這只是**加欄位**，不含真正退現 UI / 流程。使用者若日後要實作退現 API，要先確認金流 partner、發票對應、UI 審核 flow。當下先只加欄位 + migration。
+
+**已完成**：
+- Users.ts：`storedValueBalance` (TS camelCase) / `stored_value_balance` (DB snake_case)，type: number, defaultValue: 0, min: 0, 單欄位單列放在 Tab 2「會員等級 & 點數」shoppingCredit row 下方
+- Migration `src/migrations/20260417_100000_add_stored_value_balance.ts` —— PRAGMA 冪等 pattern，已註冊到 `src/migrations/index.ts`
+- `npx payload migrate` 已套用成功（dev 確認 column 存在）
+- Admin UI 驗證：進 `/admin/collections/users/:id` → 點 Tab「會員等級 & 點數」→ 欄位正常渲染，default value 0
+- WalletTransactions collection 本次**沒做**（帳務流水屬另案）
+- 退現 UI / 流程本次**沒做**（牽涉金流 partner + 發票作廢 + 審核 flow）
 
 ---
 

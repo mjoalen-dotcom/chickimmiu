@@ -97,7 +97,9 @@ export default async function PointsPage() {
   ])
 
   const gender = (user.gender as string | null) ?? null
-  const scarcity = (redemptionRaw as LooseRecord)?.scarcity as LooseRecord | undefined
+  // redemptionRaw 型別 (PointRedemptionSetting) 有具名 fields，TS 不認為它能 assign 成
+  // LooseRecord (index signature)。透過 unknown 中介完成 widen → 仍在 type-check 之下。
+  const scarcity = (redemptionRaw as unknown as LooseRecord)?.scarcity as LooseRecord | undefined
   const lowStockThreshold = (scarcity?.lowStockThreshold as number) ?? 10
   const hotBadgeThreshold = (scarcity?.hotBadgeThreshold as number) ?? 50
 

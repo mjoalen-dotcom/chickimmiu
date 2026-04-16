@@ -102,7 +102,9 @@ export default async function ReferralsPage() {
     }),
   ])
 
-  const settings = settingsRaw as LooseRecord
+  // settingsRaw 型別 (ReferralSetting) 有具名 fields，TS 不認為它能 assign 成 LooseRecord
+  // (index signature)。透過 unknown 中介完成 widen → 仍在 type-check 之下。
+  const settings = settingsRaw as unknown as LooseRecord
   const rewardsCfg = (settings?.rewards as LooseRecord) ?? {}
   const tierBonus = (settings?.tierBonus as LooseRecord) ?? {}
   const linkSettings = (settings?.linkSettings as LooseRecord) ?? {}
