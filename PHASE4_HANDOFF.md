@@ -222,7 +222,7 @@ editor: lexicalEditor({
 | 1 | `BlogPosts` | `/blog`、`/blog/[slug]`、`/`（home 穿搭誌）全走 `getPayload().find()` | ✅ 加 hook | 真實 SSR consumer；slug-aware（`revalidateBlog(slug)` 含 prevSlug rename 路徑） |
 | 2 | `Pages` | `/pages/[slug]` 走 `getPayload().find()` | ✅ 加 hook | 真實 SSR consumer；slug-aware（`revalidateCustomPage(slug)` 含 prevSlug rename 路徑） |
 | 3 | `UGCPosts` | 只有 `/api/v1/ugc` + `gameActions.ts` ；home 的 `<UGCGallery>` 是 `'use client'` 靠該 API | ❌ 跳過 | hook 無法 invalidate client fetch；沒有 SSR consumer |
-| 4 | `MembershipTiers` | 只有 `/api/crm/*` API routes 引用 | ❌ 跳過 | Phase 5.5 Batch A 正在接通 `/membership-benefits`；**屆時同 commit 補 hook** |
+| 4 | `MembershipTiers` | Phase 5.5 Batch A (`499672e`) 接通 `/membership-benefits` 走 `getPayload().find()` | ✅ 加 hook（follow-up commit） | Batch A ship 後 Batch 3 做 follow-up；非 slug-aware（整頁列全部 tiers） |
 | 5 | `SubscriptionPlans` | 全站零引用 | ❌ 跳過 | 沒有 consumer |
 | 6 | `CRMSettings` | `src/app` 零引用 | ❌ 跳過 | 沒有 SSR consumer |
 | 7 | `SegmentationSettings` | `src/app` 零引用 | ❌ 跳過 | 沒有 SSR consumer |
@@ -233,14 +233,15 @@ editor: lexicalEditor({
 **加 hook 檔案**：
 - `src/collections/BlogPosts.ts` — `revalidateBlog(slug)` helper（paths: `/`, `/blog`, `/blog/[slug]`；tag: `blog-posts`），`afterChange` + `afterDelete` 含 prevSlug 處理
 - `src/collections/Pages.ts` — `revalidateCustomPage(slug)` helper（paths: `/pages/[slug]`；tag: `pages`），`afterChange` + `afterDelete` 含 prevSlug 處理
+- `src/collections/MembershipTiers.ts` — follow-up commit（Batch A ship 後補）；paths: `/membership-benefits`；tag: `membership-tiers`；non-slug-aware
 
-**驗證**：preview server 編譯 `/blog` (621ms) + `/pages/[slug]` (1036ms) 成功，GET 200 無 TS / import error。
+**驗證**：preview server 編譯 `/blog` (621ms) + `/pages/[slug]` (1036ms) + `/membership-benefits` (306-567ms) 成功，GET 200 無 TS / import error。
 
 **Phase 5.1 整體進度**：
 - ✅ Batch 1：6 檔（公開 globals）
 - ⏸️ Batch 2：4 檔跳過（等 Phase 5.5 完成）
-- ✅ Batch 3：2/10 檔加 hook（BlogPosts、Pages），8 檔跳過（NOP）
-- 📝 **未來再做**：MembershipTiers hook 等 Phase 5.5 Batch A 接通前台後同 commit 補；其他 7 個跳過目標等相關前台接通再補
+- ✅ Batch 3：3/10 檔加 hook（BlogPosts、Pages、MembershipTiers），7 檔跳過（NOP）
+- 📝 **未來再做**：7 個跳過目標等相關前台接通再補（特別是 Phase 5.5 Batch B/C 後的 LoyaltySettings / PointRedemptionSettings / ReferralSettings 會升級為加 hook 候選 — 參考 Batch 2 skipped list）
 
 **刻意不加 hook 的 collections**（純後台 / log / 私有資料）：
 Users, Exchanges, Refunds, Invoices, CreditScoreHistory, PointsTransactions, PointsRedemptions, MemberSegments, ConciergeServiceRequests, CustomerServiceTickets, MarketingCampaigns, MessageTemplates, ABTests, MarketingExecutionLogs, FestivalTemplates, BirthdayCampaigns, AutomationJourneys, AutomationLogs, MiniGameRecords, CardBattles, GameLeaderboard, ShippingMethods, Affiliates

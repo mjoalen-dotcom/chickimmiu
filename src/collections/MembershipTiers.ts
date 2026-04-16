@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
+import { safeRevalidate } from '../lib/revalidate'
 
 /**
  * 會員等級 Collection
@@ -30,6 +31,13 @@ export const MembershipTiers: CollectionConfig = {
     create: isAdmin,
     update: isAdmin,
     delete: isAdmin,
+  },
+  hooks: {
+    // SSR consumer (since Phase 5.5 Batch A — commit 499672e):
+    //   /membership-benefits renders all tiers via getPayload().find('membership-tiers')
+    // Any tier change invalidates that page's full-route cache.
+    afterChange: [() => safeRevalidate(['/membership-benefits'], ['membership-tiers'])],
+    afterDelete: [() => safeRevalidate(['/membership-benefits'], ['membership-tiers'])],
   },
   fields: [
     // ── 核心分級識別 ──
