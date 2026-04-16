@@ -120,6 +120,9 @@ export const useCartStore = create<CartState>()(
       storage: safeLocalStorage,
       // Only persist items, not drawer state
       partialize: (state) => ({ items: state.items }),
+      // Defer rehydration until after mount to avoid SSR hydration mismatch.
+      // Manual rehydrate() is called from Providers.
+      skipHydration: true,
     },
   ),
 )

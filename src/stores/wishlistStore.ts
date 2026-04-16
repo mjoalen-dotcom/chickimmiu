@@ -57,6 +57,9 @@ export const useWishlistStore = create<WishlistState>()(
     {
       name: 'ckm-wishlist',
       storage: safeLocalStorage,
+      // Defer rehydration until after mount to avoid SSR hydration mismatch.
+      // Manual rehydrate() is called from Providers.
+      skipHydration: true,
     },
   ),
 )
