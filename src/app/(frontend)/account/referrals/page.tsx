@@ -20,9 +20,8 @@ export const metadata: Metadata = {
  *   3. users (where referredBy=self) — 被推薦名單 + count
  *   4. users (where referredBy=self AND createdAt >= 本月初) — 本月推薦次數 (for monthlyRemaining)
  *   5. membership-tiers (level > 0) — 等級加成表 5 列
- *
- *  簡化（本 Phase 不做）：totalReward 採 completedCount × (signup + purchase) 近似，
- *  未來可改為 SUM(PointsTransactions where source=referral AND user=self)。
+ *   6. points-transactions (user=self AND source=referral) — totalReward 用真實 SUM
+ *      （Phase 5.5.2，2026-04-17，取代原本 completedCount × (signup + purchase) 的近似算法）
  */
 
 type LooseRecord = Record<string, unknown>
@@ -73,7 +72,7 @@ export default async function ReferralsPage() {
   thisMonthStart.setDate(1)
   thisMonthStart.setHours(0, 0, 0, 0)
 
-  const [settingsRaw, tiersResult, referredResult, referredThisMonth] = await Promise.all([
+  const [settingsRaw, tiersResult, referredResult, referredThisMonth, referralTxResult] = await Promise.all([
     payload.findGlobal({ slug: 'referral-settings', depth: 0 }),
     payload.find({
       collection: 'membership-tiers',
@@ -98,6 +97,20 @@ export default async function ReferralsPage() {
         ],
       },
       limit: 0,
+      depth: 0,
+    }),
+    // Phase 5.5.2 — totalReward 改為 SUM(PointsTransactions.amount) where user=self
+    // AND source='referral'. amount 已內建正負（推薦獎勵正、退款扣回負），net SUM
+    // 正好反映「目前實際入袋」。limit:1000 是安全上限（單一 user 不太可能超過）。
+    payload.find({
+      collection: 'points-transactions',
+      where: {
+        and: [
+          { user: { equals: sessionUser.id } },
+          { source: { equals: 'referral' } },
+        ],
+      },
+      limit: 1000,
       depth: 0,
     }),
   ])
@@ -136,8 +149,15 @@ export default async function ReferralsPage() {
     }
   })
 
-  const completedCount = history.filter((h) => h.status === 'completed').length
-  const totalReward = completedCount * (referrerSignup + referrerPurchase)
+  // Real SUM of referral-sourced point transactions (Phase 5.5.2).
+  // Replaces the prior approximation `completedCount × (signup + purchase)` which
+  // (a) only saw the first 20 referrals (history.slice(0, 20) cap) and
+  // (b) used current settings rather than the amount actually credited at the time.
+  const referralTxDocs = referralTxResult.docs as unknown as LooseRecord[]
+  const totalReward = referralTxDocs.reduce(
+    (sum, tx) => sum + ((tx.amount as number) ?? 0),
+    0,
+  )
 
   const monthlyLimit = (antiAbuse.monthlyReferralLimit as number) ?? 50
   const monthlyRemaining = Math.max(0, monthlyLimit - referredThisMonth.totalDocs)

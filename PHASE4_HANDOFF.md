@@ -476,7 +476,7 @@ if (!user) redirect('/login?redirect=/account/X')
 | 等級顯示名 | `user.memberTier.frontName / frontNameMale`（gender-aware） |
 | 等級加成倍率 | `referral-settings.tierBonus.{slug}Multiplier` |
 | 推薦人數 | `users.totalDocs` where `referredBy=self` |
-| 累計獎勵 | 近似：`completedCount × (referrerSignup + referrerPurchase)`（TODO：改 SUM PointsTransactions where source=referral） |
+| 累計獎勵 | ✅ Phase 5.5.2：`SUM(points-transactions.amount)` where `user=self AND source='referral'`，net SUM 內含 refund_deduct 抵扣 |
 | 本月剩餘次數 | `monthlyReferralLimit - count(referredBy=self, createdAt >= 月初)` |
 | 推薦紀錄清單 | `users` where `referredBy=self` sort `-createdAt` limit 20（名字遮罩 `王**`） |
 | 獎勵規則文案 | `referral-settings.rewards.*` |
@@ -500,8 +500,27 @@ if (!user) redirect('/login?redirect=/account/X')
 
 **本 Phase 簡化（TODO 留給未來）**：
 - `expiringPoints` 顯示為 0（完整 FIFO/LIFO 點數到期算法另做）
-- `/account/referrals` 的 `totalReward` 用 `completedReferrals × (signupReward + purchaseReward)` 近似
+- ~~`/account/referrals` 的 `totalReward` 用 `completedReferrals × (signupReward + purchaseReward)` 近似~~ ✅ Phase 5.5.2 已改為 SUM real PointsTransactions（見下方 Phase 5.5.2 section）
 - `UGC_TESTIMONIALS` 在 /account/points 維持硬寫（PointRedemptionSettings.ugcTestimonials 目前只有 enabled/maxDisplay）
+
+#### 📌 Phase 5.5.2 — `/account/referrals` totalReward 改為精確 SUM ✅ DONE（2026-04-17 對話 6）
+
+**前一階段近似算法的兩個 bug**：
+1. `history.slice(0, 20)` 把計算 base 卡在前 20 筆 referrals，後面的 completed 沒進累計
+2. 用「現在的」settings reward 數值，不是當時實際發放給使用者的金額（settings 改了，歷史會被追溯）
+
+**修法**：在 `Promise.all` 加第 6 個 query —— `points-transactions` where `user=self AND source='referral'`，limit 1000；`totalReward = docs.reduce((s, tx) => s + (tx.amount ?? 0), 0)`。
+
+**為什麼用 net SUM 而非只算正數 earn**：`amount` 內建正負，refund_deduct 透過 source=referral 紀錄負數扣回（推薦人退款時推薦獎勵被收回的場景）→ net SUM 反映「目前實際入袋」。若需要顯示「累計總發放（不扣回）」可另開 query 加 `type=earn` filter。
+
+**驗證**：
+- `tsc --noEmit` 乾淨（沒新增 error）
+- preview SSR `GET /account/referrals` → 200 編譯成功，新 query + reduce 無 runtime error
+- preview_eval 跑 6 case reduce 邏輯全 pass：empty / single / multiple / 含負數 / amount missing fallback / 1000 docs 上限
+
+**未來進一步**（不在 5.5.2 scope）：
+- 想顯示「累計獎勵」與「淨獎勵」雙欄位 → 加 `type=earn` filter 取 gross
+- limit:1000 達上限的高階使用者 → 分頁 SUM 或 raw SQL aggregate
 
 #### 📌 Phase 5.6 — DailyCheckIn server-side streak + gameEngine TZ fix ✅ DONE (2026-04-16 對話 5)
 
