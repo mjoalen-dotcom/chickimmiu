@@ -88,13 +88,19 @@
 3. 跑 `pnpm dev` smoke test 幾條主要路由 200
 4. 使用者親自下 `git push --force-with-lease origin main`（不要讓 Claude 做）
 
-### 🟢 P3：DEPLOYMENT.md 與實際架構嚴重不符
-**問題**：
-- DEPLOYMENT.md 說 PostgreSQL + Vercel
-- 實際 `src/payload.config.ts:158` 用 `@payloadcms/db-sqlite` + `libsql`（本機檔案 `data/chickimmiu.db`）
-- 實際部署是本機 + Cloudflare Tunnel
+### ✅ P3：DEPLOYMENT.md 重寫完成（2026-04-16 本對話）
 
-**建議**：改 DEPLOYMENT.md 反映真實架構 — 但這是文件整理，優先度最低。
+整份 `DEPLOYMENT.md` 從「PostgreSQL + Vercel」改寫為「SQLite 本機檔 + Cloudflare Tunnel」實景，新增章節：
+- **架構實景** — ASCII 圖 + 關鍵檔案路徑表 + `config.yml` 現行 ingress 列表
+- **環境變數** — 只列實際用到的 6 個 key（`.env.example` 裡未用的另表說明為何還留著）
+- **本機開發** — `pnpm dev -p 3001` 為主流程，加 `pnpm devsafe` / `pnpm seed:core` / payload CLI；`pnpm build` / `pnpm start` 列入「不用的指令」並寫原因
+- **Cloudflare Tunnel 運維** — 啟動指令、健檢（netstat / tasklist / curl）、自動開機啟動方案比較（Task Scheduler / NSSM / PM2）、斷線復原流程
+- **測試 Checklist** — 保留原章節但同步最新狀態（Phase 5.3/5.4/5.5 修過的地方打註解）
+- **疑難排解** — 新章節，收錄本 Phase 偵察到的 5 個已知症狀 + 修法（`.next` cache 污染、hydration mismatch、Electron webview cache、HomepageSettings validation、iPad/Safari 白屏）
+
+diff stat：`+204 / -111`（淨 +93 行，大幅補資訊）。
+
+**保留未動的既有內容**：追蹤事件驗證章節（GTM / Meta Pixel / GA4 / Google Ads）與部署架構無關，只調整範例網址為 `testshop.ckmu.co`。
 
 ### 🟢 P4：還有一堆 untracked / modified 檔案未納管
 從 `git status` 看：
