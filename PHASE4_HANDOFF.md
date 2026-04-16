@@ -227,42 +227,51 @@ editor: lexicalEditor({
 **刻意不加 hook 的 collections**（純後台 / log / 私有資料）：
 Users, Exchanges, Refunds, Invoices, CreditScoreHistory, PointsTransactions, PointsRedemptions, MemberSegments, ConciergeServiceRequests, CustomerServiceTickets, MarketingCampaigns, MessageTemplates, ABTests, MarketingExecutionLogs, FestivalTemplates, BirthdayCampaigns, AutomationJourneys, AutomationLogs, MiniGameRecords, CardBattles, GameLeaderboard, ShippingMethods, Affiliates
 
-#### 📌 Phase 5.2 — 關鍵 Collection 的 Seed Data 🚧 IN PROGRESS（code 已寫，seed 跑不起來）
+#### 📌 Phase 5.2 — 關鍵 Collection 的 Seed Data ✅ DONE (2026-04-16 對話 3)
 
-**已完成（2026-04-16 對話 2）— code 寫完未 commit**：
+**實際寫入結果**：
+- `pnpm seed:core` 執行成功 — 無 error
+- `MembershipTiers`: 6 updated（6 層 T0-T5 都已存在於 DB，被 seed 覆蓋為官方值）
+- `ShippingMethods`: 8 created（全新建立）
+- DB 檔 `data/chickimmiu.db` mtime = 2026-04-16 16:41，與 seed log 時間戳一致
+
+**交付檔案**：
 
 | 檔案 | 內容 |
 |---|---|
 | `src/seed/data/membershipTiers.ts` | 6 層 T0-T5 完整資料：slug / frontName / 升級門檻（5k → 300k）/ 折扣（0-15%）/ 點數倍率（1-3x）/ 抽獎（0-10 次/月）/ 升級贈點（0-5000）/ 生日禮 / 專屬優惠券 / 色碼 |
 | `src/seed/data/shippingMethods.ts` | 8 種運送：711 / 全家 / 萊爾富 / 黑貓 / 新竹 / 郵政 / 自取 / DHL（含 trackingFlow 步驟）。DHL `isActive:false` 預設關閉 |
-| `src/seed/seedCore.ts` | runner，**upsert by unique key**（tiers by slug、shipping by name），`--dry-run` flag，含 stderr diagnostic + `exit`/`beforeExit`/`unhandledRejection`/`uncaughtException` listeners + `setInterval` keep-alive |
+| `src/seed/seedCore.ts` | runner，**upsert by unique key**（tiers by slug、shipping by name），`--dry-run` flag |
 | `package.json` | 新增 `pnpm seed:core` + `pnpm seed:core:dry` |
 
-**🚨 Blocker — `pnpm seed:core:dry` 靜默退出**：
+**🔥 關鍵 bug 修復 — top-level await（2026-04-16 對話 3）**
 
+**原始症狀**：`pnpm seed:core:dry` 印完 `initializing payload...` 就靜默 exit(0)，沒有 error / stack。`unhandledRejection` / `uncaughtException` / `main().catch()` 全沒觸發。
+
+**根因**（從 `node_modules/payload/dist/bin/index.js` 實際讀出）：
+
+- `payload run` 的 `run` 子指令內部只做 `await import(scriptPath)`（L74）—— 這**只等** module 的 top-level 同步執行與 top-level `await`，**不等** fire-and-forget 的 promise。
+- `bin()` 在 `runBinScript` return 後，在 L51 直接 `process.exit(0)`。
+- 原 seedCore.ts 末尾是 `main().catch(...)` —— module top-level 同步跑完、`main()` 被 kick off 回傳 pending promise、沒人等 → import resolve → payload exit(0) → `main()` 的 `await getPayload()` 被半路殺掉。
+
+**修法**（src/seed/seedCore.ts 最末尾一行）：
+```ts
+// 錯誤（fire-and-forget）：
+main().catch((e) => { ... })
+
+// 正確（top-level await，讓 payload run 的 await import() 等 main 跑完）：
+await main().catch((e) => { ... })
 ```
-[seedCore] script loaded, argv=["--dry-run"]
-[seedCore] === DRY-RUN mode ===
-[seedCore] initializing payload...
-PS C:\>     ← 直接退回 prompt，無 error
-```
 
-加了 `unhandledRejection` / `uncaughtException` / `main().catch()` handler 都沒觸發。最可能：
-- Payload init 內部呼叫 `process.exit()`（不會觸發 handlers）
-- 或 stdout 緩衝吃掉真實 error（已改用 stderr）
-- 或 event loop drain（已加 `setInterval` keepAlive）
-
-**下個對話的第一動作**：再跑 `pnpm seed:core:dry`，這次應看到下列其中一個：
-- `>>> beforeExit code=0 (event loop drained!)` → Payload init 同步 return 沒做 IO（怪）
-- `>>> process exit code=N` → 知道是誰殺
-- `payload init FAILED: ...` 或 `UNHANDLED REJECTION: ...` → 看 stack
-
-若還是死寂 → 改用 `npx tsx src/seed/seedCore.ts --dry-run` 繞過 `payload run`（懷疑 CLI 行為怪）
+此修法**通用於所有用 `payload run` 跑的 custom script** — 未來寫 seed / migration / one-off script 時務必用 top-level await，否則會遇到一樣的靜默 exit。
 
 **設計決策（不要重新討論）**：
 - ❌ 不走 afterInit auto-seed（每次 dev 重啟會跑 + 覆蓋手改）
 - ✅ upsert by unique key，再跑安全
 - ⚠️ 後台手改某筆後**不要再跑 seed**（會被覆蓋回 seed 值）
+
+**後續相關 phase**：
+- Phase 5.5 要接通 `MembershipTiers` 到 `/membership-benefits` 前台頁，現在 seed 完有真實資料可以接
 
 #### 📌 Phase 5.3 — DailyCheckIn 打卡 bug 🟡 已診斷未修
 

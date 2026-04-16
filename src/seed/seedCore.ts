@@ -154,7 +154,12 @@ async function main() {
   }
 }
 
-main().catch((e: any) => {
+// ⚠️ MUST be top-level await.
+// `payload run` internally does `await import(scriptPath)` then `process.exit(0)`.
+// A fire-and-forget `main().catch(...)` would return the import immediately,
+// causing payload to exit(0) before getPayload() resolves (silent early death).
+// Top-level await keeps the import promise pending until main() finishes.
+await main().catch((e: any) => {
   process.stderr.write('[seedCore] FATAL: ' + (e?.stack || e) + '\n')
   process.exit(1)
 })
