@@ -50,10 +50,16 @@ export const MembershipTiers: CollectionConfig = {
     },
     {
       name: 'frontName',
-      label: '前台稱號（唯一對外顯示名稱）',
+      label: '前台稱號（女性 / 預設）',
       type: 'text',
       required: true,
-      admin: { description: '⚠️ 此名稱為唯一對外顯示名稱：優雅初遇者 / 曦漾仙子 / 優漾女神 / 金曦女王 / 星耀皇后 / 璀璨天后' },
+      admin: { description: '⚠️ 女性會員或未填性別會員看到的稱號：優雅初遇者 / 曦漾仙子 / 優漾女神 / 金曦女王 / 星耀皇后 / 璀璨天后' },
+    },
+    {
+      name: 'frontNameMale',
+      label: '前台稱號（男性版本）',
+      type: 'text',
+      admin: { description: '男性會員看到的稱號。留空則 fallback 至 frontName。建議：翩翩紳士 / 溫雅學者 / 雋永騎士 / 金曜貴公子 / 星耀侯爵 / 璀璨國王（依 level 0-5 對應）' },
     },
     {
       name: 'frontSubtitle',

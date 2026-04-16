@@ -128,6 +128,19 @@ export const Users: CollectionConfig = {
               ],
             },
             {
+              name: 'gender',
+              label: '性別',
+              type: 'select',
+              options: [
+                { label: '女性', value: 'female' },
+                { label: '男性', value: 'male' },
+                { label: '其他 / 不透露', value: 'other' },
+              ],
+              admin: {
+                description: '影響會員等級前台稱號顯示（未填或 female → frontName；male → frontNameMale fallback frontName）',
+              },
+            },
+            {
               name: 'avatar',
               label: '頭像',
               type: 'upload',

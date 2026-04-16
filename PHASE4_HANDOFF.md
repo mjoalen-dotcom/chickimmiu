@@ -345,7 +345,38 @@ const newDays = (state.lastDate && daysSinceLastCheckIn > 1)
 - Runbook：開機自動啟動方案（Task Scheduler / NSSM / pm2-windows-service）
 - 在本檔 Phase 5.4 section 標記 `✅ DONE` 並寫進發現
 
-#### 📌 Phase 5.5 — 前台 Hardcoded 接通 Global（Phase 5.1 Batch 2 的前置）
+#### 📌 Phase 5.5 — 前台 Hardcoded 接通 Global（Phase 5.1 Batch 2 的前置） 🚧 進行中
+
+**進度 (2026-04-16)**：
+- ✅ Commit 0 — schema 擴充（Users.gender + MembershipTiers.frontNameMale + PointsRedemptions type 加 styling/charity/mystery + migration `20260416_140000_add_gender_and_male_tier_name`）
+- 🚧 Batch A — membership-benefits 接通 MembershipTiers collection
+- 🚧 Batch B — account/points 接通 LoyaltySettings + PointRedemptionSettings + PointsRedemptions + PointsTransactions + user
+- 🚧 Batch C — account/referrals 接通 ReferralSettings + user referral data
+
+**關鍵設計決策**：
+- 男性稱號：`MembershipTiers.frontNameMale` 獨立欄位，綁定 level / slug（後台隨時可改名，不只是文字替換）
+- 性別 fallback：`user.gender === 'male' && tier.frontNameMale` → 男性稱號；其他一律 `frontName`（含 female / other / 未填）
+- 前台禁用金屬分級名（「銅牌/銀牌/…」）— 全部顯示 frontName 或 frontNameMale
+- Tailwind 顏色 lookup map by slug 放前端（不進 DB）
+
+**建議男性稱號**（需你到後台手填，seed 卡關不碰）：
+| slug | level | frontName (女/預設) | frontNameMale (建議值) |
+|---|---|---|---|
+| ordinary | 0 | 優雅初遇者 | 翩翩紳士 |
+| bronze | 1 | 曦漾仙子 | 溫雅學者 |
+| silver | 2 | 優漾女神 | 雋永騎士 |
+| gold | 3 | 金曦女王 | 金曜貴公子 |
+| platinum | 4 | 星耀皇后 | 星耀侯爵 |
+| diamond | 5 | 璀璨天后 | 璀璨國王 |
+
+**本 Phase 簡化（TODO 留給未來）**：
+- `expiringPoints` 顯示為 0（完整 FIFO/LIFO 點數到期算法另做）
+- `/account/referrals` 的 `totalReward` 用 `completedReferrals × (signupReward + purchaseReward)` 近似
+- `UGC_TESTIMONIALS` 在 /account/points 維持硬寫（PointRedemptionSettings.ugcTestimonials 目前只有 enabled/maxDisplay）
+
+---
+
+**原計畫（保留作參考）：**
 
 **為什麼要做**：Phase 5.1 Batch 2 發現 4 個會員/忠誠度 global 在前台「零引用」，所有相關頁面用 hardcoded const 假資料。先做這件事，Phase 5.1 Batch 2 才有意義；否則加 hook 也是死代碼。
 
