@@ -56,6 +56,9 @@ interface DailyCheckInProps {
 export function DailyCheckIn({ open, onClose }: DailyCheckInProps) {
   const [state, setState] = useState<CheckinState>({ days: [], lastDate: '' })
   const [todayTpe, setTodayTpe] = useState<string>('')
+  // True only for the same modal-open session in which the user just clicked
+  // and that click broke a streak. Cleared on every modal open.
+  const [showStreakReset, setShowStreakReset] = useState(false)
 
   // Refresh every time the modal opens, so 23:59-open-then-00:01-reopen sees
   // the new day. (Note: `if (!open) return null` does NOT unmount the component.)
@@ -63,25 +66,45 @@ export function DailyCheckIn({ open, onClose }: DailyCheckInProps) {
     if (!open) return
     setState(readStorage())
     setTodayTpe(getTaipeiDateString())
+    setShowStreakReset(false)
   }, [open])
 
-  const todayIndex = state.days.length
+  // dayDiff between today and last successful check-in. Both sides are
+  // YYYY-MM-DD strings parsed by Date.parse as UTC midnight, so the diff is
+  // always an exact multiple of 86_400_000 — no DST/TZ skew.
+  const dayDiff = state.lastDate && todayTpe
+    ? Math.floor((Date.parse(todayTpe) - Date.parse(state.lastDate)) / 86_400_000)
+    : 0
+  // Gap of 2+ days breaks the streak. Treat past `state.days` as cleared for
+  // rendering purposes, so the calendar/button reflect the reset BEFORE the
+  // user clicks (no "click Day 3, get Day 1" UX surprise).
+  const willResetStreak = state.lastDate !== '' && dayDiff > 1
+  const effectiveDays = willResetStreak ? [] : state.days
+
+  const todayIndex = effectiveDays.length
   const allDone = todayIndex >= 7
   const alreadyCheckedToday = todayTpe !== '' && state.lastDate === todayTpe
 
   const handleCheckIn = () => {
     if (allDone || alreadyCheckedToday) return
-    const newDays = [...state.days, todayIndex]
+    const wasReset = willResetStreak
+    const newDays = [...effectiveDays, effectiveDays.length]
     const next: CheckinState = { days: newDays, lastDate: todayTpe }
     setState(next)
+    setShowStreakReset(wasReset)
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
     } catch {
       // Storage may be blocked (privacy mode / lockdown) — ignore.
     }
 
-    const reward = REWARDS[todayIndex]
-    console.log('[DailyCheckIn] Day', todayIndex + 1, 'reward:', reward, 'tpeDate:', todayTpe)
+    const reward = REWARDS[newDays.length - 1]
+    console.log(
+      '[DailyCheckIn] Day', newDays.length,
+      'reward:', reward,
+      'tpeDate:', todayTpe,
+      'streakReset:', wasReset,
+    )
   }
 
   if (!open) return null
@@ -113,7 +136,7 @@ export function DailyCheckIn({ open, onClose }: DailyCheckInProps) {
         {/* Calendar grid */}
         <div className="grid grid-cols-7 gap-2 mb-6">
           {REWARDS.map((reward, i) => {
-            const isChecked = state.days.includes(i)
+            const isChecked = effectiveDays.includes(i)
             const isToday = i === todayIndex && highlightTodayCell
             const isFuture = i > todayIndex
 
@@ -156,6 +179,11 @@ export function DailyCheckIn({ open, onClose }: DailyCheckInProps) {
             <p className="text-sm font-medium">
               今日已簽到{state.days.length > 0 ? `（Day ${state.days.length}）` : ''}
             </p>
+            {showStreakReset && (
+              <p className="text-[10px] text-rose-600 mt-1">
+                連續中斷，已從 Day 1 重新開始
+              </p>
+            )}
             <p className="text-[10px] text-muted-foreground mt-1">
               <Calendar size={10} className="inline mr-1" />
               明日（Asia/Taipei 00:00 後）再來
