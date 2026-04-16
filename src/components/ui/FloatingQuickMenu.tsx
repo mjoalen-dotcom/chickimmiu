@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutGrid,
   X,
@@ -13,15 +12,8 @@ import {
   Grid3X3,
   Crown,
   Gift,
-  MessageCircle,
   ArrowUp,
 } from 'lucide-react'
-
-/**
- * 浮動快速 MENU
- * 全站右下角（客服按鈕上方）
- * 快速連結：首頁、分類、購物車、會員、遊戲、客服等
- */
 
 const QUICK_LINKS = [
   { href: '/', label: '首頁', icon: Home, color: 'bg-cream-100 text-foreground' },
@@ -42,53 +34,43 @@ export function FloatingQuickMenu() {
 
   return (
     <div data-component="floating-menu" className="fixed bottom-24 right-6 z-40 flex flex-col items-end gap-2">
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.9 }}
-            className="bg-white rounded-2xl shadow-2xl border border-cream-200 p-4 w-56"
+      {isOpen && (
+        <div className="bg-white rounded-2xl shadow-2xl border border-cream-200 p-4 w-56 opacity-100 translate-y-0 scale-100 transition-all duration-200">
+          <p className="text-xs text-muted-foreground mb-3 px-1">快速導覽</p>
+          <div className="grid grid-cols-3 gap-2">
+            {QUICK_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setIsOpen(false)}
+                className="flex flex-col items-center gap-1.5 py-2.5 rounded-xl hover:bg-cream-50 transition-colors"
+              >
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${link.color}`}>
+                  <link.icon size={16} />
+                </div>
+                <span className="text-[10px] text-foreground/70">{link.label}</span>
+              </Link>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => { scrollToTop(); setIsOpen(false) }}
+            className="w-full mt-3 pt-3 border-t border-cream-200 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-gold-600 transition-colors"
           >
-            <p className="text-xs text-muted-foreground mb-3 px-1">快速導覽</p>
-            <div className="grid grid-cols-3 gap-2">
-              {QUICK_LINKS.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setIsOpen(false)}
-                  className="flex flex-col items-center gap-1.5 py-2.5 rounded-xl hover:bg-cream-50 transition-colors"
-                >
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${link.color}`}>
-                    <link.icon size={16} />
-                  </div>
-                  <span className="text-[10px] text-foreground/70">{link.label}</span>
-                </Link>
-              ))}
-            </div>
+            <ArrowUp size={12} />
+            回到頂部
+          </button>
+        </div>
+      )}
 
-            {/* Back to top */}
-            <button
-              type="button"
-              onClick={() => { scrollToTop(); setIsOpen(false) }}
-              className="w-full mt-3 pt-3 border-t border-cream-200 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-gold-600 transition-colors"
-            >
-              <ArrowUp size={12} />
-              回到頂部
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <motion.button
+      <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-11 h-11 rounded-full bg-foreground/80 text-cream-50 shadow-lg hover:bg-foreground transition-colors flex items-center justify-center"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        className="w-11 h-11 rounded-full bg-foreground/80 text-cream-50 shadow-lg hover:bg-foreground transition-all hover:scale-105 active:scale-95 flex items-center justify-center"
         aria-label="快速選單"
       >
         {isOpen ? <X size={18} /> : <LayoutGrid size={18} />}
-      </motion.button>
+      </button>
     </div>
   )
 }
