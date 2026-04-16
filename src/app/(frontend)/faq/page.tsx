@@ -2,14 +2,7 @@ import type { Metadata } from 'next'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { FAQPageClient } from './FAQPageClient'
-
-function getMediaUrl(field: unknown): string | undefined {
-  if (!field) return undefined
-  if (typeof field === 'object' && field !== null && 'url' in field) {
-    return (field as { url?: string }).url ?? undefined
-  }
-  return undefined
-}
+import { getMediaUrl } from '@/lib/media-url'
 
 async function getFAQSettings() {
   if (!process.env.DATABASE_URI) return null
@@ -56,7 +49,7 @@ const DEFAULT_CATEGORIES = [
     icon: 'rotate-ccw',
     title: '退換貨相關',
     items: [
-      { question: '可以退換貨嗎？', answer: '依照消保法規定，您享有收到商品後 7 天內的鑑賞期。商品須保持全新未穿著、吊牌完整、原包裝未拆封的狀態方可申請退換貨。' },
+      { question: '可以退換貨嗎？', answer: '您享有收到商品後 14 天內的鑑賞期。商品須保持全新未穿著、吊牌完整、原包裝未拆封的狀態方可申請退換貨。' },
       { question: '如何申請退換貨？', answer: '請至會員中心的「退換貨」頁面提交申請，或透過 LINE 客服（@ckmu）聯繫。我們收到申請後將於 1-2 個工作天內回覆處理方式。' },
       { question: '退款多久會收到？', answer: '退貨商品經檢查確認無誤後，信用卡退款約 5-10 個工作天（依各銀行作業時間）；ATM/匯款退款約 3-5 個工作天入帳。' },
       { question: '哪些情況不能退貨？', answer: '已穿著洗滌、吊牌剪除、人為損壞、個人衛生用品（如內衣褲、泳裝）、客製化商品等，恕無法受理退貨。詳細說明請參閱退換貨政策頁面。' },

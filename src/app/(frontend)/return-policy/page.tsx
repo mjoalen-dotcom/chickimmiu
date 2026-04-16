@@ -28,7 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const faqItems = [
   {
     q: 'Q1：可以退貨嗎？',
-    a: '可以。依消保法享有 7 天鑑賞期，本公司另提供 14 天安心退貨服務。',
+    a: '可以。本公司提供 14 天安心鑑賞期（優於消保法 7 天規定）。',
   },
   {
     q: 'Q2：怎麼申請退貨？',

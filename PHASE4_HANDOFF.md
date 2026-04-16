@@ -95,3 +95,65 @@ editor: lexicalEditor({
 ## 下個對話的開場白範例
 
 > 接續 Phase 4 Task 3。讀 `PHASE4_HANDOFF.md` 裡的「Task 3」section，用 Edit tool 改那 5 處 `1fr` → `minmax(0, 1fr)`，然後 `preview_start chickimmiu-next` 驗證 compile。完成後我會自己開後台驗證視覺。
+
+---
+
+## 🚧 Phase 5 — 全站同步機制大補（TODO，開新對話做）
+
+### 診斷（2026-04-16 發現）
+
+整個專案的 revalidate 覆蓋率嚴重不足：
+- **35 個 Collections，只有 7 個有 revalidate hook**（Products, Media, Categories, SizeCharts, Orders, Returns, ProductReviews）
+- **15 個 Globals，0 個有 revalidate hook** 🚨
+
+結果：使用者改後台 → DB 有新值 → 但 Next.js Server Component fetch cache **永遠不失效** → 前台顯示舊資料。
+
+這就是本次對話使用者反覆抱怨「前後台不同步」的**真正結構根因**。
+
+### Phase 5 分四個子階段（建議各別一個對話處理）
+
+#### 📌 Phase 5.1 — Revalidate 覆蓋率修復（最優先）
+- **15 個 globals 全部加 afterChange hook**，對應到前台頁面 revalidate
+  - `homepage-settings` → `revalidatePath('/')`
+  - `about-page-settings` → `revalidatePath('/about')`
+  - `faq-page-settings` → `revalidatePath('/faq')`
+  - `policy-pages-settings` → `revalidatePath('/terms', '/privacy-policy', '/return-policy', '/shopping-guide', '/packaging')`
+  - `navigation-settings` → `revalidateTag('layout')` 或整站重 render
+  - `global-settings` → `revalidateTag('layout')`
+  - `loyalty-settings` / `referral-settings` / `point-redemption-settings` → `/account/**`
+  - `crm-settings` / `segmentation-settings` / `marketing-automation-settings` → `/account/crm-dashboard`、`/account/segments`
+  - `invoice-settings` → `/account/invoices`
+  - `recommendation-settings` → `revalidateTag('products')`（因為影響 PDP 推薦）
+  - `game-settings` → `/games/**`
+- **28 個缺 hook 的 collections 也要補**：BlogPosts、Pages、UGCPosts、Affiliates、Users、MembershipTiers、SubscriptionPlans、ProductReviews 等
+- 抽一個 `src/lib/revalidate.ts` 的 generic helper 讓重複邏輯簡化
+- **建議做法**：讀 `src/lib/revalidate.ts`（已有 safeRevalidate）→ 替每個 global/collection 在檔案尾加 `hooks: { afterChange: [...], afterDelete: [...] }`
+
+#### 📌 Phase 5.2 — 關鍵 Collection 的 Seed Data
+使用者發現後台沒資料：
+- **MembershipTiers**（6 層 T0-T5 等級）— 必須 seed，否則註冊 / 升級邏輯整個卡住
+- **ShippingMethods** — 運送方式缺 data，checkout 會出錯
+- **Categories** — 看一下 DB，可能有基本分類但不完整
+- 建議用已有的 `src/seed/resetAdmin.ts` 模式，加 `src/seed/seedCore.ts`
+
+#### 📌 Phase 5.3 — DailyCheckIn 打卡 bug
+使用者反映：「打卡好像會一次打兩天卡」
+- 檢查 `src/components/gamification/DailyCheckIn.tsx`（本次對話未讀）
+- 可能是時區 / 日期 bug
+- 檢查 hook 邏輯有沒有重複觸發
+
+#### 📌 Phase 5.4 — testshop.ckmu.co 部署問題
+使用者回報 prod 站顯示「Host Error」
+- 讀 `DEPLOYMENT.md`
+- 確認 build pipeline / 環境變數 / DATABASE_URI（Turso? 還是 SQLite?）
+- 本對話的改動尚未 deploy，prod 還是舊版
+
+### Phase 5 前置資訊
+
+- 本機 dev server 已切成 `next dev`（launch.json 的 `runtimeArgs` 從 `["start", "-p", "3001"]` 改成 `["dev", "-p", "3001"]`）— 這個改動**不在 git 裡**（`.claude/launch.json` 未 tracked），是使用者本機配置
+- Production 用什麼 DB、怎麼 deploy 都還沒查清楚
+- 使用者 git branch 跟 origin/main 已經 diverged（本地多 2 commits、遠端多 4 commits），**要 push 之前先解決 divergence**
+
+### Phase 5 開場白範例
+
+> 接續 Phase 5.1 — revalidate 覆蓋率修復。讀 `PHASE4_HANDOFF.md` 的「Phase 5.1」section 和 `SITE_MAP.md`。為 15 個 globals + 缺少 hook 的 collections 補上 afterChange + afterDelete hook，對應 revalidatePath / revalidateTag。先列計畫給我看，我確認後再動手。

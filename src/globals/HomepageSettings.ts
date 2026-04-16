@@ -166,10 +166,21 @@ export const HomepageSettings: GlobalConfig = {
         { name: 'tag', label: '英文標籤', type: 'text', defaultValue: 'STYLE JOURNAL' },
         { name: 'title', label: '中文標題', type: 'text', defaultValue: '穿搭誌' },
         { name: 'href', label: '查看全部連結', type: 'text', defaultValue: '/blog' },
-        { name: 'mode', label: '內容來源', type: 'select', defaultValue: 'auto', options: [
-          { label: '自動（最新文章）', value: 'auto' },
-          { label: '手動精選', value: 'manual' },
-        ]},
+        {
+          name: 'mode',
+          label: '內容來源',
+          type: 'select',
+          defaultValue: 'auto',
+          // 允許 null — 防止舊 global 記錄缺少此欄位時觸發 validation error
+          validate: (val: unknown) => {
+            if (!val || val === 'auto' || val === 'manual') return true
+            return '請選擇「自動」或「手動精選」'
+          },
+          options: [
+            { label: '自動（最新文章）', value: 'auto' },
+            { label: '手動精選', value: 'manual' },
+          ],
+        },
         {
           name: 'manualPosts',
           label: '手動精選文章',

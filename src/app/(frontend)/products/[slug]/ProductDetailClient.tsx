@@ -641,7 +641,7 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
             <div className="grid grid-cols-3 gap-3 pt-2">
               {[
                 { icon: Truck, label: '滿千免運' },
-                { icon: RefreshCw, label: '7 天鑑賞期' },
+                { icon: RefreshCw, label: '14 天鑑賞期' },
                 { icon: Shield, label: '安全付款' },
               ].map((b) => (
                 <div
@@ -913,7 +913,7 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
                     退換貨政策
                   </h3>
                   <ul className="space-y-2 text-sm text-foreground/70">
-                    <li>• 收到商品後享有 7 天鑑賞期</li>
+                    <li>• 收到商品後享有 14 天鑑賞期</li>
                     <li>• 商品需保持全新未穿著、吊牌完整、原包裝未拆封</li>
                     <li>• 退貨運費由買方負擔（商品瑕疵除外）</li>
                     <li>• 詳細說明請參閱 <Link href="/return-policy" className="text-gold-600 underline">退換貨政策</Link></li>

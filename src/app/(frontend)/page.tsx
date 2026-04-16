@@ -8,6 +8,7 @@ import { HeroCarousel } from '@/components/home/HeroCarousel'
 import type { HeroSlide } from '@/components/home/HeroCarousel'
 import { UGCGallery } from '@/components/ugc/UGCGallery'
 import { getPayload } from 'payload'
+import { getMediaUrl, normalizeMediaUrl } from '@/lib/media-url'
 import config from '@payload-config'
 
 /* ── Icon Map ── */
@@ -21,18 +22,11 @@ function getProductImage(product: Record<string, unknown>): string | undefined {
   const images = product.images as { image?: { url?: string } | number }[] | undefined
   if (!images?.length) return undefined
   const img = images[0]?.image
-  if (typeof img === 'object' && img !== null) return img.url ?? undefined
+  if (typeof img === 'object' && img !== null) return normalizeMediaUrl(img.url)
   return undefined
 }
 
-/* ── Extract media URL from Payload upload field ── */
-function getMediaUrl(field: unknown): string | undefined {
-  if (!field) return undefined
-  if (typeof field === 'object' && field !== null && 'url' in field) {
-    return (field as { url?: string }).url ?? undefined
-  }
-  return undefined
-}
+/* getMediaUrl imported from @/lib/media-url */
 
 /* ── Fetch homepage settings + products ── */
 async function fetchHomeData() {
@@ -142,10 +136,23 @@ export default async function HomePage() {
       }))
     : [
         { icon: 'Truck', label: '滿額免運', desc: '一般會員滿 $2,000 免運費' },
-        { icon: 'RefreshCw', label: '7 天鑑賞期', desc: '不滿意可退換貨' },
+        { icon: 'RefreshCw', label: '14 天鑑賞期', desc: '不滿意可退換貨' },
         { icon: 'Shield', label: '安全付款', desc: '多元金流加密保護' },
         { icon: 'Sparkles', label: '會員好禮', desc: '註冊即享專屬優惠' },
       ]
+
+  // ── UGC tagged products (real Payload products) ──
+  const ugcTaggedProducts = [...newProducts, ...hotProducts]
+    .map((p) => {
+      const slug = p.slug as string | undefined
+      const name = p.name as string | undefined
+      const price = p.price as number | undefined
+      const image = getProductImage(p)
+      if (!slug || !name || typeof price !== 'number' || !image) return null
+      return { slug, name, price, image }
+    })
+    .filter((p): p is { slug: string; name: string; price: number; image: string } => p !== null)
+    .slice(0, 6)
 
   // ── Section configs ──
   const newSection = (homepage?.newProductsSection as Record<string, unknown>) || {}
@@ -432,7 +439,11 @@ export default async function HomePage() {
       {(ugcSection.visible !== false) && (
         <section className="py-16 md:py-24">
           <div className="container">
-            <UGCGallery layout="shoppable_gallery" maxItems={(ugcSection.maxItems as number) || 6} />
+            <UGCGallery
+              layout="shoppable_gallery"
+              maxItems={(ugcSection.maxItems as number) || 6}
+              taggedProducts={ugcTaggedProducts}
+            />
           </div>
         </section>
       )}
