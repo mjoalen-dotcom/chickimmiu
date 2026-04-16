@@ -392,13 +392,20 @@ const newDays = (state.lastDate && dayDiff > 1)
 - Runbook：開機自動啟動方案（Task Scheduler / NSSM / pm2-windows-service）
 - 在本檔 Phase 5.4 section 標記 `✅ DONE` 並寫進發現
 
-#### 📌 Phase 5.5 — 前台 Hardcoded 接通 Global（Phase 5.1 Batch 2 的前置） 🚧 進行中
+#### 📌 Phase 5.5 — 前台 Hardcoded 接通 Global（Phase 5.1 Batch 2 的前置） ✅ DONE (2026-04-16 對話 4)
 
 **進度 (2026-04-16)**：
-- ✅ Commit 0 — schema 擴充（Users.gender + MembershipTiers.frontNameMale + PointsRedemptions type 加 styling/charity/mystery + migration `20260416_140000_add_gender_and_male_tier_name`）
-- ✅ Batch A — membership-benefits 接通 MembershipTiers collection（SSR 驗證通過，6 tier 正確讀出）
-- ✅ Batch B — account/points 接通 5 source（未登入正確 redirect，SSR 清淨）
-- 🚧 Batch C — account/referrals 接通 ReferralSettings + user referral data
+- ✅ Commit 0 `22fad0f` — schema 擴充（Users.gender + MembershipTiers.frontNameMale + PointsRedemptions type 加 styling/charity/mystery + migration `20260416_140000_add_gender_and_male_tier_name`）
+- ✅ Batch A `499672e` — membership-benefits 接通 MembershipTiers collection（SSR 驗證通過，6 tier 正確讀出）
+- ✅ Batch B `b59ad6d` — account/points 接通 5 source（未登入正確 redirect，SSR 清淨）
+- ✅ Batch C `<下一個>` — account/referrals 接通 ReferralSettings + user referral data（SSR 清淨，redirect 正常）
+
+**⏭️ 下個對話要做（未完成）**：
+- `MembershipTiers` 加 revalidate hook（Phase 5.1 Batch 3 留下來的 follow-up，本對話未做）
+- Phase 5.1 Batch 2（LoyaltySettings / PointRedemptionSettings / ReferralSettings 3 個 hook × 5 行）— 現在前台有真實 SSR consumer，hook 有效
+- `RecommendationSettings` 繼續跳過（`/products` 仍是 `force-dynamic` + `getPayload`，hook 無效）
+- **手填男性稱號**：到後台 `/admin/collections/membership-tiers` 每筆 tier 填 `frontNameMale`（建議值見下表）
+- Client hydration webpack error 是 pre-existing P0，見 `HANDOFF_PHASE5.4.md`
 
 **Batch A 接通欄位對照**（`/membership-benefits`）：
 | UI 顯示 | DB 欄位 |
@@ -434,6 +441,20 @@ const newDays = (state.lastDate && dayDiff > 1)
 const { user } = await payload.auth({ headers: await nextHeaders() })
 if (!user) redirect('/login?redirect=/account/X')
 ```
+
+**Batch C 接通欄位對照**（`/account/referrals`）：
+| UI | Source |
+|---|---|
+| 推薦碼 | `user.referralCode` |
+| 推薦連結 | client 端 `window.location.origin + linkSettings.linkPrefix + code`（避免 server host detection） |
+| 等級顯示名 | `user.memberTier.frontName / frontNameMale`（gender-aware） |
+| 等級加成倍率 | `referral-settings.tierBonus.{slug}Multiplier` |
+| 推薦人數 | `users.totalDocs` where `referredBy=self` |
+| 累計獎勵 | 近似：`completedCount × (referrerSignup + referrerPurchase)`（TODO：改 SUM PointsTransactions where source=referral） |
+| 本月剩餘次數 | `monthlyReferralLimit - count(referredBy=self, createdAt >= 月初)` |
+| 推薦紀錄清單 | `users` where `referredBy=self` sort `-createdAt` limit 20（名字遮罩 `王**`） |
+| 獎勵規則文案 | `referral-settings.rewards.*` |
+| 等級加成表 | `membership-tiers` level > 0 ＋ `tierBonus.{slug}Multiplier` |
 
 **關鍵設計決策**：
 - 男性稱號：`MembershipTiers.frontNameMale` 獨立欄位，綁定 level / slug（後台隨時可改名，不只是文字替換）

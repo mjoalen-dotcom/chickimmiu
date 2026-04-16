@@ -1,176 +1,183 @@
-'use client'
+import type { Metadata } from 'next'
+import { headers as nextHeaders } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { getPayload } from 'payload'
+import config from '@payload-config'
 
-import { useState } from 'react'
-import { Copy, Check, Users, Gift, TrendingUp, Share2, Crown, Star, Shield } from 'lucide-react'
+import ReferralsClient, {
+  type ReferralSummary, type ReferralHistoryItem, type TierBonusRow, type RewardRules,
+} from './ReferralsClient'
 
-const DEMO_REFERRAL = {
-  code: 'KIMFAN2026',
-  link: 'https://chickimmiu.com/ref/KIMFAN2026',
-  tier: '金牌',
-  multiplier: 1.5,
-  totalReferred: 12,
-  totalReward: 1850,
-  monthlyRemaining: 38, // 50 - 12 this month
+export const metadata: Metadata = {
+  title: '推薦好友',
+  robots: { index: false, follow: false },
 }
 
-const DEMO_HISTORY = [
-  { id: '1', name: '王**', date: '2026-04-08', status: 'completed', reward: 150, event: '首消達標' },
-  { id: '2', name: '李**', date: '2026-04-05', status: 'completed', reward: 75, event: '註冊成功' },
-  { id: '3', name: '陳**', date: '2026-03-28', status: 'pending', reward: 0, event: '待首消' },
-  { id: '4', name: '林**', date: '2026-03-20', status: 'completed', reward: 150, event: '首消達標' },
-  { id: '5', name: '張**', date: '2026-03-15', status: 'completed', reward: 75, event: '註冊成功' },
-]
+/**
+ * Phase 5.5 Batch C — 前台接通 ReferralSettings + user referral data
+ *   1. users (self) — referralCode / memberTier (depth 1) / gender
+ *   2. referral-settings — rewards / tierBonus / linkSettings / antiAbuse
+ *   3. users (where referredBy=self) — 被推薦名單 + count
+ *   4. users (where referredBy=self AND createdAt >= 本月初) — 本月推薦次數 (for monthlyRemaining)
+ *   5. membership-tiers (level > 0) — 等級加成表 5 列
+ *
+ *  簡化（本 Phase 不做）：totalReward 採 completedCount × (signup + purchase) 近似，
+ *  未來可改為 SUM(PointsTransactions where source=referral AND user=self)。
+ */
 
-const TIER_BONUSES = [
-  { tier: '銅牌', multiplier: '1.0x', color: 'text-orange-600' },
-  { tier: '銀牌', multiplier: '1.2x', color: 'text-gray-500' },
-  { tier: '金牌', multiplier: '1.5x', color: 'text-gold-600' },
-  { tier: '白金', multiplier: '1.8x', color: 'text-blue-500' },
-  { tier: '鑽石', multiplier: '2.0x', color: 'text-purple-500' },
-]
+type LooseRecord = Record<string, unknown>
 
-export default function ReferralsPage() {
-  const [copied, setCopied] = useState(false)
+function pickTierName(tier: LooseRecord, gender: string | null): string {
+  const male = tier.frontNameMale as string | null | undefined
+  if (gender === 'male' && male) return male
+  return (tier.frontName as string) ?? (tier.name as string) ?? '—'
+}
 
-  const copyCode = () => {
-    navigator.clipboard.writeText(DEMO_REFERRAL.link)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+function maskName(name: string): string {
+  if (!name) return '—'
+  return `${name.charAt(0)}**`
+}
+
+function formatDate(raw: unknown): string {
+  if (!raw) return ''
+  try {
+    const d = new Date(raw as string)
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  } catch {
+    return ''
+  }
+}
+
+function getTierMultiplier(tierBonus: LooseRecord | undefined, slug: string): number {
+  if (!tierBonus || !slug) return 1
+  const key = `${slug}Multiplier`
+  return (tierBonus[key] as number) ?? 1
+}
+
+export default async function ReferralsPage() {
+  const payload = await getPayload({ config })
+  const headersList = await nextHeaders()
+  const { user: sessionUser } = await payload.auth({ headers: headersList })
+  if (!sessionUser) redirect('/login?redirect=/account/referrals')
+
+  const user = (await payload.findByID({
+    collection: 'users',
+    id: sessionUser.id,
+    depth: 1,
+  })) as unknown as LooseRecord
+
+  const thisMonthStart = new Date()
+  thisMonthStart.setDate(1)
+  thisMonthStart.setHours(0, 0, 0, 0)
+
+  const [settingsRaw, tiersResult, referredResult, referredThisMonth] = await Promise.all([
+    payload.findGlobal({ slug: 'referral-settings', depth: 0 }),
+    payload.find({
+      collection: 'membership-tiers',
+      where: { level: { greater_than: 0 } },
+      sort: 'level',
+      limit: 20,
+      depth: 0,
+    }),
+    payload.find({
+      collection: 'users',
+      where: { referredBy: { equals: sessionUser.id } },
+      sort: '-createdAt',
+      limit: 50,
+      depth: 0,
+    }),
+    payload.find({
+      collection: 'users',
+      where: {
+        and: [
+          { referredBy: { equals: sessionUser.id } },
+          { createdAt: { greater_than_equal: thisMonthStart.toISOString() } },
+        ],
+      },
+      limit: 0,
+      depth: 0,
+    }),
+  ])
+
+  const settings = settingsRaw as LooseRecord
+  const rewardsCfg = (settings?.rewards as LooseRecord) ?? {}
+  const tierBonus = (settings?.tierBonus as LooseRecord) ?? {}
+  const linkSettings = (settings?.linkSettings as LooseRecord) ?? {}
+  const antiAbuse = (settings?.antiAbuse as LooseRecord) ?? {}
+
+  const gender = (user.gender as string | null) ?? null
+  const memberTier = user.memberTier as LooseRecord | null
+  const tierSlug = memberTier ? ((memberTier.slug as string) ?? 'ordinary') : 'ordinary'
+  const tierDisplayName = memberTier ? pickTierName(memberTier, gender) : '—'
+  const multiplier = getTierMultiplier(tierBonus, tierSlug)
+
+  const referredList = referredResult.docs as unknown as LooseRecord[]
+  const totalReferred = referredResult.totalDocs
+
+  const referrerSignup = (rewardsCfg.referrerSignupReward as number) ?? 50
+  const referrerPurchase = (rewardsCfg.referrerPurchaseReward as number) ?? 100
+
+  const history: ReferralHistoryItem[] = referredList.slice(0, 20).map((u) => {
+    const orderCount = (u.orderCount as number) ?? 0
+    const status: 'completed' | 'pending' = orderCount > 0 ? 'completed' : 'pending'
+    const reward = status === 'completed' ? referrerSignup + referrerPurchase : 0
+    return {
+      id: String(u.id),
+      name: maskName((u.name as string) ?? ''),
+      date: formatDate(u.createdAt),
+      status,
+      reward,
+      event: status === 'completed' ? '首消達標' : '待首消',
+    }
+  })
+
+  const completedCount = history.filter((h) => h.status === 'completed').length
+  const totalReward = completedCount * (referrerSignup + referrerPurchase)
+
+  const monthlyLimit = (antiAbuse.monthlyReferralLimit as number) ?? 50
+  const monthlyRemaining = Math.max(0, monthlyLimit - referredThisMonth.totalDocs)
+
+  const summary: ReferralSummary = {
+    code: (user.referralCode as string) ?? '',
+    linkPrefix: (linkSettings.linkPrefix as string) ?? '/ref/',
+    tierSlug,
+    tierDisplayName,
+    multiplier,
+    totalReferred,
+    totalReward,
+    monthlyRemaining,
+    monthlyLimit,
+  }
+
+  const tierBonuses: TierBonusRow[] = (tiersResult.docs as unknown as LooseRecord[]).map((t) => {
+    const slug = (t.slug as string) ?? ''
+    return {
+      slug,
+      displayName: pickTierName(t, gender),
+      multiplier: getTierMultiplier(tierBonus, slug),
+      isCurrent: slug === tierSlug,
+    }
+  })
+
+  const rewards: RewardRules = {
+    enabled: (rewardsCfg.enabled as boolean) ?? true,
+    referrerSignup,
+    referrerPurchase,
+    refereeSignup: (rewardsCfg.refereeSignupReward as number) ?? 30,
+    refereePurchase: (rewardsCfg.refereePurchaseReward as number) ?? 50,
+    subscriberBonus: (tierBonus.subscriberBonus as number) ?? 20,
+    minPurchaseAmount: (rewardsCfg.minPurchaseAmount as number) ?? 500,
   }
 
   return (
-    <main className="space-y-8">
-      {/* Header */}
-      <div>
-        <p className="text-xs tracking-[0.3em] text-gold-500 mb-2">REFERRAL</p>
-        <h1 className="text-2xl font-serif">推薦好友</h1>
-      </div>
-
-      {/* Referral code card */}
-      <div className="bg-gradient-to-r from-gold-500/10 to-blush-50 rounded-2xl border border-gold-500/30 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Share2 size={24} className="text-gold-500" />
-          <div>
-            <p className="font-medium">我的推薦碼</p>
-            <p className="text-xs text-muted-foreground">
-              等級加成：{DEMO_REFERRAL.tier}（{DEMO_REFERRAL.multiplier}x）
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1 bg-white rounded-xl px-4 py-3 font-mono text-lg tracking-widest text-center border border-cream-200">
-            {DEMO_REFERRAL.code}
-          </div>
-          <button
-            onClick={copyCode}
-            className="flex items-center gap-2 px-5 py-3 bg-gold-500 text-white rounded-xl text-sm hover:bg-gold-600 transition-colors"
-          >
-            {copied ? <Check size={16} /> : <Copy size={16} />}
-            {copied ? '已複製' : '複製連結'}
-          </button>
-        </div>
-
-        <p className="text-xs text-muted-foreground">
-          推薦連結：{DEMO_REFERRAL.link}
-        </p>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: '推薦人數', value: DEMO_REFERRAL.totalReferred, icon: Users },
-          { label: '累計獎勵', value: `NT$ ${DEMO_REFERRAL.totalReward}`, icon: Gift },
-          { label: '等級加成', value: `${DEMO_REFERRAL.multiplier}x`, icon: TrendingUp },
-          { label: '本月剩餘', value: `${DEMO_REFERRAL.monthlyRemaining} 次`, icon: Shield },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-white rounded-xl p-4 text-center border border-cream-200">
-            <stat.icon size={20} className="mx-auto mb-2 text-gold-500" />
-            <p className="text-xs text-muted-foreground">{stat.label}</p>
-            <p className="text-lg font-medium text-gold-600">{String(stat.value)}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* How it works */}
-      <div className="bg-white rounded-2xl border border-cream-200 p-6">
-        <h3 className="font-medium mb-4">推薦獎勵規則</h3>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium text-gold-600">推薦人獎勵</h4>
-            <div className="space-y-2 text-sm text-foreground/80">
-              <p>🎁 好友註冊成功 → 獲得 <strong>50 購物金</strong></p>
-              <p>💰 好友首消滿 NT$500 → 再獲 <strong>100 購物金</strong></p>
-            </div>
-          </div>
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium text-gold-600">被推薦人獎勵</h4>
-            <div className="space-y-2 text-sm text-foreground/80">
-              <p>🎁 註冊成功 → 獲得 <strong>30 購物金</strong></p>
-              <p>💰 首消滿 NT$500 → 再獲 <strong>50 購物金</strong></p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tier bonuses */}
-      <div className="bg-white rounded-2xl border border-cream-200 p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Crown size={18} className="text-gold-500" />
-          <h3 className="font-medium">等級加成表</h3>
-        </div>
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {TIER_BONUSES.map((t) => (
-            <div
-              key={t.tier}
-              className={`flex-shrink-0 text-center p-4 rounded-xl border ${
-                t.tier === DEMO_REFERRAL.tier
-                  ? 'border-gold-500 bg-gold-500/5'
-                  : 'border-cream-200'
-              }`}
-            >
-              <Star size={16} className={`mx-auto mb-1 ${t.color}`} />
-              <p className="text-xs text-muted-foreground">{t.tier}</p>
-              <p className={`text-sm font-medium ${t.color}`}>{t.multiplier}</p>
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-muted-foreground mt-3">
-          ✨ 訂閱會員每次推薦額外 +20 購物金
-        </p>
-      </div>
-
-      {/* Referral history */}
-      <div className="bg-white rounded-2xl border border-cream-200 p-6">
-        <h3 className="font-medium mb-4">推薦紀錄</h3>
-        <div className="space-y-3">
-          {DEMO_HISTORY.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center justify-between py-3 border-b border-cream-200 last:border-0"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center text-xs">
-                  {item.name.charAt(0)}
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{item.name}</p>
-                  <p className="text-xs text-muted-foreground">{item.date}・{item.event}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                {item.status === 'completed' ? (
-                  <span className="text-sm font-medium text-gold-600">+NT$ {item.reward}</span>
-                ) : (
-                  <span className="text-xs px-2 py-1 bg-cream-100 rounded-full text-muted-foreground">
-                    待完成
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </main>
+    <ReferralsClient
+      summary={summary}
+      history={history}
+      tierBonuses={tierBonuses}
+      rewards={rewards}
+    />
   )
 }
