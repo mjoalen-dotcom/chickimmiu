@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { X, Calendar, CheckCircle, Gift, Coins } from 'lucide-react'
 
@@ -14,40 +14,80 @@ const REWARDS = [
   { day: 7, points: 50, label: '50 點 + NT$10 購物金', bonus: true },
 ]
 
+const STORAGE_KEY = 'ckm-checkin'
+
+// Asia/Taipei "today" as YYYY-MM-DD. en-CA locale formats as YYYY-MM-DD,
+// which sorts lexicographically and is safe to compare with === / </>.
+function getTaipeiDateString(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(date)
+}
+
+interface CheckinState {
+  days: number[]   // indexes 0..6 of consecutive days checked this cycle
+  lastDate: string // Asia/Taipei YYYY-MM-DD of last successful check-in; '' if never
+}
+
+function readStorage(): CheckinState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return { days: [], lastDate: '' }
+    const parsed = JSON.parse(raw)
+    // Backward-compat: previous schema was a bare array of indexes.
+    if (Array.isArray(parsed)) {
+      return { days: parsed as number[], lastDate: '' }
+    }
+    if (parsed && typeof parsed === 'object') {
+      return {
+        days: Array.isArray(parsed.days) ? (parsed.days as number[]) : [],
+        lastDate: typeof parsed.lastDate === 'string' ? parsed.lastDate : '',
+      }
+    }
+  } catch {
+    // Storage may be blocked (privacy mode) — treat as empty.
+  }
+  return { days: [], lastDate: '' }
+}
+
 interface DailyCheckInProps {
   open: boolean
   onClose: () => void
 }
 
 export function DailyCheckIn({ open, onClose }: DailyCheckInProps) {
-  // Demo: simulate check-in state via localStorage
-  const [checkedDays, setCheckedDays] = useState<number[]>([])
+  const [state, setState] = useState<CheckinState>({ days: [], lastDate: '' })
+  const [todayTpe, setTodayTpe] = useState<string>('')
 
+  // Refresh every time the modal opens, so 23:59-open-then-00:01-reopen sees
+  // the new day. (Note: `if (!open) return null` does NOT unmount the component.)
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem('ckm-checkin') || '[]')
-      setCheckedDays(stored)
-    } catch { /* ignore */ }
-  }, [])
-  const [justChecked, setJustChecked] = useState(false)
+    if (!open) return
+    setState(readStorage())
+    setTodayTpe(getTaipeiDateString())
+  }, [open])
 
-  const todayIndex = useMemo(() => {
-    // Continuous check-in: next unchecked day
-    return checkedDays.length
-  }, [checkedDays])
+  const todayIndex = state.days.length
+  const allDone = todayIndex >= 7
+  const alreadyCheckedToday = todayTpe !== '' && state.lastDate === todayTpe
 
   const handleCheckIn = () => {
-    if (todayIndex >= 7 || justChecked) return
-    const newChecked = [...checkedDays, todayIndex]
-    setCheckedDays(newChecked)
-    setJustChecked(true)
-    localStorage.setItem('ckm-checkin', JSON.stringify(newChecked))
+    if (allDone || alreadyCheckedToday) return
+    const newDays = [...state.days, todayIndex]
+    const next: CheckinState = { days: newDays, lastDate: todayTpe }
+    setState(next)
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    } catch {
+      // Storage may be blocked (privacy mode / lockdown) — ignore.
+    }
 
     const reward = REWARDS[todayIndex]
-    console.log('[DailyCheckIn] Day', todayIndex + 1, 'reward:', reward)
+    console.log('[DailyCheckIn] Day', todayIndex + 1, 'reward:', reward, 'tpeDate:', todayTpe)
   }
 
   if (!open) return null
+
+  // The "today" cell on the calendar should pulse only when the user can still act on it.
+  const highlightTodayCell = !alreadyCheckedToday && !allDone
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
@@ -73,8 +113,8 @@ export function DailyCheckIn({ open, onClose }: DailyCheckInProps) {
         {/* Calendar grid */}
         <div className="grid grid-cols-7 gap-2 mb-6">
           {REWARDS.map((reward, i) => {
-            const isChecked = checkedDays.includes(i)
-            const isToday = i === todayIndex && !justChecked
+            const isChecked = state.days.includes(i)
+            const isToday = i === todayIndex && highlightTodayCell
             const isFuture = i > todayIndex
 
             return (
@@ -106,25 +146,34 @@ export function DailyCheckIn({ open, onClose }: DailyCheckInProps) {
           })}
         </div>
 
-        {/* Check-in button */}
-        {justChecked ? (
+        {/* Status / button */}
+        {alreadyCheckedToday ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center p-4 bg-gold-500/10 rounded-xl mb-4"
           >
             <p className="text-sm font-medium">
-              簽到成功！獲得{' '}
-              <span className="text-gold-600">{REWARDS[todayIndex - 1]?.label || REWARDS[0].label}</span>
+              今日已簽到{state.days.length > 0 ? `（Day ${state.days.length}）` : ''}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              <Calendar size={10} className="inline mr-1" />
+              明日（Asia/Taipei 00:00 後）再來
             </p>
           </motion.div>
+        ) : allDone ? (
+          <button
+            disabled
+            className="w-full py-3.5 bg-gold-500 text-white rounded-xl text-sm tracking-wide opacity-50"
+          >
+            本週已全部簽到
+          </button>
         ) : (
           <button
             onClick={handleCheckIn}
-            disabled={todayIndex >= 7}
-            className="w-full py-3.5 bg-gold-500 text-white rounded-xl text-sm tracking-wide hover:bg-gold-600 transition-colors disabled:opacity-50"
+            className="w-full py-3.5 bg-gold-500 text-white rounded-xl text-sm tracking-wide hover:bg-gold-600 transition-colors"
           >
-            {todayIndex >= 7 ? '本週已全部簽到' : `簽到 Day ${todayIndex + 1}`}
+            簽到 Day {todayIndex + 1}
           </button>
         )}
 

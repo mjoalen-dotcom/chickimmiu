@@ -292,39 +292,67 @@ await main().catch((e) => { ... })
 **後續相關 phase**：
 - Phase 5.5 要接通 `MembershipTiers` 到 `/membership-benefits` 前台頁，現在 seed 完有真實資料可以接
 
-#### 📌 Phase 5.3 — DailyCheckIn 打卡 bug 🟡 已診斷未修
+#### 📌 Phase 5.3 — DailyCheckIn 打卡 bug ✅ DONE（2026-04-16 對話 3）
 
 使用者反映：「打卡好像會一次打兩天卡」
 
-**已讀 `src/components/gamification/DailyCheckIn.tsx`（2026-04-16 對話 2）**
+**修復前的元件實況**（澄清前次交接的誤述）：
+原版 `src/components/gamification/DailyCheckIn.tsx` **完全沒有時區判斷**，localStorage schema 只有 `[0, 1, 2]` 一個純 index 陣列，沒有 `lastDate`。守門只有元件內 `justChecked` flag，這個 flag 只活在 modal 當前 open 期間 —— 關掉 modal 重開就重設 → 同一天可以連續打到 7 天滿。
 
-**現有保護沒問題**：
-- timezone-aware：`Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' })` → 'YYYY-MM-DD'
-- `alreadyCheckedToday = todayTpe === lastDate` guard（[L70](src/components/gamification/DailyCheckIn.tsx:70)）
-- `handleCheckIn` early return: `if (allDone || alreadyCheckedToday) return`（[L73](src/components/gamification/DailyCheckIn.tsx:73)）
-- 跨午夜：modal `open` useEffect 重抓 storage + 重算 todayTpe
+**修法（已實作）**：
+- 加入 `getTaipeiDateString()` 用 `Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' })` 取「今日 (Taipei) YYYY-MM-DD」
+- localStorage schema 改為 `{ days: number[], lastDate: string }`，舊的純 array 自動相容（讀為 `lastDate=''`，使用者下次按鈕點擊就會寫入新格式）
+- `useEffect` deps 從 `[]` 改成 `[open]`：每次開 modal 重抓 storage + 重算 today，解決 23:59→00:01 重開的 stale-state
+- 按鈕 disable 條件改為 `alreadyCheckedToday = todayTpe !== '' && state.lastDate === todayTpe`
+- UI 加上「今日已簽到」+「明日 Asia/Taipei 00:00 後再來」提示
 
-**真實 bug — 跳天累加（最可能就是「打兩天卡」的本體）**：
+**驗證（preview_eval 模擬狀態機）**：
+- 同日連點 3 次 → 只記 1 天 ✅
+- 跨日（昨天 `[0]` + 今天）→ `days=[0,1]`，`lastDate` 更新 ✅
+- 跨午夜 UTC 16:30 → Taipei 00:30 隔天，formatter 正確 ✅
+- 舊 array schema → 讀為 `{days, lastDate:''}`，可立刻打卡 ✅
+- 7 天滿後 → `reason='all_done'` ✅
+
+**架構發現（2026-04-16）— `gamification/` 5 個元件全部 orphaned，只 `CardBattle` 有被 import**：
+```
+src/components/gamification/
+├── CardBattle.tsx         ← 唯一被掛載的（/games/card-battle/page.tsx）
+├── DailyCheckIn.tsx       ← orphan（本次修復對象，但目前無 user path 觸發）
+├── FashionChallenge.tsx   ← orphan
+├── ScratchCard.tsx        ← orphan
+└── SpinWheel.tsx          ← orphan
+```
+真正在 `/games/[slug]` 跑的是 `src/components/games/DailyCheckinGame.tsx`，**那個是純 demo（每次 refresh streak 重設為 3，連 localStorage 都沒有）**。所以使用者報的「打兩天卡」**現實中沒有 user path 會觸發**——可能是 code review 推測，或從 `DailyCheckinGame` 看到 streak 跳數誤認。
+
+**Phase 5 後續決策（待用戶決定）**：
+- 是否要把 `gamification/DailyCheckIn` 接到 `/games/daily-checkin` 取代純 demo 版？
+- 或反過來，把 `DailyCheckinGame` 改成接 `/api/games` checkin action（需先修 gameEngine 的 UTC bug）？
+
+#### 📌 Phase 5.3.1 — 跳天 streak reset（follow-up，未做）
+
+`DailyCheckIn` 還有一個未處理的行為問題：跳天累加，但不重設 streak。
 
 ```
-4/15 簽 Day 1 → days=[0], lastDate='4/15'
+4/15 簽 Day 1 → days=[0], lastDate='2026-04-15'
 4/16 沒簽
-4/17 開 modal → todayTpe='4/17' ≠ lastDate='4/15' → alreadyCheckedToday=false
-→ 點按鈕 → days=[0,1]   (誤算為連續第 2 天，但中間斷了 1 天)
+4/17 開 modal → alreadyCheckedToday=false（不同日）→ 可以按
+→ days=[0, 1]，但這應該算「連續中斷重來」=> Day 1，不是 Day 2
 ```
 
-**修法**：在 `handleCheckIn` 開頭加：
+**修法（preview_eval 模擬通過，待整合）**：在 `handleCheckIn` 設定 `newDays` 時：
 ```ts
-const daysSinceLastCheckIn = state.lastDate
+const dayDiff = state.lastDate
   ? Math.floor((Date.parse(todayTpe) - Date.parse(state.lastDate)) / 86_400_000)
   : 0
-const newDays = (state.lastDate && daysSinceLastCheckIn > 1)
-  ? [0]                                    // reset 連續，從 Day 1 重新算
-  : [...state.days, todayIndex]            // 連續或第一次：照常 push
+const newDays = (state.lastDate && dayDiff > 1)
+  ? [0]                                    // 中斷 → 重來算 Day 1
+  : [...state.days, state.days.length]     // 連續 / 第一次 → 照常 push
 ```
 
+**為什麼這次沒一起修**：原 prompt 範圍只到「同一天連點兩次只記一次」+「跨日後可再打」。streak 中斷重設規格未明（要不要顯示「連續中斷了」訊息？要不要保留總簽到數但重設連續？）—— 留給下次決定。
+
 **不用查的「bug」**：
-- 同一天 record 兩次：guard 已防
+- 同一天 record 兩次：✅ 已防（Phase 5.3 修復）
 - React Strict Mode 重複觸發：useEffect idempotent
 - 跨裝置不同步：localStorage 設計如此
 
