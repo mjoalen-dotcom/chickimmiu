@@ -638,13 +638,26 @@ button[class*='btn--style-error'] {
 // Force the input that sits inside the value container to not inherit
 // our bare `input[type='text']` styles above (which impose 10/12 padding
 // and 40px min-height — those don't belong on the search input).
+// CRITICAL: the parent rule has specificity 0,2,1 (`.field-type
+// input[type='text']`), so match-or-exceed it here with `.field-type`
+// prefix to take precedence. Without this, the typeahead input paints
+// a solid white bg over the first ~24px of the selected value — which
+// visually cuts off the start of Chinese labels ("一般會員 Customer"
+// appears as "般會員 Customer").
 .react-select__control input,
-[class*='rs__control'] input {
+[class*='rs__control'] input,
+.field-type .react-select__control input,
+.field-type [class*='rs__control'] input,
+.field-type input.rs__input,
+.field-type [class*='rs__input'],
+input.rs__input,
+[class*='rs__input'] {
   min-height: 0 !important;
   padding: 0 !important;
   border: 0 !important;
   box-shadow: none !important;
   background: transparent !important;
+  background-color: transparent !important;
   font-size: 14px !important;
 }
 
