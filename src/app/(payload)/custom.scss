@@ -614,10 +614,38 @@ button[class*='btn--style-error'] {
   background-color: #ffffff !important;
   border-color: var(--color-brand-cream-mid) !important;
   border-radius: 6px !important;
+  min-height: 40px !important;
 
   &:hover {
     border-color: var(--color-brand-gold) !important;
   }
+}
+
+// Ensure the inner value container has breathing room on the left so the
+// placeholder / selected value isn't painted under the left rounded
+// border. Default react-select ships with `2px 8px` which Payload then
+// overrides to 0 in some nested rows; force a consistent inset.
+.react-select__value-container,
+[class*='rs__value-container'] {
+  padding: 4px 12px !important;
+}
+
+.react-select__indicators,
+[class*='rs__indicators'] {
+  padding-right: 4px !important;
+}
+
+// Force the input that sits inside the value container to not inherit
+// our bare `input[type='text']` styles above (which impose 10/12 padding
+// and 40px min-height — those don't belong on the search input).
+.react-select__control input,
+[class*='rs__control'] input {
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  font-size: 14px !important;
 }
 
 .react-select__control--is-focused,
@@ -805,16 +833,22 @@ button[class*='btn--style-error'] {
 }
 
 // ─── Login Page ────────────────────────────────────────────────────────────
+// IMPORTANT: scope narrowly to the actual login-page wrapper class names.
+// The previous `[class*='login']` selector ALSO matched `.login-fields`
+// inside the admin user-create auth panel, which painted a full navy
+// gradient over the Email row and hid the label.
+// Only use classes that exclusively exist on the unauthenticated login /
+// password-reset templates.
 
 .login,
-[class*='login'],
-.template-minimal {
+.template-minimal,
+[class*='template-minimal'] {
   background: linear-gradient(135deg, var(--color-brand-navy) 0%, #0d1020 100%) !important;
 }
 
 .login__form,
-[class*='login'] form,
-.template-minimal__wrap {
+.template-minimal__wrap,
+.template-minimal form {
   background-color: rgba(255, 255, 255, 0.97) !important;
   border-radius: 12px !important;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
@@ -822,7 +856,6 @@ button[class*='btn--style-error'] {
 }
 
 .login__brand,
-[class*='login'] [class*='brand'],
 .template-minimal__content h1,
 .template-minimal__content h2 {
   color: var(--color-brand-navy) !important;
