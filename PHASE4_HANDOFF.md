@@ -565,7 +565,36 @@ else                                            → prize=10
 **DB schema 套用方式**（重要）：
 - SQLite `ALTER TABLE users ADD COLUMN ...` 已直接 apply 到 `data/chickimmiu.db`（via @libsql/client，避開 Payload dev-push 的 `users_avatar_idx` conflict bug）
 - Migration file 寫成冪等（PRAGMA 判斷），之後 `payload migrate` 跑到會 skip
-- `payload_migrations` table 尚未寫入 `20260416_193835_add_daily_checkin_streak` 紀錄（跟 Phase 5.5 的 `20260416_140000_add_gender_and_male_tier_name` 一樣：dev push 了但 migration 表未記）→ 未來 prod deploy 時再一起處理
+- ~~`payload_migrations` table 尚未寫入 ...~~ ✅ 已 backfill（2026-04-17，見下方 Phase 5.5.1）。`20260416_140000_add_gender_and_male_tier_name` (id=3, batch=2) + `20260416_193835_add_daily_checkin_streak` (id=4, batch=2) 補進 `payload_migrations`，prod deploy 時兩支 migration 都會 skip（既有 idempotent guard 也會二度防呆）。
+
+#### 📌 Phase 5.5.1 — `payload_migrations` 表 backfill ✅ DONE（2026-04-17 對話 6）
+
+兩支 migration 之前是 dev-push / `@libsql/client` 直接 apply 到 `data/chickimmiu.db`，從未經由 Payload migrate runner，所以 `payload_migrations` 沒有對應紀錄。雖然兩支現在都已冪等（PRAGMA-guarded ADD COLUMN），prod 重跑會 skip，但會留下「prod 今天才跑這兩支」的誤導性 audit trail。
+
+**修法**：新增 `scripts/backfill-payload-migrations.mjs`，one-shot script，特性：
+
+| 特性 | 說明 |
+|---|---|
+| 冪等 | `SELECT ... WHERE name = ?` 已存在就 SKIP |
+| Schema-checked | INSERT 前用 PRAGMA 確認 migration 該加的欄位「實際存在」DB，否則 REFUSE。避免「假裝跑過但 schema 沒套用」的撒謊狀態 |
+| 範圍最小 | 只動 `payload_migrations`，不碰任何業務 schema |
+| 可參考 | 同檔案 `apply-phase1-migration.mjs` 是執行 + 紀錄合一版；這個是純紀錄版 |
+
+**驗證**：
+- 首次跑：`INSERT 20260416_140000_... (batch=2)` + `INSERT 20260416_193835_... (batch=2)` → DB 從 2 筆變 4 筆
+- 二次跑：兩條都顯示 `SKIP ... already recorded as id=N` ✓
+
+**現在 `payload_migrations` 內容**：
+```
+id=1  name='dev'                                       batch=-1   ← Payload dev-push sentinel
+id=2  name='20260415_112142_add_size_charts'           batch=1    ← apply-phase1-migration.mjs
+id=3  name='20260416_140000_add_gender_and_male_...'   batch=2    ← 本次 backfill
+id=4  name='20260416_193835_add_daily_checkin_streak'  batch=2    ← 本次 backfill
+```
+
+**未來 deploy SOP**：
+- 既有 prod DB（schema 已 dev-push、`payload_migrations` 也已 backfill）→ `pnpm payload migrate` 看到 0 pending → 不執行
+- 全新 prod DB → `pnpm payload migrate` 會把目前 3 支照順序執行，每支 INSERT 自己的 row（batch 由 Payload 分配，與本次手 backfill 的 batch=2 編號不同無妨）
 
 **下批要做（Phase 5.7 候選）**：
 1. ~~UI 接入~~ ✅ Phase 5.7 DONE（見下方 section）
