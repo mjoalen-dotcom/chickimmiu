@@ -14,7 +14,9 @@
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
     "seed:core": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedCore.ts",
-    "seed:core:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedCore.ts -- --dry-run"
+    "seed:core:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedCore.ts -- --dry-run",
+    "seed:plans": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedSubscriptionPlans.ts",
+    "seed:plans:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedSubscriptionPlans.ts -- --dry-run"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.0.0",
