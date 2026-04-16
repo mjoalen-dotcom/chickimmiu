@@ -5,6 +5,7 @@ import { SlidersHorizontal, X, ChevronDown } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ProductCard } from '@/components/product/ProductCard'
 import { ProductQuickView, type QuickViewProduct } from '@/components/product/ProductQuickView'
+import { normalizeMediaUrl } from '@/lib/media-url'
 
 interface CategoryItem {
   id: string | number
@@ -449,7 +450,7 @@ export function ProductListClient({
                   name={p.name as string}
                   price={p.price as number}
                   salePrice={p.salePrice as number | undefined}
-                  image={firstImage ? { url: firstImage.url || '', alt: firstImage.alt } : null}
+                  image={firstImage ? { url: normalizeMediaUrl(firstImage.url) || '', alt: firstImage.alt } : null}
                   colors={colors}
                   isNew={p.isNew as boolean | undefined}
                   isHot={p.isHot as boolean | undefined}
@@ -462,7 +463,7 @@ export function ProductListClient({
                       salePrice: p.salePrice as number | undefined,
                       images: images
                         ?.map((img) =>
-                          img.image?.url ? { url: img.image.url, alt: img.image.alt } : null,
+                          img.image?.url ? { url: normalizeMediaUrl(img.image.url) || '', alt: img.image.alt } : null,
                         )
                         .filter(Boolean) as { url: string; alt?: string }[],
                       variants,

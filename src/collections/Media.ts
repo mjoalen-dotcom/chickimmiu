@@ -3,6 +3,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 import { isAdmin } from '../access/isAdmin'
+import { revalidateMedia } from '../lib/revalidate'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -26,6 +27,10 @@ export const Media: CollectionConfig = {
     create: ({ req: { user } }) => Boolean(user),
     update: ({ req: { user } }) => Boolean(user),
     delete: isAdmin,
+  },
+  hooks: {
+    afterChange: [() => revalidateMedia()],
+    afterDelete: [() => revalidateMedia()],
   },
   upload: {
     staticDir: path.resolve(dirname, '../../public/media'),

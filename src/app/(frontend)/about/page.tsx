@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { Heart, Sparkles, Globe2, Users, ShieldCheck, Truck, Star, Gift, Gem, Trophy } from 'lucide-react'
+import { getMediaUrl } from '@/lib/media-url'
 
 /* ── Icon Map ── */
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -42,13 +43,7 @@ const DEFAULT_BUTTONS = [
   { label: 'Instagram', url: 'https://www.instagram.com/chickimmiu/', style: 'outline' as const, external: true },
 ]
 
-function getMediaUrl(field: unknown): string | undefined {
-  if (!field) return undefined
-  if (typeof field === 'object' && field !== null && 'url' in field) {
-    return (field as { url?: string }).url ?? undefined
-  }
-  return undefined
-}
+/* getMediaUrl imported from @/lib/media-url */
 
 /* ── Fetch CMS data ── */
 async function getAboutSettings() {

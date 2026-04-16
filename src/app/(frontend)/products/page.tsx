@@ -4,6 +4,13 @@ import config from '@payload-config'
 import type { Metadata } from 'next'
 import { ProductListClient } from './ProductListClient'
 
+/**
+ * 強制每次 request 都重新 render，讓後台編輯可以立刻在前台看到。
+ * 配合 Products collection 的 afterChange/afterDelete hooks，這頁會一直
+ * 吃到最新資料。未來若改用 ISR + revalidateTag 快取，可改成 revalidate = 60。
+ */
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: '全部商品',
   description: '探索 CHIC KIM & MIU 全系列商品，找到屬於你的優雅與可愛。',

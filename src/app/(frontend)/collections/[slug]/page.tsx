@@ -3,6 +3,7 @@ import type { Where } from 'payload'
 import config from '@payload-config'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { normalizeMediaUrl } from '@/lib/media-url'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -138,7 +139,7 @@ export default async function CollectionPage({ params }: Props) {
               const images = product.images as
                 | { image?: { url?: string } }[]
                 | undefined
-              const firstImage = images?.[0]?.image?.url
+              const firstImage = normalizeMediaUrl(images?.[0]?.image?.url)
               const isNew = Boolean(product.isNew)
               const isHot = Boolean(product.isHot)
 

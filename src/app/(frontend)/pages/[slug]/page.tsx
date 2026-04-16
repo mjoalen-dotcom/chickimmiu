@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
+import { normalizeMediaUrl } from '@/lib/media-url'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -124,7 +125,7 @@ function SectionRenderer({ section }: { section: Record<string, unknown> }) {
                 return (
                   <div key={i} className="aspect-square rounded-2xl overflow-hidden bg-cream-100 border border-cream-200 relative">
                     {image?.url ? (
-                      <Image src={image.url as string} alt="" fill className="object-cover" />
+                      <Image src={normalizeMediaUrl(image.url as string) || ''} alt="" fill className="object-cover" />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">圖片 {i + 1}</div>
                     )}

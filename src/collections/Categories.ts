@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
+import { revalidateCategory } from '../lib/revalidate'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
@@ -16,6 +17,24 @@ export const Categories: CollectionConfig = {
     create: isAdmin,
     update: isAdmin,
     delete: isAdmin,
+  },
+  hooks: {
+    afterChange: [
+      ({ doc, previousDoc }) => {
+        const slug = (doc as Record<string, unknown>)?.slug as string | undefined
+        const prevSlug = (previousDoc as Record<string, unknown> | undefined)?.slug as
+          | string
+          | undefined
+        revalidateCategory(slug)
+        if (prevSlug && prevSlug !== slug) revalidateCategory(prevSlug)
+      },
+    ],
+    afterDelete: [
+      ({ doc }) => {
+        const slug = (doc as Record<string, unknown>)?.slug as string | undefined
+        revalidateCategory(slug)
+      },
+    ],
   },
   fields: [
     {
