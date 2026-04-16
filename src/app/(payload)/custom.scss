@@ -323,7 +323,9 @@ main[class*='main'],
 
 // ─── Form Fields ──────────────────────────────────────────────────────
 
-// Input fields
+// Input fields — also covers the bare <input> elements inside
+// `.auth-fields` (Email / New Password / Confirm Password), which
+// Payload renders WITHOUT a `.field-type__wrap` shell like regular fields.
 .field-type input[type='text'],
 .field-type input[type='number'],
 .field-type input[type='email'],
@@ -333,16 +335,86 @@ main[class*='main'],
 input.field-type,
 textarea.field-type,
 [class*='text-field__input'],
-[class*='textarea__input'] {
+[class*='textarea__input'],
+.auth-fields input[type='text'],
+.auth-fields input[type='email'],
+.auth-fields input[type='password'],
+.login-fields input {
   background-color: #ffffff !important;
   border-color: var(--color-brand-cream-mid) !important;
   color: #1a1f36 !important;
   border-radius: 6px !important;
+  font-size: 14px !important;
+  padding: 10px 12px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  min-height: 40px !important;
 
   &:focus {
     border-color: var(--color-brand-gold) !important;
     box-shadow: 0 0 0 2px var(--color-brand-gold-dim) !important;
     outline: none !important;
+  }
+
+  &::placeholder {
+    color: #9a9892 !important;
+  }
+}
+
+// ─── Auth Fields Block (Email / Password / Confirm Password) ──────────
+// Payload renders the auth block with `.auth-fields` wrapper and non-
+// standard children: `.login-fields` (single-column email) and
+// `.auth-fields__changing-password` (two-column password row). Default
+// markup has no spacing/background and labels can collide with inputs.
+.auth-fields {
+  background-color: var(--color-brand-cream) !important;
+  border: 1px solid var(--color-brand-cream-mid) !important;
+  border-radius: 8px !important;
+  padding: 20px !important;
+  margin-bottom: 24px !important;
+  color: #1a1f36 !important;
+}
+
+.auth-fields .field-type,
+.auth-fields .field-type__wrap,
+.login-fields .field-type,
+.login-fields .field-type__wrap,
+.auth-fields__changing-password .field-type,
+.auth-fields__changing-password .field-type__wrap {
+  background-color: transparent !important;
+  color: #1a1f36 !important;
+}
+
+.auth-fields .field-label,
+.login-fields .field-label,
+.auth-fields__changing-password .field-label {
+  color: #1a1f36 !important;
+  font-weight: 600 !important;
+  font-size: 12.5px !important;
+  display: block !important;
+  margin-bottom: 6px !important;
+
+  .required {
+    color: #c62828 !important;
+    margin-left: 2px !important;
+  }
+}
+
+// Stack the Email field full width; put password fields side-by-side
+// with a gap so they don't overlap at 1200px+ widths. Payload's default
+// `.auth-fields__changing-password` ships with flex-direction:column, so
+// we need to override that back to row to get the two columns.
+.auth-fields .login-fields,
+.auth-fields .auth-fields__changing-password {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 16px !important;
+  flex-wrap: wrap !important;
+  margin-bottom: 12px !important;
+
+  > .field-type {
+    flex: 1 1 240px !important;
+    min-width: 240px !important;
   }
 }
 
@@ -503,14 +575,24 @@ button[class*='btn--style-error'] {
   box-shadow: 0 6px 20px rgba(26, 31, 54, 0.15) !important;
 }
 
-// Ensure field-type containers don't clip dropdown menus
+// Ensure containers don't clip dropdown menus. This list has to cover
+// EVERY scrollable/overflow-ish parent Payload sticks around a field —
+// missing one causes the `.rs__menu` to be visually truncated even
+// though z-index is high.
 .field-type,
 [class*='field-type'],
 .render-fields,
 [class*='render-fields'],
 [class*='group-field__wrap'],
 [class*='tab__fields'],
+[class*='tabs-field__content'],
 [class*='collapsible__content'],
+[class*='row-field'],
+[class*='row__fields'],
+[class*='row-wrap'],
+.auth-fields,
+[class*='auth-fields'],
+.login-fields,
 // `.document-fields` is the scrollable parent of the form. Without this
 // override its `overflow: auto` truncates absolutely-positioned
 // `.rs__menu` dropdowns extending past the scroll viewport.
@@ -546,10 +628,28 @@ button[class*='btn--style-error'] {
 
 // Dropdown menu text — base colour for all options (must come FIRST, so the
 // `--is-selected` / `--is-focused` rules below override it).
+// Also pad the option so 14px Chinese text doesn't kiss the row borders
+// and long labels wrap cleanly rather than being cropped.
 .react-select__option,
 [class*='rs__option'] {
   color: #1a1f36 !important;
   background-color: transparent !important;
+  padding: 10px 14px !important;
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+  min-height: 36px !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+}
+
+// Selected option in the control (single-value display) — make sure the
+// current choice reads as dark navy, matching input fields.
+.react-select__single-value,
+[class*='rs__single-value'],
+[class*='rs__multi-value__label'] {
+  color: #1a1f36 !important;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
 }
 
 // Dropdown focused option (hover / keyboard highlight)
