@@ -1,5 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { headers as nextHeaders } from 'next/headers'
+import { getPayload } from 'payload'
+import config from '@payload-config'
 import { Crown, Gift, Truck, Star, Ticket, TrendingUp, Sparkles, Zap, Heart, Calendar } from 'lucide-react'
 
 export const metadata: Metadata = {
@@ -7,106 +10,77 @@ export const metadata: Metadata = {
   description: 'CHIC KIM & MIU 六層會員制度，享受專屬折扣、點數倍率、免運、生日禮等多重好禮。',
 }
 
-const TIERS = [
-  {
-    name: '普通會員',
-    slug: 'normal',
-    level: 1,
-    minSpent: 0,
-    discount: 0,
-    multiplier: 1,
-    freeShipping: 1000,
-    lottery: 0,
-    birthday: false,
-    coupon: false,
-    color: 'from-gray-100 to-gray-50',
-    borderColor: 'border-gray-200',
-    iconColor: 'text-gray-400',
-    tagColor: 'bg-gray-100 text-gray-600',
-  },
-  {
-    name: '銅牌會員',
-    slug: 'bronze',
-    level: 2,
-    minSpent: 3000,
-    discount: 2,
-    multiplier: 1.2,
-    freeShipping: 800,
-    lottery: 1,
-    birthday: false,
-    coupon: false,
-    color: 'from-amber-100/60 to-orange-50',
-    borderColor: 'border-amber-200',
-    iconColor: 'text-amber-600',
-    tagColor: 'bg-amber-50 text-amber-700',
-  },
-  {
-    name: '銀牌會員',
-    slug: 'silver',
-    level: 3,
-    minSpent: 10000,
-    discount: 3,
-    multiplier: 1.5,
-    freeShipping: 600,
-    lottery: 2,
-    birthday: true,
-    coupon: false,
-    color: 'from-slate-100 to-gray-50',
-    borderColor: 'border-slate-200',
-    iconColor: 'text-slate-500',
-    tagColor: 'bg-slate-100 text-slate-600',
-  },
-  {
-    name: '金牌會員',
-    slug: 'gold',
-    level: 4,
-    minSpent: 30000,
-    discount: 5,
-    multiplier: 2,
-    freeShipping: 0,
-    lottery: 3,
-    birthday: true,
-    coupon: true,
-    color: 'from-yellow-100/60 to-amber-50',
-    borderColor: 'border-yellow-300',
-    iconColor: 'text-yellow-600',
-    tagColor: 'bg-yellow-50 text-yellow-700',
-  },
-  {
-    name: '白金會員',
-    slug: 'platinum',
-    level: 5,
-    minSpent: 60000,
-    discount: 8,
-    multiplier: 2.5,
-    freeShipping: 0,
-    lottery: 5,
-    birthday: true,
-    coupon: true,
-    color: 'from-violet-50 to-slate-50',
-    borderColor: 'border-violet-200',
-    iconColor: 'text-violet-500',
-    tagColor: 'bg-violet-50 text-violet-600',
-  },
-  {
-    name: '鑽石會員',
-    slug: 'diamond',
-    level: 6,
-    minSpent: 100000,
-    discount: 10,
-    multiplier: 3,
-    freeShipping: 0,
-    lottery: 10,
-    birthday: true,
-    coupon: true,
-    color: 'from-sky-50 to-cyan-50',
-    borderColor: 'border-sky-200',
-    iconColor: 'text-sky-500',
-    tagColor: 'bg-sky-50 text-sky-600',
-  },
-]
+/**
+ * Phase 5.5 Batch A — 前台接通 MembershipTiers collection
+ *   1. 讀 `membership-tiers` collection 取代 hardcoded TIERS
+ *   2. 依登入會員 `user.gender` 決定顯示 frontName / frontNameMale
+ *   3. Tailwind 顏色 lookup map by slug（不進 DB）
+ */
 
-export default function MembershipBenefitsPage() {
+type TierRecord = {
+  id: number | string
+  name: string
+  slug: string
+  frontName: string
+  frontNameMale?: string | null
+  level: number
+  minSpent: number
+  discountPercent: number
+  pointsMultiplier: number
+  freeShippingThreshold: number
+  lotteryChances: number
+  birthdayGift?: string | null
+  exclusiveCouponEnabled?: boolean | null
+}
+
+type TierColorKey = 'color' | 'borderColor' | 'iconColor' | 'tagColor'
+const TIER_COLORS: Record<string, Record<TierColorKey, string>> = {
+  ordinary: { color: 'from-gray-100 to-gray-50', borderColor: 'border-gray-200', iconColor: 'text-gray-400', tagColor: 'bg-gray-100 text-gray-600' },
+  normal:   { color: 'from-gray-100 to-gray-50', borderColor: 'border-gray-200', iconColor: 'text-gray-400', tagColor: 'bg-gray-100 text-gray-600' },
+  bronze:   { color: 'from-amber-100/60 to-orange-50', borderColor: 'border-amber-200', iconColor: 'text-amber-600', tagColor: 'bg-amber-50 text-amber-700' },
+  silver:   { color: 'from-slate-100 to-gray-50', borderColor: 'border-slate-200', iconColor: 'text-slate-500', tagColor: 'bg-slate-100 text-slate-600' },
+  gold:     { color: 'from-yellow-100/60 to-amber-50', borderColor: 'border-yellow-300', iconColor: 'text-yellow-600', tagColor: 'bg-yellow-50 text-yellow-700' },
+  platinum: { color: 'from-violet-50 to-slate-50', borderColor: 'border-violet-200', iconColor: 'text-violet-500', tagColor: 'bg-violet-50 text-violet-600' },
+  diamond:  { color: 'from-sky-50 to-cyan-50', borderColor: 'border-sky-200', iconColor: 'text-sky-500', tagColor: 'bg-sky-50 text-sky-600' },
+}
+const DEFAULT_TIER_COLOR: Record<TierColorKey, string> = TIER_COLORS.ordinary
+
+async function getTiers(): Promise<TierRecord[]> {
+  if (!process.env.DATABASE_URI) return []
+  try {
+    const payload = await getPayload({ config })
+    const result = await payload.find({
+      collection: 'membership-tiers',
+      sort: 'level',
+      limit: 20,
+      depth: 0,
+    })
+    return result.docs as unknown as TierRecord[]
+  } catch {
+    return []
+  }
+}
+
+async function getSessionGender(): Promise<string | null> {
+  if (!process.env.DATABASE_URI) return null
+  try {
+    const payload = await getPayload({ config })
+    const headersList = await nextHeaders()
+    const { user } = await payload.auth({ headers: headersList })
+    return (user as unknown as Record<string, unknown>)?.gender as string | null ?? null
+  } catch {
+    return null
+  }
+}
+
+function pickTierName(tier: TierRecord, gender: string | null): string {
+  if (gender === 'male' && tier.frontNameMale) return tier.frontNameMale
+  return tier.frontName
+}
+
+export default async function MembershipBenefitsPage() {
+  const [tiers, gender] = await Promise.all([getTiers(), getSessionGender()])
+
   return (
     <main className="bg-cream-50 min-h-screen">
       {/* Hero */}
@@ -168,43 +142,62 @@ export default function MembershipBenefitsPage() {
       <section className="py-16 md:py-24">
         <div className="container">
           <div className="text-center mb-12">
-            <p className="text-xs tracking-[0.3em] text-gold-500 mb-2">6 TIERS</p>
-            <h2 className="text-2xl md:text-3xl font-serif">六層會員等級</h2>
+            <p className="text-xs tracking-[0.3em] text-gold-500 mb-2">{tiers.length > 0 ? `${tiers.length} TIERS` : 'MEMBER TIERS'}</p>
+            <h2 className="text-2xl md:text-3xl font-serif">會員等級制度</h2>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {TIERS.map((tier) => (
-              <div
-                key={tier.slug}
-                className={`bg-gradient-to-br ${tier.color} rounded-2xl border ${tier.borderColor} p-6 relative overflow-hidden`}
-              >
-                {/* Level badge */}
-                <div className="flex items-center justify-between mb-4">
-                  <span className={`text-[10px] px-2.5 py-1 rounded-full tracking-wider font-medium ${tier.tagColor}`}>
-                    Lv.{tier.level}
-                  </span>
-                  <Crown size={24} className={tier.iconColor} />
-                </div>
+          {tiers.length === 0 ? (
+            <div className="text-center py-12 px-6 bg-white rounded-2xl border border-cream-200 max-w-lg mx-auto">
+              <p className="text-sm text-muted-foreground mb-2">尚未設定任何會員等級。</p>
+              <p className="text-xs text-muted-foreground">請至後台 &quot;會員管理 → 會員等級&quot; 新增資料。</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {tiers.map((tier) => {
+                const colors = TIER_COLORS[tier.slug] ?? DEFAULT_TIER_COLOR
+                const tierName = pickTierName(tier, gender)
+                const hasBirthday = Boolean(tier.birthdayGift)
+                const hasCoupon = Boolean(tier.exclusiveCouponEnabled)
+                const multiplier = tier.pointsMultiplier ?? 1
+                const discount = tier.discountPercent ?? 0
+                const freeShipping = tier.freeShippingThreshold ?? 0
+                const lottery = tier.lotteryChances ?? 0
+                const minSpent = tier.minSpent ?? 0
 
-                <h3 className="text-lg font-serif mb-1">{tier.name}</h3>
-                <p className="text-xs text-muted-foreground mb-5">
-                  {tier.minSpent === 0
-                    ? '免費加入即享'
-                    : `累計消費滿 NT$ ${tier.minSpent.toLocaleString()}`}
-                </p>
+                return (
+                  <div
+                    key={tier.id}
+                    className={`bg-gradient-to-br ${colors.color} rounded-2xl border ${colors.borderColor} p-6 relative overflow-hidden`}
+                  >
+                    {/* Level badge */}
+                    <div className="flex items-center justify-between mb-4">
+                      <span className={`text-[10px] px-2.5 py-1 rounded-full tracking-wider font-medium ${colors.tagColor}`}>
+                        Lv.{(tier.level ?? 0) + 1}
+                      </span>
+                      <Crown size={24} className={colors.iconColor} />
+                    </div>
 
-                {/* Benefits list */}
-                <div className="space-y-2.5">
-                  <BenefitRow icon={Ticket} label="購物折扣" value={tier.discount > 0 ? `${tier.discount}% OFF` : '—'} active={tier.discount > 0} />
-                  <BenefitRow icon={TrendingUp} label="點數倍率" value={`${tier.multiplier}x`} active={tier.multiplier > 1} />
-                  <BenefitRow icon={Truck} label="免運門檻" value={tier.freeShipping === 0 ? '無條件免運' : `滿 NT$ ${tier.freeShipping}`} active={tier.freeShipping < 1000} />
-                  <BenefitRow icon={Star} label="月抽獎次數" value={tier.lottery > 0 ? `${tier.lottery} 次` : '—'} active={tier.lottery > 0} />
-                  <BenefitRow icon={Calendar} label="生日禮" value={tier.birthday ? '專屬好禮' : '—'} active={tier.birthday} />
-                  <BenefitRow icon={Zap} label="專屬優惠券" value={tier.coupon ? '每月一張' : '—'} active={tier.coupon} />
-                </div>
-              </div>
-            ))}
-          </div>
+                    <h3 className="text-lg font-serif mb-1">{tierName}</h3>
+                    <p className="text-xs text-muted-foreground mb-5">
+                      {minSpent === 0
+                        ? '免費加入即享'
+                        : `累計消費滿 NT$ ${minSpent.toLocaleString()}`}
+                    </p>
+
+                    {/* Benefits list */}
+                    <div className="space-y-2.5">
+                      <BenefitRow icon={Ticket} label="購物折扣" value={discount > 0 ? `${discount}% OFF` : '—'} active={discount > 0} />
+                      <BenefitRow icon={TrendingUp} label="點數倍率" value={`${multiplier}x`} active={multiplier > 1} />
+                      <BenefitRow icon={Truck} label="免運門檻" value={freeShipping === 0 ? '無條件免運' : `滿 NT$ ${freeShipping}`} active={freeShipping < 1000} />
+                      <BenefitRow icon={Star} label="月抽獎次數" value={lottery > 0 ? `${lottery} 次` : '—'} active={lottery > 0} />
+                      <BenefitRow icon={Calendar} label="生日禮" value={hasBirthday ? '專屬好禮' : '—'} active={hasBirthday} />
+                      <BenefitRow icon={Zap} label="專屬優惠券" value={hasCoupon ? '每月一張' : '—'} active={hasCoupon} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </section>
 

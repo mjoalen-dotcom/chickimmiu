@@ -349,9 +349,24 @@ const newDays = (state.lastDate && daysSinceLastCheckIn > 1)
 
 **進度 (2026-04-16)**：
 - ✅ Commit 0 — schema 擴充（Users.gender + MembershipTiers.frontNameMale + PointsRedemptions type 加 styling/charity/mystery + migration `20260416_140000_add_gender_and_male_tier_name`）
-- 🚧 Batch A — membership-benefits 接通 MembershipTiers collection
+- ✅ Batch A — membership-benefits 接通 MembershipTiers collection（SSR 驗證通過，6 tier 正確讀出）
 - 🚧 Batch B — account/points 接通 LoyaltySettings + PointRedemptionSettings + PointsRedemptions + PointsTransactions + user
 - 🚧 Batch C — account/referrals 接通 ReferralSettings + user referral data
+
+**Batch A 接通欄位對照**（`/membership-benefits`）：
+| UI 顯示 | DB 欄位 |
+|---|---|
+| 稱號（女/預設） | `frontName` |
+| 稱號（男性登入） | `frontNameMale` fallback `frontName` |
+| Lv.N | `level + 1`（DB 0-5 → UI 1-6） |
+| 累計消費 | `minSpent` |
+| 購物折扣 | `discountPercent` |
+| 點數倍率 | `pointsMultiplier` |
+| 免運門檻 | `freeShippingThreshold` |
+| 月抽獎次數 | `lotteryChances` |
+| 生日禮（顯示「專屬好禮」） | `Boolean(birthdayGift)` |
+| 專屬優惠券 | `exclusiveCouponEnabled` |
+| Tailwind 顏色 | 前端 lookup map by `slug`（不進 DB） |
 
 **關鍵設計決策**：
 - 男性稱號：`MembershipTiers.frontNameMale` 獨立欄位，綁定 level / slug（後台隨時可改名，不只是文字替換）
