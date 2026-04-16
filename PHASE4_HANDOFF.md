@@ -227,18 +227,78 @@ editor: lexicalEditor({
 **刻意不加 hook 的 collections**（純後台 / log / 私有資料）：
 Users, Exchanges, Refunds, Invoices, CreditScoreHistory, PointsTransactions, PointsRedemptions, MemberSegments, ConciergeServiceRequests, CustomerServiceTickets, MarketingCampaigns, MessageTemplates, ABTests, MarketingExecutionLogs, FestivalTemplates, BirthdayCampaigns, AutomationJourneys, AutomationLogs, MiniGameRecords, CardBattles, GameLeaderboard, ShippingMethods, Affiliates
 
-#### 📌 Phase 5.2 — 關鍵 Collection 的 Seed Data
-使用者發現後台沒資料：
-- **MembershipTiers**（6 層 T0-T5 等級）— 必須 seed，否則註冊 / 升級邏輯整個卡住
-- **ShippingMethods** — 運送方式缺 data，checkout 會出錯
-- **Categories** — 看一下 DB，可能有基本分類但不完整
-- 建議用已有的 `src/seed/resetAdmin.ts` 模式，加 `src/seed/seedCore.ts`
+#### 📌 Phase 5.2 — 關鍵 Collection 的 Seed Data 🚧 IN PROGRESS（code 已寫，seed 跑不起來）
 
-#### 📌 Phase 5.3 — DailyCheckIn 打卡 bug
+**已完成（2026-04-16 對話 2）— code 寫完未 commit**：
+
+| 檔案 | 內容 |
+|---|---|
+| `src/seed/data/membershipTiers.ts` | 6 層 T0-T5 完整資料：slug / frontName / 升級門檻（5k → 300k）/ 折扣（0-15%）/ 點數倍率（1-3x）/ 抽獎（0-10 次/月）/ 升級贈點（0-5000）/ 生日禮 / 專屬優惠券 / 色碼 |
+| `src/seed/data/shippingMethods.ts` | 8 種運送：711 / 全家 / 萊爾富 / 黑貓 / 新竹 / 郵政 / 自取 / DHL（含 trackingFlow 步驟）。DHL `isActive:false` 預設關閉 |
+| `src/seed/seedCore.ts` | runner，**upsert by unique key**（tiers by slug、shipping by name），`--dry-run` flag，含 stderr diagnostic + `exit`/`beforeExit`/`unhandledRejection`/`uncaughtException` listeners + `setInterval` keep-alive |
+| `package.json` | 新增 `pnpm seed:core` + `pnpm seed:core:dry` |
+
+**🚨 Blocker — `pnpm seed:core:dry` 靜默退出**：
+
+```
+[seedCore] script loaded, argv=["--dry-run"]
+[seedCore] === DRY-RUN mode ===
+[seedCore] initializing payload...
+PS C:\>     ← 直接退回 prompt，無 error
+```
+
+加了 `unhandledRejection` / `uncaughtException` / `main().catch()` handler 都沒觸發。最可能：
+- Payload init 內部呼叫 `process.exit()`（不會觸發 handlers）
+- 或 stdout 緩衝吃掉真實 error（已改用 stderr）
+- 或 event loop drain（已加 `setInterval` keepAlive）
+
+**下個對話的第一動作**：再跑 `pnpm seed:core:dry`，這次應看到下列其中一個：
+- `>>> beforeExit code=0 (event loop drained!)` → Payload init 同步 return 沒做 IO（怪）
+- `>>> process exit code=N` → 知道是誰殺
+- `payload init FAILED: ...` 或 `UNHANDLED REJECTION: ...` → 看 stack
+
+若還是死寂 → 改用 `npx tsx src/seed/seedCore.ts --dry-run` 繞過 `payload run`（懷疑 CLI 行為怪）
+
+**設計決策（不要重新討論）**：
+- ❌ 不走 afterInit auto-seed（每次 dev 重啟會跑 + 覆蓋手改）
+- ✅ upsert by unique key，再跑安全
+- ⚠️ 後台手改某筆後**不要再跑 seed**（會被覆蓋回 seed 值）
+
+#### 📌 Phase 5.3 — DailyCheckIn 打卡 bug 🟡 已診斷未修
+
 使用者反映：「打卡好像會一次打兩天卡」
-- 檢查 `src/components/gamification/DailyCheckIn.tsx`（本次對話未讀）
-- 可能是時區 / 日期 bug
-- 檢查 hook 邏輯有沒有重複觸發
+
+**已讀 `src/components/gamification/DailyCheckIn.tsx`（2026-04-16 對話 2）**
+
+**現有保護沒問題**：
+- timezone-aware：`Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' })` → 'YYYY-MM-DD'
+- `alreadyCheckedToday = todayTpe === lastDate` guard（[L70](src/components/gamification/DailyCheckIn.tsx:70)）
+- `handleCheckIn` early return: `if (allDone || alreadyCheckedToday) return`（[L73](src/components/gamification/DailyCheckIn.tsx:73)）
+- 跨午夜：modal `open` useEffect 重抓 storage + 重算 todayTpe
+
+**真實 bug — 跳天累加（最可能就是「打兩天卡」的本體）**：
+
+```
+4/15 簽 Day 1 → days=[0], lastDate='4/15'
+4/16 沒簽
+4/17 開 modal → todayTpe='4/17' ≠ lastDate='4/15' → alreadyCheckedToday=false
+→ 點按鈕 → days=[0,1]   (誤算為連續第 2 天，但中間斷了 1 天)
+```
+
+**修法**：在 `handleCheckIn` 開頭加：
+```ts
+const daysSinceLastCheckIn = state.lastDate
+  ? Math.floor((Date.parse(todayTpe) - Date.parse(state.lastDate)) / 86_400_000)
+  : 0
+const newDays = (state.lastDate && daysSinceLastCheckIn > 1)
+  ? [0]                                    // reset 連續，從 Day 1 重新算
+  : [...state.days, todayIndex]            // 連續或第一次：照常 push
+```
+
+**不用查的「bug」**：
+- 同一天 record 兩次：guard 已防
+- React Strict Mode 重複觸發：useEffect idempotent
+- 跨裝置不同步：localStorage 設計如此
 
 #### 📌 Phase 5.4 — Cloudflare Tunnel 部署健檢
 
