@@ -664,7 +664,40 @@ streak=7 已簽      → 7 天全打勾（下個 streak=8 會進下一週）
 **本 Phase 不做（明確 out-of-scope）**：
 - `/games/*` UI（Q3 明確）
 - 3 個其他 orphan gamification/* 元件
-- `gameEngine.ts` 的 weekly `getDay()` 仍用 UTC 換算 TPE（用 `Date(todayTpe + "T00:00:00Z").getUTCDay()`）—— 輸出對，但邏輯路徑混合；留待大重構一起處理。
+- ~~`gameEngine.ts` 的 weekly `getDay()` 仍用 UTC 換算 TPE...~~ ✅ Phase 5.7.1 DONE（2026-04-17 對話 6）：抽出 `getTpeDayOfWeek()` Intl helper（純 TPE，無 UTC parse），`getTpeWeeklyKey()` 改用它 + 純 ms 算術。**output 完全一致**（preview_eval 跑 365 天 + 邊界時 + leap day = 369/369 match），但邏輯路徑單一化。同一 `now` Date 實例傳兩個 helper 避免 race。
+
+#### 📌 Phase 5.7.1 — gameEngine.ts weekly getDay() 路徑統一 ✅ DONE（2026-04-17 對話 6）
+
+純 refactor，零行為變更。原本 `getTpeWeeklyKey()` 把 TPE 日期字串硬塞回 UTC 拿 `getUTCDay()`，輸出對但邏輯混淆（TPE 字串 → UTC parse → UTC getter）。改為：
+
+```ts
+function getTpeDayOfWeek(date: Date = new Date()): number {
+  const wd = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Taipei', weekday: 'short' }).format(date)
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(wd)
+}
+
+function getTpeWeeklyKey(): string {
+  const now = new Date()
+  const todayTpe = getTpeDateString(now)
+  const dayOfWeek = getTpeDayOfWeek(now)
+  const sundayMs = Date.parse(todayTpe) - dayOfWeek * 86_400_000
+  return new Date(sundayMs).toISOString().slice(0, 10)
+}
+```
+
+**為什麼這麼寫**：
+- Day-of-week 直接走 Intl（純 TPE，不用 UTC parse 騙身分）
+- 日期減法用純 ms 算術（任何 server TZ 等價，ISO date-only string 規格定義為 UTC midnight）
+- 同一 `now` Date 同時傳給 `getTpeDateString` + `getTpeDayOfWeek`，避免午夜瞬間 race
+
+**驗證**：
+- preview_eval 跑舊 vs 新 impl 在 365 天 + 邊界時（23:59:59 / 00:00:01 TPE）+ 2024 leap day = **369/369 完全一致**
+- 6 個 spot check（Sun→Sun / Mon→prev Sun / Sat→that week Sun / next Sun / 跨年 / 跨 leap day）全對到預期
+- `tsc --noEmit` 乾淨
+- `GET /api/games`（unauth）回 401 正常，無 module load error
+
+**沒順手改的**（明確 out-of-scope）：
+- Line 374 `dayDiff` 算 `Date.parse(`${todayTpe}T00:00:00Z`)` 的 `T00:00:00Z` 後綴是冗餘（ISO date-only 本來就 parse 為 UTC midnight），但 handoff 的抱怨明確只指 `getDay()`，這個算 cosmetic 不在 5.7.1 scope。
 
 ---
 

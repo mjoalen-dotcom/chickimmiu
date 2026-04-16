@@ -131,14 +131,37 @@ function getEndOfDay(): string {
   return new Date(`${tpeDate}T23:59:59.999+08:00`).toISOString()
 }
 
-/** Asia/Taipei 的週起始（週日 00:00）的 YYYY-MM-DD key */
+/**
+ * Asia/Taipei 的週起始（週日）作為 YYYY-MM-DD key。
+ *
+ * Phase 5.7.1 (2026-04-17)：原版用 `new Date(todayTpe + 'T00:00:00Z').getUTCDay()`
+ * 把 TPE 字串硬塞回 UTC 拿 day-of-week，輸出對但邏輯路徑混合（TPE 字串 → UTC parse →
+ * UTC getter）。改為：
+ *   1. day-of-week 直接從 Intl 拿（純 TPE 視角）
+ *   2. 日期減法用純 ms 算術（任何時區皆等價，因為兩端都是 ISO 8601 date-only string，
+ *      規格定義為 UTC midnight）
+ * 同一 `now` Date 實例傳給兩個 helper，避免跨 TPE 午夜瞬間的 race。
+ */
 function getTpeWeeklyKey(): string {
-  const todayTpe = getTpeDateString() // e.g. 2026-04-16
-  const todayAsUtc = new Date(`${todayTpe}T00:00:00Z`)
-  const dayOfWeek = todayAsUtc.getUTCDay() // 0=Sun
-  const sunday = new Date(todayAsUtc)
-  sunday.setUTCDate(todayAsUtc.getUTCDate() - dayOfWeek)
-  return sunday.toISOString().split('T')[0]
+  const now = new Date()
+  const todayTpe = getTpeDateString(now) // YYYY-MM-DD in TPE
+  const dayOfWeek = getTpeDayOfWeek(now) // 0=Sun .. 6=Sat
+  const sundayMs = Date.parse(todayTpe) - dayOfWeek * 86_400_000
+  return new Date(sundayMs).toISOString().slice(0, 10)
+}
+
+/**
+ * Day-of-week in Asia/Taipei (0=Sunday … 6=Saturday).
+ * Uses Intl.DateTimeFormat with TPE timezone — no UTC arithmetic, no parsing
+ * of TPE date strings as UTC instants.
+ */
+function getTpeDayOfWeek(date: Date = new Date()): number {
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Taipei',
+    weekday: 'short',
+  }).format(date)
+  // 'Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat'
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(weekday)
 }
 
 /** Asia/Taipei 的 YYYY-MM month key */
