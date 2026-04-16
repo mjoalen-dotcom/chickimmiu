@@ -10,6 +10,7 @@ import {
   updateLeaderboard,
   checkAndAwardBadges,
   getPlayerStats,
+  performDailyCheckin,
 } from '@/lib/games/gameEngine'
 import { startChallenge, submitChallenge } from '@/lib/games/fashionChallengeEngine'
 
@@ -137,34 +138,32 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Action: checkin ──
+    // Phase 5.6：走 performDailyCheckin，啟用 streak 追蹤（Asia/Taipei）
     if (action === 'checkin') {
-      const dailyPlays = await checkDailyPlays(userId, 'daily_checkin')
-      if (!dailyPlays.canPlay) {
-        return NextResponse.json(
-          { success: false, error: '今日已簽到' },
-          { status: 400 },
-        )
+      let result: Awaited<ReturnType<typeof performDailyCheckin>>
+      try {
+        result = await performDailyCheckin(userId)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : '簽到失敗'
+        return NextResponse.json({ success: false, error: msg }, { status: 400 })
       }
 
-      const prize = drawPrize('daily_checkin', 'ordinary', 100)
-      const record = await recordGamePlay({
-        userId,
-        gameType: 'daily_checkin',
-        outcome: 'completed',
-        prizeType: prize?.type || 'points',
-        prizeAmount: prize?.amount || 10,
-        prizeDescription: prize?.prize || '每日簽到 10 點',
-      })
-
-      await updateLeaderboard(userId, prize?.amount || 10, false)
+      await updateLeaderboard(userId, result.prize.amount, false)
       const newBadges = await checkAndAwardBadges(userId)
 
       return NextResponse.json({
         success: true,
         data: {
-          prize,
-          record,
+          prize: result.prize,
+          record: result.record,
           newBadges,
+          streak: {
+            totalCheckIns: result.totalCheckIns,
+            consecutiveCheckIns: result.consecutiveCheckIns,
+            lastCheckInDate: result.lastCheckInDate,
+            streakReset: result.streakReset,
+            streakBonus: result.streakBonus,
+          },
         },
       })
     }

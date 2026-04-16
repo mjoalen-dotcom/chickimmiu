@@ -273,6 +273,41 @@ export const Users: CollectionConfig = {
                 },
               ],
             },
+            // Daily check-in streak (Asia/Taipei timezone, see lib/games/gameEngine.ts performDailyCheckin)
+            {
+              type: 'row',
+              fields: [
+                {
+                  name: 'totalCheckIns',
+                  label: '累計簽到次數',
+                  type: 'number',
+                  defaultValue: 0,
+                  min: 0,
+                  access: { update: isAdminFieldLevel },
+                  admin: { width: '33%', description: '所有每日簽到的累計次數（不重設）' },
+                },
+                {
+                  name: 'consecutiveCheckIns',
+                  label: '連續簽到天數',
+                  type: 'number',
+                  defaultValue: 0,
+                  min: 0,
+                  access: { update: isAdminFieldLevel },
+                  admin: { width: '33%', description: '中斷一天以上會重設為 1' },
+                },
+                {
+                  name: 'lastCheckInDate',
+                  label: '最後簽到日期 (TPE)',
+                  type: 'text',
+                  access: { update: isAdminFieldLevel },
+                  admin: {
+                    width: '33%',
+                    readOnly: true,
+                    description: 'YYYY-MM-DD（Asia/Taipei）',
+                  },
+                },
+              ],
+            },
             // Subscription status
             {
               name: 'subscriptionStatus',

@@ -105,16 +105,46 @@ export const GAME_CONFIGS: Record<string, GameConfig> = {
 
 // ── Helpers ──
 
-function getStartOfDay(): string {
-  const now = new Date()
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  return start.toISOString()
+/**
+ * Asia/Taipei 的今日 YYYY-MM-DD。
+ * Intl 的 en-CA locale 本身就是 YYYY-MM-DD，Asia/Taipei 是 UTC+8 無 DST。
+ */
+export function getTpeDateString(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
 }
 
+/** Asia/Taipei 今日 00:00:00 的 UTC ISO string (供 DB 時間範圍查詢用) */
+function getStartOfDay(): string {
+  const tpeDate = getTpeDateString()
+  // `${YYYY-MM-DD}T00:00:00+08:00` → parse 為 UTC 的 ISO
+  return new Date(`${tpeDate}T00:00:00+08:00`).toISOString()
+}
+
+/** Asia/Taipei 今日 23:59:59.999 的 UTC ISO string */
 function getEndOfDay(): string {
-  const now = new Date()
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
-  return end.toISOString()
+  const tpeDate = getTpeDateString()
+  return new Date(`${tpeDate}T23:59:59.999+08:00`).toISOString()
+}
+
+/** Asia/Taipei 的週起始（週日 00:00）的 YYYY-MM-DD key */
+function getTpeWeeklyKey(): string {
+  const todayTpe = getTpeDateString() // e.g. 2026-04-16
+  const todayAsUtc = new Date(`${todayTpe}T00:00:00Z`)
+  const dayOfWeek = todayAsUtc.getUTCDay() // 0=Sun
+  const sunday = new Date(todayAsUtc)
+  sunday.setUTCDate(todayAsUtc.getUTCDate() - dayOfWeek)
+  return sunday.toISOString().split('T')[0]
+}
+
+/** Asia/Taipei 的 YYYY-MM month key */
+function getTpeMonthlyKey(): string {
+  const tpeDate = getTpeDateString() // YYYY-MM-DD
+  return tpeDate.substring(0, 7) // YYYY-MM
 }
 
 async function getUserTierSlug(userId: string): Promise<string> {
@@ -297,6 +327,130 @@ export async function recordGamePlay(params: RecordGamePlayParams): Promise<Reco
   return record as unknown as Record<string, unknown>
 }
 
+// ── 3.5. performDailyCheckin ──
+// Phase 5.6：daily check-in with streak tracking (Asia/Taipei 日界)
+//   - same day: reject
+//   - next day (dayDiff === 1): consecutive += 1, totalCheckIns += 1
+//   - gap > 1 day: consecutive = 1 (reset), totalCheckIns += 1
+//   - first time: consecutive = 1, totalCheckIns = 1
+// 獎勵：day1to6 用基礎 10 點；第 7 天（consecutive === 7）加倍為 50 點。
+// 搭配 DailyCheckinGame.tsx 前端 UI（UI 在另一批接入）。
+
+interface DailyCheckinResult {
+  prize: DrawnPrize
+  totalCheckIns: number
+  consecutiveCheckIns: number
+  lastCheckInDate: string
+  streakReset: boolean
+  streakBonus: boolean // 連續 7 天當日觸發
+  record: Record<string, unknown>
+}
+
+/**
+ * Pure decision function — 給定 lastDate/prevTotal/prevConsec + todayTpe，
+ * 計算 streak 新狀態與獎勵。無副作用，易於單元測試。
+ */
+export function computeCheckinOutcome(params: {
+  lastDate: string
+  prevTotal: number
+  prevConsec: number
+  todayTpe: string
+}): {
+  newTotal: number
+  newConsec: number
+  streakReset: boolean
+  streakBonus: boolean
+  prizeAmount: number
+  prizeDescription: string
+} {
+  const { lastDate, prevTotal, prevConsec, todayTpe } = params
+
+  if (lastDate === todayTpe) {
+    throw new Error('今日已簽到')
+  }
+
+  const dayDiff = lastDate
+    ? Math.round(
+        (Date.parse(`${todayTpe}T00:00:00Z`) - Date.parse(`${lastDate}T00:00:00Z`)) / 86_400_000,
+      )
+    : 0
+
+  let newConsec: number
+  let streakReset = false
+  if (!lastDate) {
+    newConsec = 1
+  } else if (dayDiff === 1) {
+    newConsec = prevConsec + 1
+  } else {
+    newConsec = 1
+    streakReset = true
+  }
+
+  const newTotal = prevTotal + 1
+  const streakBonus = newConsec === 7
+  const prizeAmount = streakBonus ? 50 : 10
+  const prizeDescription = streakBonus
+    ? `連續簽到 7 天獎勵 ${prizeAmount} 點`
+    : `每日簽到 ${prizeAmount} 點`
+
+  return { newTotal, newConsec, streakReset, streakBonus, prizeAmount, prizeDescription }
+}
+
+export async function performDailyCheckin(userId: string): Promise<DailyCheckinResult> {
+  const payload = await getPayload({ config })
+  const todayTpe = getTpeDateString()
+
+  const user = await payload.findByID({ collection: 'users', id: userId })
+  const userData = user as unknown as Record<string, unknown>
+
+  const outcome = computeCheckinOutcome({
+    lastDate: (userData.lastCheckInDate as string) || '',
+    prevTotal: (userData.totalCheckIns as number) || 0,
+    prevConsec: (userData.consecutiveCheckIns as number) || 0,
+    todayTpe,
+  })
+
+  const { newTotal, newConsec, streakReset, streakBonus, prizeAmount, prizeDescription } = outcome
+
+  // 1. Record the game play (會自動加分到 users.points)
+  const record = await recordGamePlay({
+    userId,
+    gameType: 'daily_checkin',
+    outcome: 'completed',
+    prizeType: 'points',
+    prizeAmount,
+    prizeDescription,
+    metadata: {
+      totalCheckIns: newTotal,
+      consecutiveCheckIns: newConsec,
+      lastCheckInDate: todayTpe,
+      streakReset,
+      streakBonus,
+    },
+  })
+
+  // 2. Update streak fields on user
+  await (payload.update as Function)({
+    collection: 'users',
+    id: userId,
+    data: {
+      totalCheckIns: newTotal,
+      consecutiveCheckIns: newConsec,
+      lastCheckInDate: todayTpe,
+    } as never,
+  })
+
+  return {
+    prize: { prize: prizeDescription, type: 'points', amount: prizeAmount },
+    totalCheckIns: newTotal,
+    consecutiveCheckIns: newConsec,
+    lastCheckInDate: todayTpe,
+    streakReset,
+    streakBonus,
+    record,
+  }
+}
+
 // ── 4. getPlayerStats ──
 
 export async function getPlayerStats(userId: string): Promise<PlayerStats> {
@@ -388,12 +542,10 @@ export async function updateLeaderboard(
 ): Promise<void> {
   const payload = await getPayload({ config })
 
-  const now = new Date()
-  const dailyKey = now.toISOString().split('T')[0] // YYYY-MM-DD
-  const weekStart = new Date(now)
-  weekStart.setDate(now.getDate() - now.getDay()) // Sunday start
-  const weeklyKey = weekStart.toISOString().split('T')[0]
-  const monthlyKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  // Asia/Taipei 統一時區（避免 server 時區造成 8 點後 dailyKey 切到隔天）
+  const dailyKey = getTpeDateString()
+  const weeklyKey = getTpeWeeklyKey()
+  const monthlyKey = getTpeMonthlyKey()
 
   const periods = [
     { period: 'daily', periodKey: dailyKey },
