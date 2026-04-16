@@ -175,6 +175,15 @@ editor: lexicalEditor({
 - `/packaging` 是純靜態頁（hardcoded const），不從 policy global 讀 → 不 revalidate
 - NavigationSettings / GlobalSettings 影響全站 layout → 需 `revalidatePath('/', 'layout')` 才會失效子路由的 HTML cache，為此在 `src/lib/revalidate.ts` 新增 `revalidateLayout()` helper
 
+**🔑 前置驗證原則（每個 Batch 必做）**:
+動手前先 grep + read 對應前台 page.tsx，確認：
+1. 該 global / collection 的 slug 真的有被前台 SSR page 引用（`Grep "slug:\s*['\"]xxx-settings"` in `src/app`）
+2. 引用方式是吃 Next.js fetch cache 的（`fetch()` 走 cache；`getPayload().find()` 直接打 DB **不吃** cache）
+3. 頁面 render mode（`force-dynamic` + `getPayload` = 不需要 revalidate；ISR + fetch = 需要）
+4. 不是 `'use client'` 整頁 hardcoded const
+
+若 (1)-(4) 任一不滿足 → 加 hook 是 NOP 死代碼，**跳過並記錄原因**，等前台真正接通再回來補。
+
 **✅ Batch 1 — 公開頁面 globals（DONE，6 檔）**
 | Global | revalidate |
 |---|---|
@@ -187,12 +196,29 @@ editor: lexicalEditor({
 
 驗證：6 路徑全部 200，TS compile 零錯，Payload schema 正常載入。
 
-**🚧 Batch 2 — 會員/忠誠度 globals（TODO，4 檔）**
-- `LoyaltySettings` → `/membership-benefits`, `/account/points`
-- `ReferralSettings` → `/account/referrals`
-- `PointRedemptionSettings` → `/account/points`
-- `RecommendationSettings` → `/products`（影響 PDP 推薦）
-- ⚠️ 動手前先 grep 確認 `/account/**` 是 SSR dynamic 還是 ISR
+**⏸️ Batch 2 — 會員/忠誠度 globals（SKIPPED 2026-04-16，等 Phase 5.5 完成後回來補）**
+
+跳過原因：套用前置驗證原則後，4 個 global 全部不滿足條件 → 加 hook 會是 NOP 死代碼。
+
+| Global | 原計畫對應頁 | 實際狀況 |
+|---|---|---|
+| `LoyaltySettings` | `/membership-benefits`, `/account/points` | `/membership-benefits` const TIERS hardcoded；`/account/points` 是 `'use client'` 整頁 hardcoded |
+| `ReferralSettings` | `/account/referrals` | `'use client'` + hardcoded `DEMO_REFERRAL`/`DEMO_HISTORY`/`TIER_BONUSES` |
+| `PointRedemptionSettings` | `/account/points` | 同上，client + hardcoded |
+| `RecommendationSettings` | `/products` | `force-dynamic` + `getPayload().find()` 直接打 DB，不吃 Next fetch cache |
+
+驗證證據：
+- 全站 grep `slug: 'xxx-settings'` 在 `src/app/` → 4 個 global 在前台 page.tsx **零引用**
+- 真實使用點僅 `Orders.ts` hook、`ProductReviews.ts` hook、`/api/v1/recommendations` API route — 都不吃 Next fetch cache
+
+**Phase 5.5 完成後回來做**：那時前台會真的 fetch 這些 global，hook 才有實際效果。
+
+**🚧 Batch 3 — 其餘 globals + 公開 collections（TODO，10 檔）**
+動手前**必須**套用「前置驗證原則」對每個目標檔做 grep + read：
+- 5 globals: `CRMSettings`, `SegmentationSettings`, `MarketingAutomationSettings`, `InvoiceSettings`, `GameSettings`
+- 5 collections: `BlogPosts`, `Pages`, `UGCPosts`, `MembershipTiers`, `SubscriptionPlans`
+
+⚠️ 預期至少有 5 個會也是 NOP（CRM/Segmentation/MarketingAutomation/Invoice/Membership 都跟 Batch 2 同 pattern：account 頁是 client + hardcoded）。BlogPosts / Pages / UGCPosts 比較可能真的是 SSR fetched，但仍要驗證。
 
 **🚧 Batch 3 — 其餘 globals + 公開 collections（TODO，10 檔）**
 - 5 globals: `CRMSettings`, `SegmentationSettings`, `MarketingAutomationSettings`, `InvoiceSettings`, `GameSettings`
@@ -247,6 +273,47 @@ Users, Exchanges, Refunds, Invoices, CreditScoreHistory, PointsTransactions, Poi
 **交付：**
 - DEPLOYMENT.md 更新版
 - 健檢報告：tunnel / dev server / prod DB 狀態
+- Runbook：開機自動啟動方案（Task Scheduler / NSSM / pm2-windows-service）
+- 在本檔 Phase 5.4 section 標記 `✅ DONE` 並寫進發現
+
+#### 📌 Phase 5.5 — 前台 Hardcoded 接通 Global（Phase 5.1 Batch 2 的前置）
+
+**為什麼要做**：Phase 5.1 Batch 2 發現 4 個會員/忠誠度 global 在前台「零引用」，所有相關頁面用 hardcoded const 假資料。先做這件事，Phase 5.1 Batch 2 才有意義；否則加 hook 也是死代碼。
+
+**Scope（3 個前台檔）：**
+
+| 前台檔 | 目前 hardcoded const | 該接通的 source |
+|---|---|---|
+| `src/app/(frontend)/membership-benefits/page.tsx` | `const TIERS = [...]`（6 層會員） | `MembershipTiers` collection |
+| `src/app/(frontend)/account/points/page.tsx` | `TIERS` / `SHOP_ITEMS` / `DEMO_HISTORY` | `LoyaltySettings` (multipliers/freeShipping) + `PointRedemptionSettings` (兌換規則) + `PointsRedemptions` collection (商城商品) + 登入會員的 `PointsTransactions` (歷史) |
+| `src/app/(frontend)/account/referrals/page.tsx` | `DEMO_REFERRAL` / `DEMO_HISTORY` / `TIER_BONUSES` | `ReferralSettings` (各等級加成) + 登入會員的 referral 資料 |
+
+**前置工作（每個檔開工前必做）：**
+1. 讀對應 global / collection 的 schema 確認 field 名稱與型別
+2. 確認 hardcoded 結構 vs DB schema 是否一致；不一致就要決定誰遷就誰
+3. /account/** 頁面要 auth — 查 `getPayload().auth({ headers })` pattern（`SITE_MAP.md` 第 7 節 access 規則）
+
+**執行步驟（每檔重複）：**
+1. 把 `'use client'` 拆成 server page.tsx (fetch) + 子 client component (互動 UI)
+2. server 端用 `getPayload().findGlobal(...)` / `find(...)` 拉真實資料，傳 props 給 client
+3. 清掉 hardcoded const
+4. 驗證：登入會員、改後台 global → 重整頁面看到新值
+5. 完成後回頭跑 Phase 5.1 Batch 2 加 hook（只剩 4 個 global 加 import + hook 5 行）
+
+**已知陷阱：**
+- `/products` 是 `force-dynamic` + `getPayload` 模式 → 該模式**不吃** Next fetch cache，意味著 hook 是 NOP，除非改成 `fetch()` + ISR 才有 hook 效果。要先決定 Phase 5.5 也順便把 fetch 模式統一成可被 revalidate 的（複雜）還是維持 `force-dynamic`（不需要 hook）
+- `MembershipTiers` 在 Phase 5.2 會 seed — 順序上應該 5.2 先（資料先存在）再 5.5（前台接資料）
+
+**絕對不要做：**
+- 不要把 `/products` 從 `force-dynamic` 改成 ISR — 那是另一個重構決策，需單獨討論
+- 不要動 cart / wishlist / checkout（那些是 client store 模式，不歸這個 phase 管）
+- 不要 push（diverged 狀態未解）
+
+**交付：**
+- 3 個前台檔接通 global / collection
+- 在本檔 Phase 5.5 section 標記 `✅ DONE` 並列出每檔接通的欄位對照
+- 同步在 Phase 5.1 Batch 2 section 註明「Phase 5.5 完成於 X commit，Batch 2 現在可以做了」
+- 完成後若 context 還夠，順手做 Phase 5.1 Batch 2（4 個 hook 5 行 × 4 檔）
 - Runbook：開機自動啟動方案（Task Scheduler / NSSM / pm2-windows-service）
 - 在本檔 Phase 5.4 section 標記 `✅ DONE` 並寫進發現
 
