@@ -51,6 +51,10 @@ src/payload-types.ts
 !.vscode/extensions.json
 .idea
 
+# Claude Code — per-user local settings (tool permission toggles etc.)
+# Keep .claude/launch.json tracked (team-shared preview config)
+.claude/settings.local.json
+
 # OS
 Thumbs.db
 
