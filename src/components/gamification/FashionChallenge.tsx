@@ -1,5 +1,21 @@
 'use client'
 
+/**
+ * ARCHIVED (2026-04-17) — 無任何 import。
+ *
+ * Modal 版 demo（open/onClose props、fixed inset backdrop），早於
+ * `components/games/FashionChallengeGame.tsx` 全頁版。`/games/fashion-challenge`
+ * 路由經 `/games/[slug]` → `GamePageClient` 的 GAME_COMPONENTS map 指向
+ * `FashionChallengeGame`，本檔不在 call graph 內。
+ *
+ * 保留理由：本檔含完整流程（challenge list → outfit builder → AI scoring UI
+ * → share card），比 `FashionChallengeGame` 更接近「沉浸式 modal 體驗」原型。
+ * 若 Phase 5.8 決定把 fashion challenge 改成 modal 限時挑戰，可復用本檔；
+ * 否則整份刪。
+ *
+ * 維護紀律：在還沒決定前請不要新增 `import` 指向本檔。
+ */
+
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Sparkles, Clock, Check, Share2, RotateCcw, Shirt, Crown } from 'lucide-react'

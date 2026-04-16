@@ -570,7 +570,7 @@ else                                            → prize=10
 **下批要做（Phase 5.7 候選）**：
 1. ~~UI 接入~~ ✅ Phase 5.7 DONE（見下方 section）
 2. ~~Streak UI enhancements (streakReset / streakBonus)~~ ✅ Phase 5.7 DONE
-3. 其他 3 個 orphan gamification/*（SpinWheel / ScratchCard / FashionChallenge）—— 同樣決定是否接 API 或刪掉。
+3. ~~其他 3 個 orphan gamification/*（SpinWheel / ScratchCard / FashionChallenge）—— 同樣決定是否接 API 或刪掉~~ 🗃️ ARCHIVED（2026-04-17 對話 6）：三個檔頂部加 JSDoc `ARCHIVED` 區塊說明「無 import、與 `components/games/*Game.tsx` 全頁版的對照關係、保留理由、Phase 5.8 再定」。不 delete、不接 API。DailyCheckIn.tsx 因 Phase 5.3.1 剛修完留 inline，也暫不加 archive header（同待 Phase 5.8 決定是否 Modal surface）。
 4. ~~Phase 5.5 的 `20260416_140000_add_gender_and_male_tier_name` migration 在 prod deploy 前要改成冪等~~ ✅ DONE（2026-04-17 對話 6）：rewrite 為 `columnExists` guard（PRAGMA table_info），pattern 與同日 `20260416_193835_add_daily_checkin_streak` 一致。驗證：in-memory clean DB 連跑兩次 up() 不 error + 欄位數不增；real DB（gender + front_name_male 已 dev-pushed）會 skip 兩個 ALTER。`tsc --noEmit` 僅 3 個 pre-existing Phase 5.4/5.5 error，migration 檔 type-clean。
 
 #### 📌 Phase 5.7 — DailyCheckinGame UI 接通 API ✅ DONE (2026-04-16 對話 6)

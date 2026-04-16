@@ -1,5 +1,20 @@
 'use client'
 
+/**
+ * ARCHIVED (2026-04-17) — 無任何 import。
+ *
+ * Modal 版 demo（open/onClose props、fixed inset backdrop），早於
+ * `components/games/SpinWheelGame.tsx` 全頁版。`/games/spin-wheel` 路由
+ * 經 `/games/[slug]` → `GamePageClient` 的 GAME_COMPONENTS map 指向
+ * `SpinWheelGame`，本檔不在 call graph 內。
+ *
+ * 保留理由：內含加權機率 prize table（`PRIZES` with `probability`），
+ * `SpinWheelGame` 目前是均勻 random。若 Phase 5.8 決定做 popup/modal
+ * 獎勵 surface，可復用本檔的 RNG 機率邏輯；否則整份刪。
+ *
+ * 維護紀律：在還沒決定前請不要新增 `import` 指向本檔。
+ */
+
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Gift, X } from 'lucide-react'

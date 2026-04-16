@@ -498,6 +498,9 @@ button[class*='btn--style-error'] {
 .react-select__menu,
 [class*='rs__menu'] {
   z-index: 9999 !important;
+  background-color: #ffffff !important;
+  border: 1px solid var(--color-brand-cream-mid) !important;
+  box-shadow: 0 6px 20px rgba(26, 31, 54, 0.15) !important;
 }
 
 // Ensure field-type containers don't clip dropdown menus
@@ -507,7 +510,12 @@ button[class*='btn--style-error'] {
 [class*='render-fields'],
 [class*='group-field__wrap'],
 [class*='tab__fields'],
-[class*='collapsible__content'] {
+[class*='collapsible__content'],
+// `.document-fields` is the scrollable parent of the form. Without this
+// override its `overflow: auto` truncates absolutely-positioned
+// `.rs__menu` dropdowns extending past the scroll viewport.
+.document-fields,
+[class*='document-fields'] {
   overflow: visible !important;
 }
 
@@ -536,24 +544,30 @@ button[class*='btn--style-error'] {
   box-shadow: 0 0 0 2px var(--color-brand-gold-dim) !important;
 }
 
-// Dropdown selected option
-.react-select__option--is-selected,
-[class*='rs__option--is-selected'] {
-  background-color: var(--color-brand-gold) !important;
-  color: #ffffff !important;
+// Dropdown menu text — base colour for all options (must come FIRST, so the
+// `--is-selected` / `--is-focused` rules below override it).
+.react-select__option,
+[class*='rs__option'] {
+  color: #1a1f36 !important;
+  background-color: transparent !important;
 }
 
-// Dropdown focused option
+// Dropdown focused option (hover / keyboard highlight)
 .react-select__option--is-focused,
 [class*='rs__option--is-focused'] {
   background-color: var(--color-brand-gold-dim) !important;
   color: #1a1f36 !important;
 }
 
-// Dropdown menu text
-.react-select__option,
-[class*='rs__option'] {
-  color: #1a1f36 !important;
+// Dropdown selected option — gold bg + white text for WCAG contrast.
+// Listed AFTER `--is-focused` so a selected+focused option still reads
+// as selected (gold/white), not focused (dim/dark).
+.react-select__option--is-selected,
+[class*='rs__option--is-selected'],
+.react-select__option--is-selected.react-select__option--is-focused,
+[class*='rs__option--is-selected'][class*='rs__option--is-focused'] {
+  background-color: var(--color-brand-gold) !important;
+  color: #ffffff !important;
 }
 
 // Dropdown single value and placeholder

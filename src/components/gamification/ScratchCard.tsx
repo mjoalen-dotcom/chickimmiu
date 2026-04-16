@@ -1,5 +1,20 @@
 'use client'
 
+/**
+ * ARCHIVED (2026-04-17) — 無任何 import。
+ *
+ * Modal 版 demo（open/onClose props、fixed inset backdrop），早於
+ * `components/games/ScratchCardGame.tsx` 全頁版。`/games/scratch-card` 路由
+ * 經 `/games/[slug]` → `GamePageClient` 的 GAME_COMPONENTS map 指向
+ * `ScratchCardGame`，本檔不在 call graph 內。
+ *
+ * 保留理由：內含 canvas-based scratch mask 互動 + 加權 prize table。
+ * 若 Phase 5.8 決定做 popup/modal 獎勵 surface（如每週末限時活動），
+ * 可復用本檔；否則整份刪。
+ *
+ * 維護紀律：在還沒決定前請不要新增 `import` 指向本檔。
+ */
+
 import { useState, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { X, Sparkles } from 'lucide-react'
