@@ -102,21 +102,94 @@ diff stat：`+204 / -111`（淨 +93 行，大幅補資訊）。
 
 **保留未動的既有內容**：追蹤事件驗證章節（GTM / Meta Pixel / GA4 / Google Ads）與部署架構無關，只調整範例網址為 `testshop.ckmu.co`。
 
-### 🟢 P4：還有一堆 untracked / modified 檔案未納管
-從 `git status` 看：
-- `?? src/app/(frontend)/diag/` — Boot fallback 診斷頁（本次對話派上用場）
-- `?? src/app/global-error.tsx` — global error boundary
-- `?? src/collections/SizeCharts.ts` — Phase 1 尺寸表 collection
-- `?? src/components/admin/ProductBulkActions.tsx` / `ShoplineXlsxImporter.tsx` / `VariantMatrixGenerator.tsx`
-- `?? src/components/layout/BootBeaconCleanup.tsx`
-- `?? src/endpoints/revalidateAll.ts` / `shoplineXlsxImport.ts`
-- `?? src/lib/revalidate.ts` / `shopline/xlsxParser.ts`
-- `?? src/migrations/20260415_112142_add_size_charts.{json,ts}`
-- `?? src/seed/resetAdmin.ts`
-- `?? scripts/apply-phase1-migration.mjs`
-- 一堆 `M` 檔案（Categories.ts / Media.ts / Products.ts / 各種 page.tsx…）
+### 🟡 P4：untracked / modified 檔案分批 commit — 偵察完成，等下一對話動手
 
-這些是 Phase 1/4/5 累積未 commit 的工作。**建議**：把相關的分群組 commit（例如 Phase 1 尺寸表一組、admin 工具一組、Shopline 匯入一組），不要全部一包。
+**原以為是單純「分批 commit 遺留未 commit 改動」，實際探查後發現混雜三種完全不同性質的內容**（2026-04-16 本對話 P3 之後探查）：
+
+#### 五類內容分類（按處理順序建議）
+
+**Batch A — Phase 1 尺寸表（成熟功能，可直接 commit）** ✅ 建議 1 個 commit
+- `src/collections/SizeCharts.ts`（216 行）— `size-charts` collection 定義
+- `src/migrations/20260415_112142_add_size_charts.ts` + `.json`（261 行）— DB schema migration，已進 `src/migrations/index.ts`
+- `scripts/apply-phase1-migration.mjs`（131 行）— 非互動式套 migration 的 bypass script
+- `src/collections/Products.ts` 部分改動（reference `sizeChart` relationship + hook）
+- Import 鏈確認：`Products.ts`、`AISizeRecommender.tsx`、`payload.config.ts`、`payload-types.ts`、`revalidateAll.ts` 皆 reference
+
+**Batch B — Phase 4/5 Admin 工具 + Shopline 匯入（成熟功能，可 commit）** ✅ 建議 1-2 個 commit
+- `src/components/admin/ProductBulkActions.tsx`（216 行）
+- `src/components/admin/ShoplineXlsxImporter.tsx`（376 行）
+- `src/components/admin/VariantMatrixGenerator.tsx`（361 行）
+- `src/endpoints/shoplineXlsxImport.ts`（248 行）
+- `src/lib/shopline/xlsxParser.ts`（487 行）
+- `src/app/(payload)/admin/importMap.js`（M）— admin UI registration
+- `src/collections/Products.ts` 內 admin UI wire-up（**+856 行總 diff，大改，需仔細讀**）
+- Import 鏈：`ProductBulkActions` / `VariantMatrixGenerator` 只被 `importMap.js` 引入；`ShoplineXlsxImporter` 另呼叫 `shoplineXlsxImport` endpoint + `xlsxParser`
+
+**Batch C — Phase 5.4 偵察 / 防呆產物** ✅ 建議 1 個 commit
+- `src/app/(frontend)/diag/page.tsx` + `DiagClient.tsx`（total 413 行）— iPad/Safari 白屏診斷頁
+- `src/app/global-error.tsx`（152 行）— root-level error boundary
+- `src/components/layout/BootBeaconCleanup.tsx`（39 行）— 搭配 layout inline script 做 4 秒 fallback beacon
+- `src/endpoints/revalidateAll.ts`（34 行）— 手動全站 revalidate endpoint
+- `src/app/(frontend)/layout.tsx` (M) — 加 `<BootBeaconCleanup />` + 診斷 inline script
+- `src/seed/resetAdmin.ts`（40 行）— 重設 admin 密碼的 one-off script
+
+**Batch D — 🚧 Phase 5.6 in-progress（不是「未 commit 遺留」，是沒寫完的新功能）** ⚠️ 需要決策
+- `src/collections/Users.ts` +35 行 — 新增 `totalCheckIns` / `consecutiveCheckIns` / `lastCheckInDate` 欄位
+- `src/lib/games/gameEngine.ts` +152 行 — 新增 `getTpeDateString()` / `getTpeWeeklyKey()` / `getTpeMonthlyKey()` helpers + server-authoritative `performDailyCheckin()` logic
+- `src/lib/games/gameActions.ts` (M) — server action `performDailyCheckin(userId)`
+- `src/app/api/games/route.ts` (M) — API 對接 `performDailyCheckin`
+- `src/migrations/20260416_193835_add_daily_checkin_streak.ts`（52 行）+ 已進 `migrations/index.ts`
+- `src/seed/verifyPhase56CheckIn.ts` — verification script
+- client `src/components/games/DailyCheckinGame.tsx` 有 `// TODO: call performDailyCheckin server action` 但未接
+- **現況**：server side **完整實作但未 commit 也未測試**；client side 只有 TODO。與 Phase 5.3 client-fix (`68f6856`) 是同功能的下個階段（升級成 server-authoritative streak tracking）
+- **決策需求**：是要 (a) 整包 commit 宣告 Phase 5.6 WIP、(b) `git stash save -m "phase5.6-wip"` 暫存起來讓 main 保持乾淨、還是 (c) 把 server side commit 起來但不接 client。本 P4 處理前必須先決定。
+
+**Batch E — 前台 UI + 其他雜項 M 檔** ⚠️ 需逐一讀 diff 分類
+以下都是 `M` 狀態、內容尚未審視：
+- `src/app/(frontend)/about/page.tsx` / `collections/[slug]/page.tsx` / `pages/[slug]/page.tsx`
+- `src/app/(frontend)/products/ProductListClient.tsx` / `products/page.tsx`
+- `src/components/home/HeroCarousel.tsx`（跟 origin `421a405` 同檔、不同內容；參照 P2 偵察）
+- `src/components/product/AlsoBoughtSection.tsx`
+- `src/components/recommendation/ExitIntentPopup.tsx`
+- `src/components/ugc/UGCGallery.tsx`
+- `src/components/ui/CookieConsentBanner.tsx` / `FloatingChatButton.tsx` / `FloatingQuickMenu.tsx`
+- `src/collections/Categories.ts` / `Media.ts`
+- `src/lib/recommendationEngine.ts`
+- `pnpm-lock.yaml`（`package.json` 沒列在 M — 看起來已被前次 commit 吸收）
+- `.claude/settings.local.json`（本機設定，不應納管）
+
+**Batch F — 該刪除的 ephemeral 檔** 🗑️
+- `PHASE5.5_PROMPT.md` — Phase 5.5 的一次性開場 prompt 檔，5.5 已完成、本 prompt 已用完 → 刪除
+
+#### 重要提醒給下個對話
+
+1. **Batch D Phase 5.6 要第一個處理**，因為它牽涉 `Users.ts`、`gameEngine.ts`、`api/games/route.ts` 這些「共用檔」，決策怎麼處理會影響 Batch E 能不能動
+2. Batch B 的 `Products.ts` +856 行要認真讀、可能該自己拆成 2-3 個小 commit（admin UI wire、欄位擴充、hook 改動）
+3. 本對話**未動任何檔案內容**，只做了分類。所有 M / untracked 狀態與本對話開始時相同
+4. 本對話已產 commit：`2fbae34`（P0/P1）、`1efd0d6`（P2 偵察）、`0b5695b`（P3 DEPLOYMENT.md），加起來 local ahead 從 23 → 26
+5. Force-push 前的條件同 P2 記載：本地 clean + smoke test 通過 + 使用者親自下指令
+
+#### 下對話推薦開場 prompt
+
+```
+接續 Phase 5.4 P4 — untracked / modified 檔案分批 commit。
+先讀 HANDOFF_PHASE5.4.md 的「🟡 P4」section（Batch A/B/C/D/E/F 分類）。
+
+首要決策：Batch D（Phase 5.6 server-authoritative daily check-in streak）
+要怎麼處理？—— (a) 整包 commit 宣告 WIP、(b) stash 起來、(c) 拆 server/client
+分開 commit。
+
+決策後依序處理：Batch D → A → C → B → E → F（E 最散、最耗 context）。
+每 Batch 一個 commit，commit message 加「Phase 5.4 P4 Batch X」。
+
+規則：
+- 不動 M 檔的 semantic 內容，只把狀態 commit 成 clean
+- `.claude/settings.local.json` 不 commit（本機設定）
+- Phase 5.6 WIP 標籤清楚，未來可以獨立追蹤
+- Products.ts +856 行要讀過才 commit
+- 每 Batch 完就更新 HANDOFF P4 section 打勾
+- 全部做完才評估是否 force-push（使用者親自下指令）
+```
 
 ---
 
