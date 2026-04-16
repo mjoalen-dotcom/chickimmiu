@@ -102,7 +102,7 @@ diff stat：`+204 / -111`（淨 +93 行，大幅補資訊）。
 
 **保留未動的既有內容**：追蹤事件驗證章節（GTM / Meta Pixel / GA4 / Google Ads）與部署架構無關，只調整範例網址為 `testshop.ckmu.co`。
 
-### 🟡 P4：untracked / modified 檔案分批 commit — A/C/D-部分已被外部 commits 完成，剩 B/D-code/E/F
+### ✅ P4：untracked / modified 檔案分批 commit — 全部完成 (2026-04-16 session 3)
 
 **⚠️ 重要 update（2026-04-16，本對話 P4 偵察 commit `6f4c004` 之後又出現變化）**：
 
@@ -116,16 +116,24 @@ diff stat：`+204 / -111`（淨 +93 行，大幅補資訊）。
 - `src/endpoints/revalidateAll.ts` 似乎仍 untracked（未被 cb74f85 吸收）— 下對話確認是否要加入
 - 新增 untracked `src/seed/verifyPhase56Tz.ts` — Phase 5.6 timezone verify script
 
-**原分類 Batch A ~ F 更新後狀態**：
+**最終狀態表（session 3，2026-04-16 晚間）**：
 
-| Batch | 狀態 | 備註 |
+| Batch | 狀態 | Commit(s) |
 |---|---|---|
-| A Phase 1 尺寸表 | ✅ DONE | `0e11f04` |
-| B Phase 4/5 Admin 工具 + Shopline 匯入 | 🚧 TODO | 3 admin components + 2 endpoints + xlsxParser + `importMap.js` (M) + `Products.ts` (M, 部分 diff 應屬於這批) |
-| C Phase 5.4 偵察產物 | ✅ DONE（部分） | `cb74f85` 吸收了 diag/global-error/BootBeacon/layout 改動。剩 `src/endpoints/revalidateAll.ts` 仍 untracked — 下對話確認去留 |
-| D Phase 5.6 daily check-in streak | 🟡 PART DONE | `2e16460` 吸收了 migration + resetAdmin.ts + migrations/index.ts。剩下：`Users.ts` +35 行 schema (M)、`gameEngine.ts` +152 行 (M)、`gameActions.ts` (M) + `api/games/route.ts` (M) + `verifyPhase56CheckIn.ts` (??) + `verifyPhase56Tz.ts` (??)。**⚠️ schema 欄位 (Users.ts) 和 migration (已 commit) 不同步** — 需確認 migration 已跑還是還沒跑；若已跑代表 dev auto-push 做過，Users.ts schema 要合併或 discard |
-| E 前台 UI 雜項 | 🚧 TODO | 12 個前台 M 檔 + `pnpm-lock.yaml` + `.claude/settings.local.json`（不應 commit） |
-| F PHASE5.5_PROMPT.md | 🚧 TODO | 一次性檔，下對話直接 `git rm` |
+| A Phase 1 尺寸表 | ✅ DONE | `0e11f04`（外部 session） |
+| B Phase 4/5 Admin 工具 + Shopline 匯入 | ✅ DONE | `87f01ee` — 3 admin components + 2 endpoints (含 revalidateAll，依賴鏈綁定) + xlsxParser + `importMap.js` + `Products.ts` 整包（含 beforeValidate slug 正規化、endpoint 掛接、欄位格式重整） |
+| C Phase 5.4 偵察產物 | ✅ DONE | `cb74f85`（外部）+ revalidateAll 併入 B (`87f01ee`) |
+| D Phase 5.6 daily check-in streak | ✅ DONE | `2e16460` (migration, 外部) + `f3fd576` (schema + server streak + TZ fix, 外部) |
+| E 前台 UI 雜項 | ✅ DONE | 3 個主題 commit：`12dd5bf` (媒體 URL 統一 + /products force-dynamic，含 Categories/Media revalidate hooks)、`0d7d705` (移除 framer-motion × 5 widgets)、`c22ab88` (AlsoBought/UGCGallery 接真實 Payload products + recommendationEngine 清 DEMO) |
+| F PHASE5.5_PROMPT.md + HANDOFF_PHASE5.5.md | ✅ DONE | `84b7ceb` — 本 session HANDOFF 歸檔，PHASE5.5_PROMPT.md 就地刪除（untracked → 無歷史可 git-rm） |
+
+**額外 session 3 commit**：
+- `fc58031` — fix(admin): CSS grid blowout from long SKUs (Phase 4 Task 3 / Phase 5.6.1)
+- `3545500` — chore(deps): sync pnpm-lock with libsql + @libsql/client platform binaries
+
+**剩餘 `git status` 只剩**：`M .claude/settings.local.json`（本機 preview 設定，刻意不納管；考慮 `git update-index --skip-worktree` 或 `.gitignore`）。
+
+**意外事件**：E-1 commit (`12dd5bf`) 原設計 5 檔（前台 page + ProductListClient），實際 git add 後順便吸收了 Categories.ts / Media.ts 的 revalidate hook 改動（index 同步行為 / 可能 pre-hook 副作用），語意相容（同為 "revalidate 同步性強化"）所以未 amend。原計畫的「E-4 Collections revalidate hooks」因此自動消失。
 
 **現在剩的 `git status` 具體內容**：
 
