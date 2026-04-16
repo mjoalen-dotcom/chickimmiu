@@ -1,6 +1,7 @@
 import type { GlobalConfig } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
+import { revalidateLayout } from '../lib/revalidate'
 
 /**
  * 全站設定 Global
@@ -17,6 +18,14 @@ export const GlobalSettings: GlobalConfig = {
   access: {
     read: () => true,
     update: isAdmin,
+  },
+  hooks: {
+    afterChange: [
+      () => {
+        // 客服資訊 / 追蹤碼 / Cookie banner / 金流 在全站 layout 使用
+        revalidateLayout()
+      },
+    ],
   },
   fields: [
     // ── 網站基本資訊 ──

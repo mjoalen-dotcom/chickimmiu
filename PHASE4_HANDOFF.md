@@ -112,22 +112,38 @@ editor: lexicalEditor({
 
 ### Phase 5 分四個子階段（建議各別一個對話處理）
 
-#### 📌 Phase 5.1 — Revalidate 覆蓋率修復（最優先）
-- **15 個 globals 全部加 afterChange hook**，對應到前台頁面 revalidate
-  - `homepage-settings` → `revalidatePath('/')`
-  - `about-page-settings` → `revalidatePath('/about')`
-  - `faq-page-settings` → `revalidatePath('/faq')`
-  - `policy-pages-settings` → `revalidatePath('/terms', '/privacy-policy', '/return-policy', '/shopping-guide', '/packaging')`
-  - `navigation-settings` → `revalidateTag('layout')` 或整站重 render
-  - `global-settings` → `revalidateTag('layout')`
-  - `loyalty-settings` / `referral-settings` / `point-redemption-settings` → `/account/**`
-  - `crm-settings` / `segmentation-settings` / `marketing-automation-settings` → `/account/crm-dashboard`、`/account/segments`
-  - `invoice-settings` → `/account/invoices`
-  - `recommendation-settings` → `revalidateTag('products')`（因為影響 PDP 推薦）
-  - `game-settings` → `/games/**`
-- **28 個缺 hook 的 collections 也要補**：BlogPosts、Pages、UGCPosts、Affiliates、Users、MembershipTiers、SubscriptionPlans、ProductReviews 等
-- 抽一個 `src/lib/revalidate.ts` 的 generic helper 讓重複邏輯簡化
-- **建議做法**：讀 `src/lib/revalidate.ts`（已有 safeRevalidate）→ 替每個 global/collection 在檔案尾加 `hooks: { afterChange: [...], afterDelete: [...] }`
+#### 📌 Phase 5.1 — Revalidate 覆蓋率修復（進行中）
+
+**前置發現（2026-04-16）**:
+- 全站 fetch 零使用 `next:{tags:[...]}` → `revalidateTag` 無效，全改 `revalidatePath`
+- `/packaging` 是純靜態頁（hardcoded const），不從 policy global 讀 → 不 revalidate
+- NavigationSettings / GlobalSettings 影響全站 layout → 需 `revalidatePath('/', 'layout')` 才會失效子路由的 HTML cache，為此在 `src/lib/revalidate.ts` 新增 `revalidateLayout()` helper
+
+**✅ Batch 1 — 公開頁面 globals（DONE，6 檔）**
+| Global | revalidate |
+|---|---|
+| `HomepageSettings` | `safeRevalidate(['/'])` |
+| `AboutPageSettings` | `safeRevalidate(['/about'])` |
+| `FAQPageSettings` | `safeRevalidate(['/faq'])` |
+| `PolicyPagesSettings` | `safeRevalidate(['/terms','/privacy-policy','/return-policy','/shopping-guide'])` |
+| `NavigationSettings` | `revalidateLayout()` |
+| `GlobalSettings` | `revalidateLayout()` |
+
+驗證：6 路徑全部 200，TS compile 零錯，Payload schema 正常載入。
+
+**🚧 Batch 2 — 會員/忠誠度 globals（TODO，4 檔）**
+- `LoyaltySettings` → `/membership-benefits`, `/account/points`
+- `ReferralSettings` → `/account/referrals`
+- `PointRedemptionSettings` → `/account/points`
+- `RecommendationSettings` → `/products`（影響 PDP 推薦）
+- ⚠️ 動手前先 grep 確認 `/account/**` 是 SSR dynamic 還是 ISR
+
+**🚧 Batch 3 — 其餘 globals + 公開 collections（TODO，10 檔）**
+- 5 globals: `CRMSettings`, `SegmentationSettings`, `MarketingAutomationSettings`, `InvoiceSettings`, `GameSettings`
+- 5 collections: `BlogPosts`, `Pages`, `UGCPosts`, `MembershipTiers`, `SubscriptionPlans`
+
+**刻意不加 hook 的 collections**（純後台 / log / 私有資料）：
+Users, Exchanges, Refunds, Invoices, CreditScoreHistory, PointsTransactions, PointsRedemptions, MemberSegments, ConciergeServiceRequests, CustomerServiceTickets, MarketingCampaigns, MessageTemplates, ABTests, MarketingExecutionLogs, FestivalTemplates, BirthdayCampaigns, AutomationJourneys, AutomationLogs, MiniGameRecords, CardBattles, GameLeaderboard, ShippingMethods, Affiliates
 
 #### 📌 Phase 5.2 — 關鍵 Collection 的 Seed Data
 使用者發現後台沒資料：

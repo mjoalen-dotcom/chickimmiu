@@ -1,6 +1,7 @@
 import type { GlobalConfig } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
+import { revalidateLayout } from '../lib/revalidate'
 
 /**
  * 導覽設定 Global
@@ -17,6 +18,14 @@ export const NavigationSettings: GlobalConfig = {
   access: {
     read: () => true,
     update: isAdmin,
+  },
+  hooks: {
+    afterChange: [
+      () => {
+        // 公告 bar / 主選單 在全站 layout 渲染，須失效整個 layout 樹
+        revalidateLayout()
+      },
+    ],
   },
   fields: [
     // ── 公告橫幅 ──

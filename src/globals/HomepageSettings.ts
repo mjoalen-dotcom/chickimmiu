@@ -1,6 +1,7 @@
 import type { GlobalConfig } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
+import { safeRevalidate } from '../lib/revalidate'
 
 /**
  * 首頁設定 Global
@@ -18,6 +19,14 @@ export const HomepageSettings: GlobalConfig = {
   access: {
     read: () => true,
     update: isAdmin,
+  },
+  hooks: {
+    afterChange: [
+      () => {
+        // 首頁所有區塊由 HomepageSettings 驅動，存檔後失效首頁快取
+        safeRevalidate(['/'])
+      },
+    ],
   },
   fields: [
     // ── 輪播橫幅 ──

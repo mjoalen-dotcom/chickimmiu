@@ -1,6 +1,7 @@
 import type { GlobalConfig } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
+import { safeRevalidate } from '../lib/revalidate'
 
 /**
  * FAQ 頁面設定
@@ -17,6 +18,13 @@ export const FAQPageSettings: GlobalConfig = {
   access: {
     read: () => true,
     update: isAdmin,
+  },
+  hooks: {
+    afterChange: [
+      () => {
+        safeRevalidate(['/faq'])
+      },
+    ],
   },
   fields: [
     // ── Hero ──

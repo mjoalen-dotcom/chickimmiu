@@ -1,6 +1,7 @@
 import type { GlobalConfig, Field } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
+import { safeRevalidate } from '../lib/revalidate'
 
 /**
  * 政策頁面設定
@@ -115,6 +116,15 @@ export const PolicyPagesSettings: GlobalConfig = {
   access: {
     read: () => true,
     update: isAdmin,
+  },
+  hooks: {
+    afterChange: [
+      () => {
+        // 4 個 section 都在同一個 global，存檔後 4 條路徑都要失效
+        // 注意：/packaging 是純靜態頁（hardcoded const），不吃這個 global
+        safeRevalidate(['/terms', '/privacy-policy', '/return-policy', '/shopping-guide'])
+      },
+    ],
   },
   fields: [
     policyPageGroup('terms', '服務條款', 'Terms of Service'),
