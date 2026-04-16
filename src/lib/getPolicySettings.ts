@@ -13,6 +13,7 @@ export async function getPolicySettings() {
 
 export interface PolicySection {
   title: string
+  richContent?: unknown  // Lexical richText（後台「圖文編輯」欄位，支援圖片/影片）
   content?: string
   items?: { text: string }[]
 }
@@ -27,6 +28,8 @@ export function extractPolicySections(
   const sections: PolicySection[] = cmsSections?.length
     ? cmsSections.map((s) => ({
         title: (s.title as string) || '',
+        // richContent 優先於 content（照 schema 描述：「若此欄位有內容，將優先使用」）
+        richContent: s.richContent || undefined,
         content: (s.content as string) || undefined,
         items: (s.items as Array<{ text: string }>) || undefined,
       }))

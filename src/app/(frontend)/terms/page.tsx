@@ -1,5 +1,9 @@
 import type { Metadata } from 'next'
 import { getPolicySettings, extractPolicySections, type PolicySection } from '@/lib/getPolicySettings'
+import { RenderLexical } from '@/components/lexical/RenderLexical'
+
+// 確保後台編輯後前台即時反映（不走 Next.js static cache）
+export const dynamic = 'force-dynamic'
 
 const DEFAULT_SECTIONS: PolicySection[] = [
   { title: '一、接受條款', content: '歡迎使用 CHIC KIM & MIU 網站及相關服務。本服務條款構成您與靚秀國際有限公司之間的法律協議。您使用本網站、註冊會員或購買商品，即視為您已閱讀、瞭解並同意本條款全部內容。' },
@@ -47,9 +51,13 @@ export default async function TermsOfServicePage() {
           <section key={section.title} className="bg-white rounded-2xl shadow-sm p-8 md:p-10">
             <h2 className="text-xl font-bold text-[#2C2C2C] mb-1">{section.title}</h2>
             <div className="w-10 h-[2px] bg-[#C19A5B] mb-5" />
-            {section.content && (
+            {section.richContent ? (
+              <div className="text-[15px] text-[#2C2C2C]/80 leading-relaxed prose prose-sm max-w-none">
+                <RenderLexical content={section.richContent} />
+              </div>
+            ) : section.content ? (
               <p className="text-[15px] text-[#2C2C2C]/80 leading-relaxed">{section.content}</p>
-            )}
+            ) : null}
             {section.items && section.items.length > 0 && (
               <ol className="space-y-3 mt-2">
                 {section.items.map((item, i) => (
