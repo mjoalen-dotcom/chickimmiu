@@ -180,10 +180,13 @@ export const HomepageSettings: GlobalConfig = {
           label: '內容來源',
           type: 'select',
           defaultValue: 'auto',
-          // 允許 null — 防止舊 global 記錄缺少此欄位時觸發 validation error
-          validate: (val: unknown) => {
-            if (!val || val === 'auto' || val === 'manual') return true
-            return '請選擇「自動」或「手動精選」'
+          // 任何 legacy 或不合法值（如舊資料裡的 'latest'）自愈為 'auto'，
+          // 避免使用者在編輯其他欄位時因這個欄位值不在 options 白名單內而被擋下。
+          // 只要使用者按一次儲存，DB 即被正規化。
+          hooks: {
+            beforeValidate: [
+              ({ value }) => (value === 'auto' || value === 'manual' ? value : 'auto'),
+            ],
           },
           options: [
             { label: '自動（最新文章）', value: 'auto' },
