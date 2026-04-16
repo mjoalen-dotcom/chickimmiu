@@ -213,16 +213,34 @@ editor: lexicalEditor({
 
 **Phase 5.5 完成後回來做**：那時前台會真的 fetch 這些 global，hook 才有實際效果。
 
-**🚧 Batch 3 — 其餘 globals + 公開 collections（TODO，10 檔）**
-動手前**必須**套用「前置驗證原則」對每個目標檔做 grep + read：
-- 5 globals: `CRMSettings`, `SegmentationSettings`, `MarketingAutomationSettings`, `InvoiceSettings`, `GameSettings`
-- 5 collections: `BlogPosts`, `Pages`, `UGCPosts`, `MembershipTiers`, `SubscriptionPlans`
+**✅ Batch 3 — 其餘 globals + 公開 collections（DONE 2026-04-16 對話 3，10 檔驗證、2 加 hook / 8 跳過）**
 
-⚠️ 預期至少有 5 個會也是 NOP（CRM/Segmentation/MarketingAutomation/Invoice/Membership 都跟 Batch 2 同 pattern：account 頁是 client + hardcoded）。BlogPosts / Pages / UGCPosts 比較可能真的是 SSR fetched，但仍要驗證。
+10 個目標都套用前置驗證原則（grep `src/app` + read SSR page fetch mode）後的分類：
 
-**🚧 Batch 3 — 其餘 globals + 公開 collections（TODO，10 檔）**
-- 5 globals: `CRMSettings`, `SegmentationSettings`, `MarketingAutomationSettings`, `InvoiceSettings`, `GameSettings`
-- 5 collections: `BlogPosts`, `Pages`, `UGCPosts`, `MembershipTiers`, `SubscriptionPlans`
+| # | 目標 | SSR 引用 | 決策 | 原因 |
+|---|---|---|---|---|
+| 1 | `BlogPosts` | `/blog`、`/blog/[slug]`、`/`（home 穿搭誌）全走 `getPayload().find()` | ✅ 加 hook | 真實 SSR consumer；slug-aware（`revalidateBlog(slug)` 含 prevSlug rename 路徑） |
+| 2 | `Pages` | `/pages/[slug]` 走 `getPayload().find()` | ✅ 加 hook | 真實 SSR consumer；slug-aware（`revalidateCustomPage(slug)` 含 prevSlug rename 路徑） |
+| 3 | `UGCPosts` | 只有 `/api/v1/ugc` + `gameActions.ts` ；home 的 `<UGCGallery>` 是 `'use client'` 靠該 API | ❌ 跳過 | hook 無法 invalidate client fetch；沒有 SSR consumer |
+| 4 | `MembershipTiers` | 只有 `/api/crm/*` API routes 引用 | ❌ 跳過 | Phase 5.5 Batch A 正在接通 `/membership-benefits`；**屆時同 commit 補 hook** |
+| 5 | `SubscriptionPlans` | 全站零引用 | ❌ 跳過 | 沒有 consumer |
+| 6 | `CRMSettings` | `src/app` 零引用 | ❌ 跳過 | 沒有 SSR consumer |
+| 7 | `SegmentationSettings` | `src/app` 零引用 | ❌ 跳過 | 沒有 SSR consumer |
+| 8 | `MarketingAutomationSettings` | `src/app` 零引用 | ❌ 跳過 | 沒有 SSR consumer |
+| 9 | `InvoiceSettings` | `src/app` 零引用 | ❌ 跳過 | 沒有 SSR consumer |
+| 10 | `GameSettings` | `src/app` 零引用 | ❌ 跳過 | 沒有 SSR consumer |
+
+**加 hook 檔案**：
+- `src/collections/BlogPosts.ts` — `revalidateBlog(slug)` helper（paths: `/`, `/blog`, `/blog/[slug]`；tag: `blog-posts`），`afterChange` + `afterDelete` 含 prevSlug 處理
+- `src/collections/Pages.ts` — `revalidateCustomPage(slug)` helper（paths: `/pages/[slug]`；tag: `pages`），`afterChange` + `afterDelete` 含 prevSlug 處理
+
+**驗證**：preview server 編譯 `/blog` (621ms) + `/pages/[slug]` (1036ms) 成功，GET 200 無 TS / import error。
+
+**Phase 5.1 整體進度**：
+- ✅ Batch 1：6 檔（公開 globals）
+- ⏸️ Batch 2：4 檔跳過（等 Phase 5.5 完成）
+- ✅ Batch 3：2/10 檔加 hook（BlogPosts、Pages），8 檔跳過（NOP）
+- 📝 **未來再做**：MembershipTiers hook 等 Phase 5.5 Batch A 接通前台後同 commit 補；其他 7 個跳過目標等相關前台接通再補
 
 **刻意不加 hook 的 collections**（純後台 / log / 私有資料）：
 Users, Exchanges, Refunds, Invoices, CreditScoreHistory, PointsTransactions, PointsRedemptions, MemberSegments, ConciergeServiceRequests, CustomerServiceTickets, MarketingCampaigns, MessageTemplates, ABTests, MarketingExecutionLogs, FestivalTemplates, BirthdayCampaigns, AutomationJourneys, AutomationLogs, MiniGameRecords, CardBattles, GameLeaderboard, ShippingMethods, Affiliates

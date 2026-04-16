@@ -1,6 +1,15 @@
 import type { CollectionConfig, Block } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
+import { safeRevalidate } from '../lib/revalidate'
+
+// SSR consumer (as of Phase 5.1 Batch 3, 2026-04-16):
+//   - /pages/[slug]  (src/app/(frontend)/pages/[slug]/page.tsx) — uses getPayload().find()
+// Full-route cache is invalidated via revalidatePath.
+function revalidateCustomPage(slug?: string | null) {
+  if (!slug) return
+  safeRevalidate([`/pages/${slug}`], ['pages'])
+}
 
 /* ================================================================
    Block 定義 — 活動一頁式網頁的模組化 Section Builder
@@ -210,6 +219,24 @@ export const Pages: CollectionConfig = {
     create: isAdmin,
     update: isAdmin,
     delete: isAdmin,
+  },
+  hooks: {
+    afterChange: [
+      ({ doc, previousDoc }) => {
+        const slug = (doc as Record<string, unknown>)?.slug as string | undefined
+        const prevSlug = (previousDoc as Record<string, unknown> | undefined)?.slug as
+          | string
+          | undefined
+        revalidateCustomPage(slug)
+        if (prevSlug && prevSlug !== slug) revalidateCustomPage(prevSlug)
+      },
+    ],
+    afterDelete: [
+      ({ doc }) => {
+        const slug = (doc as Record<string, unknown>)?.slug as string | undefined
+        revalidateCustomPage(slug)
+      },
+    ],
   },
   fields: [
     {

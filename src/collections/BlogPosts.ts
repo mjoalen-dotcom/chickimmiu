@@ -1,6 +1,18 @@
 import type { CollectionConfig } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
+import { safeRevalidate } from '../lib/revalidate'
+
+// SSR consumers (as of Phase 5.1 Batch 3, 2026-04-16):
+//   - /blog                  (src/app/(frontend)/blog/page.tsx)
+//   - /blog/[slug]           (src/app/(frontend)/blog/[slug]/page.tsx)
+//   - /                      (home style journal section in src/app/(frontend)/page.tsx)
+// All use `getPayload().find()`; full-route cache is invalidated via revalidatePath.
+function revalidateBlog(slug?: string | null) {
+  const paths = ['/', '/blog']
+  if (slug) paths.push(`/blog/${slug}`)
+  safeRevalidate(paths, ['blog-posts'])
+}
 
 export const BlogPosts: CollectionConfig = {
   slug: 'blog-posts',
@@ -18,6 +30,24 @@ export const BlogPosts: CollectionConfig = {
     create: isAdmin,
     update: isAdmin,
     delete: isAdmin,
+  },
+  hooks: {
+    afterChange: [
+      ({ doc, previousDoc }) => {
+        const slug = (doc as Record<string, unknown>)?.slug as string | undefined
+        const prevSlug = (previousDoc as Record<string, unknown> | undefined)?.slug as
+          | string
+          | undefined
+        revalidateBlog(slug)
+        if (prevSlug && prevSlug !== slug) revalidateBlog(prevSlug)
+      },
+    ],
+    afterDelete: [
+      ({ doc }) => {
+        const slug = (doc as Record<string, unknown>)?.slug as string | undefined
+        revalidateBlog(slug)
+      },
+    ],
   },
   fields: [
     {
