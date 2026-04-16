@@ -58,28 +58,35 @@
 
 剩下要做：無。若後台 UI 仍顯示錯誤，清瀏覽器 cache / hard reload 即可。
 
-### 🟡 P2：Git divergence 未解（diverged state）
-- **Local 6 ahead**（本次對話 commit `cfe26ba` 之後；原 git status snapshot 顯示 3 ahead 不完整）:
-  - `cfe26ba fix(phase5): resolve cart/wishlist hydration mismatch via skipHydration` ← 本對話新增
-  - `16dfa4f docs(handoff): add Cloudflare Tunnel deployment architecture + handoff discipline`
-  - `c542786 feat(phase5.1): add revalidate hooks to 6 page-level globals`
-  - `b2374ba fix(policy): render richContent (images/video) on terms + privacy-policy`
-  - `c98919a fix: return policy 7->14 days + HomepageSettings validation + Phase 5 plan`
-  - `3b80ee0 feat(phase4): PDP field alignment + RichText upload support`
-  - **建議用 `git log --oneline origin/main..HEAD` 確認實際清單，不要依賴此文件**
-- **Remote 4 ahead**（全是 Vercel 部署修正，可能已不相關）:
-  - `4a99a25 fix: remove duplicate content in HeroCarousel.tsx causing build failure`
-  - `421a405 fix: HeroCarousel fallback images + total count when no CMS banners`
-  - `55d8aa0 Add libsql + @libsql/client deps and onlyBuiltDependencies for Vercel`
-  - `71cd250 Fix libsql module not found on Vercel - add serverExternalPackages`
+### 🟡 P2：Git divergence 未解（2026-04-16 偵察完，決策=暫不 push）
 
-**建議處理順序**：
-1. `git fetch`（不 merge）
-2. `git log -p origin/main..HEAD` 和 `git log -p HEAD..origin/main` 比對兩邊
-3. 本地 `next.config.mjs` (M) 和 `package.json` (M) 檢查是否已含遠端 Vercel fix 的等價內容
-4. 決定策略：`rebase` / `merge` / 直接 force-with-lease push（**需要使用者授權**）
+**現況**（`git fetch` 已跑過）：
+- Local **23 ahead**（Phase 4 + Phase 5.1~5.5 全部 commits；用 `git log --oneline origin/main..HEAD` 查即時數字）
+- Origin **4 ahead**
 
-⚠️ **重要**：遠端那 4 個 Vercel commits 是「從 Vercel 部署策略遺留」。既然現已改走 Cloudflare Tunnel + 本機 dev server，那些 commits 可能技術上仍然無害但概念上不再相關。
+**Origin 4 commits 逐一分析**（全是 Vercel 時期遺留）：
+
+| Commit | 內容 | 本地等價? | 風險 |
+|---|---|---|---|
+| `71cd250 Fix libsql module not found on Vercel` | `next.config.mjs` 加 `serverExternalPackages: ['libsql', '@libsql/client']` | ✅ 本地 working copy 已含該行（未 commit） | 無 |
+| `55d8aa0 Add libsql + @libsql/client deps ... for Vercel` | `package.json` 加 libsql deps + onlyBuiltDependencies | ✅ 本地 working copy 已含全部 | 無 |
+| `421a405 fix: HeroCarousel fallback images ...` | 重寫 `src/components/home/HeroCarousel.tsx`（+246 行） | 本地同檔 M 狀態但不同內容 | 低（本地版本應該較新） |
+| `4a99a25 fix: remove duplicate content in HeroCarousel.tsx` | **破壞性 rename**：`src/components/home/HeroCarousel.tsx` → `HeroCarousel.tsx`（移到 repo root），刪 243 行 | 本地沒這個 rename | 🔥 **高**：會打壞 Next.js import |
+
+**結論**：origin 前 2 個 commit 的技術內容已在本地、後 2 個（特別是 `4a99a25`）絕對不能 merge。
+
+**三個可行策略**：
+- **A) `git push --force-with-lease origin main`** — 放棄 origin 4 commits，本地 23 commits 成為唯一真相。簡單、乾淨。風險：origin reflog 上那 4 commits 消失（本地 reflog 還留著）。需使用者親自下指令。
+- **B) 暫不處理**（**本次對話選這個**）— 本地繼續 commit、不推遠端、未來再整盤處理。適合想先完成 P3/P4 再一次解決。
+- **C) Merge/rebase** — 不推薦。`4a99a25` rename 會立刻炸 HeroCarousel import。Conflict 多、收益低。
+
+**為什麼選 B**（2026-04-16 本次對話）：P3 DEPLOYMENT.md 重寫 + P4 untracked 檔分批 commit 會再產生數個 commit，等這些都進本地之後再決定是否 force-push，比現在推更完整。
+
+**未來執行 A（force push）前必做**：
+1. 本地 working copy 清到乾淨（所有改動都 commit）
+2. `git log --oneline origin/main..HEAD` 最終確認 commit 清單
+3. 跑 `pnpm dev` smoke test 幾條主要路由 200
+4. 使用者親自下 `git push --force-with-lease origin main`（不要讓 Claude 做）
 
 ### 🟢 P3：DEPLOYMENT.md 與實際架構嚴重不符
 **問題**：
