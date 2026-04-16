@@ -2,13 +2,69 @@
 
 > 臨時交接文件，Phase 4 完成後可刪除（或加進 .gitignore）。
 > 用途：跨對話傳遞任務脈絡，避免重新解釋。
-> **最後更新**: 2026-04-16 — Task 1 + Task 2 已完成並 commit，Task 3 待做（開新對話執行）
+> **最後更新**: 2026-04-16 — Phase 4 完成、Phase 5.1 Batch 1 完成、加入 Cloudflare Tunnel 部署事實
+
+---
+
+## 🛑 每個 Phase Claude 開場必讀 + 結尾必做
+
+### 開場必讀（依序）
+1. 本檔案（尤其「部署架構」和你負責的 Phase section）
+2. `SITE_MAP.md`
+3. `MEMORY.md`（`.claude/` 的用戶偏好與規則）
+4. 與你 Phase 直接相關的 source file
+
+### 結尾必做（不可省略）
+每個 Phase Claude 結束一個 batch 或 phase 前，**必須**：
+1. 更新本檔案對應 section：把 🚧 TODO 改成 ✅ DONE，或加入「進行中的發現」
+2. 若發現新事實（架構、風險、陷阱），加進「架構關鍵事實」section
+3. Commit 時把 `PHASE4_HANDOFF.md` 一起 stage 進去（單一 commit 包含 code + handoff 更新）
+4. 在 commit message 註明「updates PHASE4_HANDOFF.md」
+
+**違反後果**：下個 Claude 不知道你做到哪、會重複盤點、使用者會重覆解釋一樣的背景。
+
+---
+
+## 🏗️ 部署架構（2026-04-16 發現，關鍵事實）
+
+**`testshop.ckmu.co` 不是雲端部署，而是把本機電腦透過 Cloudflare Tunnel 暴露出去。**
+
+| 項目 | 實際狀態 |
+|---|---|
+| Prod host | 使用者本機電腦（Windows） |
+| Prod URL | `https://testshop.ckmu.co` |
+| Tunnel 軟體 | `cloudflared`（已裝在 `C:\Program Files (x86)\cloudflared\`） |
+| Tunnel 憑證 | `C:\Users\mjoal\.cloudflared\49879c4b-691b-4698-b48b-f6a990055494.json` |
+| Tunnel 設定 | `C:\Users\mjoal\.cloudflared\config.yml` |
+| Tunnel 路由到 | `http://localhost:3001`（Next.js dev / start server） |
+| Git remote | `github.com/mjoalen-dotcom/chickimmiu.git` — **只是備份用，沒接 auto-deploy** |
+| Prod DB | 尚未確認（Phase 5.4 要查 `.env` 的 `DATABASE_URI`，可能是 Turso 或本機 SQLite） |
+
+**重要推論：**
+- 「testshop.ckmu.co Host Error」的真實原因 = 本機 dev server 死掉 → tunnel 找不到 listener → CF 回 Host Error
+- **不需要「部署」任何東西** — git commit 不會觸發任何外部 build/deploy
+- Prod 要更新 = 本機 dev/start server 持續跑 + tunnel 持續跑，就自動反映最新 code
+- Push 到 GitHub 不影響 prod 內容（GitHub 只是備份）
+
+**歷史痕跡（確認之後不要清除）：**
+- `next.config.mjs` 有 `serverExternalPackages: ['libsql', '@libsql/client']` — Vercel 時期加的，但對 Turso runtime 仍然需要，**不要刪**
+- `package.json` 有 `libsql` / `@libsql/client` 依賴 — 如果 prod DB 是 Turso 就需要，**不要刪**
+- commit `55d8aa0` / `71cd250` 提到 Vercel — **不要 rewrite history**
+- `DEPLOYMENT.md` 有舊 Vercel 章節 — **Phase 5.4 負責更新**，其他 Phase 不動
+
+**絕對不要做：**
+- ❌ `git pull/push/rebase/reset` —— local 與 origin/main 已 diverged（local 多 3 commits、origin 多 4 commits）
+- ❌ 改 `.claude/launch.json`（已配成 `next dev`，未 tracked）
+- ❌ 清 Vercel / libsql 相關 code 或 deps
+- ❌ rewrite git history
+
+---
 
 ## 專案
 
 - 路徑: `C:\Users\mjoal\ally-site\chickimmiu`
 - 技術: Payload CMS v3 + Next.js 15.4.11
-- Dev server: port 3001（`preview_start` with `chickimmiu-next`）
+- Dev server: port 3001（`preview_start` with `chickimmiu-next`，launch.json 已配 `next dev`）
 
 ## 目前進度
 
@@ -158,18 +214,63 @@ Users, Exchanges, Refunds, Invoices, CreditScoreHistory, PointsTransactions, Poi
 - 可能是時區 / 日期 bug
 - 檢查 hook 邏輯有沒有重複觸發
 
-#### 📌 Phase 5.4 — testshop.ckmu.co 部署問題
-使用者回報 prod 站顯示「Host Error」
-- 讀 `DEPLOYMENT.md`
-- 確認 build pipeline / 環境變數 / DATABASE_URI（Turso? 還是 SQLite?）
-- 本對話的改動尚未 deploy，prod 還是舊版
+#### 📌 Phase 5.4 — Cloudflare Tunnel 部署健檢
 
-### Phase 5 前置資訊
+**⚠️ 若 Prompt 4 跟這裡不一致，以本檔案為準**（Prompt 4 發出後才有以下新發現）。
 
-- 本機 dev server 已切成 `next dev`（launch.json 的 `runtimeArgs` 從 `["start", "-p", "3001"]` 改成 `["dev", "-p", "3001"]`）— 這個改動**不在 git 裡**（`.claude/launch.json` 未 tracked），是使用者本機配置
-- Production 用什麼 DB、怎麼 deploy 都還沒查清楚
-- 使用者 git branch 跟 origin/main 已經 diverged（本地多 2 commits、遠端多 4 commits），**要 push 之前先解決 divergence**
+**前置發現（2026-04-16，Phase 5.4 開工前已釐清）：**
+
+1. **`testshop.ckmu.co` 不是雲端部署** —— 是 Cloudflare Tunnel 指到本機 port 3001。**原 Prompt 4 假設「Vercel / VPS / Fly.io」都錯**，看本檔頂部「部署架構」section 的正確資訊。
+2. **「Host Error」真相**: 本機 dev server 被誤殺（前次對話刪了 `.next/` + 切 `next start`→`next dev` 時掛了）→ tunnel 找不到 listener → CF 回 Host Error。**不是 prod 掛了，是 tunnel target 空了。**
+3. **Git remote = GitHub 備份**（`github.com/mjoalen-dotcom/chickimmiu.git`），**沒接 auto-deploy**。push 不會觸發 prod 更新。
+4. **使用者本機 Phase 4 commits 已自動「上線」** —— 只要 dev server 一跑 + tunnel 一跑，testshop.ckmu.co 就會看到 `b2374ba` 的改動（richContent 圖片渲染、14 天鑑賞期、etc.）。
+5. **Cloudflared 已裝且已設定**：`C:\Program Files (x86)\cloudflared\cloudflared` + `C:\Users\mjoal\.cloudflared\config.yml` + tunnel ID `49879c4b-691b-4698-b48b-f6a990055494`。
+
+**Phase 5.4 真正要做的事：**
+
+| # | 任務 |
+|---|---|
+| 1 | 讀 `C:\Users\mjoal\.cloudflared\config.yml` 確認 tunnel 路由（是否真的指 `http://localhost:3001`） |
+| 2 | 讀 `.env` / `.env.example` 的 `DATABASE_URI` — 是本機 `file:./data/chickimmiu.db` 還是 Turso URL？ |
+| 3 | 跑 `tasklist \| findstr cloudflared` + `netstat -ano \| findstr :3001` 確認 tunnel / dev server 進程 |
+| 4 | 跑 `curl -I https://testshop.ckmu.co` 確認對外 200 |
+| 5 | 重寫 `DEPLOYMENT.md`：刪 Vercel 章節、加 tunnel 實際架構 + runbook（dev server 如何常駐、tunnel 如何自動啟動、斷線怎麼復原） |
+| 6 | 評估：是否該把 cloudflared + next dev 做成 Windows 服務，避免使用者登出後掛掉 |
+
+**絕對不要做：**
+- 不要 rewrite git history 清 Vercel commits（55d8aa0 / 71cd250）
+- 不要刪 `libsql` / `@libsql/client` deps
+- 不要動 `next.config.mjs` 的 `serverExternalPackages`
+- 不要 `git pull/push`（diverged 狀態，需使用者親自決定策略）
+- 不要動 `.claude/launch.json`（本機用，已配 `next dev`）
+
+**交付：**
+- DEPLOYMENT.md 更新版
+- 健檢報告：tunnel / dev server / prod DB 狀態
+- Runbook：開機自動啟動方案（Task Scheduler / NSSM / pm2-windows-service）
+- 在本檔 Phase 5.4 section 標記 `✅ DONE` 並寫進發現
+
+### Phase 5 前置資訊（共用）
+
+- 部署架構見本檔頂部「🏗️ 部署架構」section —— **所有 Phase 都要讀**
+- 本機 dev server 已切成 `next dev`（`.claude/launch.json` 未 tracked）
+- Git diverged（local 多 3 commits、origin 多 4 commits，**push 前先問使用者**）
+- Context 用量超過 60% 須主動提醒使用者（規則已存 MEMORY.md）
+
+### 交接紀律（不可省略）
+
+每個 Phase Claude 的對話結束前**必做**：
+
+1. **更新本檔**：把 Batch/Task 的 🚧 TODO 改成 ✅ DONE（附上 commit hash）
+2. **記錄新發現**：若發現新事實或陷阱，補進本檔相關 section
+3. **Commit handoff 更新**：`PHASE4_HANDOFF.md` 跟 code 改動**同一個 commit**（單次 commit 包含兩者），message 加 `(updates HANDOFF)`
+4. **若 Phase 未完**：明確寫「下一步要做什麼」讓下個 Claude 接得上
+
+**範例 commit message**：
+```
+feat(phase5.1-batch2): revalidate hooks for loyalty/referral globals (updates HANDOFF)
+```
 
 ### Phase 5 開場白範例
 
-> 接續 Phase 5.1 — revalidate 覆蓋率修復。讀 `PHASE4_HANDOFF.md` 的「Phase 5.1」section 和 `SITE_MAP.md`。為 15 個 globals + 缺少 hook 的 collections 補上 afterChange + afterDelete hook，對應 revalidatePath / revalidateTag。先列計畫給我看，我確認後再動手。
+> 接續 Phase 5.X。先讀 `PHASE4_HANDOFF.md` 頂部「部署架構」+ 你負責的 Phase section，然後讀 `SITE_MAP.md` + `MEMORY.md`。做完一個 batch 就更新本檔 + commit。遵守「交接紀律」four 步。
