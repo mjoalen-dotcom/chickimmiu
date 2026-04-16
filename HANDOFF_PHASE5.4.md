@@ -102,9 +102,74 @@ diff stat：`+204 / -111`（淨 +93 行，大幅補資訊）。
 
 **保留未動的既有內容**：追蹤事件驗證章節（GTM / Meta Pixel / GA4 / Google Ads）與部署架構無關，只調整範例網址為 `testshop.ckmu.co`。
 
-### 🟡 P4：untracked / modified 檔案分批 commit — 偵察完成，等下一對話動手
+### 🟡 P4：untracked / modified 檔案分批 commit — A/C/D-部分已被外部 commits 完成，剩 B/D-code/E/F
 
-**原以為是單純「分批 commit 遺留未 commit 改動」，實際探查後發現混雜三種完全不同性質的內容**（2026-04-16 本對話 P3 之後探查）：
+**⚠️ 重要 update（2026-04-16，本對話 P4 偵察 commit `6f4c004` 之後又出現變化）**：
+
+在本對話寫 P4 分類 HANDOFF 的同時，另一個 session（或使用者親手）已 push 了 3 個 commits 解掉大部分工作，origin/main 也同時更新（P2 divergence 自動解了）：
+- `0e11f04 feat(phase1): SizeCharts collection + migration + manual apply script` — **P4 Batch A 完成**
+- `cb74f85 feat(ipad-hardening): prevent iOS Safari white-screen from blocked storage APIs` — **P4 Batch C 完成**（diag/ + global-error.tsx + BootBeaconCleanup + layout.tsx 改動都被吸收）
+- `2e16460 chore: add missing daily-checkin migration + resetAdmin seed script` — **P4 Batch D 的 migration + resetAdmin.ts 完成**（但 Users.ts schema 欄位仍 M，schema 和 migration 不同步，下對話要確認）
+
+另外：
+- `origin/main` 現已是 `0b5695b`（P3 commit），原 P2 列的 4 個 Vercel-era commits 已從 origin 消失 → **P2 divergence 也自動解決**，不再需要 force-push
+- `src/endpoints/revalidateAll.ts` 似乎仍 untracked（未被 cb74f85 吸收）— 下對話確認是否要加入
+- 新增 untracked `src/seed/verifyPhase56Tz.ts` — Phase 5.6 timezone verify script
+
+**原分類 Batch A ~ F 更新後狀態**：
+
+| Batch | 狀態 | 備註 |
+|---|---|---|
+| A Phase 1 尺寸表 | ✅ DONE | `0e11f04` |
+| B Phase 4/5 Admin 工具 + Shopline 匯入 | 🚧 TODO | 3 admin components + 2 endpoints + xlsxParser + `importMap.js` (M) + `Products.ts` (M, 部分 diff 應屬於這批) |
+| C Phase 5.4 偵察產物 | ✅ DONE（部分） | `cb74f85` 吸收了 diag/global-error/BootBeacon/layout 改動。剩 `src/endpoints/revalidateAll.ts` 仍 untracked — 下對話確認去留 |
+| D Phase 5.6 daily check-in streak | 🟡 PART DONE | `2e16460` 吸收了 migration + resetAdmin.ts + migrations/index.ts。剩下：`Users.ts` +35 行 schema (M)、`gameEngine.ts` +152 行 (M)、`gameActions.ts` (M) + `api/games/route.ts` (M) + `verifyPhase56CheckIn.ts` (??) + `verifyPhase56Tz.ts` (??)。**⚠️ schema 欄位 (Users.ts) 和 migration (已 commit) 不同步** — 需確認 migration 已跑還是還沒跑；若已跑代表 dev auto-push 做過，Users.ts schema 要合併或 discard |
+| E 前台 UI 雜項 | 🚧 TODO | 12 個前台 M 檔 + `pnpm-lock.yaml` + `.claude/settings.local.json`（不應 commit） |
+| F PHASE5.5_PROMPT.md | 🚧 TODO | 一次性檔，下對話直接 `git rm` |
+
+**現在剩的 `git status` 具體內容**：
+
+Untracked：
+- `PHASE5.5_PROMPT.md`（Batch F）
+- `src/components/admin/ProductBulkActions.tsx` / `ShoplineXlsxImporter.tsx` / `VariantMatrixGenerator.tsx`（Batch B）
+- `src/endpoints/revalidateAll.ts` / `shoplineXlsxImport.ts`（B + C 邊角）
+- `src/lib/shopline/xlsxParser.ts`（Batch B）
+- `src/seed/verifyPhase56CheckIn.ts` / `verifyPhase56Tz.ts`（Batch D）
+
+Modified：
+- `src/collections/Users.ts` / `src/lib/games/gameEngine.ts` / `src/app/api/games/route.ts`（Batch D 尚未 commit 的 code side）
+- `src/collections/Products.ts` / `src/app/(payload)/admin/importMap.js`（Batch B 的 wire-up）
+- 前台 UI 12 檔（Batch E，需逐一看 diff）
+- `src/collections/Categories.ts` / `Media.ts`（Batch E 或可能是 Phase 1 尺寸表後續）
+- `PHASE4_HANDOFF.md`（HANDOFF 本身，持續更新）
+- `pnpm-lock.yaml`（跟 Phase 5 新 deps 有關）
+- `.claude/settings.local.json`（本機 preview 設定，不要 commit）
+
+#### 下對話推薦開場 prompt（已更新）
+
+```
+接續 Phase 5.4 P4 — untracked/modified 檔案分批 commit（A/C/D-部分已完成，剩 B/D-code/E/F）。
+先讀 HANDOFF_PHASE5.4.md 的 P4 section 最新狀態表。
+
+首要決策：Batch D Phase 5.6 code side 處理方式
+- Users.ts schema +35 行 vs migration 已 commit → schema/migration 不同步狀態要先確認
+- 如果 DB 已有 streak 欄位（2e16460 migration 跑過）→ Users.ts schema 應該 commit 起來讓 Payload type 生成正確
+- 如果還沒跑 migration → 要先跑再 commit schema
+
+決策後依序處理：
+1. Batch D code side（commit 所有 game streak server-side + Users schema）
+2. Batch B（admin 工具 + Shopline；注意 Products.ts 可能要拆 2-3 個 commit）
+3. Batch E（前台 UI 12 檔逐一看 diff，分群組 commit）
+4. Batch F（git rm PHASE5.5_PROMPT.md）
+5. 清理 `.claude/settings.local.json` 不納管（git update-index --skip-worktree 或 .gitignore）
+
+P2 divergence 已自動解決（origin 現已跟上），完成後可以直接 `git push` 而非 force-push。
+
+規則：
+- 不動 M 檔 semantic，只把狀態 commit 成 clean
+- 每 Batch 一個（或多個語義分組）commit
+- 每 Batch 完更新 HANDOFF P4 section 打勾
+```
 
 #### 五類內容分類（按處理順序建議）
 
