@@ -403,7 +403,7 @@ function ShoplineImportContent() {
           {parseResult && (
             <div style={{ marginTop: 16 }}>
               {/* Stats */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, marginBottom: 12 }}>
                 <StatCard label="商品數" value={parseResult.totalProducts} color="#C19A5B" />
                 <StatCard label="變體數" value={parseResult.totalVariants} color="#60a5fa" />
                 <StatCard label="警告" value={parseResult.warnings.length} color={parseResult.warnings.length > 0 ? '#fbbf24' : '#4ade80'} />
@@ -575,7 +575,7 @@ function ShoplineImportContent() {
 
           {/* Instructions */}
           {!parseResult && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginTop: 12 }}>
               <InstructionCard step={1} title="匯出 CSV" desc="Shopline 後台 → 商品管理 → 批量更新 → 匯出 CSV (UTF-8)" />
               <InstructionCard step={2} title="上傳解析" desc="將 CSV 拖放到上方區域，系統自動解析並預覽" />
               <InstructionCard step={3} title="確認匯入" desc="檢查結果、選擇商品、點擊匯入" />
@@ -683,7 +683,7 @@ function ProductTableRow({ product, displayIdx, isExpanded, isSelected, onToggle
         <tr>
           <td colSpan={9} style={{ padding: 0 }}>
             <div style={{ padding: 12, background: 'var(--theme-elevation-50, #1a1a1a)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, fontSize: 12, marginBottom: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, fontSize: 12, marginBottom: 8 }}>
                 <div><span style={{ color: '#888' }}>摘要：</span><br />{product.short_desc || '—'}</div>
                 <div><span style={{ color: '#888' }}>重量：</span><br />{product.weight_kg ? `${product.weight_kg} kg` : '—'}</div>
                 <div><span style={{ color: '#888' }}>SEO：</span><br /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{product.seo_title || '—'}</span></div>
@@ -885,7 +885,7 @@ function SingleProductForm({ categories }: { categories: { name: string; slug: s
           </button>
         </div>
         {variants.map((v, i) => (
-          <div key={i} style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr) auto', gap: 8, marginBottom: 8, alignItems: 'end' }}>
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr)) auto', gap: 8, marginBottom: 8, alignItems: 'end' }}>
             <div>
               <label style={{ display: 'block', fontSize: 10, color: '#888', marginBottom: 2 }}>顏色</label>
               <input value={v.color} onChange={(e) => updateVariant(i, 'color', e.target.value)} placeholder="黑色" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />

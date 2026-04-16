@@ -226,7 +226,7 @@ function ImageMigrationContent() {
   return (
     <div>
       {/* Summary Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginBottom: 16 }}>
         <div style={cardStyle}>
           <p style={{ fontSize: 11, color: '#888' }}>總商品數</p>
           <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--theme-text, #fff)' }}>{summary.total}</p>

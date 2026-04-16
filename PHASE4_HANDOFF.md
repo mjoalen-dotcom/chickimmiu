@@ -112,25 +112,30 @@ editor: lexicalEditor({
 
 ---
 
-## 🚧 Task 3 — 後台 CSS 爆版修復（TODO，下個對話做）
+## ✅ Task 3 — 後台 CSS 爆版修復（DONE 2026-04-16，Phase 5.6.1）
 
-**根本原因（已診斷完成）**: CSS Grid `1fr` 的 implicit minimum 是 `auto`（= min-content），長 SKU / 長顏色名會撐爆 grid child 寬度，連帶把父容器推寬，導致 Payload admin 的 `.css-n9qnu9` grid 被 content 推得錯位遮字。
+**根本原因**: CSS Grid `1fr` 的 implicit minimum 是 `auto`（= min-content），長 SKU / 長顏色名會撐爆 grid child 寬度，連帶把父容器推寬，導致 Payload admin 的 `.css-n9qnu9` grid 被 content 推得錯位遮字。
 
-**修復方式**: 把以下 5 處的 `1fr` 改成 `minmax(0, 1fr)`
+**修復方式（已執行）**: 以下 5 處 `1fr` → `minmax(0, 1fr)`
 
-| # | 檔案 | Line | 原 grid | 改成 |
-|---|---|---|---|---|
-| 1 | `src/components/admin/ShoplineImportPanel.tsx` | 888 | `repeat(5, 1fr) auto` | `repeat(5, minmax(0, 1fr)) auto` |
-| 2 | `src/components/admin/ShoplineImportPanel.tsx` | 406 | `repeat(4, 1fr)` | `repeat(4, minmax(0, 1fr))` |
-| 3 | `src/components/admin/ShoplineImportPanel.tsx` | 578 | `repeat(3, 1fr)` | `repeat(3, minmax(0, 1fr))` |
-| 4 | `src/components/admin/ShoplineImportPanel.tsx` | 686 | `repeat(4, 1fr)` | `repeat(4, minmax(0, 1fr))` |
-| 5 | `src/components/admin/ImageMigrationPanel.tsx` | 229 | `repeat(3, 1fr)` | `repeat(3, minmax(0, 1fr))` |
+| # | 檔案 | Line | 改動 |
+|---|---|---|---|
+| 1 | `src/components/admin/ShoplineImportPanel.tsx` | 888 | `repeat(5, minmax(0, 1fr)) auto` — **6 欄變體 grid（顏色/尺寸/價格/庫存/SKU/移除），SKU 欄最容易長，最關鍵** |
+| 2 | `src/components/admin/ShoplineImportPanel.tsx` | 406 | `repeat(4, minmax(0, 1fr))` — 解析結果 4 格 StatCard |
+| 3 | `src/components/admin/ShoplineImportPanel.tsx` | 578 | `repeat(3, minmax(0, 1fr))` — 3 step InstructionCard |
+| 4 | `src/components/admin/ShoplineImportPanel.tsx` | 686 | `repeat(4, minmax(0, 1fr))` — 展開列的 4 格 metadata（摘要/重量/SEO/…） |
+| 5 | `src/components/admin/ImageMigrationPanel.tsx` | 229 | `repeat(3, minmax(0, 1fr))` — Summary Stats 3 格 |
 
-最關鍵的是 **#1（line 888）** — 那是 6 欄變體 grid（顏色/尺寸/價格/庫存/SKU/移除），SKU 欄最容易長。
+**驗證**:
+- `preview_start chickimmiu-next` → `/admin/collections/products` GET 200（4823 modules 編譯通過，含 ShoplineImportPanel + ImageMigrationPanel）
+- Grep `repeat\([0-9]+,\s*1fr\)` 在 `src/components/admin` 無殘留
+- 視覺驗證由使用者自己在 `/admin/collections/products` 展開 Shopline Import Panel 填長 SKU（例如 `SSM-97970160-黑色-XXXL`）觀察
 
-**不要**直接寫 custom CSS 去蓋 `.css-n9qnu9`，那是 Payload 自己的 hashed class，build 後會變。從根源修 grid 才是正解。
+**Commit**: `fix(admin): prevent grid blowout from long SKUs (updates HANDOFF)` — 本對話單一 commit，含 2 code 檔 + PHASE4_HANDOFF.md
 
-**驗證方式**: 改完後打開後台 `/admin/collections/products`，展開 Shopline Import Panel 填幾個長 SKU（例如 `SSM-97970160-黑色-XXXL`），觀察整個面板不再爆版。
+**刻意不做**:
+- 沒寫 custom CSS 蓋 `.css-n9qnu9`（Payload 自己的 hashed class，build 後會變）—— 從根源修 grid 才是正解
+- 沒碰 Phase 5.4 P4 的 41 個 untracked/modified（另一條工作線）
 
 ---
 
@@ -481,6 +486,81 @@ if (!user) redirect('/login?redirect=/account/X')
 - `expiringPoints` 顯示為 0（完整 FIFO/LIFO 點數到期算法另做）
 - `/account/referrals` 的 `totalReward` 用 `completedReferrals × (signupReward + purchaseReward)` 近似
 - `UGC_TESTIMONIALS` 在 /account/points 維持硬寫（PointRedemptionSettings.ugcTestimonials 目前只有 enabled/maxDisplay）
+
+#### 📌 Phase 5.6 — DailyCheckIn server-side streak + gameEngine TZ fix ✅ DONE (2026-04-16 對話 5)
+
+**scope 決策（對話開頭 Q&A）**：
+- Q1 Orphan 處理 → **B：升級 demo 接 API** 的**子集**：本批只做 server 端（Q1 選 B 原本含 UI，但 Q3 選「只修 server + schema, UI 不動」→ 最後 scope = B server-only）
+- Q2 Streak 規格 → **保留 total + 重設 consecutive**
+- Q3 UTC bug → **本批一起修**
+
+UI (`DailyCheckinGame.tsx` 純 demo) 本批**完全不動**。使用者前台體驗維持現狀，下批才接 UI。
+
+**實作清單**：
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | `src/collections/Users.ts` | 新增 3 欄位 row：`totalCheckIns` / `consecutiveCheckIns` / `lastCheckInDate`（都 `access.update = isAdminFieldLevel`） |
+| 2 | `src/migrations/20260416_193835_add_daily_checkin_streak.ts` | ALTER TABLE 加 3 欄位（`total_check_ins` INTEGER DEFAULT 0 / `consecutive_check_ins` INTEGER DEFAULT 0 / `last_check_in_date` TEXT）。**冪等**：用 PRAGMA table_info 判斷，dev-pushed 時 skip |
+| 3 | `src/migrations/index.ts` | 註冊新 migration |
+| 4 | `src/lib/games/gameEngine.ts` | 新增 `getTpeDateString()` / `getTpeWeeklyKey()` / `getTpeMonthlyKey()` 使用 `Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' })`。改寫 `getStartOfDay()` / `getEndOfDay()` 用 TPE。`updateLeaderboard` 的 `dailyKey` / `weeklyKey` / `monthlyKey` 改用 TPE helpers（**修前是 UTC，台灣 8 點以後 dailyKey 會切到隔天**） |
+| 5 | `src/lib/games/gameEngine.ts` | 新增 `computeCheckinOutcome()` 純函式 + `performDailyCheckin()` async（分工：pure decision vs DB side-effects） |
+| 6 | `src/app/api/games/route.ts` | `action: 'checkin'` 改呼叫 `performDailyCheckin`，response 多帶 `data.streak` |
+| 7 | `src/seed/verifyPhase56CheckIn.ts` / `verifyPhase56Tz.ts` | 純邏輯驗證腳本（8 case streak + 5 case TZ，全 pass） |
+
+**修復前的 UTC bug 細節**（現場考古）：
+```ts
+// BEFORE — gameEngine.ts L108-118
+function getStartOfDay(): string {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  return start.toISOString() // ← 用 server 本機時區
+}
+
+// BEFORE — updateLeaderboard L392
+const dailyKey = now.toISOString().split('T')[0] // ← 強制 UTC
+// UTC 16:00 = Taipei 00:00 次日 → dailyKey 會切到昨天（台灣視角）
+```
+
+**本機在 Asia/Taipei 目前沒炸**（Phase 5.4 的 Cloudflare Tunnel 架構 = 本機就是 prod），但：
+- `updateLeaderboard` 的 `dailyKey` 用 `toISOString()` 強制 UTC，**每天 UTC 16:00 開始 = Taipei 00:00 隔天**，Leaderboard `daily_` 紀錄會被歸到「前一天」的 periodKey（實際上 bug 存在但從 leaderboard UI 看不出來——對 consistency 無感）
+- 未來搬雲端（e.g. Vercel US region）會更明顯
+
+**Streak 邏輯決策（computeCheckinOutcome）**：
+```
+first time          (lastDate === '')           → consec=1, total=1
+same day            (lastDate === todayTpe)     → throw '今日已簽到'
+next day            (dayDiff === 1)             → consec=prev+1, total=prev+1
+gap >= 2 days       (dayDiff >= 2)              → consec=1 RESET, total=prev+1, streakReset=true
+7 th consecutive    (newConsec === 7)           → streakBonus=true, prize=50
+else                                            → prize=10
+```
+
+**決策依據（針對 Q2 的「保留總數 + 重設 consecutive」）**：
+- `totalCheckIns` 永遠累加（user 歷史總貢獻，對忠誠度有意義）
+- `consecutiveCheckIns` 中斷就 reset 為 1（算當日）
+- `streakReset: boolean` 回傳給 API，未來 UI 可顯示「連續中斷了」訊息
+- 7 天獎勵僅在 `consec === 7` 的那一天觸發（consec >= 8 不會重複獎）
+
+**驗證結果**（`verifyPhase56CheckIn.ts` / `verifyPhase56Tz.ts`）：
+- 8 case streak 全 pass（first time / same day / next day / gap=2 / gap=3 / 7 th consec / 8 th consec / format）
+- 5 case TZ 全 pass（UTC 16:00 / 15:59 / 00:00 / 年初 / 跨年）
+
+**DB schema 套用方式**（重要）：
+- SQLite `ALTER TABLE users ADD COLUMN ...` 已直接 apply 到 `data/chickimmiu.db`（via @libsql/client，避開 Payload dev-push 的 `users_avatar_idx` conflict bug）
+- Migration file 寫成冪等（PRAGMA 判斷），之後 `payload migrate` 跑到會 skip
+- `payload_migrations` table 尚未寫入 `20260416_193835_add_daily_checkin_streak` 紀錄（跟 Phase 5.5 的 `20260416_140000_add_gender_and_male_tier_name` 一樣：dev push 了但 migration 表未記）→ 未來 prod deploy 時再一起處理
+
+**下批要做（Phase 5.7 候選）**：
+1. UI 接入：`games/DailyCheckinGame.tsx` 呼叫 `POST /api/games { action: 'checkin' }`，消費 `data.streak`，把 `streak` state 從 `useState(3)` demo 改成 real value。
+2. Streak UI enhancements：`streakReset=true` 顯示「連續中斷，從 Day 1 重新開始」；`streakBonus=true` 顯示祝賀動畫。
+3. 其他 3 個 orphan gamification/*（SpinWheel / ScratchCard / FashionChallenge）—— 同樣決定是否接 API 或刪掉。
+4. Phase 5.5 的 `20260416_140000_add_gender_and_male_tier_name` migration 在 prod deploy 前要改成冪等，否則會 `duplicate column name gender` 報錯。
+
+**本 Phase 不做（明確 out-of-scope）**：
+- `/games/*` UI（Q3 明確）
+- 3 個其他 orphan gamification/* 元件
+- `gameEngine.ts` 的 weekly `getDay()` 仍用 UTC 換算 TPE（用 `Date(todayTpe + "T00:00:00Z").getUTCDay()`）—— 輸出對，但邏輯路徑混合；留待大重構一起處理。
 
 ---
 
