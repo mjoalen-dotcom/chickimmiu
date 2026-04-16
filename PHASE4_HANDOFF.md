@@ -350,7 +350,7 @@ const newDays = (state.lastDate && daysSinceLastCheckIn > 1)
 **進度 (2026-04-16)**：
 - ✅ Commit 0 — schema 擴充（Users.gender + MembershipTiers.frontNameMale + PointsRedemptions type 加 styling/charity/mystery + migration `20260416_140000_add_gender_and_male_tier_name`）
 - ✅ Batch A — membership-benefits 接通 MembershipTiers collection（SSR 驗證通過，6 tier 正確讀出）
-- 🚧 Batch B — account/points 接通 LoyaltySettings + PointRedemptionSettings + PointsRedemptions + PointsTransactions + user
+- ✅ Batch B — account/points 接通 5 source（未登入正確 redirect，SSR 清淨）
 - 🚧 Batch C — account/referrals 接通 ReferralSettings + user referral data
 
 **Batch A 接通欄位對照**（`/membership-benefits`）：
@@ -367,6 +367,26 @@ const newDays = (state.lastDate && daysSinceLastCheckIn > 1)
 | 生日禮（顯示「專屬好禮」） | `Boolean(birthdayGift)` |
 | 專屬優惠券 | `exclusiveCouponEnabled` |
 | Tailwind 顏色 | 前端 lookup map by `slug`（不進 DB） |
+
+**Batch B 接通欄位對照**（`/account/points`）：
+| UI | Source |
+|---|---|
+| 會員點數 | `user.points` |
+| 購物金 | `user.shoppingCredit` |
+| 當前等級顯示名 | `user.memberTier.frontName / frontNameMale`（gender-aware） |
+| 當前倍率 | `user.memberTier.pointsMultiplier` |
+| 即將到期點數 | **先 0**（TODO：FIFO/LIFO aggregation） |
+| 商城商品 | `points-redemptions` where `isActive=true` sort `sortOrder` |
+| Badge（限量/熱門/驚喜/…） | 依 `point-redemption-settings.scarcity` 動態計算 |
+| 紀錄 | `points-transactions` where `user=self` sort `-createdAt` limit 20 |
+| 等級權益表 | `membership-tiers` sort `level` |
+| UGC 見證 | 前端硬寫（schema 未擴 ugcTestimonials.items） |
+
+**Auth 模式**（`/account/**` 共用）：
+```ts
+const { user } = await payload.auth({ headers: await nextHeaders() })
+if (!user) redirect('/login?redirect=/account/X')
+```
 
 **關鍵設計決策**：
 - 男性稱號：`MembershipTiers.frontNameMale` 獨立欄位，綁定 level / slug（後台隨時可改名，不只是文字替換）
