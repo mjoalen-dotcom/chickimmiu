@@ -4,6 +4,14 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { ProductDetailClient } from './ProductDetailClient'
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/seo/JsonLd'
+import { normalizeMediaUrl } from '@/lib/media-url'
+
+/**
+ * 強制每次 request 都重新 render，讓後台編輯可以立刻在前台看到。
+ * Products collection 的 afterChange hook 會觸發 revalidatePath，
+ * 所以即使之後改為 ISR (revalidate = 60)，後台編輯也會即時反映。
+ */
+export const dynamic = 'force-dynamic'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -26,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     const seo = product.seo as unknown as Record<string, unknown> | undefined
     const images = product.images as { image?: { url?: string } }[] | undefined
-    const firstImage = images?.[0]?.image?.url
+    const firstImage = normalizeMediaUrl(images?.[0]?.image?.url)
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://chickimmiu.com'
 
     return {
@@ -82,6 +90,26 @@ export default async function ProductDetailPage({ params }: Props) {
           })
           relatedProducts = related.docs as unknown as Record<string, unknown>[]
         }
+        // Fallback: if same-category lookup didn't return enough, top up
+        // with the most-recent other products so 「同樣的人也買了」 is always
+        // populated instead of disappearing on small categories.
+        if (relatedProducts.length < 4) {
+          const fallback = await payload.find({
+            collection: 'products',
+            where: { id: { not_equals: product.id } },
+            sort: '-createdAt',
+            limit: 4,
+            depth: 2,
+          })
+          const seen = new Set(relatedProducts.map((p) => p.id))
+          for (const doc of fallback.docs as unknown as Record<string, unknown>[]) {
+            if (relatedProducts.length >= 4) break
+            if (!seen.has(doc.id)) {
+              relatedProducts.push(doc)
+              seen.add(doc.id)
+            }
+          }
+        }
       }
     } catch {
       // DB not ready
@@ -91,7 +119,7 @@ export default async function ProductDetailPage({ params }: Props) {
   if (!product) notFound()
 
   const images = product.images as { image?: { url?: string } }[] | undefined
-  const firstImage = images?.[0]?.image?.url
+  const firstImage = normalizeMediaUrl(images?.[0]?.image?.url)
 
   return (
     <>

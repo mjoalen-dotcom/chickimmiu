@@ -1,5 +1,5 @@
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
-import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { lexicalEditor, UploadFeature } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
@@ -10,6 +10,7 @@ import { Media } from './collections/Media'
 import { Categories } from './collections/Categories'
 import { MembershipTiers } from './collections/MembershipTiers'
 import { Products } from './collections/Products'
+import { SizeCharts } from './collections/SizeCharts'
 import { Orders } from './collections/Orders'
 import { Affiliates } from './collections/Affiliates'
 import { BlogPosts } from './collections/BlogPosts'
@@ -110,6 +111,7 @@ export default buildConfig({
     Users,
     Media,
     Categories,
+    SizeCharts,
     MembershipTiers,
     SubscriptionPlans,
     Products,
@@ -143,7 +145,12 @@ export default buildConfig({
     GameLeaderboard,
   ],
   globals: [GlobalSettings, LoyaltySettings, ReferralSettings, PointRedemptionSettings, RecommendationSettings, CRMSettings, SegmentationSettings, MarketingAutomationSettings, InvoiceSettings, GameSettings, HomepageSettings, AboutPageSettings, FAQPageSettings, PolicyPagesSettings, NavigationSettings],
-  editor: lexicalEditor(),
+  editor: lexicalEditor({
+    features: ({ defaultFeatures }) => [
+      ...defaultFeatures,
+      UploadFeature({ collections: { media: { fields: [] } } }),
+    ],
+  }),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),

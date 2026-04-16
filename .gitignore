@@ -53,3 +53,10 @@ src/payload-types.ts
 
 # OS
 Thumbs.db
+
+# local tmp / debug artifacts (investigation scratch files)
+.tmp-*
+.tmp-crawl/
+
+# handoff docs (optional — remove this line if you want PHASE*_HANDOFF.md tracked)
+# PHASE*_HANDOFF.md

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { normalizeMediaUrl } from '@/lib/media-url'
 import {
   Heart,
   ShoppingBag,
@@ -95,6 +96,51 @@ function LexicalNodeRenderer({ node }: { node: LexicalNode }) {
       )
     case 'linebreak':
       return <br />
+    case 'upload': {
+      // Lexical upload node — { type, relationTo, value: { id, url, mimeType, filename, alt, width, height } }
+      const value = node.value as
+        | {
+            id?: string | number
+            url?: string
+            mimeType?: string
+            filename?: string
+            alt?: string
+            width?: number
+            height?: number
+          }
+        | undefined
+      if (!value) return null
+      const src = normalizeMediaUrl(value.url)
+      if (!src) return null
+      const isVideo = Boolean(value.mimeType?.startsWith('video/'))
+      if (isVideo) {
+        return (
+          <div className="my-4 rounded-lg overflow-hidden">
+            <video
+              src={src}
+              controls
+              playsInline
+              className="w-full h-auto"
+              preload="metadata"
+            />
+          </div>
+        )
+      }
+      const w = value.width || 1200
+      const h = value.height || 800
+      return (
+        <div className="my-4 rounded-lg overflow-hidden">
+          <Image
+            src={src}
+            alt={value.alt || value.filename || ''}
+            width={w}
+            height={h}
+            className="w-full h-auto"
+            sizes="(max-width: 768px) 100vw, 768px"
+          />
+        </div>
+      )
+    }
     default:
       return <>{children}</>
   }
@@ -113,7 +159,12 @@ type TabId = (typeof TABS)[number]['id']
 /* ═══════════════════════════════════ Main Component ═══════════════════════════════════ */
 export function ProductDetailClient({ product, relatedProducts }: Props) {
   const router = useRouter()
-  const images = (product.images as { image?: { url?: string; alt?: string } }[]) || []
+  const rawImages = (product.images as { image?: { url?: string; alt?: string } }[]) || []
+  // Normalise media URLs: /api/media/file/X → /media/X for static serving
+  const images = rawImages.map((img) => ({
+    ...img,
+    image: img.image ? { ...img.image, url: normalizeMediaUrl(img.image.url) } : img.image,
+  }))
   const variants = (product.variants as {
     colorName: string
     colorCode?: string
@@ -123,13 +174,38 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
     priceOverride?: number
   }[]) || []
 
-  const fabricInfo = product.fabricInfo as {
-    material?: string
-    thickness?: string
-    transparency?: string
-    elasticity?: string
-    madeIn?: string
-  } | null
+  /* ─── Phase 1 public fields（前台顯示用，內部採購欄位改走 sourcing group） ─── */
+  const material = (product.material as string | undefined) || undefined
+  const careInstructions = (product.careInstructions as string | undefined) || undefined
+  const stylingTips = (product.stylingTips as string | undefined) || undefined
+  const modelInfo = product.modelInfo as
+    | {
+        height?: string
+        weight?: string
+        wearingSize?: string
+        bodyShape?: string
+      }
+    | null
+    | undefined
+  // sizeChart: page.tsx 用 depth: 2 populate，這裡可能是 object / id / null
+  const sizeChartRaw = product.sizeChart as
+    | {
+        name?: string
+        unit?: 'cm' | 'inch'
+        measurements?: { key: string; label: string }[]
+        rows?: { size: string; values?: { key: string; value: string }[] }[]
+        note?: string
+      }
+    | string
+    | number
+    | null
+    | undefined
+  const sizeChart =
+    sizeChartRaw && typeof sizeChartRaw === 'object' ? sizeChartRaw : null
+  const hasModelInfo = Boolean(
+    modelInfo &&
+      (modelInfo.height || modelInfo.weight || modelInfo.wearingSize || modelInfo.bodyShape),
+  )
 
   const uniqueColors = [...new Map(variants.map((v) => [v.colorName, v])).values()]
   const [selectedColor, setSelectedColor] = useState(uniqueColors[0]?.colorName || '')
@@ -457,23 +533,52 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
                       className="overflow-hidden mt-3"
                     >
                       <div className="bg-white rounded-xl border border-cream-200 p-4 text-xs">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b border-cream-200">
-                              <th className="py-2 text-left font-medium">尺寸</th>
-                              <th className="py-2 text-center font-medium">胸圍(cm)</th>
-                              <th className="py-2 text-center font-medium">腰圍(cm)</th>
-                              <th className="py-2 text-center font-medium">臀圍(cm)</th>
-                            </tr>
-                          </thead>
-                          <tbody className="text-muted-foreground">
-                            <tr><td className="py-1.5">S</td><td className="text-center">82-86</td><td className="text-center">64-68</td><td className="text-center">88-92</td></tr>
-                            <tr><td className="py-1.5">M</td><td className="text-center">86-90</td><td className="text-center">68-72</td><td className="text-center">92-96</td></tr>
-                            <tr><td className="py-1.5">L</td><td className="text-center">90-94</td><td className="text-center">72-76</td><td className="text-center">96-100</td></tr>
-                            <tr><td className="py-1.5">XL</td><td className="text-center">94-98</td><td className="text-center">76-80</td><td className="text-center">100-104</td></tr>
-                            <tr><td className="py-1.5">XXL</td><td className="text-center">98-102</td><td className="text-center">80-84</td><td className="text-center">104-108</td></tr>
-                          </tbody>
-                        </table>
+                        {sizeChart?.measurements?.length && sizeChart?.rows?.length ? (
+                          <>
+                            {sizeChart.name && (
+                              <p className="text-[11px] text-foreground/50 mb-2">
+                                參考尺寸表：{sizeChart.name}
+                              </p>
+                            )}
+                            <table className="w-full">
+                              <thead>
+                                <tr className="border-b border-cream-200">
+                                  <th className="py-2 text-left font-medium">尺寸</th>
+                                  {sizeChart.measurements.map((m) => (
+                                    <th key={m.key} className="py-2 text-center font-medium">
+                                      {m.label}
+                                      {sizeChart.unit ? `(${sizeChart.unit})` : ''}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="text-muted-foreground">
+                                {sizeChart.rows.map((row, rowIdx) => (
+                                  <tr key={`${row.size}-${rowIdx}`}>
+                                    <td className="py-1.5">{row.size}</td>
+                                    {sizeChart.measurements!.map((m) => {
+                                      const match = row.values?.find((val) => val.key === m.key)
+                                      return (
+                                        <td key={m.key} className="text-center">
+                                          {match?.value || '-'}
+                                        </td>
+                                      )
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            {sizeChart.note && (
+                              <p className="mt-3 text-[11px] text-muted-foreground whitespace-pre-line">
+                                {sizeChart.note}
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-center py-4 text-muted-foreground">
+                            尚未設定尺寸表（後台可至「商品管理 → 尺寸表」建立並關聯到此商品）
+                          </p>
+                        )}
                       </div>
                     </motion.div>
                   )}
@@ -629,34 +734,22 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
                           <td className="px-5 py-3.5">{categoryName}</td>
                         </tr>
                       )}
-                      {fabricInfo?.material && (
+                      {material && (
                         <tr className="border-b border-cream-100">
-                          <td className="px-5 py-3.5 bg-cream-50 text-foreground/60 font-medium">材質說明</td>
-                          <td className="px-5 py-3.5">{fabricInfo.material}</td>
+                          <td className="px-5 py-3.5 bg-cream-50 text-foreground/60 font-medium">材質</td>
+                          <td className="px-5 py-3.5">{material}</td>
                         </tr>
                       )}
-                      {fabricInfo?.thickness && (
+                      {Boolean(product.productOrigin) && (
                         <tr className="border-b border-cream-100">
-                          <td className="px-5 py-3.5 bg-cream-50 text-foreground/60 font-medium">厚度</td>
-                          <td className="px-5 py-3.5">{fabricInfo.thickness}</td>
+                          <td className="px-5 py-3.5 bg-cream-50 text-foreground/60 font-medium">原產地</td>
+                          <td className="px-5 py-3.5">{product.productOrigin as string}</td>
                         </tr>
                       )}
-                      {fabricInfo?.transparency && (
+                      {Boolean(product.brand) && (
                         <tr className="border-b border-cream-100">
-                          <td className="px-5 py-3.5 bg-cream-50 text-foreground/60 font-medium">透明度</td>
-                          <td className="px-5 py-3.5">{fabricInfo.transparency}</td>
-                        </tr>
-                      )}
-                      {fabricInfo?.elasticity && (
-                        <tr className="border-b border-cream-100">
-                          <td className="px-5 py-3.5 bg-cream-50 text-foreground/60 font-medium">彈性</td>
-                          <td className="px-5 py-3.5">{fabricInfo.elasticity}</td>
-                        </tr>
-                      )}
-                      {fabricInfo?.madeIn && (
-                        <tr className="border-b border-cream-100">
-                          <td className="px-5 py-3.5 bg-cream-50 text-foreground/60 font-medium">產地</td>
-                          <td className="px-5 py-3.5">{fabricInfo.madeIn}</td>
+                          <td className="px-5 py-3.5 bg-cream-50 text-foreground/60 font-medium">品牌</td>
+                          <td className="px-5 py-3.5">{product.brand as string}</td>
                         </tr>
                       )}
                       {variants.length > 0 && (
@@ -684,25 +777,74 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
                 {/* Care instructions */}
                 <div className="mt-6 bg-white rounded-2xl border border-cream-200 p-6">
                   <h3 className="font-medium text-sm mb-4">洗滌保養說明</h3>
-                  <ul className="space-y-2 text-sm text-foreground/70">
-                    <li className="flex items-start gap-2">
-                      <span className="text-gold-500 mt-0.5">•</span>
-                      建議以冷水手洗或放入洗衣袋以洗衣機柔洗
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-gold-500 mt-0.5">•</span>
-                      請勿使用漂白劑，避免長時間浸泡
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-gold-500 mt-0.5">•</span>
-                      建議反面晾曬，避免陽光直射
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-gold-500 mt-0.5">•</span>
-                      如需熨燙，請使用低溫並墊布熨燙
-                    </li>
-                  </ul>
+                  {careInstructions ? (
+                    <div className="text-sm text-foreground/70 whitespace-pre-line">
+                      {careInstructions}
+                    </div>
+                  ) : (
+                    <ul className="space-y-2 text-sm text-foreground/70">
+                      <li className="flex items-start gap-2">
+                        <span className="text-gold-500 mt-0.5">•</span>
+                        建議以冷水手洗或放入洗衣袋以洗衣機柔洗
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-gold-500 mt-0.5">•</span>
+                        請勿使用漂白劑，避免長時間浸泡
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-gold-500 mt-0.5">•</span>
+                        建議反面晾曬，避免陽光直射
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-gold-500 mt-0.5">•</span>
+                        如需熨燙，請使用低溫並墊布熨燙
+                      </li>
+                    </ul>
+                  )}
                 </div>
+
+                {/* Model info */}
+                {hasModelInfo && (
+                  <div className="mt-6 bg-white rounded-2xl border border-cream-200 p-6">
+                    <h3 className="font-medium text-sm mb-4">模特兒資訊</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                      {modelInfo?.height && (
+                        <div>
+                          <p className="text-xs text-foreground/50 mb-1">身高</p>
+                          <p>{modelInfo.height}</p>
+                        </div>
+                      )}
+                      {modelInfo?.weight && (
+                        <div>
+                          <p className="text-xs text-foreground/50 mb-1">體重</p>
+                          <p>{modelInfo.weight}</p>
+                        </div>
+                      )}
+                      {modelInfo?.wearingSize && (
+                        <div>
+                          <p className="text-xs text-foreground/50 mb-1">穿著尺寸</p>
+                          <p>{modelInfo.wearingSize}</p>
+                        </div>
+                      )}
+                      {modelInfo?.bodyShape && (
+                        <div>
+                          <p className="text-xs text-foreground/50 mb-1">體型</p>
+                          <p>{modelInfo.bodyShape}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Styling tips */}
+                {stylingTips && (
+                  <div className="mt-6 bg-white rounded-2xl border border-cream-200 p-6">
+                    <h3 className="font-medium text-sm mb-4">穿搭建議</h3>
+                    <div className="text-sm text-foreground/70 whitespace-pre-line">
+                      {stylingTips}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -792,7 +934,7 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
           currentProductId={product.id as unknown as string}
           currentPrice={(product.salePrice as number) || (product.price as number) || 0}
         />
-        <AlsoBoughtSection context="product_page" />
+        <AlsoBoughtSection context="product_page" products={relatedProducts} />
 
         {/* ── Related Products ── */}
         {relatedProducts.length > 0 && (
@@ -818,7 +960,7 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
                     name={p.name as string}
                     price={p.price as number}
                     salePrice={p.salePrice as number | undefined}
-                    image={firstImg ? { url: firstImg.url || '', alt: firstImg.alt } : null}
+                    image={firstImg ? { url: normalizeMediaUrl(firstImg.url) || '', alt: firstImg.alt } : null}
                     isNew={p.isNew as boolean | undefined}
                     isHot={p.isHot as boolean | undefined}
                   />
