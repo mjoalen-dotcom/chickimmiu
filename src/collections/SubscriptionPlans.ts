@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { isAdmin } from '../access/isAdmin'
+import { safeRevalidate } from '../lib/revalidate'
 
 /**
  * 訂閱方案 Collection
@@ -21,6 +22,18 @@ export const SubscriptionPlans: CollectionConfig = {
     create: isAdmin,
     update: isAdmin,
     delete: isAdmin,
+  },
+  hooks: {
+    // SSR consumer (Phase 5.5 N1):
+    //   /account/subscription renders all active plans via
+    //   getPayload().find('subscription-plans')
+    // Any plan change invalidates that page's full-route cache.
+    afterChange: [
+      () => safeRevalidate(['/account/subscription'], ['subscription-plans']),
+    ],
+    afterDelete: [
+      () => safeRevalidate(['/account/subscription'], ['subscription-plans']),
+    ],
   },
   fields: [
     // ── 基本資訊 ──

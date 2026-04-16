@@ -89,6 +89,47 @@ P4 還有 **G4 / G5 / G6 / G8 / G9 / G10** 沒做。下次開新對話繼續。
 
 ---
 
+## 🆕 新增需求 backlog（使用者收尾時追加）
+
+### ~~N1 — 訂閱會員前台接通後端~~ ✅ DONE (2026-04-16 session 4)
+**現狀偵察**：
+- 後端 collection `src/collections/SubscriptionPlans.ts` **已存在**（slug `subscription-plans`，欄位含 name / slug / pricing / badge / sortOrder / isActive / isFeatured…）
+- 前台 `src/app/(frontend)/account/subscription/page.tsx` 還在用 **硬寫的 `DEMO_PLANS` const**（類似 /terms 接通前的狀態）
+
+**要做**：把 `DEMO_PLANS` 改成讀 `subscription-plans` collection（類比 `membership-benefits` 讀 `membership-tiers` 的模式，見 `499672e feat(phase5.5-a)`）。加 revalidate hook 到 SubscriptionPlans 讓後台編輯即時反映。
+
+**邊界**：只碰 `src/app/(frontend)/account/subscription/page.tsx` + `SubscriptionPlans.ts`。不動 Users collection、不動 billing 邏輯。
+
+**類比參考**：`/membership-benefits` 頁的接通 pattern（commit `499672e`）
+
+**已完成**：
+- `SubscriptionPlans.ts`：afterChange/afterDelete → `safeRevalidate(['/account/subscription'], ['subscription-plans'])`
+- `page.tsx` 改為 async server component，`getPayload().find('subscription-plans', { where: isActive=true, sort: sortOrder, depth: 0 })`
+- 新增 `SubscriptionClient.tsx` 容納 `billingCycle` / `currentPlan` 狀態 + `motion` UI（client/server 切分）
+- DB 無資料時走 empty-state banner（「目前暫無訂閱方案」），避免 404 感
+- 「連續訂閱里程碑」四格 + FAQ 目前仍 hardcoded（之後可接 `plan.dopamine.streakMilestones`）
+- 驗證：`tsc --noEmit` 只剩 3 個 Phase 5.4/5.5 既有錯；SSR curl 200，empty-state 正確渲染
+- **DB 目前沒有 active 訂閱方案** —— 需要進 admin → 會員管理 → 訂閱方案 手動建立，或日後加 seed
+
+---
+
+### N2 — Users collection 新增「儲值金」欄位
+**概念區分**：
+- **購物金 (shoppingCredit)** — 平台贈送（簽到、推薦、生日等），**不可退現**，只能抵扣。**已有欄位**在 Users.ts:257。
+- **儲值金 (wallet / cashCredit / storedValue — 名字由你定)** — 使用者**真金白銀儲值進來**，**可退現**。**新欄位**。
+
+**要做**：
+1. Users collection 加欄位（建議放在 points / shoppingCredit 那一 row 旁邊，Tab 2 Membership & Points）
+2. 寫 migration（參考 `20260416_193835_add_daily_checkin_streak.ts` 的 PRAGMA table_info 冪等 pattern）
+3. 決定欄位名稱 —— 中文建議 `儲值金餘額`，英文欄位名建議 `storedValueBalance` 或 `cashWalletBalance`
+4. （可選）考慮是否需要類比 `PointsTransactions` 的 `WalletTransactions` collection 做儲值/提領流水
+
+**規模評估**：欄位本身很小；migration 也小；WalletTransactions 若做是中等規模（需 collection + endpoint + admin UI）。建議**先做 1+2+3 最小切片**，帳務流水之後再擴。
+
+**⚠️ 風險提示**：退現功能牽涉金流、發票作廢、會計對帳 —— 這只是**加欄位**，不含真正退現 UI / 流程。使用者若日後要實作退現 API，要先確認金流 partner、發票對應、UI 審核 flow。當下先只加欄位 + migration。
+
+---
+
 ## 🏗️ 架構備忘（延續前次 + 新學到的）
 
 ### 延續
@@ -111,9 +152,22 @@ P4 還有 **G4 / G5 / G6 / G8 / G9 / G10** 沒做。下次開新對話繼續。
 接續 CHIC KIM & MIU 專案。請先讀 HANDOFF_PHASE5.5.md 了解上次對話完成什麼、
 剩什麼。重點：P0-P3 全解，P4 做到 G1-G3+G7，剩 G4/G5/G6/G8/G9/G10 加一些雜項。
 
-今天想做：
-[X] — 你從「待處理」清單挑一件，例如「G8 偵察 Products.ts 856 行改動，
-      能拆成子群就拆」或「.claude/settings.local.json 該不該 gitignore」。
+本次對話結束時新增兩個需求 N1（訂閱接通）+ N2（儲值金欄位）在 HANDOFF
+「新增需求 backlog」段。
+
+今天想做（二選一或多選，告訴我優先序）：
+
+    A. 清 working tree —— 繼續 P4 剩下的群（G4 / G5 / G6 / G8 / G9 / G10）。
+       強烈建議從 G8 Products.ts 偵察下手（856 行 diff、可能要拆子群）。
+
+    B. 新功能 N1 —— 接通訂閱頁 DEMO_PLANS → 讀 subscription-plans collection。
+       類比 membership-benefits 接通 pattern（commit 499672e）。
+
+    C. 新功能 N2 —— Users 加儲值金欄位 + migration。
+       注意：購物金（平台送、不退現）vs 儲值金（真金白銀、可退現）要區分。
+       先最小切片只加欄位 + migration，不做退現 UI / 金流。
+
+    D. 其他 —— 你自己說。
 
 規則（同前）：
 - Context 60% 警告
@@ -121,6 +175,9 @@ P4 還有 **G4 / G5 / G6 / G8 / G9 / G10** 沒做。下次開新對話繼續。
 - 不要自己做：git push / pull / merge / rebase / reset、pnpm build
 - 大檔（>500 行 diff）先偵察邊界再決定分群，不要一口氣 commit
 - richText / select field 的 legacy 值問題優先考慮 beforeValidate hook 自愈
+- 新需求若會跨 working tree 的 M 檔（例如 N2 要改的 Users.ts 已是 M，
+  N1 要改的 subscription/page.tsx 沒 M），動手前先確認 working tree 既有
+  M 是否相關，避免我把別的 in-progress 改動誤帶進 commit
 ```
 
 ---
