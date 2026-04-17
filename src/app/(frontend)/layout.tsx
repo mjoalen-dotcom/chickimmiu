@@ -235,7 +235,7 @@ export default async function FrontendLayout({
             references chunk hashes that no longer exist — reload the page
             once with cache-busting so they land on the current build.
 
-            Catches three failure modes:
+            Catches four failure modes:
             1. Resource load failures: <script src="/_next/static/chunks/...">
                or <link rel=stylesheet/preload> firing 'error' events
             2. Promise rejections containing "ChunkLoadError", "Loading
@@ -243,6 +243,14 @@ export default async function FrontendLayout({
                imported module", or "Importing a module script failed"
             3. Synchronous errors with the same patterns (some browsers
                throw rather than rejecting promises)
+            4. Webpack factory-undefined crashes: "Cannot read properties
+               of undefined (reading 'call')" / "Cannot read property
+               'call' of undefined" — Phase 5.5.5 addition. When a
+               browser-cached non-versioned chunk (e.g. app-pages-internals.js,
+               layout.js) holds stale module IDs that don't match the
+               refreshed webpack.js runtime, __webpack_require__ tries
+               factory.call() on undefined. Classic Next.js dev-mode bug,
+               but can also bite prod if a CDN serves stale chunks.
 
             Cooldown uses a 30-second timestamp window stored in
             sessionStorage so we never reload twice for the same incident,
@@ -252,7 +260,7 @@ export default async function FrontendLayout({
             a single page lifetime. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var KEY='__ckmu_chunk_reload_ts__';var WINDOW_FLAG=false;function inCooldown(){try{var v=sessionStorage.getItem(KEY);if(!v)return false;var t=parseInt(v,10);if(isNaN(t))return false;return((new Date()).getTime()-t)<30000}catch(_){return WINDOW_FLAG}}function setCooldown(){try{sessionStorage.setItem(KEY,String((new Date()).getTime()))}catch(_){WINDOW_FLAG=true}}function recover(reason){try{if(inCooldown())return;setCooldown();try{if(window.console&&console.warn)console.warn('[ckmu-recover]',reason)}catch(_){}var u;try{u=new URL(location.href);u.searchParams.set('_r',(new Date()).getTime().toString(36));location.replace(u.toString())}catch(_){location.reload()}}catch(_){}}function isChunkErr(m){return/ChunkLoadError|Loading chunk|Loading CSS chunk|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(String(m||''))}window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&(t.tagName==='SCRIPT'||t.tagName==='LINK')){var s=t.src||t.href||'';if(s.indexOf('/_next/static/')>-1){recover('resource: '+s);return}}if(e&&e.message&&isChunkErr(e.message)){recover('error: '+e.message)}}catch(_){}},true);window.addEventListener('unhandledrejection',function(e){try{var r=e&&e.reason;var m=r&&(r.message||String(r))||'';if(isChunkErr(m))recover('rejection: '+m)}catch(_){}})}catch(_){}})();`,
+            __html: `(function(){try{var KEY='__ckmu_chunk_reload_ts__';var WINDOW_FLAG=false;function inCooldown(){try{var v=sessionStorage.getItem(KEY);if(!v)return false;var t=parseInt(v,10);if(isNaN(t))return false;return((new Date()).getTime()-t)<30000}catch(_){return WINDOW_FLAG}}function setCooldown(){try{sessionStorage.setItem(KEY,String((new Date()).getTime()))}catch(_){WINDOW_FLAG=true}}function recover(reason){try{if(inCooldown())return;setCooldown();try{if(window.console&&console.warn)console.warn('[ckmu-recover]',reason)}catch(_){}var u;try{u=new URL(location.href);u.searchParams.set('_r',(new Date()).getTime().toString(36));location.replace(u.toString())}catch(_){location.reload()}}catch(_){}}function isChunkErr(m){return/ChunkLoadError|Loading chunk|Loading CSS chunk|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|reading 'call'|'call' of undefined/i.test(String(m||''))}window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&(t.tagName==='SCRIPT'||t.tagName==='LINK')){var s=t.src||t.href||'';if(s.indexOf('/_next/static/')>-1){recover('resource: '+s);return}}if(e&&e.message&&isChunkErr(e.message)){recover('error: '+e.message)}}catch(_){}},true);window.addEventListener('unhandledrejection',function(e){try{var r=e&&e.reason;var m=r&&(r.message||String(r))||'';if(isChunkErr(m))recover('rejection: '+m)}catch(_){}})}catch(_){}})();`,
           }}
         />
         {/* Boot beacon error capture — registers BEFORE any other JS runs so

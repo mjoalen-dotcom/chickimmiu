@@ -503,6 +503,38 @@ if (!user) redirect('/login?redirect=/account/X')
 - ~~`/account/referrals` 的 `totalReward` 用 `completedReferrals × (signupReward + purchaseReward)` 近似~~ ✅ Phase 5.5.2 已改為 SUM real PointsTransactions（見下方 Phase 5.5.2 section）
 - ~~`UGC_TESTIMONIALS` 在 /account/points 維持硬寫~~ ✅ Phase 5.5.3 — schema 擴 `ugcTestimonials.items[]` + 前端接通（見下方 section）
 
+#### 📌 Phase 5.5.5 — B5 webpack factory-undefined auto-recover ✅ DONE（2026-04-18 對話 7）
+
+Closed-beta 期間發現 `/account/points` / `/account/subscription` / `/`（cold load 後）客端 hydration 都會失敗，4 秒後 BootBeacon fallback「頁面載入失敗」覆蓋整頁。SSR 都 200 正常。
+
+**根因偵察**：
+- 唯一錯誤：`Uncaught TypeError: Cannot read properties of undefined (reading 'call')` @ `webpack.js:704`
+- Performance API 比對顯示：`webpack.js` / `main-app.js` 有 `?v=...` 版本 query → 每次 fresh；但 `app-pages-internals.js` / `app/(frontend)/layout.js` / `app/(frontend)/error.js` / `react-dom_...` **無版本** → 瀏覽器走 HTTP cache
+- 機制：`next dev` 重編後，webpack 產生新 module ID 表；非版本化 chunks 被瀏覽器快取保留，內含舊 ID → 新 `__webpack_require__(OLD_ID)` 找不到 factory → `factory.call()` 在 `undefined` 上炸
+- `layout.tsx:253-257` 的 auto-recover regex 只抓 `ChunkLoadError|Loading chunk|...`，**完全沒涵蓋 `reading 'call'` 這種 factory-undefined 模式** → recover 從未觸發 → beacon 現身
+
+**修法（Fix-1，1 檔 1 行 regex 擴充）**：
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | `src/app/(frontend)/layout.tsx` | inline auto-recover script 的 `isChunkErr()` regex 加 `reading 'call'\|'call' of undefined` 兩種寫法，覆蓋現代 V8 + 舊版瀏覽器錯誤訊息。同步更新上方 comment 註明第 4 類失敗模式 |
+
+**驗證**：
+- `tsc --noEmit` 0 err
+- Preview 冷載 `/account/points`：`sessionStorage.__ckmu_chunk_reload_ts__` 被設（= `setCooldown()` 跑了 = regex 匹配到錯誤 = `recover()` 被呼叫）；URL 帶 `?_r=mo34jrju`（= recover 自己的 base36 cache-bust，不是測試原始值）→ **Fix-1 偵測路徑驗證 OK**
+
+**已知限制（user 已同意接受）**：
+- Dev mode：recover 的 `location.replace` 只能讓 HTML cache-bust；非版本化 chunks 的 browser HTTP cache 沒清 → 第二次仍中 → 30 秒 cooldown 內 recover 變 noop → beacon 仍出現。**本質上 dev mode 要完整 healing 需 Ctrl+Shift+R 手動 hard reload**
+- Prod mode：content-hashed filenames（`layout-abc123.js`）會跟著新 HTML 的 chunk 引用變，cache-bust HTML 就能拿到新 chunks → **prod 會自動 heal**
+
+**風險評估**：
+- Regex 新增兩模式都很特定（`reading 'call'` + `'call' of undefined`），誤觸業務邏輯錯誤機率極低
+- 30 秒 cooldown 機制本來就在，防無限 reload loop
+- 最壞情況 = 比今天多一次 reload 嘗試 + 一樣的 beacon；無 regression
+
+**待辦（若 Fix-1 在 prod 仍不夠）**：
+- Fix-2（dev middleware 對 `/_next/static/chunks/*` 強制 no-store）/ Fix-3（`generateBuildId` 隨機版本）待 prod 實測確認再定。current closed-beta 觀察中
+
 #### 📌 Phase 5.5.4 — FIFO 到期點數計算 ✅ DONE（2026-04-17 對話 7）
 
 Phase 5.5 Batch B 把 `/account/points` 接通 PointsTransactions collection，但 `userProfile.expiringPoints` / `expiringDays` 硬寫 0（TODO 留著）。Closed beta 上線後補上真正的 FIFO 算法。
