@@ -261,3 +261,77 @@ Before merging:
       and the admin dashboard after cache-clear to spot-check.
 - [ ] Remember: the Payload peer-dep warning will appear in `pnpm install`
       output. Expected, documented above.
+
+---
+
+## Merge record — 2026-04-18
+
+**Status:** Merged into `main` locally. Awaiting user `git push origin main`.
+
+### Strategy: rebase + FF
+
+Chosen over squash-merge / merge-commit to preserve the 2-commit boundary
+(bump vs docs) and match the rollback playbook above (`git revert <bump-sha>`
+works cleanly without touching the doc commit).
+
+### Divergence at merge time
+
+- Merge base: `fbed814` (fix(phase5.5-b5a): rewrite global-error copy)
+- Main had advanced 2 commits past the branch point:
+  - `2d12ec7` fix(phase5.5.6): gate boot beacon `<script>` to production only
+  - `fa1db25` fix(phase5.5.6b): replace regex w/ indexOf in beacon rec() filter
+- feat branch: `ad12d5b` (bump) + `7dcfd37` (doc)
+- Touched files had zero overlap — rebase applied both patches with no conflicts.
+
+### Rebased SHAs on main
+
+- `50624ed` chore(next-15-5): bump next + eslint-config-next to 15.5.15 (was `ad12d5b`)
+- `0e09ddb` docs(next-15-5): handoff for Next.js 15.4.11 -> 15.5.15 upgrade (was `7dcfd37`)
+
+`main` then fast-forwarded `fa1db25 → 0e09ddb` (2 new commits, linear history).
+
+### Verification on `main @ 0e09ddb`
+
+| Check | Result |
+|---|---|
+| `pnpm install` | Already up to date (node_modules from prior upgrade session) |
+| `node_modules/next/package.json` | `15.5.15` ✓ |
+| `node_modules/eslint-config-next/package.json` | `15.5.15` ✓ |
+| `pnpm tsc --noEmit` | 0 errors |
+| `pnpm build` | 0 errors, all routes compiled |
+| `pnpm start -p 3006` → `/` | HTTP 200, home title + product grid rendered, 0 console errors |
+| `pnpm start -p 3006` → `/account/points` | `mounted=1, errCount=0, title="點數 / 購物金"` |
+| `pnpm start -p 3006` → `/account/subscription` | `mounted=1, errCount=0, title="我的訂閱"` |
+
+Non-issues observed:
+- `webpsave_buffer: no property named 'smart_deblock'` warnings from Sharp's
+  WebP encoder — pre-existing, unrelated to Next upgrade.
+- Payload peer-dep warning documented in §Payload compatibility — not raised
+  again because `pnpm install` saw no lockfile drift.
+
+### `.claude/launch.json` updated
+
+Added a second entry `chickimmiu-next-prod-3006` (`pnpm start -p 3006`) for
+local prod-mode verification. Kept original `chickimmiu-next` (`pnpm dev -p 3001`).
+Both entries now live in the repo; the "reverted before commit" note in
+§Artefacts applied to the *earlier* temporary `chickimmiu-next-155` entry
+from the upgrade session, not this one.
+
+### Remote branch cleanup (pending user action)
+
+- `origin/feat/next-15-5-upgrade` still points at the **pre-rebase** SHAs
+  (`ad12d5b`, `7dcfd37`). After pushing `main`, the branch is functionally
+  merged; user can either:
+  - `git push origin --delete feat/next-15-5-upgrade` — simplest.
+  - `git push --force-with-lease origin feat/next-15-5-upgrade` — keeps the
+    branch pointer aligned with main's new SHAs, but there's no reason to
+    retain the branch after merge.
+- Recommendation: **delete remote** after `main` push lands on prod.
+
+### Next steps for user
+
+1. `git push origin main` (uploads commits `50624ed`, `0e09ddb`).
+2. (Optional) `git push origin --delete feat/next-15-5-upgrade`.
+3. Redeploy `pre.chickimmiu.com` per standard Hetzner workflow.
+4. After redeploy, clear browser cache once on the deployed host to drop
+   any lingering 15.4.11 `immutable` chunk entries (same caveat as §B5).

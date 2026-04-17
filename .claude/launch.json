@@ -7,6 +7,13 @@
       "runtimeArgs": ["dev", "-p", "3001"],
       "port": 3001,
       "autoPort": false
+    },
+    {
+      "name": "chickimmiu-next-prod-3006",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["start", "-p", "3006"],
+      "port": 3006,
+      "autoPort": false
     }
   ]
 }
