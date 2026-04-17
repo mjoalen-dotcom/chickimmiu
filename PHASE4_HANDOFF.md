@@ -501,7 +501,27 @@ if (!user) redirect('/login?redirect=/account/X')
 **本 Phase 簡化（TODO 留給未來）**：
 - `expiringPoints` 顯示為 0（完整 FIFO/LIFO 點數到期算法另做）
 - ~~`/account/referrals` 的 `totalReward` 用 `completedReferrals × (signupReward + purchaseReward)` 近似~~ ✅ Phase 5.5.2 已改為 SUM real PointsTransactions（見下方 Phase 5.5.2 section）
-- `UGC_TESTIMONIALS` 在 /account/points 維持硬寫（PointRedemptionSettings.ugcTestimonials 目前只有 enabled/maxDisplay）
+- ~~`UGC_TESTIMONIALS` 在 /account/points 維持硬寫~~ ✅ Phase 5.5.3 — schema 擴 `ugcTestimonials.items[]` + 前端接通（見下方 section）
+
+#### 📌 Phase 5.5.3 — UGC 見證 schema 擴充 + 前端接通 ✅ DONE（2026-04-17 對話 6）
+
+`PointRedemptionSettings.ugcTestimonials` 原本只有 `enabled` + `maxDisplay`，前台 PointsClient.tsx 用 4 筆硬寫 `UGC_TESTIMONIALS` const。
+
+**修法（3 檔）**：
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | `src/globals/PointRedemptionSettings.ts` | `ugcTestimonials.items` array field（maxRows 20，每筆 name/text/avatar/tier）。admin 描述提示「留空時前台顯示預設範例」 |
+| 2 | `src/app/(frontend)/account/points/page.tsx` | 從 `redemptionRaw.ugcTestimonials` 提取 items，依 `enabled` + `maxDisplay` 切片，傳 `testimonials` prop 給 PointsClient |
+| 3 | `src/app/(frontend)/account/points/PointsClient.tsx` | 新增 `TestimonialItem` type + `testimonials` prop；原硬寫改為 `FALLBACK_TESTIMONIALS`，render 用 `testimonials.length > 0 ? testimonials : FALLBACK_TESTIMONIALS` |
+
+**設計決策**：
+- **Fallback 策略**：server 端 items 為空時傳空陣列 → client 端 fallback 到 4 筆預設範例。這確保 admin 還沒填見證內容時頁面不會空白，admin 填入真實見證後自動替換。
+- **不用 migration**：Global 在 dev-push（= 本專案的 prod）自動建子表。無需手動 ALTER TABLE。
+- **不用 seed script**：fallback 取代了 seed 需求；admin 可隨時從後台 → 會員管理 → 點數消耗設定 → UGC 見證 → 新增見證項目。
+- **ugcEnabled=false 時**：server 傳空陣列 → client 不顯示（`.map()` on empty = nothing rendered，連 fallback 也不顯示）
+
+**驗證**：`tsc --noEmit` 乾淨、preview SSR `GET /account/points` → 200 編譯成功。
 
 #### 📌 Phase 5.5.2 — `/account/referrals` totalReward 改為精確 SUM ✅ DONE（2026-04-17 對話 6）
 

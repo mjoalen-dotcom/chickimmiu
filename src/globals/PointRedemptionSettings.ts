@@ -147,6 +147,19 @@ export const PointRedemptionSettings: GlobalConfig = {
       fields: [
         { name: 'enabled', label: '顯示兌換見證', type: 'checkbox', defaultValue: true },
         { name: 'maxDisplay', label: '最多顯示數量', type: 'number', defaultValue: 6 },
+        {
+          name: 'items',
+          label: '見證項目',
+          type: 'array',
+          maxRows: 20,
+          admin: { description: '兌換見證清單。前台依 maxDisplay 決定顯示幾則；留空時前台顯示預設範例。' },
+          fields: [
+            { name: 'name', label: '暱稱', type: 'text', required: true, admin: { description: '遮罩後名字（如「小**」）' } },
+            { name: 'text', label: '見證文字', type: 'text', required: true },
+            { name: 'avatar', label: '頭像 emoji', type: 'text', defaultValue: '🎁' },
+            { name: 'tier', label: '會員等級', type: 'text', admin: { description: '顯示用等級標籤' } },
+          ],
+        },
       ],
     },
   ],

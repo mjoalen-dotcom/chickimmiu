@@ -6,6 +6,7 @@ import config from '@payload-config'
 
 import PointsClient, {
   type TierLite, type ShopItemLite, type HistoryItem, type UserLite,
+  type TestimonialItem,
 } from './PointsClient'
 
 export const metadata: Metadata = {
@@ -99,9 +100,24 @@ export default async function PointsPage() {
   const gender = (user.gender as string | null) ?? null
   // redemptionRaw 型別 (PointRedemptionSetting) 有具名 fields，TS 不認為它能 assign 成
   // LooseRecord (index signature)。透過 unknown 中介完成 widen → 仍在 type-check 之下。
-  const scarcity = (redemptionRaw as unknown as LooseRecord)?.scarcity as LooseRecord | undefined
+  const redemption = redemptionRaw as unknown as LooseRecord
+  const scarcity = redemption?.scarcity as LooseRecord | undefined
   const lowStockThreshold = (scarcity?.lowStockThreshold as number) ?? 10
   const hotBadgeThreshold = (scarcity?.hotBadgeThreshold as number) ?? 50
+
+  // Phase 5.5.3 — UGC 見證從 settings 讀取（留空時前端會 fallback 到預設範例）
+  const ugcGroup = redemption?.ugcTestimonials as LooseRecord | undefined
+  const ugcEnabled = (ugcGroup?.enabled as boolean) ?? true
+  const ugcMaxDisplay = (ugcGroup?.maxDisplay as number) ?? 6
+  const ugcItems = (ugcGroup?.items as LooseRecord[] | undefined) ?? []
+  const testimonials: TestimonialItem[] = ugcEnabled
+    ? ugcItems.slice(0, ugcMaxDisplay).map((it) => ({
+        name: (it.name as string) ?? '',
+        text: (it.text as string) ?? '',
+        avatar: (it.avatar as string) ?? '🎁',
+        tier: (it.tier as string) ?? '',
+      }))
+    : []
 
   const tiers: TierLite[] = (tiersResult.docs as unknown as LooseRecord[]).map((t) => ({
     id: String(t.id),
@@ -160,6 +176,7 @@ export default async function PointsPage() {
       shopItems={shopItems}
       history={history}
       user={userProfile}
+      testimonials={testimonials}
     />
   )
 }

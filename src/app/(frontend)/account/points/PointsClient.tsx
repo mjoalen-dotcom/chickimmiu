@@ -44,6 +44,12 @@ export type UserLite = {
   expiringPoints: number
   expiringDays: number
 }
+export type TestimonialItem = {
+  name: string
+  text: string
+  avatar: string
+  tier: string
+}
 
 /* ── Tier color lookup (Tailwind, not in DB) ── */
 const TIER_HEX_COLORS: Record<string, string> = {
@@ -56,8 +62,9 @@ const TIER_HEX_COLORS: Record<string, string> = {
   diamond: '#B9F2FF',
 }
 
-/* ── UGC 兌換見證 (本 Phase 維持硬寫；未來可擴 PointRedemptionSettings.ugcTestimonials.items) ── */
-const UGC_TESTIMONIALS = [
+/* ── UGC 兌換見證 fallback（後台 ugcTestimonials.items 留空時自動顯示，
+     admin 填入真實見證後自動替換） ── */
+const FALLBACK_TESTIMONIALS: TestimonialItem[] = [
   { name: '小**', text: '用 500 點換到電影票，超划算！', avatar: '🎬', tier: '金牌' },
   { name: '王**', text: '轉盤第一次就中購物金！', avatar: '🎰', tier: '銀牌' },
   { name: '林**', text: '神秘禮物收到限量絲巾，太驚喜', avatar: '🎁', tier: '白金' },
@@ -71,11 +78,13 @@ export default function PointsClient({
   shopItems,
   history,
   user,
+  testimonials,
 }: {
   tiers: TierLite[]
   shopItems: ShopItemLite[]
   history: HistoryItem[]
   user: UserLite
+  testimonials: TestimonialItem[]
 }) {
   const [tab, setTab] = useState<Tab>('shop')
   const points = user.points
@@ -317,7 +326,7 @@ export default function PointsClient({
                 會員兌換心得
               </h4>
               <div className="grid grid-cols-2 gap-2">
-                {UGC_TESTIMONIALS.map((t, i) => (
+                {(testimonials.length > 0 ? testimonials : FALLBACK_TESTIMONIALS).map((t, i) => (
                   <div key={i} className="bg-white rounded-xl p-3 text-xs">
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <span className="text-sm">{t.avatar}</span>
