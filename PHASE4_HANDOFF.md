@@ -499,9 +499,56 @@ if (!user) redirect('/login?redirect=/account/X')
 | diamond | 5 | 璀璨天后 | 璀璨國王 |
 
 **本 Phase 簡化（TODO 留給未來）**：
-- `expiringPoints` 顯示為 0（完整 FIFO/LIFO 點數到期算法另做）
+- ~~`expiringPoints` 顯示為 0（完整 FIFO/LIFO 點數到期算法另做）~~ ✅ Phase 5.5.4 — FIFO 到期點數計算（見下方 section）
 - ~~`/account/referrals` 的 `totalReward` 用 `completedReferrals × (signupReward + purchaseReward)` 近似~~ ✅ Phase 5.5.2 已改為 SUM real PointsTransactions（見下方 Phase 5.5.2 section）
 - ~~`UGC_TESTIMONIALS` 在 /account/points 維持硬寫~~ ✅ Phase 5.5.3 — schema 擴 `ugcTestimonials.items[]` + 前端接通（見下方 section）
+
+#### 📌 Phase 5.5.4 — FIFO 到期點數計算 ✅ DONE（2026-04-17 對話 7）
+
+Phase 5.5 Batch B 把 `/account/points` 接通 PointsTransactions collection，但 `userProfile.expiringPoints` / `expiringDays` 硬寫 0（TODO 留著）。Closed beta 上線後補上真正的 FIFO 算法。
+
+**業務規則（user 2026-04-17 確認）**：
+1. 點數有效期 = **createdAt + 365 天**（從 `LoyaltySettings.pointsConfig.pointsExpiryDays` 讀，fallback 365，0 = 永不過期）
+2. **忽略** `PointsTransactions.expiresAt` 欄位（保留在 schema 但不參與計算）
+3. Warning window = `PointRedemptionSettings.expiryNotification.reminderDays[].days` 的最大值（fallback 30 天）
+4. `expiryNotification.enabled === false` 或 `showCountdown === false` → 回傳 {0, 0}
+
+**FIFO 演算法（`computeExpiringPoints(txns, validityDays, windowDays)`）**：
+- 交易按 `createdAt` ASC 排序
+- `amount > 0`（earn / positive admin_adjust）→ 新 batch 入池 `{ createdAtMs, remaining }`
+- `amount < 0`（redeem / expire / refund_deduct / negative admin_adjust）→ 從最舊 batch 開始 FIFO 扣除
+- 篩選 live batches：`remaining > 0` **且** `createdAtMs + validity > now`（仍未實際過期）
+- 篩選 window 內 batches：`createdAtMs + validity <= now + window`
+- `expiringPoints` = window 內 batches 的 remaining 總和
+- `expiringDays` = 最早 batch 距今的到期天數（`Math.ceil`）
+
+**修法（1 檔）**：
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | `src/app/(frontend)/account/points/page.tsx` | 加 `computeExpiringPoints` 本地 helper；Promise.all 加第 6 個 query（`points-transactions` where `user=self AND createdAt >= now-730d`，`sort: 'createdAt'`，`pagination: false`）；讀 `LoyaltySettings.pointsConfig.pointsExpiryDays` + `PointRedemptionSettings.expiryNotification.reminderDays/enabled/showCountdown`；填入 `userProfile.expiringPoints/expiringDays` |
+
+**設計決策**：
+- **730 天 cutoff**：只拉近 2×validity 天的交易（365 天前的點數已過期，保 2 倍餘量）。避免老帳號 10 年歷史全拉出來
+- **`pagination: false`**：一次拉完 < 730 天全部 txns。活躍會員一年幾百筆，兩年千餘筆可接受
+- **讀 admin settings 而非 hardcode**：closed beta 期間 admin 可調整 `pointsExpiryDays` / `reminderDays`，不用改 code
+- **Helper 放 inline 在 page.tsx**（與 `pickTierName` / `computeBadge` / `formatDate` 同檔）而非抽 `src/lib/points/`：目前只有此頁使用，抽 lib 是過早抽象。未來若 admin panel 或 email 通知要用，再抽
+- **不動 `expiresAt` schema**：user 說用 createdAt + 固定天數推導。`expiresAt` 欄位繼續存在（往後若要按 batch 寫明確過期日可接）但 UI 算法不依賴它 → 單一 source of truth
+
+**驗證**：
+- `tsc --noEmit` 0 error
+- Preview `GET /account/points` → 200，SSR HTML 含「點數中心」，server logs 無 error
+- FIFO 算法 5 個測試案例 via preview_eval：
+  - T1: 2 earn (1 in-window, 1 fresh), 無 spend → `{100, 25}` ✓
+  - T2: 同 T1 + 50 spend（FIFO 扣最舊）→ `{50, 25}` ✓
+  - T3: `validityDays=0` 永不過期 → `{0, 0}` ✓
+  - T4: 只有 fresh batch → `{0, 0}` ✓
+  - T5: spend > 最舊 batch（zeroed out）→ `{0, 0}` ✓
+
+**注意事項**：
+- 使用者 admin 帳號（admin@chickimmiu.com）本身沒有 points transactions → SSR 回傳 `expiringPoints=0`，UI 隱藏 banner（PointsClient.tsx:157 `{expiringPoints > 0 && ...}`）→ 正確行為
+- `/account/points` 客戶端 hydration 錯誤 = **B5 BootBeacon 預先存在的 bug**（`/account/subscription` 也重現），不是本 Phase 造成。B5 待另案偵察
+- 效能考量：活躍會員 2 年內 ~1000 筆 txns；Array.sort + 單次 for-loop = O(n log n) 可接受
 
 #### 📌 Phase 5.5.3 — UGC 見證 schema 擴充 + 前端接通 ✅ DONE（2026-04-17 對話 6）
 
