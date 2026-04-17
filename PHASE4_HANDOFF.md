@@ -513,15 +513,16 @@ Closed-beta 期間發現 `/account/points` / `/account/subscription` / `/`（col
 - 機制：`next dev` 重編後，webpack 產生新 module ID 表；非版本化 chunks 被瀏覽器快取保留，內含舊 ID → 新 `__webpack_require__(OLD_ID)` 找不到 factory → `factory.call()` 在 `undefined` 上炸
 - `layout.tsx:253-257` 的 auto-recover regex 只抓 `ChunkLoadError|Loading chunk|...`，**完全沒涵蓋 `reading 'call'` 這種 factory-undefined 模式** → recover 從未觸發 → beacon 現身
 
-**修法（Fix-1，1 檔 1 行 regex 擴充）**：
+**修法（Fix-1，2 檔小幅修補）**：
 
 | # | 檔案 | 變更 |
 |---|---|---|
-| 1 | `src/app/(frontend)/layout.tsx` | inline auto-recover script 的 `isChunkErr()` regex 加 `reading 'call'\|'call' of undefined` 兩種寫法，覆蓋現代 V8 + 舊版瀏覽器錯誤訊息。同步更新上方 comment 註明第 4 類失敗模式 |
+| 1 | `src/app/(frontend)/layout.tsx` | **A1** — inline auto-recover script 的 `isChunkErr()` regex 加 `reading 'call'\|'call' of undefined` 兩種寫法，覆蓋現代 V8 + 舊版瀏覽器錯誤訊息。同步更新上方 comment 註明第 4 類失敗模式 |
+| 2 | `src/app/global-error.tsx` | **A2** — 改寫主文案。原文「您的瀏覽器隱私權設定可能阻擋了部分網站功能…」對 webpack runtime 錯誤完全誤導（會害客服把客訴當隱私問題處理）。改為「頁面載入時發生技術問題，請重新載入頁面。若多次失敗，可嘗試清除瀏覽器快取或使用無痕視窗。」保留「技術細節 (privacy diagnostics)」`<details>` 區塊（客服可回報 diag） |
 
 **驗證**：
 - `tsc --noEmit` 0 err
-- Preview 冷載 `/account/points`：`sessionStorage.__ckmu_chunk_reload_ts__` 被設（= `setCooldown()` 跑了 = regex 匹配到錯誤 = `recover()` 被呼叫）；URL 帶 `?_r=mo34jrju`（= recover 自己的 base36 cache-bust，不是測試原始值）→ **Fix-1 偵測路徑驗證 OK**
+- Preview 冷載 `/account/subscription`：`sessionStorage.__ckmu_chunk_reload_ts__` 被設（= `setCooldown()` 跑了 = regex 匹配到錯誤 = `recover()` 被呼叫）；第二次進入 30s cooldown 後 recover 變 noop，global-error 頁面渲染，新文案正確顯示（snapshot 確認 h1 = 「載入發生問題」、p = 新版雙行文字）→ **Fix-1 A1 + A2 驗證 OK**
 
 **已知限制（user 已同意接受）**：
 - Dev mode：recover 的 `location.replace` 只能讓 HTML cache-bust；非版本化 chunks 的 browser HTTP cache 沒清 → 第二次仍中 → 30 秒 cooldown 內 recover 變 noop → beacon 仍出現。**本質上 dev mode 要完整 healing 需 Ctrl+Shift+R 手動 hard reload**

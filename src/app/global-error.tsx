@@ -65,9 +65,9 @@ export default function GlobalError({
               margin: '0 0 24px',
             }}
           >
-            您的瀏覽器隱私權設定可能阻擋了部分網站功能。
+            頁面載入時發生技術問題，請重新載入頁面。
             <br />
-            請嘗試開啟 Cookie 或在 Safari 中關閉「防止跨網站追蹤」。
+            若多次失敗，可嘗試清除瀏覽器快取或使用無痕視窗。
           </p>
           <div
             style={{
