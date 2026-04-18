@@ -15,12 +15,6 @@ import { useState, type FormEvent } from 'react'
  *   AUTH_APPLE_ID 對應的 env 才會真動作。沒憑證時會被 next-auth pages.signIn
  *   導回本頁並在 URL 加 ?error=。
  * 忘記密碼：連 `/forgot-password`
- *
- * ⚠️ 已知設計缺陷（非本 PR 處理）：
- *   Payload cookie session（email/pw 登入產生）與 NextAuth session（OAuth
- *   登入產生）是兩套，OAuth 使用者目前進 /account/points 會被 Payload
- *   `payload.auth()` 判定未登入而 redirect 回 /login。要治本需做 OAuth
- *   callback 下 Payload session cookie；留待另一個 session 處理。
  */
 export default function LoginPage() {
   const router = useRouter()
