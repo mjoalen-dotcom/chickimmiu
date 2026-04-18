@@ -20,7 +20,13 @@ export const Media: CollectionConfig = {
   slug: 'media',
   admin: {
     group: '媒體資源',
-    description: '圖片、影片與檔案上傳',
+    useAsTitle: 'filename',
+    defaultColumns: ['filename', 'alt', 'folder', 'mimeType', 'filesize', 'updatedAt'],
+    listSearchableFields: ['filename', 'alt', 'folder'],
+    description:
+      '圖片 / 影片 / PDF 上傳。檔案大小上限：圖片 8 MB、影片 50 MB、PDF 10 MB。' +
+      '支援格式：jpeg / png / webp / gif / mp4 / pdf。' +
+      '若要上傳多張商品圖，請於「後台使用說明 → 商品圖整批上傳」查看正確資料夾命名與排序規則。',
   },
   access: {
     read: () => true,
@@ -99,15 +105,38 @@ export const Media: CollectionConfig = {
   },
   fields: [
     {
+      name: 'uploadRulesNotice',
+      type: 'ui',
+      admin: {
+        components: {
+          Field: '@/components/admin/MediaUploadRulesNotice',
+        },
+      },
+    },
+    {
       name: 'alt',
       label: '替代文字（SEO / 無障礙）',
       type: 'text',
       required: true,
+      admin: {
+        description: '給視障朋友與搜尋引擎用的圖片描述；例如「藍色洋裝正面商品照」。',
+      },
     },
     {
       name: 'caption',
       label: '說明文字',
       type: 'text',
+    },
+    {
+      name: 'folder',
+      label: '相簿 / 資料夾名稱',
+      type: 'text',
+      index: true,
+      admin: {
+        description:
+          '用於分類整理媒體資源，例如商品貨號（SS25-001）、活動名稱（2026-春季型錄）、' +
+          '或用途分類（banner、lookbook、ugc）。列表頁可用此欄位搜尋或篩選。',
+      },
     },
   ],
 }

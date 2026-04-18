@@ -15,13 +15,13 @@ import type { Endpoint, PayloadRequest, RequiredDataFromCollectionSlug } from 'p
  *   2. 檢查 email 是否已存在
  *   3. referralCode（選填）→ 查出 referrer 寫入 referredBy
  *   4. 固定 role='customer' 建帳
- *   5. 立刻 login（set Payload cookie `payload-token`）
- *   6. 回傳 user + token
- *
- * 不做：
- *   - 不自動產生 referralCode（自己的）—— 另案
- *   - 不觸發推薦獎勵 points-transaction —— 另案
- *   - 不寄註冊確認信 —— 需 email adapter，另案
+ *   5. 讀 GlobalSettings.emailAuth.requireEmailVerification 決定分支：
+ *      - 開 → 預設 `_verified:false` → Payload 自動寄驗證信 → 回 `{ requiresVerification: true }`
+ *             前端導去 /login?registered=1&verify=1 顯示「請到信箱點連結」
+ *      - 關 → `_verified:true` + `disableVerificationEmail:true` → 立即 auto-login 下 cookie
+ *             前端導去 /account
+ *   6. 不觸發推薦獎勵 points-transaction —— 另案
+ *   7. 不自動產生使用者本人的 referralCode —— 另案
  */
 export const customerRegisterEndpoint: Endpoint = {
   path: '/register',
@@ -81,20 +81,53 @@ export const customerRegisterEndpoint: Endpoint = {
         // 推薦碼找不到不擋註冊；只是不連推薦關係
       }
 
+      // 讀後台開關決定要不要強制 email 驗證
+      let requireVerification = false
+      try {
+        const settings = (await req.payload.findGlobal({
+          slug: 'global-settings',
+          depth: 0,
+        })) as { emailAuth?: { requireEmailVerification?: boolean } } | undefined
+        requireVerification = Boolean(settings?.emailAuth?.requireEmailVerification)
+      } catch {
+        // global 讀失敗視為未開（保守不擋註冊）
+      }
+
       // 建帳（overrideAccess 繞過 isAdmin create 限制）
+      // 關閉驗證：寫入 _verified:true + disableVerificationEmail（不寄信）
+      // 開啟驗證：不帶 _verified → Payload 預設 false → 依 verify block 寄信
+      const baseData = {
+        email,
+        password,
+        name,
+        role: 'customer',
+        ...(referredById !== undefined ? { referredBy: referredById } : {}),
+      } as Record<string, unknown>
+
+      const createData = requireVerification
+        ? baseData
+        : { ...baseData, _verified: true }
+
       await req.payload.create({
         collection: 'users',
-        data: {
-          email,
-          password,
-          name,
-          role: 'customer',
-          ...(referredById !== undefined ? { referredBy: referredById } : {}),
-        } as unknown as RequiredDataFromCollectionSlug<'users'>,
+        data: createData as unknown as RequiredDataFromCollectionSlug<'users'>,
         overrideAccess: true,
+        ...(requireVerification ? {} : { disableVerificationEmail: true }),
       })
 
-      // 立刻 login 取 token + 設 cookie
+      if (requireVerification) {
+        // 不 auto-login（Payload 會因 _verified=false 擋 login）
+        return Response.json(
+          {
+            requiresVerification: true,
+            email,
+            message: '註冊成功！請至您的信箱點擊驗證連結完成啟用。',
+          },
+          { status: 201 },
+        )
+      }
+
+      // 驗證關閉 → 立刻 login 取 token + 設 cookie（舊流程）
       const loginResult = await req.payload.login({
         collection: 'users',
         data: { email, password },
@@ -106,6 +139,7 @@ export const customerRegisterEndpoint: Endpoint = {
         {
           user: { id: loggedUser?.id, email: loggedUser?.email, name },
           token: loginResult.token,
+          requiresVerification: false,
         },
         { status: 201 },
       )

@@ -4,6 +4,7 @@ import { isAdmin, isAdminFieldLevel } from '../access/isAdmin'
 import { isAdminOrSelf } from '../access/isAdminOrSelf'
 import { createExportEndpoint, createImportEndpoint, type FieldMapping } from '../endpoints/importExport'
 import { customerRegisterEndpoint } from '../endpoints/customerRegister'
+import { customerLogoutEndpoint } from '../endpoints/customerLogout'
 
 const userFieldMappings: FieldMapping[] = [
   { key: 'name', label: '姓名' },
@@ -78,6 +79,31 @@ export const Users: CollectionConfig = {
 </body></html>`
       },
     },
+    // Email 驗證信。是否強制驗證由 GlobalSettings.emailAuth.requireEmailVerification
+    // 控制（在 customerRegister endpoint 讀取並決定要不要 auto-login）：
+    //   - 開：create 不帶 _verified → Payload 預設 false → 寄驗證信 → 擋 login
+    //   - 關：create 帶 _verified:true + disableVerificationEmail → 不寄、不擋
+    // 前端 verify URL = `${NEXT_PUBLIC_SITE_URL}/verify-email?token=<token>`
+    verify: {
+      generateEmailSubject: () => 'CHIC KIM & MIU｜請驗證您的 Email',
+      generateEmailHTML: ({ token, user }) => {
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com'
+        const verifyUrl = `${siteUrl}/verify-email?token=${token || ''}`
+        const u = user as Record<string, unknown> | undefined
+        const name = (u?.name as string) || (u?.email as string) || '會員'
+        return `<!DOCTYPE html>
+<html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang TC','Microsoft JhengHei',sans-serif;background:#FDF8F3;padding:24px;color:#2C2C2C">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #E5DED4;border-radius:14px;padding:28px">
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600">${name}，歡迎加入 CHIC KIM & MIU</h2>
+    <p style="margin:0 0 16px;line-height:1.7">感謝您註冊 CHIC KIM & MIU 會員。請點以下按鈕或連結完成 email 驗證，驗證後即可登入帳號享受會員專屬優惠：</p>
+    <div style="text-align:center;margin:24px 0"><a href="${verifyUrl}" style="display:inline-block;padding:12px 28px;background:#C19A5B;color:#fff;border-radius:999px;text-decoration:none;font-size:14px">驗證 Email</a></div>
+    <p style="margin:0 0 8px;font-size:12px;color:#6B6B6B;line-height:1.6">連結無法點擊請複製：</p>
+    <p style="margin:0 0 16px;font-size:12px;word-break:break-all;color:#6B6B6B">${verifyUrl}</p>
+    <p style="margin:16px 0 0;font-size:12px;color:#6B6B6B;line-height:1.6">若您未申請註冊，請忽略此信。</p>
+  </div>
+</body></html>`
+      },
+    },
   },
   access: {
     admin: ({ req: { user } }) => {
@@ -93,6 +119,7 @@ export const Users: CollectionConfig = {
     createExportEndpoint('users', userFieldMappings),
     createImportEndpoint('users', userFieldMappings),
     customerRegisterEndpoint,
+    customerLogoutEndpoint,
   ],
   hooks: {
     // 成功登入後寫一筆 login-attempts 作稽核；失敗不寫（由 Payload maxLoginAttempts 擋）。

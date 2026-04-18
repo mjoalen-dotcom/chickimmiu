@@ -5,7 +5,8 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { auth as nextAuth } from '@/auth'
-import { User, ShoppingBag, Heart, MapPin, Gift, Settings, LogOut, Crown, Share2, RotateCcw, Star, FileText, Gamepad2 } from 'lucide-react'
+import { User, ShoppingBag, Heart, MapPin, Gift, Settings, Crown, Share2, RotateCcw, Star, FileText, Gamepad2 } from 'lucide-react'
+import { LogoutButton } from './LogoutButton'
 
 export const metadata: Metadata = {
   title: '我的帳號',
@@ -61,13 +62,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
                 {link.label}
               </Link>
             ))}
-            <button
-              type="button"
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors w-full"
-            >
-              <LogOut size={18} />
-              登出
-            </button>
+            <LogoutButton />
           </aside>
 
           {/* Content */}

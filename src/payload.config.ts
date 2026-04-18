@@ -1,7 +1,8 @@
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
+import { resendAdapter } from '@payloadcms/email-resend'
 import { lexicalEditor, UploadFeature } from '@payloadcms/richtext-lexical'
 import path from 'path'
-import { buildConfig } from 'payload'
+import { buildConfig, type EmailAdapter } from 'payload'
 import { fileURLToPath } from 'url'
 import sharp from 'sharp'
 
@@ -63,6 +64,48 @@ const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 /**
+ * Email adapter 選用策略：
+ *   - 有 RESEND_API_KEY → Resend（prod 預設路徑）
+ *   - 沒 RESEND_API_KEY → console fallback（dev 方便；把 forgot-password /
+ *     verify token 內容 log 到 server console，不 throw 擋住註冊流程）
+ *
+ * Resend 設定步驟：
+ *   1. https://resend.com/onboarding 建 API key
+ *   2. Domains → Add Domain → DNS 設 SPF/DKIM 驗證寄件 domain
+ *   3. .env RESEND_API_KEY + EMAIL_FROM_ADDRESS 對應已驗證 domain
+ *   4. prod 設完要 pnpm build + pm2 restart（env 會 bake）
+ */
+const fromAddress = process.env.EMAIL_FROM_ADDRESS || 'no-reply@chickimmiu.com'
+const fromName = 'CHIC KIM & MIU'
+
+const consoleFallbackEmailAdapter: EmailAdapter = () => ({
+  name: 'console-fallback',
+  defaultFromAddress: fromAddress,
+  defaultFromName: fromName,
+  sendEmail: async (message) => {
+    const to = Array.isArray(message.to) ? message.to.join(', ') : String(message.to || '')
+    const html = String(message.html || message.text || '')
+    // eslint-disable-next-line no-console
+    console.log(
+      '\n[email-fallback] RESEND_API_KEY not set — email content logged instead of sent:\n' +
+        `  to:       ${to}\n` +
+        `  from:     ${message.from || `${fromName} <${fromAddress}>`}\n` +
+        `  subject:  ${message.subject || ''}\n` +
+        `  preview:  ${html.slice(0, 600).replace(/\s+/g, ' ')}\n`,
+    )
+    return { id: `fallback-${Date.now()}` }
+  },
+})
+
+const emailAdapter = process.env.RESEND_API_KEY
+  ? resendAdapter({
+      defaultFromAddress: fromAddress,
+      defaultFromName: fromName,
+      apiKey: process.env.RESEND_API_KEY,
+    })
+  : consoleFallbackEmailAdapter
+
+/**
  * CHIC KIM & MIU — Payload CMS v3 主設定
  * ────────────────────────────────────────
  * Collections（34 個）：
@@ -106,6 +149,13 @@ export default buildConfig({
         Icon: '@/components/admin/AdminIcon',
       },
       beforeDashboard: ['@/components/admin/Dashboard'],
+      beforeNavLinks: ['@/components/admin/HelpNavLink'],
+      views: {
+        help: {
+          Component: '@/components/admin/HelpView',
+          path: '/help',
+        },
+      },
     },
   },
   collections: [
@@ -163,5 +213,6 @@ export default buildConfig({
       ...(process.env.DATABASE_AUTH_TOKEN ? { authToken: process.env.DATABASE_AUTH_TOKEN } : {}),
     },
   }),
+  email: emailAdapter,
   sharp,
 })

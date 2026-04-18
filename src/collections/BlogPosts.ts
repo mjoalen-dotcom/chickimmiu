@@ -1,4 +1,11 @@
 import type { CollectionConfig } from 'payload'
+import {
+  EXPERIMENTAL_TableFeature,
+  FixedToolbarFeature,
+  HorizontalRuleFeature,
+  lexicalEditor,
+  UploadFeature,
+} from '@payloadcms/richtext-lexical'
 
 import { isAdmin } from '../access/isAdmin'
 import { safeRevalidate } from '../lib/revalidate'
@@ -75,6 +82,30 @@ export const BlogPosts: CollectionConfig = {
       label: '文章內容',
       type: 'richText',
       required: true,
+      editor: lexicalEditor({
+        // 部落格專用「完整編輯器」：在全域 defaultFeatures 之上加上
+        //   1. FixedToolbarFeature — 頂部固定工具列（傳統 WYSIWYG 體驗，
+        //      比預設的 floating toolbar 對非技術作者更直覺）
+        //   2. EXPERIMENTAL_TableFeature — 表格（比較表、尺寸對照、時程表常用）
+        //   3. HorizontalRuleFeature — 水平分隔線（顯式加入，defaultFeatures 有
+        //      但若未來全域被精簡這裡仍保有）
+        //   4. UploadFeature — 內嵌圖片（與全域一致）
+        // 其它 defaults（Heading/Bold/Italic/Underline/Strikethrough/InlineCode/
+        // Subscript/Superscript/Link/AutoLink/Lists/Checklist/Blockquote/Align/
+        // Indent/Relationship/ParagraphFeature）照用。
+        features: ({ defaultFeatures }) => [
+          ...defaultFeatures,
+          FixedToolbarFeature(),
+          HorizontalRuleFeature(),
+          EXPERIMENTAL_TableFeature(),
+          UploadFeature({ collections: { media: { fields: [] } } }),
+        ],
+      }),
+      admin: {
+        description:
+          '支援標題（H1–H6）、粗體 / 斜體 / 底線 / 刪除線、引言、條列、核取清單、超連結、' +
+          '表格、水平線、圖片、左右對齊與縮排。頂部工具列永遠顯示；選取文字可叫出浮動選單做快速格式化。',
+      },
     },
     {
       name: 'featuredImage',

@@ -49,12 +49,21 @@ export default function RegisterPage() {
           acceptTerms: form.acceptTerms,
         }),
       })
-      const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string
+        message?: string
+        requiresVerification?: boolean
+      }
       if (!res.ok) {
         setError(data.message || '註冊失敗，請稍後再試')
         return
       }
-      // 後端已 login 完成 cookie，直接進會員頁
+      if (data.requiresVerification) {
+        // 後台開啟 email 驗證 → 沒下 cookie，導去登入頁並提示檢查信箱
+        router.replace('/login?registered=1&verify=1')
+        return
+      }
+      // 驗證關閉 → 後端已下 cookie，直接進會員頁
       router.replace(redirectTo)
       router.refresh()
     } catch {

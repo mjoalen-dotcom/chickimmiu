@@ -340,5 +340,27 @@ export const GlobalSettings: GlobalConfig = {
         { name: 'enableApple', label: '啟用 Apple 登入', type: 'checkbox', defaultValue: false, admin: { description: '需先在 Apple Developer 設定 Sign in with Apple 服務' } },
       ],
     },
+    // ── Email 註冊/驗證設定 ──
+    {
+      name: 'emailAuth',
+      label: 'Email 註冊/驗證',
+      type: 'group',
+      admin: {
+        description: '控制前台 email 註冊後是否需要驗證信才能登入。OAuth 登入不受此設定影響（一律視為已驗證）',
+      },
+      fields: [
+        {
+          name: 'requireEmailVerification',
+          label: '註冊需 email 驗證',
+          type: 'checkbox',
+          defaultValue: false,
+          admin: {
+            description:
+              '開啟：新會員註冊後需點擊信中連結驗證才能登入；關閉（預設）：註冊後立即可登入，跳過驗證。' +
+              'prod 建議開啟；封測期視 Resend 設定狀況決定。',
+          },
+        },
+      ],
+    },
   ],
 }
