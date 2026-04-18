@@ -30,6 +30,8 @@ import { default as default_e668e9854d72bcea32f70845627cdf0d } from '@/component
 import { default as default_99d8a7df13704a09eb2683c564fe3977 } from '@/components/admin/ShoplineImportPanel'
 import { default as default_235ae141af0ae2ee10377f179570df1f } from '@/components/admin/ImageMigrationPanel'
 import { default as default_be333bc994f41cc3f44396316cdf4a5e } from '@/components/admin/OrderToolsPanel'
+import { TableFeatureClient as TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { FixedToolbarFeatureClient as FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { default as default_d500ae2ad98a0a33d640ae0ac1a3417c } from '@/components/admin/AdminIcon'
 import { default as default_b80a86fce1072afc84cd6a430a965697 } from '@/components/admin/AdminLogo'
 import { default as default_0e7b23c75ea046975e1784ba01f82886 } from '@/components/admin/Dashboard'
@@ -70,6 +72,8 @@ export const importMap = {
   "@/components/admin/ShoplineImportPanel#default": default_99d8a7df13704a09eb2683c564fe3977,
   "@/components/admin/ImageMigrationPanel#default": default_235ae141af0ae2ee10377f179570df1f,
   "@/components/admin/OrderToolsPanel#default": default_be333bc994f41cc3f44396316cdf4a5e,
+  "@payloadcms/richtext-lexical/client#TableFeatureClient": TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  "@payloadcms/richtext-lexical/client#FixedToolbarFeatureClient": FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@/components/admin/AdminIcon#default": default_d500ae2ad98a0a33d640ae0ac1a3417c,
   "@/components/admin/AdminLogo#default": default_b80a86fce1072afc84cd6a430a965697,
   "@/components/admin/Dashboard#default": default_0e7b23c75ea046975e1784ba01f82886,
