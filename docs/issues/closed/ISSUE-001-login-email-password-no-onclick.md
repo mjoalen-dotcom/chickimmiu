@@ -1,7 +1,8 @@
 # ISSUE-001 — `/login` Email/Password 登入按鈕無 onClick handler
 
-**Severity**: P0 Blocker
+**Severity**: ~~P0 Blocker~~ → **RESOLVED in commit `bd1f5c0`** (feat(phase5.6-auth): wire email/pw login + register + forgot/reset)
 **Detected**: 2026-04-18 QA
+**Resolved**: 2026-04-18
 **Area**: Auth / Customer Login
 
 ## 症狀

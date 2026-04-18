@@ -1,7 +1,8 @@
 # ISSUE-003 — 無 `/forgot-password` 流程（前端連結不存在、路由不存在）
 
-**Severity**: P0 Blocker
+**Severity**: ~~P0 Blocker~~ → **RESOLVED in commit `bd1f5c0`** (feat(phase5.6-auth): wire email/pw login + register + forgot/reset)
 **Detected**: 2026-04-18 QA
+**Resolved**: 2026-04-18
 **Area**: Auth / Password Recovery
 
 ## 症狀

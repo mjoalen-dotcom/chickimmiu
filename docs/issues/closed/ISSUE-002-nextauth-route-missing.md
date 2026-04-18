@@ -1,9 +1,10 @@
 # ISSUE-002 — Email/Password 登入路徑沒接（NextAuth 有設但不涵蓋 credentials）
 
-> **修正紀錄 (2026-04-18)**：原 QA 報告判斷「next-auth 完全沒接」是 glob path 錯誤造成的誤判。實際上 NextAuth v5 在 `src/auth.ts` + `src/app/(frontend)/api/auth/[...nextauth]/route.ts` 有完整設定。真正的問題是 `src/auth.ts` **只設了 OAuth 4 家 provider（Google/Facebook/LINE/Apple），沒有 CredentialsProvider**，所以 email/password 走不通 NextAuth。此 issue 已於 **PR #1（commit 待補）** 透過「email/pw 走 Payload REST 直接 login」的方式解決，**不動 NextAuth**。
+> **修正紀錄 (2026-04-18)**：原 QA 報告判斷「next-auth 完全沒接」是 glob path 錯誤造成的誤判。實際上 NextAuth v5 在 `src/auth.ts` + `src/app/(frontend)/api/auth/[...nextauth]/route.ts` 有完整設定。真正的問題是 `src/auth.ts` **只設了 OAuth 4 家 provider（Google/Facebook/LINE/Apple），沒有 CredentialsProvider**，所以 email/password 走不通 NextAuth。此 issue 已於 **PR #1 (commit `bd1f5c0`)** 透過「email/pw 走 Payload REST 直接 login」的方式解決，**不動 NextAuth**。
 
-**Severity**: ~~P0 Blocker~~ → **RESOLVED in PR #1**
+**Severity**: ~~P0 Blocker~~ → **RESOLVED in commit `bd1f5c0`**
 **Detected**: 2026-04-18 QA
+**Resolved**: 2026-04-18
 **Resolved**: 2026-04-18（auth 三連體 PR）
 **Area**: Auth / Login
 
