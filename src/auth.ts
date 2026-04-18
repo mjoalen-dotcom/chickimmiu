@@ -3,18 +3,18 @@ import Google from 'next-auth/providers/google'
 import Facebook from 'next-auth/providers/facebook'
 import Line from 'next-auth/providers/line'
 import Apple from 'next-auth/providers/apple'
-import { cookies } from 'next/headers'
-import { getPayload, getFieldsToSign, jwtSign } from 'payload'
+import { getPayload } from 'payload'
 import config from '@payload-config'
 
 /**
  * NextAuth v5 — Google / Facebook / LINE / Apple
  *
- * OAuth 成功後做兩件事：
- *   1. upsert Payload Users collection（email 匹配 → 綁定社群 ID；否則建立）
- *   2. 寫 Payload session cookie（`payload-token`），讓 `/account/**` 伺服端用
- *      `payload.auth({ headers })` 檢查時也認得 OAuth 使用者，不再只吃
- *      email/pw 登入流程下的 session（舊 bug 說明見 login/page.tsx）
+ * OAuth 成功後 upsert Payload Users collection（email 匹配 → 綁定社群 ID；否則建立）。
+ *
+ * Payload session cookie (`payload-token`) 不在這裡寫 — Auth.js v5 在 callback
+ * 內回自己組的 redirect Response，`cookies().set()` 不會被序列化進 headers。
+ * 改由 `/api/auth/bridge` route handler 處理：`/account/**` layout 偵測到
+ * NextAuth session 但無 Payload session 時，redirect 過去補 cookie 再導回。
  *
  * 開發環境若無 OAuth 憑證，providers 陣列為空，不影響網站運作。
  */
@@ -125,11 +125,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           payloadUser = docs[0] as unknown as typeof payloadUser
         }
 
-        await setPayloadSessionCookie(payload, payloadUser)
         return true
       } catch (error) {
         console.error('[NextAuth] signIn callback error:', error)
-        return true // OAuth 已成功，Payload 同步失敗不擋 NextAuth session
+        return true // OAuth 已成功，Payload upsert 失敗不擋 NextAuth session
       }
     },
     async session({ session, token }) {
@@ -140,57 +139,3 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 })
-
-/**
- * 手動簽 Payload JWT + set-cookie，等價於 Payload 內建 `/api/users/login`
- * 端點做的事。這樣 OAuth callback 結束、瀏覽器被導回 `/account/**` 時，
- * `payload.auth({ headers })` 會從 `payload-token` cookie 取出這裡簽的 JWT，
- * 解出 user id，和正常 email/pw 登入一樣通過檢查。
- */
-async function setPayloadSessionCookie(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  payload: any,
-  user: { id: string | number; email?: string } & Record<string, unknown>
-) {
-  const usersConfig = payload.collections?.users?.config
-  const authConfig = usersConfig?.auth
-  if (!usersConfig || !authConfig) {
-    console.warn('[NextAuth] users collection auth config missing; skipping payload-token cookie')
-    return
-  }
-
-  const fieldsToSign = getFieldsToSign({
-    collectionConfig: usersConfig,
-    email: user.email || '',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    user: user as any,
-  })
-
-  const { token } = await jwtSign({
-    fieldsToSign,
-    secret: payload.secret as string,
-    tokenExpiration: authConfig.tokenExpiration,
-  })
-
-  const cookiePrefix = (payload.config?.cookiePrefix as string | undefined) || 'payload'
-  const rawSameSite = authConfig.cookies?.sameSite
-  const sameSite: 'strict' | 'lax' | 'none' =
-    typeof rawSameSite === 'string'
-      ? (rawSameSite.toLowerCase() as 'strict' | 'lax' | 'none')
-      : rawSameSite
-        ? 'strict'
-        : 'lax'
-  const secure = Boolean(authConfig.cookies?.secure) || sameSite === 'none'
-
-  const store = await cookies()
-  store.set({
-    name: `${cookiePrefix}-token`,
-    value: token,
-    httpOnly: true,
-    path: '/',
-    secure,
-    sameSite,
-    domain: authConfig.cookies?.domain || undefined,
-    maxAge: authConfig.tokenExpiration,
-  })
-}

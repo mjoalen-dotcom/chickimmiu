@@ -4,6 +4,7 @@ import { headers as nextHeaders } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { auth as nextAuth } from '@/auth'
 import { User, ShoppingBag, Heart, MapPin, Gift, Settings, Crown, Share2, RotateCcw, Star, FileText, Gamepad2 } from 'lucide-react'
 import { LogoutButton } from './LogoutButton'
 
@@ -32,7 +33,17 @@ export default async function AccountLayout({ children }: { children: React.Reac
   const payload = await getPayload({ config })
   const headersList = await nextHeaders()
   const { user } = await payload.auth({ headers: headersList })
-  if (!user) redirect('/login?redirect=/account')
+  if (!user) {
+    // OAuth (NextAuth) just completed but the Payload session cookie isn't set
+    // (Auth.js v5 callback can't reliably write Set-Cookie on its redirect
+    // response). Bounce through /api/auth/bridge so the cookie gets set from
+    // a route handler we own, then come back here.
+    const session = await nextAuth()
+    if (session?.user?.email) {
+      redirect('/api/auth/bridge?next=/account')
+    }
+    redirect('/login?redirect=/account')
+  }
 
   return (
     <div className="bg-cream-50 min-h-screen">
