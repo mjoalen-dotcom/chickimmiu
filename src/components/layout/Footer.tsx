@@ -24,6 +24,10 @@ interface FooterProps {
 const DEFAULT_HELP_LINKS = [
   { href: '/shopping-guide', label: '購物說明' },
   { href: '/about', label: '商店介紹' },
+  { href: '/contact', label: '聯絡我們' },
+  { href: '/size-guide', label: '尺寸對照' },
+  { href: '/shipping', label: '運送說明' },
+  { href: '/returns', label: '退換貨說明' },
   { href: '/packaging', label: '商品包裝' },
   { href: '/terms', label: '服務條款' },
   { href: '/privacy-policy', label: '隱私權政策' },

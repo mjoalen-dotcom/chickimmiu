@@ -11,9 +11,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     { url: siteUrl, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
     { url: `${siteUrl}/products`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+    { url: `${siteUrl}/collections`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
     { url: `${siteUrl}/blog`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${siteUrl}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${siteUrl}/faq`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
     { url: `${siteUrl}/membership-benefits`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${siteUrl}/contact`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${siteUrl}/size-guide`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${siteUrl}/shipping`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${siteUrl}/returns`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${siteUrl}/shopping-guide`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${siteUrl}/packaging`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
     { url: `${siteUrl}/games`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
+    // ── 政策頁 ──
+    { url: `${siteUrl}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.4 },
+    { url: `${siteUrl}/privacy-policy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.4 },
+    { url: `${siteUrl}/return-policy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.4 },
+    // ── 入口 ──
     { url: `${siteUrl}/login`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
     { url: `${siteUrl}/register`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
   ]
