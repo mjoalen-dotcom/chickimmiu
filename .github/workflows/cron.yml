@@ -1,0 +1,68 @@
+name: Scheduled Cron
+
+# 保護：所有 job 需要 repo Settings → Secrets → CRON_SECRET 已設，
+# prod server 的 .env 也要用相同值，否則 endpoint 回 401/503。
+#
+# 時區：GitHub cron 用 UTC。TPE = UTC+8。
+#   - */10 * * * *      每 10 分鐘（automation + segments）
+#   - 0 3 * * *         每日 03:00 UTC = TPE 11:00（expire-points）
+#   - 0 16 * * *        每日 16:00 UTC = TPE 00:00（streak-decay，day rollover）
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+    - cron: '0 3 * * *'
+    - cron: '0 16 * * *'
+  workflow_dispatch:
+
+# 避免同一 workflow 多份 run 堆疊（如果前一輪 10min 還沒跑完）
+concurrency:
+  group: cron-${{ github.event.schedule || 'manual' }}
+  cancel-in-progress: false
+
+env:
+  TARGET_HOST: https://pre.chickimmiu.com
+
+jobs:
+  automations:
+    if: github.event.schedule == '*/10 * * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run automations cron
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 120 \
+            "${TARGET_HOST}/api/cron/automations"
+      - name: Run segments cron
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 300 \
+            "${TARGET_HOST}/api/cron/segments"
+
+  expire-points:
+    if: github.event.schedule == '0 3 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run expire-points cron
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 300 \
+            "${TARGET_HOST}/api/cron/expire-points"
+
+  streak-decay:
+    if: github.event.schedule == '0 16 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run streak-decay cron
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 300 \
+            "${TARGET_HOST}/api/cron/streak-decay"
