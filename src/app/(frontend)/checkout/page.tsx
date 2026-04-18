@@ -21,13 +21,27 @@ import {
   Info,
   FileText,
   Heart,
+  Banknote,
 } from 'lucide-react'
 import { useCartStore } from '@/stores/cartStore'
 import { CheckoutLastChance } from '@/components/recommendation/CheckoutLastChance'
 import { trackBeginCheckout, trackPurchase, getStoredUTM } from '@/lib/tracking'
 
-/* ── 付款方式 ── */
-const PAYMENT_METHODS = [
+/* ── 付款方式 ──
+ * cash_cod 只在所選物流支援貨到付款（cashOnDelivery=true）時顯示，
+ * 且訂單總額（subtotal + shippingFee）≤ codMaxAmount 才能選。
+ */
+type PaymentMethodId = 'paypal' | 'ecpay' | 'newebpay' | 'linepay' | 'cash_cod'
+interface PaymentMethodOption {
+  id: PaymentMethodId
+  name: string
+  desc: string
+  icon: typeof CreditCard
+  color: string
+  requiresCashOnDelivery?: boolean
+}
+
+const PAYMENT_METHODS: PaymentMethodOption[] = [
   {
     id: 'paypal',
     name: 'PayPal',
@@ -56,6 +70,14 @@ const PAYMENT_METHODS = [
     icon: Smartphone,
     color: 'text-[#06C755]',
   },
+  {
+    id: 'cash_cod',
+    name: '宅配貨到付款（現金）',
+    desc: '收到商品時付現給物流司機 / 超商櫃檯',
+    icon: Banknote,
+    color: 'text-emerald-600',
+    requiresCashOnDelivery: true,
+  },
 ]
 
 /* ── 物流方式 ── */
@@ -71,6 +93,7 @@ interface ShippingOption {
   freeThreshold: number
   estimatedDays: string
   icon: typeof Truck
+  cashOnDelivery?: boolean
 }
 
 const SHIPPING_OPTIONS: ShippingOption[] = [
@@ -85,6 +108,7 @@ const SHIPPING_OPTIONS: ShippingOption[] = [
     freeThreshold: 1500,
     estimatedDays: '1-2 個工作天',
     icon: Truck,
+    cashOnDelivery: true,
   },
   {
     id: 'post',
@@ -96,6 +120,7 @@ const SHIPPING_OPTIONS: ShippingOption[] = [
     freeThreshold: 2000,
     estimatedDays: '2-4 個工作天',
     icon: Package,
+    cashOnDelivery: true,
   },
   // 超商取貨
   {
@@ -108,6 +133,7 @@ const SHIPPING_OPTIONS: ShippingOption[] = [
     freeThreshold: 1000,
     estimatedDays: '2-3 個工作天',
     icon: Building2,
+    cashOnDelivery: true,
   },
   {
     id: 'family',
@@ -119,6 +145,7 @@ const SHIPPING_OPTIONS: ShippingOption[] = [
     freeThreshold: 1000,
     estimatedDays: '2-3 個工作天',
     icon: Building2,
+    cashOnDelivery: true,
   },
   {
     id: 'hilife',
@@ -130,6 +157,7 @@ const SHIPPING_OPTIONS: ShippingOption[] = [
     freeThreshold: 1000,
     estimatedDays: '2-3 個工作天',
     icon: Building2,
+    cashOnDelivery: true,
   },
   {
     id: 'ok',
@@ -141,6 +169,7 @@ const SHIPPING_OPTIONS: ShippingOption[] = [
     freeThreshold: 1000,
     estimatedDays: '2-3 個工作天',
     icon: Building2,
+    cashOnDelivery: true,
   },
   // 國際
   {
@@ -167,10 +196,24 @@ export default function CheckoutPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const { items, clearCart } = useCartStore()
-  const [selectedPayment, setSelectedPayment] = useState('ecpay')
+  const [selectedPayment, setSelectedPayment] = useState<PaymentMethodId>('ecpay')
   const [selectedShipping, setSelectedShipping] = useState('711')
   const [shippingTypeFilter, setShippingTypeFilter] = useState<ShippingType>('convenience_store')
   const [isProcessing, setIsProcessing] = useState(false)
+
+  // 付款設定（從 /api/payment-settings 拉，失敗用 fallback）
+  const [paymentSettings, setPaymentSettings] = useState<{
+    enabledMethods: string[]
+    codDefaultFee: number
+    codMaxAmount: number
+  }>({ enabledMethods: ['ecpay', 'cash_cod'], codDefaultFee: 30, codMaxAmount: 20000 })
+
+  useEffect(() => {
+    fetch('/api/payment-settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => { if (s) setPaymentSettings(s) })
+      .catch(() => { /* 用預設 */ })
+  }, [])
 
   const [form, setForm] = useState({
     recipientName: '',
@@ -214,7 +257,34 @@ export default function CheckoutPage() {
   }
 
   const shippingFee = calcShippingFee()
-  const total = subtotal + shippingFee
+
+  // COD 手續費：只有選 cash_cod 時才計入 total
+  const codFee = selectedPayment === 'cash_cod' ? paymentSettings.codDefaultFee : 0
+  const total = subtotal + shippingFee + codFee
+
+  // COD 上限檢查（不含 COD 手續費本身，避免 self-reference）
+  const baseTotalForCodCheck = subtotal + shippingFee
+  const codBlockedByMax =
+    paymentSettings.codMaxAmount > 0 && baseTotalForCodCheck > paymentSettings.codMaxAmount
+
+  // 過濾可用付款方式：admin 啟用 + （若是 COD）物流支援 COD + 不超過上限
+  const availablePayments = PAYMENT_METHODS.filter((pm) => {
+    if (!paymentSettings.enabledMethods.includes(pm.id)) return false
+    if (pm.requiresCashOnDelivery) {
+      if (!shippingOption?.cashOnDelivery) return false
+      if (codBlockedByMax) return false
+    }
+    return true
+  })
+
+  // 若目前選的付款被過濾掉，自動切到第一個可用的
+  useEffect(() => {
+    const stillAvailable = availablePayments.some((pm) => pm.id === selectedPayment)
+    if (!stillAvailable && availablePayments.length > 0) {
+      setSelectedPayment(availablePayments[0].id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedShipping, paymentSettings, codBlockedByMax])
 
   // BeginCheckout 追蹤（僅觸發一次）
   const trackedRef = useRef(false)
@@ -277,6 +347,7 @@ export default function CheckoutPage() {
       shippingFee,
       total,
       paymentMethod: selectedPayment,
+      codFee,
       shippingMethod: {
         methodName: shippingOption?.name,
         carrier: shippingOption?.carrier,
@@ -659,7 +730,7 @@ export default function CheckoutPage() {
                   付款方式
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {PAYMENT_METHODS.map((pm) => (
+                  {availablePayments.map((pm) => (
                     <button
                       key={pm.id}
                       type="button"
@@ -676,10 +747,26 @@ export default function CheckoutPage() {
                         <p className="text-[10px] text-muted-foreground mt-0.5">
                           {pm.desc}
                         </p>
+                        {pm.id === 'cash_cod' && (
+                          <p className="text-[10px] text-emerald-700 mt-1">
+                            手續費 NT$ {paymentSettings.codDefaultFee}
+                          </p>
+                        )}
                       </div>
                     </button>
                   ))}
                 </div>
+                {codBlockedByMax && shippingOption?.cashOnDelivery && (
+                  <p className="text-xs text-amber-700 mt-3">
+                    訂單金額超過 NT$ {paymentSettings.codMaxAmount.toLocaleString()}，
+                    本訂單不適用貨到付款。
+                  </p>
+                )}
+                {!shippingOption?.cashOnDelivery && (
+                  <p className="text-xs text-muted-foreground mt-3">
+                    所選物流不支援貨到付款；改選宅配/超商可使用 COD。
+                  </p>
+                )}
               </div>
 
               {/* ═══════════════════════════════════════ */}
@@ -886,6 +973,12 @@ export default function CheckoutPage() {
                     <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                       <Truck size={10} />
                       預計 {shippingOption.estimatedDays} 送達
+                    </div>
+                  )}
+                  {codFee > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">貨到付款手續費</span>
+                      <span>NT$ {codFee}</span>
                     </div>
                   )}
                 </div>

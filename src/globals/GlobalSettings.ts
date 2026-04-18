@@ -182,6 +182,7 @@ export const GlobalSettings: GlobalConfig = {
           label: '啟用的付款方式',
           type: 'select',
           hasMany: true,
+          defaultValue: ['ecpay', 'cash_cod'],
           options: [
             { label: 'PayPal', value: 'paypal' },
             { label: '綠界科技 ECPay', value: 'ecpay' },
@@ -189,10 +190,31 @@ export const GlobalSettings: GlobalConfig = {
             { label: 'LINE Pay', value: 'linepay' },
             { label: 'Apple Pay', value: 'applepay' },
             { label: 'Google Pay', value: 'googlepay' },
+            { label: '現金—宅配貨到付款', value: 'cash_cod' },
+            { label: '現金—面交付款', value: 'cash_meetup' },
           ],
+          admin: {
+            description:
+              '可複選。「現金—宅配貨到付款」需配合宅配/超商物流；' +
+              '「現金—面交付款」需配合面交物流（目前未啟用）。',
+          },
         },
         { name: 'currency', label: '預設幣別', type: 'text', defaultValue: 'TWD' },
         { name: 'taxRate', label: '稅率（%）', type: 'number', defaultValue: 0 },
+        {
+          name: 'codDefaultFee',
+          label: '貨到付款預設手續費（新台幣）',
+          type: 'number',
+          defaultValue: 30,
+          admin: { description: '台灣 COD 物流司機代收手續費，常見 30 元；admin 可在單張訂單覆蓋' },
+        },
+        {
+          name: 'codMaxAmount',
+          label: '貨到付款訂單金額上限（新台幣）',
+          type: 'number',
+          defaultValue: 20000,
+          admin: { description: '訂單總額（含運費）超過此值時前台不允許選擇 COD；0 = 不限制' },
+        },
       ],
     },
     // ── Cookie 同意 ──
