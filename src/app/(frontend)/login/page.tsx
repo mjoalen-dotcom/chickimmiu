@@ -21,6 +21,8 @@ export default function LoginPage() {
   const search = useSearchParams()
   const redirectTo = search.get('redirect') || '/account'
   const registeredFlag = search.get('registered') === '1'
+  const needVerifyFlag = search.get('verify') === '1'
+  const verifiedFlag = search.get('verified') === '1'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -41,6 +43,10 @@ export default function LoginPage() {
       const data = (await res.json().catch(() => ({}))) as { errors?: Array<{ message?: string }>; message?: string }
       if (!res.ok) {
         const msg = data.errors?.[0]?.message || data.message || '登入失敗，請確認 email 與密碼'
+        if (/not.*verified|verify/i.test(msg)) {
+          setError('此帳號尚未完成 email 驗證，請到信箱點選驗證連結後再登入。')
+          return
+        }
         setError(msg === 'The email or password provided is incorrect.' ? 'Email 或密碼錯誤' : msg)
         return
       }
@@ -64,9 +70,19 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {registeredFlag && (
+        {registeredFlag && needVerifyFlag && (
+          <div className="rounded-xl border border-gold-200 bg-gold-50 px-4 py-3 text-sm text-foreground/80">
+            註冊成功！我們已將驗證信寄至您的 email，請點信中連結完成驗證後再回來登入。
+          </div>
+        )}
+        {registeredFlag && !needVerifyFlag && (
           <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             註冊成功，請以剛設定的 email 與密碼登入。
+          </div>
+        )}
+        {verifiedFlag && (
+          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Email 驗證完成，請登入您的帳號。
           </div>
         )}
 

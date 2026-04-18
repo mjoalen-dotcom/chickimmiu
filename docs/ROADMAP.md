@@ -1,16 +1,16 @@
 # CHIC KIM & MIU 電商平台 分階段開發 Checklist
 
 **Stage**：封閉測試（pre.chickimmiu.com）
-**Last updated**：2026-04-18
+**Last updated**：2026-04-19
 
 ---
 
-## Current status snapshot（2026-04-18）
+## Current status snapshot（2026-04-19）
 
 | Phase | 狀態 | 備註 |
 |---|---|---|
 | **Phase 1** 封測與前後台串接 | 🟢 大致達成 | QA 2026-04-18 掃過 11 條路徑；ISSUE-001..008 由 PR #1/#2 解；PR #3（cart/shipping/庫存）+ PR #4（CSP/HSTS/admin BasicAuth）已 merge |
-| **Phase 2** 完整會員系統 | 🟡 進行中 | Auth 三連體 + `/account` gate 完成（PR #1/#2）；身體量測 + 發票欄位完成（`bde53b1`）；LINE OAuth state+nonce 補強（`62278e7`）；**email 驗證信** 與 **OAuth↔Payload cookie 橋接** 仍 pending |
+| **Phase 2** 完整會員系統 | 🟢 大致達成 | Auth 三連體 + `/account` gate 完成（PR #1/#2）；身體量測 + 發票欄位完成（`bde53b1`）；LINE OAuth state+nonce 補強（`62278e7`）；OAuth↔Payload cookie 橋接完成（`98c877a`）；email 驗證信 + 後台一鍵開關完成（本 PR）|
 | **Phase 3** 遊樂場系統連結 | ⚪ 未開始 | 外部 API、身份對應、前台點數顯示 |
 | **Phase 4** 完整訂單系統 | ⚪ 未開始 | Orders schema 已有；結帳 → Order → 狀態流 → 確認信 + 發票 待接 |
 | **Phase 5** 金流與進階功能 | ⚪ 未開始 | ECPay 正式、PayPal、推薦引擎、Gamification、CSP 強化 |
@@ -37,10 +37,10 @@
 
 - [x] Payload Users Collection 完整啟用與權限設定
 - [x] 註冊 / 登入 / 登出 / 忘記密碼完整流程
-- [ ] 加入會員信件驗證（Email verification，使用 resend 或 nodemailer）
+- [x] 加入會員信件驗證（Email verification，使用 Resend）— 後台 `GlobalSettings → Email 註冊/驗證` 可一鍵開關
 - [x] 個人資料頁擴充（身體量測：腳長 / 胸圍 / 腰圍 / 臀圍 + 公司發票資料）— `bde53b1`
 - [x] 會員專屬頁面（/account、/points、/referrals、/wishlist、/orders）
-- [ ] OAuth（Google / Facebook / LINE / Apple）與 Payload cookie 橋接完成
+- [x] OAuth（Google / Facebook / LINE / Apple）與 Payload cookie 橋接完成 — `98c877a`
 
 **完成標準**：新用戶可註冊 → 信箱驗證 → 成功登入 → 進入 `/account`
 
