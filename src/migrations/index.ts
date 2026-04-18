@@ -5,6 +5,7 @@ import * as migration_20260417_100000_add_stored_value_balance from './20260417_
 import * as migration_20260418_220000_add_login_attempts from './20260418_220000_add_login_attempts';
 import * as migration_20260418_230000_add_body_and_invoice_fields from './20260418_230000_add_body_and_invoice_fields';
 import * as migration_20260419_100000_add_email_verification from './20260419_100000_add_email_verification';
+import * as migration_20260419_110000_add_media_folder from './20260419_110000_add_media_folder';
 
 export const migrations = [
   {
@@ -41,5 +42,10 @@ export const migrations = [
     up: migration_20260419_100000_add_email_verification.up,
     down: migration_20260419_100000_add_email_verification.down,
     name: '20260419_100000_add_email_verification'
+  },
+  {
+    up: migration_20260419_110000_add_media_folder.up,
+    down: migration_20260419_110000_add_media_folder.down,
+    name: '20260419_110000_add_media_folder'
   },
 ];

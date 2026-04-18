@@ -149,6 +149,13 @@ export default buildConfig({
         Icon: '@/components/admin/AdminIcon',
       },
       beforeDashboard: ['@/components/admin/Dashboard'],
+      beforeNavLinks: ['@/components/admin/HelpNavLink'],
+      views: {
+        help: {
+          Component: '@/components/admin/HelpView',
+          path: '/help',
+        },
+      },
     },
   },
   collections: [
