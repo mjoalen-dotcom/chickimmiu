@@ -27,6 +27,17 @@ function toDateInputValue(raw: unknown): string {
   }
 }
 
+/** number/null → string for controlled inputs */
+function toNumStr(raw: unknown): string {
+  if (raw === null || raw === undefined || raw === '') return ''
+  const n = Number(raw)
+  return Number.isFinite(n) ? String(n) : ''
+}
+
+function toStr(raw: unknown): string {
+  return typeof raw === 'string' ? raw : ''
+}
+
 export default async function SettingsPage() {
   const payload = await getPayload({ config })
   const headersList = await nextHeaders()
@@ -39,12 +50,32 @@ export default async function SettingsPage() {
     depth: 0,
   })) as unknown as LooseRecord
 
+  const body = (userDoc.bodyProfile as LooseRecord | undefined) ?? {}
+  const invoice = (userDoc.invoiceInfo as LooseRecord | undefined) ?? {}
+
   const initial: SettingsInitial = {
     userId: String(sessionUser.id),
     name: (userDoc.name as string) ?? '',
     email: (userDoc.email as string) ?? '',
     phone: (userDoc.phone as string) ?? '',
     birthday: toDateInputValue(userDoc.birthday),
+    // 身體資料（AI 尺寸推薦用）
+    bodyProfile: {
+      height: toNumStr(body.height),
+      weight: toNumStr(body.weight),
+      footLength: toNumStr(body.footLength),
+      bust: toNumStr(body.bust),
+      waist: toNumStr(body.waist),
+      hips: toNumStr(body.hips),
+    },
+    // 公司發票資料（結帳時可一鍵帶入）
+    invoiceInfo: {
+      invoiceTitle: toStr(invoice.invoiceTitle),
+      taxId: toStr(invoice.taxId),
+      invoiceAddress: toStr(invoice.invoiceAddress),
+      invoiceContactName: toStr(invoice.invoiceContactName),
+      invoicePhone: toStr(invoice.invoicePhone),
+    },
   }
 
   return <SettingsClient initial={initial} />
