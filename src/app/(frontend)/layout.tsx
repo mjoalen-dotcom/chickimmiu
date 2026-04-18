@@ -8,6 +8,7 @@ import config from '@payload-config'
 import './globals.css'
 
 import { getMediaUrl } from '@/lib/media-url'
+import { getCurrentUser } from '@/lib/auth/getCurrentUser'
 import { Providers } from '@/components/layout/Providers'
 import { BootBeaconCleanup } from '@/components/layout/BootBeaconCleanup'
 import { Navbar } from '@/components/layout/Navbar'
@@ -156,9 +157,10 @@ export default async function FrontendLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [globalSettings, navSettings] = await Promise.all([
+  const [globalSettings, navSettings, currentUser] = await Promise.all([
     getGlobalSettings(),
     getNavigationSettings(),
+    getCurrentUser(),
   ])
 
   const cs = (globalSettings?.customerService || {}) as unknown as Record<string, unknown>
@@ -336,6 +338,7 @@ export default async function FrontendLayout({
               announcementStyle={(announcementBar.style as string) || 'default'}
               menuItems={mainMenu || undefined}
               logoUrl={logoUrl}
+              currentUser={currentUser}
             />
             <div className="min-h-screen">{children}</div>
             <Footer
