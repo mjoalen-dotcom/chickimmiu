@@ -9,14 +9,28 @@ import { auth as nextAuth } from '@/auth'
 // from a callback is silently dropped from the final headers. A standalone
 // route handler that we own does pick up cookie writes, so /account redirects
 // here when it sees a NextAuth session but no Payload session.
+//
+// Next.js 15 constructs `request.url` from the internal bind address (e.g.
+// `http://localhost:3000/...`), not the incoming Host header, so redirects
+// built with `new URL(path, request.url)` leak the upstream host. Resolve
+// the public base from Host + X-Forwarded-Proto (which nginx sets correctly)
+// and fall back to NEXT_PUBLIC_SITE_URL / request.url as a last resort.
+function resolveBaseUrl(request: Request): string {
+  const host = request.headers.get('host')
+  const proto = request.headers.get('x-forwarded-proto') || 'https'
+  if (host) return `${proto}://${host}`
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL
+  return new URL(request.url).origin
+}
+
 export async function GET(request: Request) {
-  const url = new URL(request.url)
-  const rawNext = url.searchParams.get('next') || '/account'
+  const base = resolveBaseUrl(request)
+  const rawNext = new URL(request.url).searchParams.get('next') || '/account'
   const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/account'
 
   const session = await nextAuth()
   if (!session?.user?.email) {
-    return NextResponse.redirect(new URL('/login?redirect=' + encodeURIComponent(next), request.url))
+    return NextResponse.redirect(new URL('/login?redirect=' + encodeURIComponent(next), base))
   }
 
   const payload = await getPayload({ config })
@@ -26,7 +40,7 @@ export async function GET(request: Request) {
     limit: 1,
   })
   if (docs.length === 0) {
-    return NextResponse.redirect(new URL('/login?error=user_not_found', request.url))
+    return NextResponse.redirect(new URL('/login?error=user_not_found', base))
   }
   const user = docs[0] as unknown as { id: string | number; email?: string } & Record<string, unknown>
 
@@ -34,7 +48,7 @@ export async function GET(request: Request) {
   const usersConfig = (payload as any).collections?.users?.config
   const authConfig = usersConfig?.auth
   if (!usersConfig || !authConfig) {
-    return NextResponse.redirect(new URL('/login?error=auth_config_missing', request.url))
+    return NextResponse.redirect(new URL('/login?error=auth_config_missing', base))
   }
 
   const fieldsToSign = getFieldsToSign({
@@ -73,5 +87,5 @@ export async function GET(request: Request) {
     maxAge: authConfig.tokenExpiration,
   })
 
-  return NextResponse.redirect(new URL(next, request.url))
+  return NextResponse.redirect(new URL(next, base))
 }
