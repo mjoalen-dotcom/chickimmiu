@@ -26,7 +26,7 @@ export async function awardGamePoints(
 
   const where: Where = {
     user: { equals: userId },
-    type: { equals: 'game_reward' },
+    source: { equals: 'game' },
     createdAt: { greater_than: today.toISOString() },
   }
 
@@ -44,15 +44,27 @@ export async function awardGamePoints(
 
   const actualPoints = Math.min(points, dailyLimit - todayTotal)
 
+  // users.points 是 canonical 餘額，先讀再算 — 早期版本漏 update 導致一直 0
+  const user = await payload.findByID({ collection: 'users', id: userId }) as unknown as Record<string, unknown>
+  const prevBalance = (user.points as number) || 0
+  const newBalance = prevBalance + actualPoints
+
   await (payload.create as Function)({
     collection: 'points-transactions',
     data: {
       user: userId,
       amount: actualPoints,
-      type: 'game_reward',
+      type: 'earn',
+      source: 'game',
       description: `[${gameSlug}] ${description}`,
-      balanceAfter: 0, // TODO: calculate actual balance
+      balance: newBalance,
     } as unknown as Record<string, unknown>,
+  })
+
+  await (payload.update as Function)({
+    collection: 'users',
+    id: userId,
+    data: { points: newBalance } as unknown as Record<string, unknown>,
   })
 
   return { success: true, points: actualPoints }
@@ -299,7 +311,15 @@ export async function drawMovieTicket(userId: number) {
   })
 
   if (won) {
-    // TODO: deduct remaining tickets in global
+    await (payload.updateGlobal as Function)({
+      slug: 'game-settings',
+      data: {
+        movieLottery: {
+          ...movieSettings,
+          remainingTickets: remaining - 1,
+        },
+      } as unknown as Record<string, unknown>,
+    })
     return {
       success: true,
       won: true,
