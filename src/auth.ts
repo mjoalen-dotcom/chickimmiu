@@ -44,6 +44,11 @@ if (process.env.AUTH_LINE_CHANNEL_ID && process.env.AUTH_LINE_CHANNEL_SECRET) {
     Line({
       clientId: process.env.AUTH_LINE_CHANNEL_ID,
       clientSecret: process.env.AUTH_LINE_CHANNEL_SECRET,
+      // LINE Login v2.1 要求 `state`（見 LINE docs「Required」欄位）。Auth.js
+      // 內建 Line provider 預設 `checks` 只放 `pkce`，少了 state 會被 LINE
+      // 在 callback 擋成 `error=INVALID_REQUEST&error_description='state' is
+      // not specified`。顯式補上 state + nonce（後者是 OIDC replay protection）。
+      checks: ['pkce', 'state', 'nonce'],
     })
   )
 }
