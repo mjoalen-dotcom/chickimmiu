@@ -3,11 +3,13 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { useSession, signOut as nextAuthSignOut } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Search, User, ShoppingBag, Heart, ChevronDown } from 'lucide-react'
+import { Menu, X, Search, User, ShoppingBag, Heart, ChevronDown, LogOut, Gift, Package, UserCircle } from 'lucide-react'
 import { useCartStore } from '@/stores/cartStore'
 import { useWishlistStore } from '@/stores/wishlistStore'
+import type { CurrentUser } from '@/lib/auth/getCurrentUser'
 import { LanguageSwitcher, CurrencySwitcher } from './LanguageCurrencySwitcher'
 
 interface MenuItem {
@@ -41,19 +43,54 @@ interface NavbarProps {
   announcementStyle?: string
   menuItems?: MenuItem[]
   logoUrl?: string
+  currentUser?: CurrentUser | null
 }
 
-export function Navbar({ announcementText, announcementLink, announcementStyle = 'default', menuItems, logoUrl }: NavbarProps) {
+export function Navbar({ announcementText, announcementLink, announcementStyle = 'default', menuItems, logoUrl, currentUser }: NavbarProps) {
   const navLinks = menuItems && menuItems.length > 0 ? menuItems : DEFAULT_NAV_LINKS
   const logo = logoUrl && logoUrl !== '/images/logo-ckmu.svg' ? logoUrl : DEFAULT_LOGO
   const [isOpen, setIsOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isCollectionsOpen, setIsCollectionsOpen] = useState(false)
   const [isMobileCollectionsOpen, setIsMobileCollectionsOpen] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  // TODO: 若未來確認 Payload session 永遠是真相（bridge 流程穩定），
+  // 可完全移除 useSession() + NextAuthProvider 以簡化 bundle。
+  // 目前保留當 fallback：OAuth 剛完成但 bridge 尚未補 Payload cookie 時仍能顯示。
   const { data: session } = useSession()
+  const router = useRouter()
   const cartCount = useCartStore((s) => s.totalItems())
   const openCartDrawer = useCartStore((s) => s.openDrawer)
   const wishlistCount = useWishlistStore((s) => s.count())
+
+  // Canonical user：優先 SSR 帶進來的 currentUser（Payload session），
+  // fallback 到 client-side NextAuth session。
+  const effectiveUser = currentUser
+    ? { name: currentUser.name, email: currentUser.email }
+    : session?.user
+      ? { name: session.user.name || session.user.email || '會員', email: session.user.email || '' }
+      : null
+  const isLoggedIn = effectiveUser !== null
+  const displayName = effectiveUser?.name || '會員'
+
+  async function handleLogout() {
+    if (isLoggingOut) return
+    setIsLoggingOut(true)
+    setIsUserMenuOpen(false)
+    try {
+      await fetch('/api/users/logout', { method: 'POST', credentials: 'include' })
+    } catch {
+      // ignore network errors — still proceed to clear NextAuth + refresh
+    }
+    try {
+      await nextAuthSignOut({ redirect: false })
+    } catch {
+      // ignore
+    }
+    router.push('/')
+    router.refresh()
+  }
 
   return (
     <div data-component="navbar">
@@ -126,13 +163,84 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
                 </span>
               )}
             </Link>
-            <Link
-              href={session ? '/account' : '/login'}
-              className="p-2 text-foreground/70 hover:text-gold-600 transition-colors"
-              aria-label="會員"
-            >
-              <User size={20} />
-            </Link>
+            {isLoggedIn ? (
+              <div
+                className="relative"
+                onMouseEnter={() => setIsUserMenuOpen(true)}
+                onMouseLeave={() => setIsUserMenuOpen(false)}
+              >
+                <button
+                  type="button"
+                  onClick={() => setIsUserMenuOpen((v) => !v)}
+                  className="flex items-center gap-1 p-2 text-foreground/70 hover:text-gold-600 transition-colors"
+                  aria-label="會員選單"
+                  aria-expanded={isUserMenuOpen}
+                >
+                  <User size={20} />
+                  <span className="hidden md:inline text-xs max-w-[7rem] truncate">{displayName}</span>
+                  <ChevronDown size={12} className={`hidden md:inline transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+                <AnimatePresence>
+                  {isUserMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 4 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-cream-200 py-2 z-50"
+                    >
+                      <div className="px-4 py-2 border-b border-cream-100">
+                        <div className="text-sm font-medium truncate">{displayName}</div>
+                        {effectiveUser?.email && (
+                          <div className="text-xs text-muted-foreground truncate">{effectiveUser.email}</div>
+                        )}
+                      </div>
+                      <Link
+                        href="/account"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:text-gold-600 hover:bg-cream-50 transition-colors"
+                      >
+                        <UserCircle size={16} />
+                        會員總覽
+                      </Link>
+                      <Link
+                        href="/account/orders"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:text-gold-600 hover:bg-cream-50 transition-colors"
+                      >
+                        <Package size={16} />
+                        我的訂單
+                      </Link>
+                      <Link
+                        href="/account/points"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:text-gold-600 hover:bg-cream-50 transition-colors"
+                      >
+                        <Gift size={16} />
+                        點數 / 購物金
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        disabled={isLoggingOut}
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors border-t border-cream-100 mt-1 disabled:opacity-60"
+                      >
+                        <LogOut size={16} />
+                        {isLoggingOut ? '登出中…' : '登出'}
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="p-2 text-foreground/70 hover:text-gold-600 transition-colors"
+                aria-label="登入"
+              >
+                <User size={20} />
+              </Link>
+            )}
             <button
               onClick={openCartDrawer}
               className="p-2 text-foreground/70 hover:text-gold-600 transition-colors relative"
@@ -314,13 +422,40 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
                 )}
               </nav>
               <div className="p-4 border-t border-cream-200 space-y-2">
-                <Link
-                  href={session ? '/account' : '/login'}
-                  onClick={() => setIsOpen(false)}
-                  className="block w-full text-center px-4 py-3 text-sm bg-gold-500 text-white rounded-md hover:bg-gold-600 transition-colors"
-                >
-                  {session ? '我的帳戶' : '登入 / 註冊'}
-                </Link>
+                {isLoggedIn ? (
+                  <>
+                    <div className="px-2 pb-2 text-xs text-muted-foreground">
+                      已登入：<span className="font-medium text-foreground/80">{displayName}</span>
+                    </div>
+                    <Link
+                      href="/account"
+                      onClick={() => setIsOpen(false)}
+                      className="block w-full text-center px-4 py-3 text-sm bg-gold-500 text-white rounded-md hover:bg-gold-600 transition-colors"
+                    >
+                      我的帳戶
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOpen(false)
+                        void handleLogout()
+                      }}
+                      disabled={isLoggingOut}
+                      className="flex items-center justify-center gap-2 w-full px-4 py-3 text-sm text-red-500 border border-red-200 rounded-md hover:bg-red-50 transition-colors disabled:opacity-60"
+                    >
+                      <LogOut size={16} />
+                      {isLoggingOut ? '登出中…' : '登出'}
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    href="/login"
+                    onClick={() => setIsOpen(false)}
+                    className="block w-full text-center px-4 py-3 text-sm bg-gold-500 text-white rounded-md hover:bg-gold-600 transition-colors"
+                  >
+                    登入 / 註冊
+                  </Link>
+                )}
               </div>
             </motion.div>
           </motion.div>
