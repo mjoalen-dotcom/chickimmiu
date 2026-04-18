@@ -16,17 +16,16 @@ import { useState, type FormEvent } from 'react'
  *   導回本頁並在 URL 加 ?error=。
  * 忘記密碼：連 `/forgot-password`
  *
- * ⚠️ 已知設計缺陷（非本 PR 處理）：
- *   Payload cookie session（email/pw 登入產生）與 NextAuth session（OAuth
- *   登入產生）是兩套，OAuth 使用者目前進 /account/points 會被 Payload
- *   `payload.auth()` 判定未登入而 redirect 回 /login。要治本需做 OAuth
- *   callback 下 Payload session cookie；留待另一個 session 處理。
+ * OAuth ↔ Payload session sync：尚未接通（見 docs/oauth-payload-sync.md）。
+ *   目前 OAuth signIn callback 回傳 `/login?oauth=unfinished` → NextAuth 不
+ *   建 session、使用者被明確帶回本頁看到黃色提示，避免靜默循環。
  */
 export default function LoginPage() {
   const router = useRouter()
   const search = useSearchParams()
   const redirectTo = search.get('redirect') || '/account'
   const registeredFlag = search.get('registered') === '1'
+  const oauthUnfinished = search.get('oauth') === 'unfinished'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -73,6 +72,12 @@ export default function LoginPage() {
         {registeredFlag && (
           <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             註冊成功，請以剛設定的 email 與密碼登入。
+          </div>
+        )}
+
+        {oauthUnfinished && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            社群登入接通尚未完成，請先使用 email 與密碼登入。（Engineering：見 docs/oauth-payload-sync.md）
           </div>
         )}
 

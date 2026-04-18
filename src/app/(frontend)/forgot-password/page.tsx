@@ -9,8 +9,9 @@ import { useState, type FormEvent } from 'react'
  * POST `/api/users/forgot-password`（Payload 內建）
  * 成功不論 email 是否存在都回傳同樣訊息，避免 email enumeration。
  *
- * ⚠️ Prod 未設 email adapter — token 會 log 到 systemd journal，
- *    封測期客服可從 server log 撈 token 發給使用者。SMTP adapter 另案。
+ * Email：Resend adapter（@payloadcms/email-resend）已裝。Prod 需設
+ * `RESEND_API_KEY` + `EMAIL_FROM_ADDRESS`（見 .env.example）；未設時
+ * Payload 會 throw 而非 silent success。
  */
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')

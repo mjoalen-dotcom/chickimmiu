@@ -22,6 +22,7 @@
     "@libsql/client": "^0.14.0",
     "@payloadcms/db-postgres": "^3.0.0",
     "@payloadcms/db-sqlite": "^3.82.1",
+    "@payloadcms/email-resend": "^3.0.0",
     "@payloadcms/next": "^3.0.0",
     "@payloadcms/richtext-lexical": "^3.0.0",
     "@payloadcms/ui": "^3.0.0",

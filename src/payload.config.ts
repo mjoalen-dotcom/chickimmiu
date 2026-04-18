@@ -1,4 +1,5 @@
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
+import { resendAdapter } from '@payloadcms/email-resend'
 import { lexicalEditor, UploadFeature } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { buildConfig } from 'payload'
@@ -160,6 +161,15 @@ export default buildConfig({
       url: process.env.DATABASE_URI || 'file:./data/chickimmiu.db',
       ...(process.env.DATABASE_AUTH_TOKEN ? { authToken: process.env.DATABASE_AUTH_TOKEN } : {}),
     },
+  }),
+  // Email — Resend adapter。Prod 必須設 RESEND_API_KEY，否則 forgot-password
+  // 之類發送會 throw（sub: silent success）。Dev 不設也可（forgot-password
+  // 仍 200，token 會 log 到 server console）。Domain 需先在 Resend
+  // dashboard 驗證並對應 EMAIL_FROM_ADDRESS。
+  email: resendAdapter({
+    defaultFromAddress: process.env.EMAIL_FROM_ADDRESS || 'no-reply@chickimmiu.com',
+    defaultFromName: 'CHIC KIM & MIU',
+    apiKey: process.env.RESEND_API_KEY || '',
   }),
   sharp,
 })

@@ -4,6 +4,7 @@ import { isAdmin, isAdminFieldLevel } from '../access/isAdmin'
 import { isAdminOrSelf } from '../access/isAdminOrSelf'
 import { createExportEndpoint, createImportEndpoint, type FieldMapping } from '../endpoints/importExport'
 import { customerRegisterEndpoint } from '../endpoints/customerRegister'
+import { customerLogoutEndpoint } from '../endpoints/customerLogout'
 
 const userFieldMappings: FieldMapping[] = [
   { key: 'name', label: '姓名' },
@@ -52,9 +53,8 @@ export const Users: CollectionConfig = {
       sameSite: 'Lax',
       secure: process.env.NODE_ENV === 'production',
     },
-    // 忘記密碼 email 內容客製化。未設 email adapter 時 Payload 會把 token
-    // log 到 server console（見 payload.config.ts；封測期接受這個行為，
-    // 客服可從 systemd journal 撈 token 發給使用者，SMTP adapter 另案）。
+    // 忘記密碼 email 內容客製化。Resend adapter 已裝（payload.config.ts），
+    // prod 需設 RESEND_API_KEY；未設時 Payload 會 throw 而非 silent success。
     // 前端 reset URL = `${NEXT_PUBLIC_SITE_URL}/reset-password?token=<token>`
     forgotPassword: {
       generateEmailSubject: () => 'CHIC KIM & MIU｜重設密碼請求',
@@ -90,6 +90,7 @@ export const Users: CollectionConfig = {
     createExportEndpoint('users', userFieldMappings),
     createImportEndpoint('users', userFieldMappings),
     customerRegisterEndpoint,
+    customerLogoutEndpoint,
   ],
   fields: [
     // ════════════════════════════════════════════════════════════════

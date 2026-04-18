@@ -112,10 +112,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           })
         }
 
-        return true
+        // OAuth ↔ Payload session sync 未完成（見 docs/oauth-payload-sync.md）。
+        // 回傳 string URL 而非 true → NextAuth 不建 session，使用者被明確帶回
+        // /login 並看到提示。避免 OAuth 成功但進 /account 被 Payload 踢回的
+        // 靜默循環。等 OAuth → payload-token 接通後，改回 `return true`。
+        return '/login?oauth=unfinished'
       } catch (error) {
         console.error('[NextAuth] signIn callback error:', error)
-        return true // 即使 Payload 同步失敗也允許登入
+        return '/login?oauth=unfinished'
       }
     },
     async session({ session, token }) {
