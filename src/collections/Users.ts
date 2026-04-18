@@ -201,6 +201,58 @@ export const Users: CollectionConfig = {
               type: 'upload',
               relationTo: 'media',
             },
+            // 公司發票資料（常用資料）—— 顧客於結帳時可快速帶入三聯式發票抬頭
+            {
+              name: 'invoiceInfo',
+              label: '公司發票資料',
+              type: 'group',
+              admin: {
+                description: '三聯式發票抬頭、統編等資料；顧客於結帳頁可一鍵套用，免重複填寫。',
+              },
+              fields: [
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'invoiceTitle',
+                      label: '發票抬頭',
+                      type: 'text',
+                      admin: { width: '50%', description: '公司全名' },
+                    },
+                    {
+                      name: 'taxId',
+                      label: '統一編號',
+                      type: 'text',
+                      maxLength: 8,
+                      admin: { width: '50%', description: '8 碼數字' },
+                    },
+                  ],
+                },
+                {
+                  name: 'invoiceAddress',
+                  label: '發票寄送地址',
+                  type: 'text',
+                  admin: { description: '紙本三聯式發票寄送地址（電子發票可留空）' },
+                },
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'invoiceContactName',
+                      label: '聯絡人',
+                      type: 'text',
+                      admin: { width: '50%' },
+                    },
+                    {
+                      name: 'invoicePhone',
+                      label: '聯絡電話',
+                      type: 'text',
+                      admin: { width: '50%' },
+                    },
+                  ],
+                },
+              ],
+            },
             // Admin permission info group
             {
               name: 'adminPermissions',
@@ -603,6 +655,16 @@ export const Users: CollectionConfig = {
                       admin: { width: '25%' },
                     },
                     { name: 'preferredSizes', label: '常穿尺寸', type: 'text', admin: { width: '25%', description: '例如 M, S/M' } },
+                  ],
+                },
+                // Detailed measurements for AI size recommendation (selo 新增)
+                {
+                  type: 'row',
+                  fields: [
+                    { name: 'footLength', label: '腳長（cm）', type: 'number', min: 15, max: 35, admin: { width: '25%', description: '選鞋款時自動建議尺寸' } },
+                    { name: 'bust', label: '胸圍（cm）', type: 'number', min: 50, max: 160, admin: { width: '25%' } },
+                    { name: 'waist', label: '腰圍（cm）', type: 'number', min: 40, max: 160, admin: { width: '25%' } },
+                    { name: 'hips', label: '臀圍（cm）', type: 'number', min: 50, max: 170, admin: { width: '25%' } },
                   ],
                 },
               ],

@@ -3,6 +3,7 @@ import * as migration_20260416_140000_add_gender_and_male_tier_name from './2026
 import * as migration_20260416_193835_add_daily_checkin_streak from './20260416_193835_add_daily_checkin_streak';
 import * as migration_20260417_100000_add_stored_value_balance from './20260417_100000_add_stored_value_balance';
 import * as migration_20260418_220000_add_login_attempts from './20260418_220000_add_login_attempts';
+import * as migration_20260418_230000_add_body_and_invoice_fields from './20260418_230000_add_body_and_invoice_fields';
 
 export const migrations = [
   {
@@ -29,5 +30,10 @@ export const migrations = [
     up: migration_20260418_220000_add_login_attempts.up,
     down: migration_20260418_220000_add_login_attempts.down,
     name: '20260418_220000_add_login_attempts'
+  },
+  {
+    up: migration_20260418_230000_add_body_and_invoice_fields.up,
+    down: migration_20260418_230000_add_body_and_invoice_fields.down,
+    name: '20260418_230000_add_body_and_invoice_fields'
   },
 ];
