@@ -28,7 +28,13 @@ async function main() {
   const updated = await (payload.update as Function)({
     collection: 'users',
     id: adminId,
-    data: { password: 'CKMU2026!admin' },
+    data: {
+      password:
+        process.env.ADMIN_RESET_PASSWORD ??
+        (() => {
+          throw new Error('ADMIN_RESET_PASSWORD env required')
+        })(),
+    },
   })
   process.stdout.write('[resetAdmin] updated email=' + updated.email + ' role=' + updated.role + '\n')
   process.stdout.write('[resetAdmin] done\n')

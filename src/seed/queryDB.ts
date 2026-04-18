@@ -1,6 +1,6 @@
 /**
  * DB 查詢：分類和商品分類分配
- * PAYLOAD_SECRET=H2Ca1PcPtUMqKgAfJ0VEWbgN0hMMiX5g6SRniQdev01 npx tsx src/seed/queryDB.ts
+ * PAYLOAD_SECRET=<your-secret-from-env> npx tsx src/seed/queryDB.ts
  */
 import { getPayload } from 'payload'
 import config from '../payload.config'
