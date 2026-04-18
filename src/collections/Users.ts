@@ -48,6 +48,9 @@ export const Users: CollectionConfig = {
   },
   auth: {
     tokenExpiration: 60 * 60 * 24 * 7,
+    // 暴力破解防護：10 次失敗鎖 10 分鐘（Payload 內建，透過 users.loginAttempts 欄位計數）
+    maxLoginAttempts: 10,
+    lockTime: 10 * 60 * 1000,
     cookies: {
       sameSite: 'Lax',
       secure: process.env.NODE_ENV === 'production',
@@ -91,6 +94,33 @@ export const Users: CollectionConfig = {
     createImportEndpoint('users', userFieldMappings),
     customerRegisterEndpoint,
   ],
+  hooks: {
+    // 成功登入後寫一筆 login-attempts 作稽核；失敗不寫（由 Payload maxLoginAttempts 擋）。
+    // 寫入失敗不該影響使用者登入流程，統一 swallow。
+    afterLogin: [
+      async ({ req, user }) => {
+        try {
+          const headers = req?.headers as Headers | undefined
+          const getHeader = (k: string) => (typeof headers?.get === 'function' ? headers.get(k) : '') || ''
+          const xff = getHeader('x-forwarded-for')
+          const ip = (xff.split(',')[0] || getHeader('x-real-ip') || '').trim()
+          const ua = getHeader('user-agent')
+          await req.payload.create({
+            collection: 'login-attempts',
+            data: {
+              email: (user as { email?: string })?.email || '',
+              userId: (user as { id?: string | number })?.id != null ? String((user as { id: string | number }).id) : '',
+              ip,
+              userAgent: ua,
+            },
+            req,
+          })
+        } catch {
+          // ignore
+        }
+      },
+    ],
+  },
   fields: [
     // ════════════════════════════════════════════════════════════════
     // TABS layout for organized, intuitive form

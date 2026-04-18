@@ -57,6 +57,7 @@ import { AutomationJourneys } from './collections/AutomationJourneys'
 import { AutomationLogs } from './collections/AutomationLogs'
 import { CustomerServiceTickets } from './collections/CustomerServiceTickets'
 import { MemberSegments } from './collections/MemberSegments'
+import { LoginAttempts } from './collections/LoginAttempts'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -143,6 +144,7 @@ export default buildConfig({
     MiniGameRecords,
     CardBattles,
     GameLeaderboard,
+    LoginAttempts,
   ],
   globals: [GlobalSettings, LoyaltySettings, ReferralSettings, PointRedemptionSettings, RecommendationSettings, CRMSettings, SegmentationSettings, MarketingAutomationSettings, InvoiceSettings, GameSettings, HomepageSettings, AboutPageSettings, FAQPageSettings, PolicyPagesSettings, NavigationSettings],
   editor: lexicalEditor({
