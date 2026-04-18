@@ -3,6 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { isAdmin, isAdminFieldLevel } from '../access/isAdmin'
 import { isAdminOrSelf } from '../access/isAdminOrSelf'
 import { createExportEndpoint, createImportEndpoint, type FieldMapping } from '../endpoints/importExport'
+import { customerRegisterEndpoint } from '../endpoints/customerRegister'
 
 const userFieldMappings: FieldMapping[] = [
   { key: 'name', label: '姓名' },
@@ -51,6 +52,29 @@ export const Users: CollectionConfig = {
       sameSite: 'Lax',
       secure: process.env.NODE_ENV === 'production',
     },
+    // 忘記密碼 email 內容客製化。未設 email adapter 時 Payload 會把 token
+    // log 到 server console（見 payload.config.ts；封測期接受這個行為，
+    // 客服可從 systemd journal 撈 token 發給使用者，SMTP adapter 另案）。
+    // 前端 reset URL = `${NEXT_PUBLIC_SITE_URL}/reset-password?token=<token>`
+    forgotPassword: {
+      generateEmailSubject: () => 'CHIC KIM & MIU｜重設密碼請求',
+      generateEmailHTML: ({ token, user } = {} as { token?: string; user?: Record<string, unknown> }) => {
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com'
+        const resetUrl = `${siteUrl}/reset-password?token=${token || ''}`
+        const name = (user?.name as string) || (user?.email as string) || '會員'
+        return `<!DOCTYPE html>
+<html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang TC','Microsoft JhengHei',sans-serif;background:#FDF8F3;padding:24px;color:#2C2C2C">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #E5DED4;border-radius:14px;padding:28px">
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600">${name}，您好</h2>
+    <p style="margin:0 0 16px;line-height:1.7">我們收到您的重設密碼請求。請點以下按鈕或連結在 1 小時內完成重設：</p>
+    <div style="text-align:center;margin:24px 0"><a href="${resetUrl}" style="display:inline-block;padding:12px 28px;background:#C19A5B;color:#fff;border-radius:999px;text-decoration:none;font-size:14px">重設密碼</a></div>
+    <p style="margin:0 0 8px;font-size:12px;color:#6B6B6B;line-height:1.6">連結無法點擊請複製：</p>
+    <p style="margin:0 0 16px;font-size:12px;word-break:break-all;color:#6B6B6B">${resetUrl}</p>
+    <p style="margin:16px 0 0;font-size:12px;color:#6B6B6B;line-height:1.6">若您未發起此請求，請忽略此信，您的密碼不會改變。</p>
+  </div>
+</body></html>`
+      },
+    },
   },
   access: {
     admin: ({ req: { user } }) => {
@@ -65,6 +89,7 @@ export const Users: CollectionConfig = {
   endpoints: [
     createExportEndpoint('users', userFieldMappings),
     createImportEndpoint('users', userFieldMappings),
+    customerRegisterEndpoint,
   ],
   fields: [
     // ════════════════════════════════════════════════════════════════
