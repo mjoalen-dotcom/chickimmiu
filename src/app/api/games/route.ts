@@ -21,42 +21,77 @@ import { startChallenge, submitChallenge } from '@/lib/games/fashionChallengeEng
  * POST /api/games — play a game or check in
  */
 export async function GET(req: NextRequest) {
+  // Auth/init is the only hard dependency — if this fails the whole route is useless.
+  // Downstream reads (leaderboard, stats, per-game daily status) each get their own
+  // try/catch so a single subsystem glitch (e.g. missing DB column, malformed JSON)
+  // can't poison the primary daily-checkin flow the user actually came for.
+  let payload: Awaited<ReturnType<typeof getPayload>>
+  let user: Awaited<ReturnType<typeof payload.auth>>['user']
   try {
-    const payload = await getPayload({ config })
-    const { user } = await payload.auth({ headers: req.headers })
+    payload = await getPayload({ config })
+    ;({ user } = await payload.auth({ headers: req.headers }))
+  } catch (error) {
+    console.error('[games GET] auth/init failed:', error)
+    return NextResponse.json(
+      { success: false, error: '服務暫時無法使用，請稍後重試' },
+      { status: 503 },
+    )
+  }
 
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: '請先登入' },
-        { status: 401 },
-      )
-    }
+  if (!user) {
+    return NextResponse.json(
+      { success: false, error: '請先登入' },
+      { status: 401 },
+    )
+  }
 
-    const userId = user.id as unknown as string
+  const userId = user.id as unknown as string
+  const userData = user as unknown as Record<string, unknown>
 
-    // Get daily play status for all game types
-    const gameTypes = Object.keys(GAME_CONFIGS)
-    const dailyStatus: Record<string, unknown> = {}
+  // checkinState is derived purely from the already-loaded user object, so it's safe.
+  const lastCheckInDate = (userData.lastCheckInDate as string) || ''
+  const todayTpe = getTpeDateString()
+  const checkinState = {
+    totalCheckIns: (userData.totalCheckIns as number) || 0,
+    consecutiveCheckIns: (userData.consecutiveCheckIns as number) || 0,
+    lastCheckInDate,
+    alreadyCheckedToday: Boolean(lastCheckInDate) && lastCheckInDate === todayTpe,
+  }
 
-    for (const gameType of gameTypes) {
+  // Per-game daily play status
+  const dailyStatus: Record<string, unknown> = {}
+  try {
+    for (const gameType of Object.keys(GAME_CONFIGS)) {
       dailyStatus[gameType] = await checkDailyPlays(userId, gameType)
     }
+  } catch (error) {
+    console.error('[games GET] dailyStatus failed:', error)
+  }
 
-    // Get player stats
-    const stats = await getPlayerStats(userId)
+  // Aggregate player stats
+  let stats: Awaited<ReturnType<typeof getPlayerStats>> = {
+    totalGames: 0,
+    totalWins: 0,
+    totalPointsEarned: 0,
+    currentStreak: 0,
+    badges: [],
+  }
+  try {
+    stats = await getPlayerStats(userId)
+  } catch (error) {
+    console.error('[games GET] getPlayerStats failed:', error)
+  }
 
-    // Phase 5.7：把使用者目前的 daily-checkin streak 狀態一併回傳，UI 初始化用。
-    const userData = user as unknown as Record<string, unknown>
-    const lastCheckInDate = (userData.lastCheckInDate as string) || ''
-    const todayTpe = getTpeDateString()
-    const checkinState = {
-      totalCheckIns: (userData.totalCheckIns as number) || 0,
-      consecutiveCheckIns: (userData.consecutiveCheckIns as number) || 0,
-      lastCheckInDate,
-      alreadyCheckedToday: Boolean(lastCheckInDate) && lastCheckInDate === todayTpe,
-    }
-
-    // Get top 5 for leaderboard summary (all-time)
+  // All-time leaderboard (top 5) — isolate the JSON-sorted query and per-player
+  // findByID lookups so a single weird row can't take down the whole GET.
+  let topPlayers: Array<{
+    userId: string
+    name: string
+    totalPoints: unknown
+    totalWins: unknown
+    totalGames: unknown
+  }> = []
+  try {
     const leaderboardSummary = await payload.find({
       collection: 'mini-game-records',
       where: {
@@ -69,7 +104,7 @@ export async function GET(req: NextRequest) {
       sort: '-metadata.totalPoints' as never,
     })
 
-    const topPlayers = await Promise.all(
+    topPlayers = await Promise.all(
       leaderboardSummary.docs.map(async (doc) => {
         const record = doc as unknown as Record<string, unknown>
         const meta = (record.metadata as unknown as Record<string, unknown>) || {}
@@ -101,29 +136,25 @@ export async function GET(req: NextRequest) {
         }
       }),
     )
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        configs: Object.fromEntries(
-          Object.entries(GAME_CONFIGS).map(([key, cfg]) => [
-            key,
-            { pointsCost: cfg.pointsCost, dailyLimit: cfg.dailyLimit },
-          ]),
-        ),
-        dailyStatus,
-        playerStats: stats,
-        leaderboard: topPlayers,
-        checkinState,
-      },
-    })
   } catch (error) {
-    console.error('Games GET error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 },
-    )
+    console.error('[games GET] leaderboard failed:', error)
   }
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      configs: Object.fromEntries(
+        Object.entries(GAME_CONFIGS).map(([key, cfg]) => [
+          key,
+          { pointsCost: cfg.pointsCost, dailyLimit: cfg.dailyLimit },
+        ]),
+      ),
+      dailyStatus,
+      playerStats: stats,
+      leaderboard: topPlayers,
+      checkinState,
+    },
+  })
 }
 
 export async function POST(req: NextRequest) {
