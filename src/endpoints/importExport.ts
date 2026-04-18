@@ -91,6 +91,13 @@ export function createImportEndpoint(collectionSlug: string, fieldMappings: Fiel
         // 用 slug（商品）或 email（會員）作為唯一識別欄位
         const idField = collectionSlug === 'users' ? 'email' : 'slug'
 
+        // 會員匯入（例如 Shopline 搬家）：新增的會員直接標 `_verified:true`
+        // + `disableVerificationEmail:true`，不走 Payload 驗證信流程——一次匯入
+        // 幾百筆會把 Resend 額度燒完、觸發發信量/投訴率鎖帳戶，且這些都是舊系統
+        // 已驗證過的有效會員，不該再被當新註冊處理。
+        // 現有會員 update 不動 `_verified`（保留舊狀態）。
+        const isUsers = collectionSlug === 'users'
+
         for (let i = 0; i < rows.length; i++) {
           const data = rows[i]
           try {
@@ -111,11 +118,19 @@ export function createImportEndpoint(collectionSlug: string, fieldMappings: Fiel
                 })
                 updated++
               } else {
-                await (req.payload.create as Function)({ collection: collectionSlug, data })
+                await (req.payload.create as Function)({
+                  collection: collectionSlug,
+                  data: isUsers ? { ...data, _verified: true } : data,
+                  ...(isUsers ? { disableVerificationEmail: true } : {}),
+                })
                 created++
               }
             } else {
-              await (req.payload.create as Function)({ collection: collectionSlug, data })
+              await (req.payload.create as Function)({
+                collection: collectionSlug,
+                data: isUsers ? { ...data, _verified: true } : data,
+                ...(isUsers ? { disableVerificationEmail: true } : {}),
+              })
               created++
             }
           } catch (err: unknown) {

@@ -235,7 +235,10 @@ async function main() {
         continue
       }
 
-      // Build user data
+      // Build user data. `_verified:true` 讓搬家進來的舊會員直接標為已驗證，
+      // 免去每人一封驗證信（Resend 額度爆量 + 使用者困惑 + Resend 對發信量/投訴率有
+      // 門檻，一次發幾百封容易被鎖帳戶）。搭配 `disableVerificationEmail:true`
+      // 確保 Payload 不會誤寄。新自助註冊仍走 `customerRegister` 的驗證分支。
       const userData: Record<string, unknown> = {
         email: c.email,
         password: 'CKMU2026!temp', // Temporary password, users will need to reset
@@ -247,6 +250,7 @@ async function main() {
         totalSpent: c.totalSpent,
         lifetimeSpend: c.totalSpent,
         isBlacklisted: c.isBlacklisted,
+        _verified: true,
       }
 
       // Birthday
@@ -320,6 +324,8 @@ async function main() {
       await (payload.create as Function)({
         collection: 'users',
         data: userData,
+        overrideAccess: true,
+        disableVerificationEmail: true,
       })
 
       created++
