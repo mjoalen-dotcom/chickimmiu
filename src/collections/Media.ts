@@ -29,13 +29,49 @@ export const Media: CollectionConfig = {
     delete: isAdmin,
   },
   hooks: {
+    // 上傳驗證：白名單 MIME、大小上限、禁路徑字元
+    //   - 替 Payload 的 mimeTypes 做二次校驗（防 multipart 偽造）
+    //   - Media 可被任何登入使用者上傳（access.create: Boolean(user)），
+    //     UGC 也走這條，故 customer 攻擊面的主要防線在此
+    beforeChange: [
+      async ({ req, data, operation }) => {
+        if (operation !== 'create') return data
+        const f = req?.file
+        if (!f) return data
+        const mt = String(f.mimetype || '')
+        const MAX_IMAGE = 8 * 1024 * 1024
+        const MAX_VIDEO = 50 * 1024 * 1024
+        const MAX_PDF = 10 * 1024 * 1024
+        const max = mt.startsWith('video/')
+          ? MAX_VIDEO
+          : mt === 'application/pdf'
+            ? MAX_PDF
+            : MAX_IMAGE
+        if (typeof f.size === 'number' && f.size > max) {
+          throw new Error(`檔案過大（上限 ${Math.round(max / 1024 / 1024)}MB）`)
+        }
+        // Path traversal / subdir：禁 /、\、..（Payload 會再 sanitise，但多一層）
+        const name = String(f.name || '')
+        if (/[/\\]|\.\./.test(name)) {
+          throw new Error('非法檔名（禁止路徑字元）')
+        }
+        // MIME 白名單二次把關（image/* 已在 upload.mimeTypes 收緊，這裡再確認）
+        const allow = /^(image\/(jpeg|png|webp|gif)|video\/mp4|application\/pdf)$/
+        if (!allow.test(mt)) {
+          throw new Error('不支援的檔案格式')
+        }
+        return data
+      },
+    ],
     afterChange: [() => revalidateMedia()],
     afterDelete: [() => revalidateMedia()],
   },
   upload: {
     staticDir: path.resolve(dirname, '../../public/media'),
     adminThumbnail: 'thumbnail',
-    mimeTypes: ['image/*', 'video/mp4', 'application/pdf'],
+    // 去掉 image/* 萬用字元（image/svg+xml 是 XSS 向量）
+    // 若未來要加 avif/heic 請顯式列出
+    mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'application/pdf'],
     imageSizes: [
       {
         name: 'thumbnail',
