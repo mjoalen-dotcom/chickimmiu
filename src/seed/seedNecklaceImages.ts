@@ -1,6 +1,6 @@
 /**
  * 流線金屬長鍊 (Product #80) — Gallery + Description images + product details
- * PAYLOAD_SECRET=H2Ca1PcPtUMqKgAfJ0VEWbgN0hMMiX5g6SRniQdev01 DATABASE_URI=file:./data/chickimmiu.db npx tsx src/seed/seedNecklaceImages.ts
+ * PAYLOAD_SECRET=<your-secret-from-env> DATABASE_URI=file:./data/chickimmiu.db npx tsx src/seed/seedNecklaceImages.ts
  */
 import { getPayload } from 'payload'
 import config from '../payload.config'

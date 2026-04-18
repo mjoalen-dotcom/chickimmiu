@@ -1,5 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { headers as nextHeaders } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { getPayload } from 'payload'
+import config from '@payload-config'
 import { User, ShoppingBag, Heart, MapPin, Gift, Settings, LogOut, Crown, Share2, RotateCcw, Star, FileText, Gamepad2 } from 'lucide-react'
 
 export const metadata: Metadata = {
@@ -23,7 +27,12 @@ const sidebarLinks = [
   { href: '/account/settings', label: '帳號設定', icon: Settings },
 ]
 
-export default function AccountLayout({ children }: { children: React.ReactNode }) {
+export default async function AccountLayout({ children }: { children: React.ReactNode }) {
+  const payload = await getPayload({ config })
+  const headersList = await nextHeaders()
+  const { user } = await payload.auth({ headers: headersList })
+  if (!user) redirect('/login?redirect=/account')
+
   return (
     <div className="bg-cream-50 min-h-screen">
       <div className="container py-8 md:py-12">

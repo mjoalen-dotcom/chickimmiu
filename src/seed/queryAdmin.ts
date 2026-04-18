@@ -9,7 +9,11 @@ async function main() {
     collection: 'users',
     data: {
       email: 'admin@chickimmiu.com',
-      password: 'CKMU2026!admin',
+      password:
+        process.env.ADMIN_RESET_PASSWORD ??
+        (() => {
+          throw new Error('ADMIN_RESET_PASSWORD env required')
+        })(),
       name: 'Admin',
       role: 'admin',
     },
