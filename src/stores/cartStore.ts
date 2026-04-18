@@ -26,6 +26,13 @@ export interface CartItem {
 interface CartState {
   items: CartItem[]
   isDrawerOpen: boolean
+  /**
+   * Set to true once mergeFromServer() has run after mount. Gate for server
+   * sync: we never POST the empty localStorage cart back before we've checked
+   * the server, otherwise a logged-in user on a fresh device would blow away
+   * their server cart on page load.
+   */
+  _hasMergedServer: boolean
 
   addItem: (item: Omit<CartItem, 'quantity'>, qty?: number) => void
   removeItem: (productId: string, sku?: string) => void
@@ -35,9 +42,17 @@ interface CartState {
   closeDrawer: () => void
   toggleDrawer: () => void
 
+  // server sync (no-op for guests; silent failure)
+  mergeFromServer: () => Promise<void>
+  syncToServer: () => Promise<void>
+
   // computed helpers
   totalItems: () => number
   subtotal: () => number
+}
+
+function itemKey(i: { productId: string; variant?: { sku?: string } }): string {
+  return i.variant?.sku || i.productId
 }
 
 export const useCartStore = create<CartState>()(
@@ -45,6 +60,7 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       isDrawerOpen: false,
+      _hasMergedServer: false,
 
       addItem: (item, qty = 1) => {
         // 追蹤 AddToCart 事件
@@ -107,6 +123,59 @@ export const useCartStore = create<CartState>()(
       openDrawer: () => set({ isDrawerOpen: true }),
       closeDrawer: () => set({ isDrawerOpen: false }),
       toggleDrawer: () => set((s) => ({ isDrawerOpen: !s.isDrawerOpen })),
+
+      mergeFromServer: async () => {
+        if (get()._hasMergedServer) return
+        try {
+          const res = await fetch('/api/cart', {
+            method: 'GET',
+            credentials: 'same-origin',
+          })
+          if (!res.ok) {
+            set({ _hasMergedServer: true })
+            return
+          }
+          const data = (await res.json()) as { items?: CartItem[] }
+          const serverItems = Array.isArray(data.items) ? data.items : []
+          if (serverItems.length === 0) {
+            set({ _hasMergedServer: true })
+            return
+          }
+          const local = get().items
+          const map = new Map<string, CartItem>()
+          for (const i of local) map.set(itemKey(i), i)
+          for (const s of serverItems) {
+            const k = itemKey(s)
+            const existing = map.get(k)
+            if (!existing) {
+              map.set(k, s)
+            } else {
+              // Take max qty; keep local's image/price snapshot (may be fresher)
+              map.set(k, {
+                ...s,
+                ...existing,
+                quantity: Math.max(existing.quantity, s.quantity),
+              })
+            }
+          }
+          set({ items: Array.from(map.values()), _hasMergedServer: true })
+        } catch {
+          set({ _hasMergedServer: true })
+        }
+      },
+
+      syncToServer: async () => {
+        try {
+          await fetch('/api/cart', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: get().items }),
+          })
+        } catch {
+          // Guest users get 401; network issues are transient — ignore.
+        }
+      },
 
       totalItems: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
       subtotal: () =>

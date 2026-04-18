@@ -12,6 +12,7 @@ import { MembershipTiers } from './collections/MembershipTiers'
 import { Products } from './collections/Products'
 import { SizeCharts } from './collections/SizeCharts'
 import { Orders } from './collections/Orders'
+import { Carts } from './collections/Carts'
 import { Affiliates } from './collections/Affiliates'
 import { BlogPosts } from './collections/BlogPosts'
 import { Pages } from './collections/Pages'
@@ -117,6 +118,7 @@ export default buildConfig({
     Products,
     ProductReviews,
     Orders,
+    Carts,
     Returns,
     Refunds,
     Exchanges,

@@ -1,19 +1,46 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, ArrowLeft } from 'lucide-react'
 import { useCartStore } from '@/stores/cartStore'
 import { CartCrossSell } from '@/components/recommendation/CartCrossSell'
 
+// Fallback while /api/shipping-settings loads; matches server default in
+// src/globals/GlobalSettings.ts → shipping group.
+const DEFAULT_FREE_THRESHOLD = 1000
+const DEFAULT_FEE = 60
+
 export default function CartPage() {
   const { items, updateQuantity, removeItem, clearCart } = useCartStore()
+  const [freeThreshold, setFreeThreshold] = useState<number>(DEFAULT_FREE_THRESHOLD)
+  const [defaultFee, setDefaultFee] = useState<number>(DEFAULT_FEE)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/shipping-settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return
+        if (typeof data.globalFreeShippingThreshold === 'number') {
+          setFreeThreshold(data.globalFreeShippingThreshold)
+        }
+        if (typeof data.defaultShippingFee === 'number') {
+          setDefaultFee(data.defaultShippingFee)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const subtotal = items.reduce(
     (sum, i) => sum + (i.salePrice ?? i.price) * i.quantity,
     0,
   )
-  const shippingFee = subtotal >= 1000 ? 0 : 60
+  const shippingFee = subtotal >= freeThreshold ? 0 : defaultFee
   const total = subtotal + shippingFee
 
   if (items.length === 0) {
@@ -217,9 +244,9 @@ export default function CartPage() {
                     )}
                   </span>
                 </div>
-                {subtotal < 1000 && (
+                {subtotal < freeThreshold && (
                   <p className="text-[10px] text-gold-600">
-                    再買 NT$ {(1000 - subtotal).toLocaleString()} 即可享免運費
+                    再買 NT$ {(freeThreshold - subtotal).toLocaleString()} 即可享免運費
                   </p>
                 )}
               </div>

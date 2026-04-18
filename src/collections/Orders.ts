@@ -254,55 +254,105 @@ export const Orders: CollectionConfig = {
   ],
   timestamps: true,
   hooks: {
+    // Pre-create stock check + atomic decrement. Throws on insufficient stock so the
+    // order is never persisted. Passing `req` to nested updates makes them share the
+    // same Payload transaction, so a downstream validation error rolls back the stock
+    // change too.
+    //
+    // Limit: SQLite single-writer serializes writes within one Node process, so
+    // check-then-decrement here is safe on single-instance deploys. Multi-process
+    // (PM2 cluster / Postgres multi-instance) needs `UPDATE ... WHERE stock >= ?`
+    // or FOR UPDATE — deferred until we actually run multi-process.
+    beforeChange: [
+      async ({ data, operation, req }) => {
+        if (operation !== 'create') return data
+
+        const payload = req.payload
+        const items = (data.items ?? []) as Array<{
+          product: string | { id: string }
+          sku?: string
+          productName?: string
+          quantity: number
+        }>
+
+        for (const item of items) {
+          const productId =
+            typeof item.product === 'string'
+              ? item.product
+              : (item.product as { id?: string })?.id
+          if (!productId) {
+            throw new Error('訂單項目缺少商品 ID')
+          }
+
+          const product = await payload.findByID({
+            collection: 'products',
+            id: productId,
+            depth: 0,
+            req,
+          })
+          if (!product) {
+            throw new Error(`找不到商品 ${productId}`)
+          }
+
+          const productTitle = ((product as { name?: string }).name) ?? (item.productName ?? productId)
+          const variants =
+            (product.variants as { sku?: string; stock?: number; size?: string }[] | undefined) ??
+            []
+
+          if (variants.length > 0 && item.sku) {
+            const v = variants.find((x) => x.sku === item.sku)
+            if (!v) {
+              throw new Error(`找不到 SKU ${item.sku}（${productTitle}）`)
+            }
+            const currentStock = v.stock ?? 0
+            if (currentStock < item.quantity) {
+              throw new Error(
+                `${productTitle}（${v.size ?? item.sku}）庫存不足：剩 ${currentStock}，需求 ${item.quantity}`,
+              )
+            }
+            const newVariants = variants.map((x) =>
+              x.sku === item.sku ? { ...x, stock: currentStock - item.quantity } : x,
+            )
+            await (
+              payload.update as unknown as (args: Record<string, unknown>) => Promise<unknown>
+            )({
+              collection: 'products',
+              id: productId,
+              data: { variants: newVariants } as unknown as Record<string, unknown>,
+              depth: 0,
+              req,
+            })
+          } else {
+            const currentStock = (product.stock as number) ?? 0
+            if (currentStock < item.quantity) {
+              throw new Error(
+                `${productTitle} 庫存不足：剩 ${currentStock}，需求 ${item.quantity}`,
+              )
+            }
+            await (
+              payload.update as unknown as (args: Record<string, unknown>) => Promise<unknown>
+            )({
+              collection: 'products',
+              id: productId,
+              data: { stock: currentStock - item.quantity },
+              depth: 0,
+              req,
+            })
+          }
+        }
+
+        return data
+      },
+    ],
     afterChange: [
-      async ({ doc, previousDoc, req, operation }) => {
+      async ({ doc, previousDoc, req }) => {
         const payload = req.payload
         const status = doc.status as string
         const prevStatus = previousDoc?.status as string | undefined
 
-        // ── 新訂單建立：自動扣庫存 ──
-        if (operation === 'create' || (status === 'processing' && prevStatus === 'pending')) {
-          const items = doc.items as {
-            product: string | { id: string }
-            sku?: string
-            quantity: number
-          }[]
-
-          for (const item of items) {
-            const productId = typeof item.product === 'string' ? item.product : item.product?.id
-            if (!productId) continue
-
-            try {
-              const product = await payload.findByID({ collection: 'products', id: productId })
-              const variants = product.variants as { sku?: string; stock?: number }[] | undefined
-
-              if (variants && variants.length > 0 && item.sku) {
-                // 扣減指定變體庫存
-                const updatedVariants = variants.map((v) => {
-                  if (v.sku === item.sku) {
-                    return { ...v, stock: Math.max(0, (v.stock ?? 0) - item.quantity) }
-                  }
-                  return v
-                })
-                await (payload.update as Function)({
-                  collection: 'products',
-                  id: productId,
-                  data: { variants: updatedVariants } as unknown as Record<string, unknown>,
-                })
-              } else {
-                // 扣減總庫存
-                const currentStock = (product.stock as number) ?? 0
-                await (payload.update as Function)({
-                  collection: 'products',
-                  id: productId,
-                  data: { stock: Math.max(0, currentStock - item.quantity) },
-                })
-              }
-            } catch (err) {
-              console.error(`[Orders Hook] 庫存扣減失敗 (product: ${productId}):`, err)
-            }
-          }
-        }
+        // Create-time stock decrement moved to beforeChange (see above) so it's
+        // atomic with the order insert. This afterChange now only handles
+        // status-transition side effects.
 
         // ── 訂單送達：自動發放點數（讀取 LoyaltySettings） ──
         if (status === 'delivered' && prevStatus !== 'delivered') {

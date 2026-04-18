@@ -66,95 +66,36 @@ interface ShippingOption {
   type: ShippingType
   carrier: string
   name: string
-  desc: string
+  description: string
   fee: number
   freeThreshold: number
   estimatedDays: string
-  icon: typeof Truck
 }
 
-const SHIPPING_OPTIONS: ShippingOption[] = [
-  // 宅配
-  {
-    id: 'tcat',
-    type: 'home_delivery',
-    carrier: 'tcat',
-    name: '黑貓宅急便',
-    desc: '宅配到府，可指定配送時段',
-    fee: 100,
-    freeThreshold: 1500,
-    estimatedDays: '1-2 個工作天',
-    icon: Truck,
-  },
-  {
-    id: 'post',
-    type: 'home_delivery',
-    carrier: 'post',
-    name: '郵局宅配',
-    desc: '中華郵政寄送',
-    fee: 80,
-    freeThreshold: 2000,
-    estimatedDays: '2-4 個工作天',
-    icon: Package,
-  },
-  // 超商取貨
-  {
-    id: '711',
-    type: 'convenience_store',
-    carrier: '711',
-    name: '7-ELEVEN 超商取貨',
-    desc: '全台 7-ELEVEN 門市取貨',
-    fee: 60,
-    freeThreshold: 1000,
-    estimatedDays: '2-3 個工作天',
-    icon: Building2,
-  },
-  {
-    id: 'family',
-    type: 'convenience_store',
-    carrier: 'family',
-    name: '全家超商取貨',
-    desc: '全台全家門市取貨',
-    fee: 60,
-    freeThreshold: 1000,
-    estimatedDays: '2-3 個工作天',
-    icon: Building2,
-  },
-  {
-    id: 'hilife',
-    type: 'convenience_store',
-    carrier: 'hilife',
-    name: '萊爾富超商取貨',
-    desc: '全台萊爾富門市取貨',
-    fee: 60,
-    freeThreshold: 1000,
-    estimatedDays: '2-3 個工作天',
-    icon: Building2,
-  },
-  {
-    id: 'ok',
-    type: 'convenience_store',
-    carrier: 'ok',
-    name: 'OK mart 超商取貨',
-    desc: '全台 OK 門市取貨',
-    fee: 60,
-    freeThreshold: 1000,
-    estimatedDays: '2-3 個工作天',
-    icon: Building2,
-  },
-  // 國際
-  {
-    id: 'intl',
-    type: 'international',
-    carrier: 'dhl',
-    name: '國際快遞',
-    desc: 'DHL / FedEx 國際配送',
-    fee: 350,
-    freeThreshold: 5000,
-    estimatedDays: '5-10 個工作天',
-    icon: Plane,
-  },
-]
+/**
+ * Shipping options are fetched from /api/shipping-settings on mount (reads
+ * ShippingMethods collection + GlobalSettings.shipping). Previously hardcoded
+ * here and mismatched with cart page's fallback, which is how customers saw
+ * 「滿 1000 免運」in the cart and 「滿 1500 免運」at checkout.
+ */
+function getShippingIcon(carrier: string) {
+  switch (carrier) {
+    case '711':
+    case 'family':
+    case 'hilife':
+    case 'ok':
+      return Building2
+    case 'dhl':
+    case 'fedex':
+      return Plane
+    case 'post':
+      return Package
+    case 'tcat':
+    case 'hct':
+    default:
+      return Truck
+  }
+}
 
 const TAIWAN_CITIES = [
   '台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市',
@@ -168,9 +109,28 @@ export default function CheckoutPage() {
   const router = useRouter()
   const { items, clearCart } = useCartStore()
   const [selectedPayment, setSelectedPayment] = useState('ecpay')
-  const [selectedShipping, setSelectedShipping] = useState('711')
+  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([])
+  const [selectedShipping, setSelectedShipping] = useState<string>('')
   const [shippingTypeFilter, setShippingTypeFilter] = useState<ShippingType>('convenience_store')
   const [isProcessing, setIsProcessing] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/shipping-settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data || !Array.isArray(data.methods)) return
+        const opts = data.methods as ShippingOption[]
+        setShippingOptions(opts)
+        // Default selection: first convenience_store, else first available
+        const first = opts.find((o) => o.type === 'convenience_store') ?? opts[0]
+        if (first) setSelectedShipping(first.id)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const [form, setForm] = useState({
     recipientName: '',
@@ -197,7 +157,7 @@ export default function CheckoutPage() {
   const [buyerUBN, setBuyerUBN] = useState('')
   const [buyerCompanyName, setBuyerCompanyName] = useState('')
 
-  const shippingOption = SHIPPING_OPTIONS.find((s) => s.id === selectedShipping)
+  const shippingOption = shippingOptions.find((s) => s.id === selectedShipping)
   const isConvenienceStore = shippingOption?.type === 'convenience_store'
 
   const subtotal = items.reduce(
@@ -239,7 +199,7 @@ export default function CheckoutPage() {
   const updateForm = (key: string, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }))
 
-  const filteredShipping = SHIPPING_OPTIONS.filter(
+  const filteredShipping = shippingOptions.filter(
     (s) => s.type === shippingTypeFilter,
   )
 
@@ -414,7 +374,7 @@ export default function CheckoutPage() {
                       type="button"
                       onClick={() => {
                         setShippingTypeFilter(tab.type)
-                        const first = SHIPPING_OPTIONS.find((s) => s.type === tab.type)
+                        const first = shippingOptions.find((s) => s.type === tab.type)
                         if (first) setSelectedShipping(first.id)
                       }}
                       className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs transition-all flex-1 justify-center ${
@@ -431,43 +391,62 @@ export default function CheckoutPage() {
 
                 {/* 物流商選擇 */}
                 <div className="space-y-2">
-                  {filteredShipping.map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setSelectedShipping(opt.id)}
-                      className={`w-full flex items-start gap-3 p-4 rounded-xl border-2 transition-all text-left ${
-                        selectedShipping === opt.id
-                          ? 'border-gold-500 bg-gold-500/5'
-                          : 'border-cream-200 hover:border-gold-300'
-                      }`}
-                    >
-                      <opt.icon size={20} className="mt-0.5 text-gold-500 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">{opt.name}</p>
-                          <span className="text-xs font-medium text-gold-600">
-                            {subtotal >= opt.freeThreshold ? (
-                              <span className="text-green-600">免運費</span>
-                            ) : (
-                              `NT$ ${opt.fee}`
+                  {filteredShipping.length === 0 && shippingOptions.length === 0 ? (
+                    <div className="p-4 text-xs text-muted-foreground text-center">
+                      載入物流方式中…
+                    </div>
+                  ) : filteredShipping.length === 0 ? (
+                    <div className="p-4 text-xs text-muted-foreground text-center">
+                      此類別暫無啟用的物流方式
+                    </div>
+                  ) : (
+                    filteredShipping.map((opt) => {
+                      const Icon = getShippingIcon(opt.carrier)
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setSelectedShipping(opt.id)}
+                          className={`w-full flex items-start gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+                            selectedShipping === opt.id
+                              ? 'border-gold-500 bg-gold-500/5'
+                              : 'border-cream-200 hover:border-gold-300'
+                          }`}
+                        >
+                          <Icon size={20} className="mt-0.5 text-gold-500 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium">{opt.name}</p>
+                              <span className="text-xs font-medium text-gold-600">
+                                {opt.freeThreshold > 0 && subtotal >= opt.freeThreshold ? (
+                                  <span className="text-green-600">免運費</span>
+                                ) : (
+                                  `NT$ ${opt.fee}`
+                                )}
+                              </span>
+                            </div>
+                            {opt.description && (
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                {opt.description}
+                              </p>
                             )}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{opt.desc}</p>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[10px] text-muted-foreground">
-                            ⏱ {opt.estimatedDays}
-                          </span>
-                          {subtotal < opt.freeThreshold && (
-                            <span className="text-[10px] text-muted-foreground">
-                              滿 NT$ {opt.freeThreshold.toLocaleString()} 免運
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
+                            <div className="flex items-center gap-3 mt-1">
+                              {opt.estimatedDays && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  ⏱ {opt.estimatedDays}
+                                </span>
+                              )}
+                              {opt.freeThreshold > 0 && subtotal < opt.freeThreshold && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  滿 NT$ {opt.freeThreshold.toLocaleString()} 免運
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })
+                  )}
                 </div>
               </div>
 
