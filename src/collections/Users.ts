@@ -227,6 +227,34 @@ export const Users: CollectionConfig = {
               label: '頭像',
               type: 'upload',
               relationTo: 'media',
+              hooks: {
+                // 避免破圖：儲存前驗 media 仍存在且有 filename；找不到就友善報錯，
+                // 使用者重上傳或清空即可，不會整個表單卡住。
+                beforeValidate: [
+                  async ({ value, req }) => {
+                    if (value == null || value === '') return value
+                    const mediaId =
+                      typeof value === 'object' && value !== null
+                        ? (value as { id?: string | number }).id
+                        : (value as string | number)
+                    if (mediaId == null || mediaId === '') return value
+                    try {
+                      const doc = await req.payload.findByID({
+                        collection: 'media',
+                        id: mediaId,
+                        depth: 0,
+                      })
+                      if (!doc || !(doc as { filename?: string }).filename) {
+                        throw new Error('頭像檔案不存在或已被刪除，請重新上傳或清空此欄位')
+                      }
+                      return value
+                    } catch (e) {
+                      if (e instanceof Error && /頭像檔案/.test(e.message)) throw e
+                      throw new Error('頭像檔案不存在或已被刪除，請重新上傳或清空此欄位')
+                    }
+                  },
+                ],
+              },
             },
             // 公司發票資料（預設 / 常用資料）—— 顧客於結帳時可快速帶入三聯式發票抬頭
             // 多筆需求請用下方 invoiceProfiles array（造型師代買等情境）
