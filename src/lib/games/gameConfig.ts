@@ -74,7 +74,7 @@ export const GAME_DEFS: GameDef[] = [
     description: '用點數抽威秀電影票！',
     category: 'luck',
     categoryLabel: '幸運抽獎',
-    implementationStatus: 'stub',
+    implementationStatus: 'ready',
   },
   {
     id: 'fashion-challenge',

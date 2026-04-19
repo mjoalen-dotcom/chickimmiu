@@ -12,6 +12,7 @@ import {
   getPlayerStats,
   performDailyCheckin,
   getTpeDateString,
+  drawMovieTicket,
 } from '@/lib/games/gameEngine'
 import { startChallenge, submitChallenge } from '@/lib/games/fashionChallengeEngine'
 
@@ -241,6 +242,38 @@ export async function POST(req: NextRequest) {
 
         const session = await startChallenge(userId)
         return NextResponse.json({ success: true, data: session })
+      }
+
+      // Movie lottery has its own flow（有限票數 + 二元結果 + admin 設定的 winRate）
+      if (gameType === 'movie_lottery') {
+        const dailyPlays = await checkDailyPlays(userId, gameType)
+        if (!dailyPlays.canPlay) {
+          return NextResponse.json(
+            { success: false, error: '今日抽獎次數已達上限' },
+            { status: 400 },
+          )
+        }
+
+        try {
+          const result = await drawMovieTicket(userId)
+          await updateLeaderboard(userId, 0, result.won)
+          const newBadges = await checkAndAwardBadges(userId)
+          return NextResponse.json({
+            success: true,
+            data: {
+              won: result.won,
+              ticketType: result.ticketType,
+              couponCode: result.couponCode,
+              pointsSpent: result.pointsSpent,
+              remainingTickets: result.remainingTickets,
+              record: result.record,
+              newBadges,
+            },
+          })
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : '抽獎失敗'
+          return NextResponse.json({ success: false, error: msg }, { status: 400 })
+        }
       }
 
       // Spin wheel or scratch card

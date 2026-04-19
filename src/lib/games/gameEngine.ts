@@ -101,6 +101,13 @@ export const GAME_CONFIGS: Record<string, GameConfig> = {
     prizeTable: [], // Fashion challenge uses its own scoring
     dailyLimit: 10,
   },
+  movie_lottery: {
+    // 無免費次數、每次都扣點；winRate / pointsCost / dailyLimit 實際從 GameSettings.movieLottery 覆寫
+    freePlaysPerDay: { ordinary: 0, bronze: 0, silver: 0, gold: 0, platinum: 0, diamond: 0 },
+    pointsCost: 100,
+    prizeTable: [], // 二元結果（中/未中），bespoke draw logic in drawMovieTicket
+    dailyLimit: 3,
+  },
 }
 
 // ── Helpers ──
@@ -732,4 +739,128 @@ export async function checkAndAwardBadges(userId: string): Promise<string[]> {
   }
 
   return newBadges
+}
+
+// ── 7. drawMovieTicket ──
+// 電影票抽獎（二元結果，有限票數）
+//
+// 邏輯 —
+//   - 讀 GameSettings.movieLottery 取 winRate / pointsCost / ticketType / remainingTickets
+//   - 扣點 → 擲 winRate → 中獎：產生兌換碼 + 減 remainingTickets + 建 record (prizeType='coupon')
+//     → MiniGameRecords afterChange hook 自動建 UserRewards（寶物箱 /account/treasure 看得到）
+//   - 未中獎：建 record (outcome='lose', prizeType='none')，無入帳但仍扣點 + 計入 dailyLimit
+//   - remainingTickets ≤ 0 直接 throw，前端顯示「本期已抽完」
+//
+// 注意：remainingTickets 減一是非原子操作（read-modify-write），SQLite 單進程下安全，
+// 多 worker 或 Postgres 環境下可能有 race — 下個階段若改並行部署需加 row lock。
+
+export interface MovieLotteryResult {
+  won: boolean
+  ticketType: string
+  couponCode?: string
+  pointsSpent: number
+  remainingTickets: number
+  record: Record<string, unknown>
+}
+
+function generateMovieCouponCode(): string {
+  // MV + base36 timestamp + 4 位隨機 ≈ 短且可讀
+  const ts = Date.now().toString(36).toUpperCase()
+  const rnd = Math.random().toString(36).slice(2, 6).toUpperCase().padEnd(4, '0')
+  return `MV${ts}${rnd}`
+}
+
+export async function drawMovieTicket(userId: string): Promise<MovieLotteryResult> {
+  const payload = await getPayload({ config })
+  const gameSettings = (await payload.findGlobal({ slug: 'game-settings' })) as unknown as Record<string, unknown>
+  const movieConfig = ((gameSettings.movieLottery as Record<string, unknown>) || {})
+
+  const rawWinRate = Number(movieConfig.winRate ?? 5)
+  const winRate = Math.max(0, Math.min(100, rawWinRate)) / 100
+  const pointsCost = Number(movieConfig.pointsCostPerPlay ?? 100)
+  const ticketType = (movieConfig.ticketType as string) || '威秀影城 2D 一般廳'
+  const remaining = Number(movieConfig.remainingTickets ?? 0)
+
+  if (remaining <= 0) {
+    throw new Error('本期電影票已全部抽完，敬請期待下一期！')
+  }
+
+  // 查使用者目前餘額 + tier/credit（快照用）
+  const user = await payload.findByID({ collection: 'users', id: userId })
+  const userData = user as unknown as Record<string, unknown>
+  const userPoints = (userData.points as number) || 0
+
+  if (userPoints < pointsCost) {
+    throw new Error(`點數不足，需要 ${pointsCost} 點`)
+  }
+
+  let tierSlug = 'ordinary'
+  if (userData.memberTier) {
+    if (typeof userData.memberTier === 'object' && userData.memberTier !== null) {
+      tierSlug = ((userData.memberTier as unknown as Record<string, unknown>).slug as string) || 'ordinary'
+    }
+  }
+  const creditScore = (userData.creditScore as number) || 100
+
+  const won = Math.random() < winRate
+
+  if (won) {
+    const couponCode = generateMovieCouponCode()
+
+    // 減票 — read-modify-write，不是 atomic 但 SQLite 單進程夠用
+    await (payload.updateGlobal as Function)({
+      slug: 'game-settings',
+      data: {
+        movieLottery: {
+          ...movieConfig,
+          remainingTickets: remaining - 1,
+        },
+      } as never,
+    })
+
+    const record = await recordGamePlay({
+      userId,
+      gameType: 'movie_lottery',
+      outcome: 'win',
+      prizeType: 'coupon',
+      prizeAmount: 1,
+      prizeDescription: ticketType,
+      couponCode,
+      pointsSpent: pointsCost,
+      tierSlug,
+      creditScore,
+      metadata: { ticketType, winRate: rawWinRate, remainingAfter: remaining - 1 },
+    })
+
+    return {
+      won: true,
+      ticketType,
+      couponCode,
+      pointsSpent: pointsCost,
+      remainingTickets: remaining - 1,
+      record,
+    }
+  }
+
+  // 未中獎仍扣點、記 record（計入 dailyLimit）
+  const record = await recordGamePlay({
+    userId,
+    gameType: 'movie_lottery',
+    outcome: 'lose',
+    prizeType: 'none',
+    prizeAmount: 0,
+    prizeDescription: '未中獎',
+    pointsSpent: pointsCost,
+    tierSlug,
+    creditScore,
+    metadata: { ticketType, winRate: rawWinRate, remainingAfter: remaining },
+  })
+
+  return {
+    won: false,
+    ticketType,
+    pointsSpent: pointsCost,
+    remainingTickets: remaining,
+    record,
+  }
 }
