@@ -23,6 +23,9 @@ export async function getEnabledGames(): Promise<EnabledGame[]> {
   const enabledGames: EnabledGame[] = []
 
   for (const def of GAME_DEFS) {
+    // 'stub' 遊戲不論 admin 勾選與否都強制隱藏 — 前端 UI 還沒接後端，
+    // 放出去玩家會踩坑（轉盤/刮刮樂之前的 bug 就是這樣）。補完後端後改成 'ready'。
+    if (def.implementationStatus !== 'ready') continue
     if (gameList[def.enabledKey]) {
       enabledGames.push({
         ...def,
@@ -45,6 +48,9 @@ export async function getGameSettings(gameSlug: string) {
 
   const def = GAME_DEFS.find((d) => d.slug === gameSlug)
   if (!def) return null
+
+  // stub 遊戲 → 404，避免直接訪問 /games/<stub-slug> 繞過 hub 看到假 UI
+  if (def.implementationStatus !== 'ready') return null
 
   const gameList = (gameSettings.gameList || {}) as Record<string, boolean>
   if (!gameList[def.enabledKey]) return null
