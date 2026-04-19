@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeft, Calendar, User, ArrowRight } from 'lucide-react'
 import { ArticleJsonLd, BreadcrumbJsonLd } from '@/components/seo/JsonLd'
+import { RenderLexical } from '@/components/lexical/RenderLexical'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -174,29 +175,17 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
         )}
 
-        {/* Content placeholder */}
+        {/* Content — Lexical richText rendered via RenderLexical；
+            支援 productButton block 直接連到商品頁並帶 ?ref=blog-{slug} 追蹤。 */}
         <div className="prose prose-sm max-w-none">
-          <div className="bg-white rounded-2xl border border-cream-200 p-8 md:p-12 space-y-6">
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              文章內容載入中，請稍候…
-            </p>
-            <div className="bg-cream-50 rounded-xl p-6 border-l-4 border-gold-500">
-              <p className="text-sm italic text-foreground/80">
-                「優雅不只是外在的穿著，更是一種從容的生活態度。」<br />
-                <span className="text-xs text-muted-foreground mt-1 block">— CHIC KIM &amp; MIU</span>
+          <div className="bg-white rounded-2xl border border-cream-200 p-8 md:p-12">
+            {post.content ? (
+              <RenderLexical content={post.content} blogSlug={slug} />
+            ) : (
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                本篇文章尚未撰寫內容。
               </p>
-            </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              在 CHIC KIM &amp; MIU，我們相信每一位女性都能找到屬於自己的風格。無論是日常通勤還是週末約會，只需幾個簡單的穿搭技巧，就能輕鬆打造高級感造型。
-            </p>
-            <h3 className="text-lg font-serif">Tips 1：選擇適合自己的基本色</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              米白、米杏、駝色、灰色是打造高級感的基礎。這些色彩不僅百搭，更能襯托出好氣色。
-            </p>
-            <h3 className="text-lg font-serif">Tips 2：一件好外套是秋冬的靈魂</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              投資一件剪裁合身的大衣或西裝外套，它能讓最簡單的 T-shirt + 牛仔褲也變得優雅起來。
-            </p>
+            )}
           </div>
         </div>
 
