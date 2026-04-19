@@ -24,7 +24,7 @@ export const Orders: CollectionConfig = {
   slug: 'orders',
   admin: {
     useAsTitle: 'orderNumber',
-    defaultColumns: ['orderNumber', 'customer', 'total', 'status', 'paymentMethod', 'paymentStatus', 'createdAt'],
+    defaultColumns: ['orderNumber', 'customer', 'total', 'quickProcess', 'paymentMethod', 'paymentStatus', 'createdAt'],
     listSearchableFields: ['orderNumber', 'customerEmail', 'customerName'],
     group: '訂單管理',
     description: '訂單紀錄與管理（含出貨單列印、取貨總報表）',
@@ -50,6 +50,19 @@ export const Orders: CollectionConfig = {
       required: true,
       unique: true,
       admin: { description: '格式：CKM-YYYYMMDD-XXXX' },
+    },
+    // ── 訂單列表快捷按鈕：status=pending 時顯示「處理中 + 列印」，一鍵 PATCH
+    //    status→processing 並開新分頁列印檢貨單（沿用 /api/order-print?id=）。
+    //    其他狀態顯示狀態文字，取代原本顯示的 status 下拉讀值。
+    {
+      name: 'quickProcess',
+      type: 'ui',
+      label: '訂單狀態 / 快捷',
+      admin: {
+        components: {
+          Cell: '@/components/admin/OrderProcessingCellButton',
+        },
+      },
     },
     {
       name: 'customer',
