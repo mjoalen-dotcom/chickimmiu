@@ -7,6 +7,7 @@ import * as migration_20260418_230000_add_body_and_invoice_fields from './202604
 import * as migration_20260419_100000_add_email_verification from './20260419_100000_add_email_verification';
 import * as migration_20260419_110000_add_media_folder from './20260419_110000_add_media_folder';
 import * as migration_20260419_180000_add_cod_fee from './20260419_180000_add_cod_fee';
+import * as migration_20260419_200000_add_invoice_profiles from './20260419_200000_add_invoice_profiles';
 
 export const migrations = [
   {
@@ -53,5 +54,10 @@ export const migrations = [
     up: migration_20260419_180000_add_cod_fee.up,
     down: migration_20260419_180000_add_cod_fee.down,
     name: '20260419_180000_add_cod_fee'
+  },
+  {
+    up: migration_20260419_200000_add_invoice_profiles.up,
+    down: migration_20260419_200000_add_invoice_profiles.down,
+    name: '20260419_200000_add_invoice_profiles'
   },
 ];
