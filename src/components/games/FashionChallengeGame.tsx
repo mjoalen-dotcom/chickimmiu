@@ -6,117 +6,273 @@ import { Timer, Sparkles, Share2 } from 'lucide-react'
 
 interface Props { settings: Record<string, unknown> }
 
-const CATEGORIES = ['上衣', '下身', '外套', '鞋子', '配飾']
-const ITEMS: Record<string, Array<{ id: string; name: string; emoji: string; style: number }>> = {
-  '上衣': [
-    { id: 't1', name: '白色襯衫', emoji: '👔', style: 8 },
-    { id: 't2', name: '黑色T恤', emoji: '🖤', style: 6 },
-    { id: 't3', name: '蕾絲上衣', emoji: '🌸', style: 9 },
-    { id: 't4', name: '針織背心', emoji: '🧶', style: 7 },
-    { id: 't5', name: '西裝外套', emoji: '🤵', style: 9 },
-  ],
-  '下身': [
-    { id: 'b1', name: '高腰牛仔褲', emoji: '👖', style: 7 },
-    { id: 'b2', name: '百褶裙', emoji: '💃', style: 8 },
-    { id: 'b3', name: '西裝褲', emoji: '👔', style: 8 },
-    { id: 'b4', name: '短裙', emoji: '👗', style: 7 },
-    { id: 'b5', name: '寬褲', emoji: '🦵', style: 6 },
-  ],
-  '外套': [
-    { id: 'o1', name: '風衣', emoji: '🧥', style: 9 },
-    { id: 'o2', name: '牛仔外套', emoji: '🧤', style: 7 },
-    { id: 'o3', name: '皮衣', emoji: '🖤', style: 8 },
-    { id: 'o4', name: '毛呢大衣', emoji: '🐑', style: 9 },
-    { id: 'o5', name: '無（不穿外套）', emoji: '❌', style: 5 },
-  ],
-  '鞋子': [
-    { id: 's1', name: '高跟鞋', emoji: '👠', style: 9 },
-    { id: 's2', name: '白色球鞋', emoji: '👟', style: 7 },
-    { id: 's3', name: '短靴', emoji: '🥾', style: 8 },
-    { id: 's4', name: '涼鞋', emoji: '🩴', style: 6 },
-    { id: 's5', name: '樂福鞋', emoji: '👞', style: 8 },
-  ],
-  '配飾': [
-    { id: 'a1', name: '金色項鍊', emoji: '📿', style: 9 },
-    { id: 'a2', name: '太陽眼鏡', emoji: '🕶️', style: 7 },
-    { id: 'a3', name: '絲巾', emoji: '🧣', style: 8 },
-    { id: 'a4', name: '手提包', emoji: '👜', style: 8 },
-    { id: 'a5', name: '無配飾', emoji: '❌', style: 4 },
-  ],
+/**
+ * 穿搭挑戰 — 接通後端版本
+ * ───────────────────────
+ * 原本是純 client stub（本地寫 ITEMS dict + 本地 style 分數），完全沒打 API。
+ *
+ * 接通後：
+ *   - 按「開始挑戰」→ POST /api/games { action:'play', gameType:'fashion_challenge' }
+ *     → 後端 startChallenge 抽主題 + 14 個 FashionItem，建 mini_game_records 草稿（status='active'）
+ *   - Client 按分類渲染後端回的 items（top/bottom/outer/accessories/shoes 固定 5 類）
+ *   - 倒數結束或手動提交 → POST { action:'play', gameType:'fashion_challenge',
+ *     subAction:'submit', challengeId, selectedItems } → 後端 scoreOutfit + 入分
+ *   - 回傳 { score, rank, pointsReward, breakdown } → 顯示
+ *
+ * 備註：這個遊戲的獎勵是「points」直接入帳，不走 UserRewards（寶物箱）。
+ */
+
+type Category = 'top' | 'bottom' | 'outer' | 'accessories' | 'shoes'
+
+interface FashionItem {
+  id: string
+  name: string
+  category: Category
+  image: string
+  style: string[]
+  colorFamily: string
 }
 
-type Phase = 'intro' | 'playing' | 'scoring' | 'result'
+interface ChallengeSession {
+  challengeId: string
+  theme: string
+  items: FashionItem[]
+  timeLimit: number
+  createdAt: string
+}
+
+interface ChallengeResult {
+  score: number
+  rank: 'S' | 'A' | 'B' | 'C'
+  pointsReward: number
+  breakdown: {
+    styleCoherence: number
+    themeMatch: number
+    categoryCompleteness: number
+    colorHarmony: number
+  }
+}
+
+type Phase = 'intro' | 'playing' | 'scoring' | 'result' | 'error'
+
+const CATEGORY_LABELS: Record<Category, string> = {
+  top: '上衣',
+  bottom: '下身',
+  outer: '外套',
+  accessories: '配飾',
+  shoes: '鞋子',
+}
+
+const CATEGORY_ORDER: Category[] = ['top', 'bottom', 'outer', 'accessories', 'shoes']
+
+const POINTS_COST = 20
+
+type DailyStatus = {
+  played: number
+  remaining: number
+  canPlay: boolean
+  freePlaysLeft: number
+  requiresPoints: boolean
+}
 
 export function FashionChallengeGame({ settings }: Props) {
-  const timeLimit = (settings.timeLimitSeconds as number) || 60
+  void settings // 後端決定 timeLimit / reward，settings 不再使用
+
   const [phase, setPhase] = useState<Phase>('intro')
-  const [timeLeft, setTimeLeft] = useState(timeLimit)
-  const [selections, setSelections] = useState<Record<string, string>>({})
-  const [activeCat, setActiveCat] = useState(CATEGORIES[0])
-  const [score, setScore] = useState(0)
-  const [rank, setRank] = useState('')
-  const [points, setPoints] = useState(0)
-  const timerRef = useRef<ReturnType<typeof setInterval>>(undefined)
+  const [session, setSession] = useState<ChallengeSession | null>(null)
+  const [timeLeft, setTimeLeft] = useState(0)
+  const [selections, setSelections] = useState<Partial<Record<Category, string>>>({})
+  const [activeCat, setActiveCat] = useState<Category>('top')
+  const [result, setResult] = useState<ChallengeResult | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [dailyStatus, setDailyStatus] = useState<DailyStatus | null>(null)
+  const [authError, setAuthError] = useState(false)
+  const [starting, setStarting] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const startGame = useCallback(() => {
-    setPhase('playing')
-    setTimeLeft(timeLimit)
-    setSelections({})
-    setActiveCat(CATEGORIES[0])
-  }, [timeLimit])
-
+  // Mount → fetch status
   useEffect(() => {
-    if (phase !== 'playing') return
+    let cancelled = false
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch('/api/games', { credentials: 'include' })
+        if (cancelled) return
+        if (res.status === 401) {
+          setAuthError(true)
+          return
+        }
+        if (!res.ok) return
+        const json = (await res.json()) as {
+          data?: { dailyStatus?: Record<string, DailyStatus> }
+        }
+        if (json.data?.dailyStatus?.fashion_challenge) {
+          setDailyStatus(json.data.dailyStatus.fashion_challenge)
+        }
+      } catch {
+        // silent — intro 仍可顯示
+      }
+    }
+    fetchStatus()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Items grouped by category — derived from session
+  const itemsByCategory: Record<Category, FashionItem[]> = {
+    top: [],
+    bottom: [],
+    outer: [],
+    accessories: [],
+    shoes: [],
+  }
+  if (session) {
+    for (const item of session.items) {
+      if (itemsByCategory[item.category]) itemsByCategory[item.category].push(item)
+    }
+  }
+
+  const finishGame = useCallback(
+    async (sessionToSubmit: ChallengeSession, picked: Partial<Record<Category, string>>) => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      setPhase('scoring')
+
+      const selectedItems = Object.values(picked).filter(
+        (v): v is string => typeof v === 'string' && v.length > 0,
+      )
+
+      try {
+        const res = await fetch('/api/games', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'play',
+            gameType: 'fashion_challenge',
+            subAction: 'submit',
+            challengeId: sessionToSubmit.challengeId,
+            selectedItems,
+          }),
+        })
+        const json = (await res.json()) as {
+          success: boolean
+          error?: string
+          data?: ChallengeResult
+        }
+        if (!res.ok || !json.success || !json.data) {
+          setErrorMsg(json.error || `提交失敗 (HTTP ${res.status})`)
+          setPhase('error')
+          return
+        }
+        setResult(json.data)
+        setPhase('result')
+      } catch (err) {
+        setErrorMsg(err instanceof Error ? err.message : '網路錯誤')
+        setPhase('error')
+      }
+    },
+    [],
+  )
+
+  // Timer tick
+  useEffect(() => {
+    if (phase !== 'playing' || !session) return
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
-          clearInterval(timerRef.current)
-          finishGame()
+          if (timerRef.current) clearInterval(timerRef.current)
+          // Capture current selections via functional update pattern
+          // 用 ref 讀最新 selections 避免閉包
+          setSelections((curSel) => {
+            finishGame(session, curSel)
+            return curSel
+          })
           return 0
         }
         return t - 1
       })
     }, 1000)
-    return () => clearInterval(timerRef.current)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase])
-
-  const finishGame = () => {
-    setPhase('scoring')
-    // AI scoring simulation
-    const selected = Object.keys(selections).length
-    const styleSum = Object.entries(selections).reduce((sum, [cat, id]) => {
-      const item = ITEMS[cat]?.find((i) => i.id === id)
-      return sum + (item?.style || 0)
-    }, 0)
-    const baseScore = (styleSum / (selected || 1)) * 10
-    const coverage = (selected / CATEGORIES.length) * 20
-    const totalScore = Math.min(Math.round(baseScore + coverage), 100)
-
-    setTimeout(() => {
-      let r: string, p: number
-      if (totalScore >= 90) { r = 'S'; p = (settings.rankSPoints as number) || 50 }
-      else if (totalScore >= 70) { r = 'A'; p = (settings.rankAPoints as number) || 30 }
-      else if (totalScore >= 50) { r = 'B'; p = (settings.rankBPoints as number) || 15 }
-      else { r = 'C'; p = (settings.rankCPoints as number) || 5 }
-      setScore(totalScore)
-      setRank(r)
-      setPoints(p)
-      setPhase('result')
-    }, 2000)
-  }
-
-  const selectItem = (cat: string, id: string) => {
-    setSelections((prev) => ({ ...prev, [cat]: id }))
-    const idx = CATEGORIES.indexOf(cat)
-    if (idx < CATEGORIES.length - 1) {
-      setActiveCat(CATEGORIES[idx + 1])
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
     }
-  }
+  }, [phase, session, finishGame])
 
-  const submitEarly = () => {
-    clearInterval(timerRef.current)
-    finishGame()
+  const startGame = useCallback(async () => {
+    if (starting) return
+    setErrorMsg(null)
+    setStarting(true)
+    try {
+      const res = await fetch('/api/games', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'play',
+          gameType: 'fashion_challenge',
+        }),
+      })
+      const json = (await res.json()) as {
+        success: boolean
+        error?: string
+        data?: ChallengeSession
+      }
+      if (!res.ok || !json.success || !json.data) {
+        setErrorMsg(json.error || `無法開始挑戰 (HTTP ${res.status})`)
+        setStarting(false)
+        return
+      }
+      setSession(json.data)
+      setTimeLeft(json.data.timeLimit || 60)
+      setSelections({})
+      setActiveCat('top')
+      setResult(null)
+      setPhase('playing')
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : '網路錯誤')
+    } finally {
+      setStarting(false)
+    }
+  }, [starting])
+
+  const selectItem = useCallback(
+    (cat: Category, id: string) => {
+      setSelections((prev) => ({ ...prev, [cat]: id }))
+      const idx = CATEGORY_ORDER.indexOf(cat)
+      if (idx < CATEGORY_ORDER.length - 1) {
+        setActiveCat(CATEGORY_ORDER[idx + 1])
+      }
+    },
+    [],
+  )
+
+  const submitEarly = useCallback(() => {
+    if (!session) return
+    finishGame(session, selections)
+  }, [session, selections, finishGame])
+
+  const shareResult = useCallback(() => {
+    if (!result) return
+    if (navigator.share) {
+      navigator.share({
+        title: `我在 CKMU 穿搭挑戰獲得 ${result.rank} 級！${result.score} 分`,
+        url: window.location.href,
+      })
+    }
+  }, [result])
+
+  // ── 未登入 ──
+  if (authError) {
+    return (
+      <div className="max-w-lg mx-auto text-center py-12">
+        <p className="text-lg mb-4">請先登入以開始挑戰</p>
+        <a
+          href="/login?redirect=/games/fashion-challenge"
+          className="inline-block px-6 py-2.5 bg-gold-500 text-white rounded-full text-sm hover:bg-gold-600 transition-colors"
+        >
+          前往登入
+        </a>
+      </div>
+    )
   }
 
   return (
@@ -126,33 +282,53 @@ export function FashionChallengeGame({ settings }: Props) {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-8">
           <p className="text-5xl mb-4">✨</p>
           <h2 className="text-2xl font-serif mb-3">璀璨穿搭挑戰</h2>
-          <p className="text-sm text-muted-foreground mb-2">在 {timeLimit} 秒內完成主題穿搭</p>
+          <p className="text-sm text-muted-foreground mb-2">在限時內完成主題穿搭</p>
           <p className="text-sm text-muted-foreground mb-6">AI 即時評分，S 級穿搭贏取最高獎勵！</p>
           <div className="bg-cream-100 rounded-xl p-4 mb-6 text-left text-xs space-y-1 text-muted-foreground">
-            <p>1. 從5個分類中各選一件單品</p>
+            <p>1. 從 5 個分類中各選一件單品</p>
             <p>2. 注重整體搭配的協調性與時尚感</p>
             <p>3. 選越多、搭越好，分數越高</p>
             <p>4. 可提前交卷，但記得快速選擇！</p>
           </div>
+          {dailyStatus && (
+            <p className="text-xs text-muted-foreground mb-4">
+              剩餘 <span className="text-gold-600 font-bold">{dailyStatus.remaining}</span> 次
+              {dailyStatus.freePlaysLeft > 0
+                ? `（免費 ${dailyStatus.freePlaysLeft}）`
+                : `（每次消耗 ${POINTS_COST} 點）`}
+            </p>
+          )}
+          {errorMsg && <p className="text-sm text-rose-600 mb-3">{errorMsg}</p>}
           <button
             onClick={startGame}
-            className="px-10 py-3 bg-gradient-to-r from-gold-500 to-amber-600 text-white rounded-full text-lg font-serif hover:shadow-lg transition-all"
+            disabled={starting || dailyStatus?.canPlay === false}
+            className="px-10 py-3 bg-gradient-to-r from-gold-500 to-amber-600 text-white rounded-full text-lg font-serif hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            開始挑戰
+            {starting
+              ? '準備中...'
+              : dailyStatus?.canPlay === false
+                ? '今日次數已用完'
+                : '開始挑戰'}
           </button>
         </motion.div>
       )}
 
       {/* ── Playing ── */}
-      {phase === 'playing' && (
+      {phase === 'playing' && session && (
         <div>
+          {/* Theme banner */}
+          <div className="mb-4 text-center">
+            <p className="text-xs text-gold-500 tracking-widest mb-1">本場主題</p>
+            <p className="text-xl font-serif">{session.theme}</p>
+          </div>
+
           {/* Timer bar */}
           <div className="flex items-center gap-3 mb-6">
             <Timer size={18} className={timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-gold-600'} />
             <div className="flex-1 h-2 bg-cream-200 rounded-full overflow-hidden">
               <motion.div
                 className={`h-full rounded-full ${timeLeft <= 10 ? 'bg-red-500' : 'bg-gold-500'}`}
-                animate={{ width: `${(timeLeft / timeLimit) * 100}%` }}
+                animate={{ width: `${(timeLeft / session.timeLimit) * 100}%` }}
                 transition={{ duration: 0.5 }}
               />
             </div>
@@ -161,9 +337,9 @@ export function FashionChallengeGame({ settings }: Props) {
             </span>
           </div>
 
-          {/* Selection progress */}
+          {/* Category tabs */}
           <div className="flex gap-1 mb-6">
-            {CATEGORIES.map((cat) => (
+            {CATEGORY_ORDER.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCat(cat)}
@@ -175,7 +351,7 @@ export function FashionChallengeGame({ settings }: Props) {
                       : 'bg-cream-100 text-muted-foreground'
                 }`}
               >
-                {selections[cat] ? '✓' : ''} {cat}
+                {selections[cat] ? '✓' : ''} {CATEGORY_LABELS[cat]}
               </button>
             ))}
           </div>
@@ -183,7 +359,7 @@ export function FashionChallengeGame({ settings }: Props) {
           {/* Items */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             <AnimatePresence mode="popLayout">
-              {ITEMS[activeCat]?.map((item) => (
+              {(itemsByCategory[activeCat] || []).map((item) => (
                 <motion.button
                   key={item.id}
                   layout
@@ -197,19 +373,24 @@ export function FashionChallengeGame({ settings }: Props) {
                       : 'bg-white border-cream-200 hover:border-gold-400'
                   }`}
                 >
-                  <span className="text-2xl block mb-1">{item.emoji}</span>
+                  <span className="text-2xl block mb-1">👗</span>
                   <p className="text-xs font-medium">{item.name}</p>
                 </motion.button>
               ))}
+              {(itemsByCategory[activeCat] || []).length === 0 && (
+                <p className="col-span-2 text-center text-xs text-muted-foreground py-4">
+                  本場此分類沒有單品
+                </p>
+              )}
             </AnimatePresence>
           </div>
 
           {/* Submit */}
           <button
             onClick={submitEarly}
-            className="w-full py-3 bg-foreground text-cream-50 rounded-xl text-sm tracking-wide"
+            className="w-full py-3 bg-foreground text-cream-50 rounded-xl text-sm tracking-wide hover:bg-foreground/90 transition-colors"
           >
-            提交穿搭 ({Object.keys(selections).length}/{CATEGORIES.length})
+            提交穿搭（{Object.keys(selections).length}/{CATEGORY_ORDER.length}）
           </button>
         </div>
       )}
@@ -217,46 +398,96 @@ export function FashionChallengeGame({ settings }: Props) {
       {/* ── Scoring ── */}
       {phase === 'scoring' && (
         <div className="text-center py-16">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-          >
+          <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}>
             <Sparkles size={48} className="text-gold-500 mx-auto" />
           </motion.div>
           <p className="mt-4 font-serif text-lg">AI 正在評分中...</p>
         </div>
       )}
 
+      {/* ── Error ── */}
+      {phase === 'error' && (
+        <div className="text-center py-12">
+          <p className="text-lg mb-3">⚠️ {errorMsg || '發生錯誤'}</p>
+          <button
+            onClick={() => {
+              setPhase('intro')
+              setErrorMsg(null)
+            }}
+            className="px-6 py-2.5 bg-foreground text-cream-50 rounded-full text-sm"
+          >
+            返回
+          </button>
+        </div>
+      )}
+
       {/* ── Result ── */}
-      {phase === 'result' && (
+      {phase === 'result' && result && session && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-          <div className={`w-32 h-32 mx-auto rounded-full flex items-center justify-center mb-6 ${
-            rank === 'S' ? 'bg-gradient-to-br from-gold-400 to-amber-500' :
-            rank === 'A' ? 'bg-gradient-to-br from-violet-400 to-purple-500' :
-            rank === 'B' ? 'bg-gradient-to-br from-blue-400 to-indigo-500' :
-            'bg-gradient-to-br from-gray-300 to-gray-400'
-          }`}>
+          <div
+            className={`w-32 h-32 mx-auto rounded-full flex items-center justify-center mb-6 ${
+              result.rank === 'S'
+                ? 'bg-gradient-to-br from-gold-400 to-amber-500'
+                : result.rank === 'A'
+                  ? 'bg-gradient-to-br from-violet-400 to-purple-500'
+                  : result.rank === 'B'
+                    ? 'bg-gradient-to-br from-blue-400 to-indigo-500'
+                    : 'bg-gradient-to-br from-gray-300 to-gray-400'
+            }`}
+          >
             <div className="text-center text-white">
-              <p className="text-4xl font-serif font-bold">{rank}</p>
-              <p className="text-sm">{score} 分</p>
+              <p className="text-4xl font-serif font-bold">{result.rank}</p>
+              <p className="text-sm">{result.score} 分</p>
             </div>
           </div>
 
           <h2 className="text-2xl font-serif mb-2">
-            {rank === 'S' ? '👑 時尚天后！' : rank === 'A' ? '🌟 穿搭達人！' : rank === 'B' ? '✨ 不錯的搭配！' : '💪 繼續加油！'}
+            {result.rank === 'S'
+              ? '👑 時尚天后！'
+              : result.rank === 'A'
+                ? '🌟 穿搭達人！'
+                : result.rank === 'B'
+                  ? '✨ 不錯的搭配！'
+                  : '💪 繼續加油！'}
           </h2>
-          <p className="text-sm text-muted-foreground mb-6">獲得 {points} 點獎勵</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            主題：{session.theme} · 獲得 {result.pointsReward} 點
+          </p>
 
-          {/* Selected items recap */}
+          {/* Breakdown */}
+          <div className="bg-white rounded-2xl border border-cream-200 p-5 mb-6 text-left">
+            <h4 className="text-sm font-medium mb-3">評分明細</h4>
+            <div className="space-y-1 text-xs text-muted-foreground">
+              <div className="flex justify-between">
+                <span>風格一致性</span>
+                <span className="text-gold-600 font-medium">{result.breakdown.styleCoherence} / 30</span>
+              </div>
+              <div className="flex justify-between">
+                <span>主題吻合度</span>
+                <span className="text-gold-600 font-medium">{result.breakdown.themeMatch} / 30</span>
+              </div>
+              <div className="flex justify-between">
+                <span>分類完整度</span>
+                <span className="text-gold-600 font-medium">{result.breakdown.categoryCompleteness} / 20</span>
+              </div>
+              <div className="flex justify-between">
+                <span>配色和諧度</span>
+                <span className="text-gold-600 font-medium">{result.breakdown.colorHarmony} / 20</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Selections recap */}
           <div className="bg-white rounded-2xl border border-cream-200 p-5 mb-6 text-left">
             <h4 className="text-sm font-medium mb-3">你的穿搭</h4>
             <div className="space-y-2">
-              {CATEGORIES.map((cat) => {
-                const item = ITEMS[cat]?.find((i) => i.id === selections[cat])
+              {CATEGORY_ORDER.map((cat) => {
+                const id = selections[cat]
+                const item = session.items.find((i) => i.id === id)
                 return (
                   <div key={cat} className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{cat}</span>
-                    <span>{item ? `${item.emoji} ${item.name}` : '未選擇'}</span>
+                    <span className="text-muted-foreground">{CATEGORY_LABELS[cat]}</span>
+                    <span>{item ? item.name : '未選擇'}</span>
                   </div>
                 )
               })}
@@ -265,13 +496,18 @@ export function FashionChallengeGame({ settings }: Props) {
 
           <div className="flex gap-3">
             <button
-              onClick={() => { setPhase('intro'); setSelections({}) }}
+              onClick={() => {
+                setPhase('intro')
+                setSession(null)
+                setSelections({})
+                setResult(null)
+              }}
               className="flex-1 py-3 bg-foreground text-cream-50 rounded-xl text-sm"
             >
               再挑戰一次
             </button>
             <button
-              onClick={() => { if (navigator.share) navigator.share({ title: `我在 CKMU 穿搭挑戰獲得 ${rank} 級！`, url: window.location.href }) }}
+              onClick={shareResult}
               className="flex items-center gap-2 px-5 py-3 bg-gold-500/10 text-gold-600 rounded-xl text-sm"
             >
               <Share2 size={14} />

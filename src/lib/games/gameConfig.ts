@@ -13,6 +13,14 @@ export interface GameDef {
   description: string
   category: 'luck' | 'social' | 'challenge' | 'creative'
   categoryLabel: string
+  /**
+   * 實作狀態：
+   *   - 'ready'：前後端齊全，可由 admin 開關
+   *   - 'stub'：前端純 UI demo，還沒接 backend；admin 即使勾選也不會實際顯示
+   *     （getEnabledGames / getGameSettings 會強制過濾掉，避免使用者誤入踩雷）
+   * 之後補完 backend 的遊戲把此欄位改成 'ready'。
+   */
+  implementationStatus: 'ready' | 'stub'
 }
 
 export const GAME_DEFS: GameDef[] = [
@@ -27,6 +35,7 @@ export const GAME_DEFS: GameDef[] = [
     description: '每天簽到賺點數，連續七天有大獎！',
     category: 'luck',
     categoryLabel: '每日獎勵',
+    implementationStatus: 'ready',
   },
   {
     id: 'spin-wheel',
@@ -39,6 +48,7 @@ export const GAME_DEFS: GameDef[] = [
     description: '轉動命運之輪，贏取超值獎品！',
     category: 'luck',
     categoryLabel: '幸運抽獎',
+    implementationStatus: 'ready',
   },
   {
     id: 'scratch-card',
@@ -51,6 +61,7 @@ export const GAME_DEFS: GameDef[] = [
     description: '刮開驚喜，幸運就在指尖！',
     category: 'luck',
     categoryLabel: '幸運抽獎',
+    implementationStatus: 'ready',
   },
   {
     id: 'movie-lottery',
@@ -63,6 +74,7 @@ export const GAME_DEFS: GameDef[] = [
     description: '用點數抽威秀電影票！',
     category: 'luck',
     categoryLabel: '幸運抽獎',
+    implementationStatus: 'stub',
   },
   {
     id: 'fashion-challenge',
@@ -75,6 +87,7 @@ export const GAME_DEFS: GameDef[] = [
     description: '60秒混搭穿搭，AI即時評分！',
     category: 'challenge',
     categoryLabel: '穿搭挑戰',
+    implementationStatus: 'ready',
   },
   {
     id: 'card-battle',
@@ -87,6 +100,7 @@ export const GAME_DEFS: GameDef[] = [
     description: '邀請好友抽卡對戰，比大小贏點數！',
     category: 'social',
     categoryLabel: '好友互動',
+    implementationStatus: 'ready',
   },
   {
     id: 'style-pk',
@@ -99,6 +113,7 @@ export const GAME_DEFS: GameDef[] = [
     description: '上傳穿搭照，與玩家PK投票！',
     category: 'challenge',
     categoryLabel: '穿搭挑戰',
+    implementationStatus: 'stub',
   },
   {
     id: 'style-relay',
@@ -111,6 +126,7 @@ export const GAME_DEFS: GameDef[] = [
     description: '延續風格元素，接力創造穿搭故事！',
     category: 'creative',
     categoryLabel: '創意穿搭',
+    implementationStatus: 'stub',
   },
   {
     id: 'weekly-challenge',
@@ -123,6 +139,7 @@ export const GAME_DEFS: GameDef[] = [
     description: '每週不同主題，爭奪穿搭冠軍！',
     category: 'challenge',
     categoryLabel: '穿搭挑戰',
+    implementationStatus: 'stub',
   },
   {
     id: 'co-create',
@@ -135,6 +152,7 @@ export const GAME_DEFS: GameDef[] = [
     description: '邀請好友一起搭配，共同創作造型！',
     category: 'social',
     categoryLabel: '好友互動',
+    implementationStatus: 'stub',
   },
   {
     id: 'wish-pool',
@@ -147,6 +165,7 @@ export const GAME_DEFS: GameDef[] = [
     description: '許下穿搭願望，讓達人幫你圓夢！',
     category: 'creative',
     categoryLabel: '創意穿搭',
+    implementationStatus: 'stub',
   },
   {
     id: 'blind-box',
@@ -159,6 +178,7 @@ export const GAME_DEFS: GameDef[] = [
     description: '隨機搭配盲盒送給好友，拆箱驚喜！',
     category: 'social',
     categoryLabel: '好友互動',
+    implementationStatus: 'stub',
   },
   {
     id: 'queen-vote',
@@ -171,6 +191,7 @@ export const GAME_DEFS: GameDef[] = [
     description: '上傳最美穿搭，爭奪時尚女王寶座！',
     category: 'challenge',
     categoryLabel: '穿搭挑戰',
+    implementationStatus: 'stub',
   },
   {
     id: 'team-style',
@@ -183,6 +204,7 @@ export const GAME_DEFS: GameDef[] = [
     description: '開房邀請好友，穿搭競賽贏大獎！',
     category: 'social',
     categoryLabel: '好友互動',
+    implementationStatus: 'stub',
   },
 ]
 
