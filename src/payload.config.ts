@@ -149,7 +149,7 @@ export default buildConfig({
         Icon: '@/components/admin/AdminIcon',
       },
       beforeDashboard: ['@/components/admin/Dashboard'],
-      beforeNavLinks: ['@/components/admin/HelpNavLink'],
+      beforeNavLinks: ['@/components/admin/HelpNavLink', '@/components/admin/AdminStyles'],
       views: {
         help: {
           Component: '@/components/admin/HelpView',
