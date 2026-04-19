@@ -255,6 +255,53 @@ export default function CheckoutPage() {
       .catch(() => { /* 用預設 */ })
   }, [])
 
+  // Full profile fetch (name / phone / addresses) — useCurrentUser only exposes
+  // id/email/name so we re-pull /api/users/me here to back the "同訂購人資料"
+  // autofill + "記錄此收件資料到地址簿" address-book append flow.
+  type SavedAddress = {
+    recipientName?: string
+    phone?: string
+    zipCode?: string
+    city?: string
+    district?: string
+    address?: string
+    isDefault?: boolean
+    label?: string
+  }
+  const [userProfile, setUserProfile] = useState<{
+    name?: string
+    phone?: string
+    addresses: SavedAddress[]
+  } | null>(null)
+  const [useProfileData, setUseProfileData] = useState(false)
+  // 預設勾選：1a 決議 — submit 時沒額外 modal，只在按鈕上方寫「下次可快速選用」
+  const [saveAddressToBook, setSaveAddressToBook] = useState(true)
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setUserProfile(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const r = await fetch('/api/users/me', { credentials: 'include' })
+        if (!r.ok) return
+        const body = (await r.json()) as { user?: Record<string, unknown> | null }
+        const u = body?.user
+        if (!u || cancelled) return
+        setUserProfile({
+          name: (u.name as string | undefined) ?? undefined,
+          phone: (u.phone as string | undefined) ?? undefined,
+          addresses: Array.isArray(u.addresses) ? (u.addresses as SavedAddress[]) : [],
+        })
+      } catch {
+        /* ignore — checkbox just stays disabled */
+      }
+    })()
+    return () => { cancelled = true }
+  }, [isAuthenticated])
+
   const [form, setForm] = useState({
     recipientName: '',
     phone: '',
@@ -493,6 +540,50 @@ export default function CheckoutPage() {
       return
     }
 
+    // Address-book append — best effort, 不 block 跳轉。
+    // 只對宅配 / 國際（非超商、非面交）真正帶地址的模式有意義。
+    // Race (2a): GET 新 snapshot → compare fingerprint → PATCH 全新 array。
+    // 多分頁同時下單 → 後寫者贏；下單頻率低可接受。
+    if (
+      saveAddressToBook &&
+      !isConvenienceStore &&
+      !isMeetup &&
+      userProfile &&
+      user?.id
+    ) {
+      const fp = (a: SavedAddress) =>
+        [a.recipientName, a.phone, a.city, a.district, a.address]
+          .map((s) => (s ?? '').trim())
+          .join('|')
+      const newAddr: SavedAddress = {
+        recipientName: form.recipientName,
+        phone: form.phone,
+        zipCode: form.zipCode,
+        city: form.city,
+        district: form.district,
+        address: form.address,
+        isDefault: userProfile.addresses.length === 0,
+      }
+      try {
+        const meRes = await fetch('/api/users/me', { credentials: 'include' })
+        const meBody = meRes.ok ? await meRes.json() : null
+        const latest: SavedAddress[] =
+          Array.isArray(meBody?.user?.addresses) ? meBody.user.addresses : []
+        const newFp = fp(newAddr)
+        const exists = latest.some((a) => fp(a) === newFp)
+        if (!exists) {
+          await fetch(`/api/users/${user.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ addresses: [...latest, newAddr] }),
+          })
+        }
+      } catch (err) {
+        console.warn('[Checkout] Save address to book failed (non-fatal):', err)
+      }
+    }
+
     trackPurchase({
       transaction_id: createdOrderNumber,
       value: total,
@@ -675,6 +766,65 @@ export default function CheckoutPage() {
                   <MapPin size={18} className="text-gold-500" />
                   {isConvenienceStore ? '取貨人資訊' : isMeetup ? '取貨資訊' : '收件資訊'}
                 </h2>
+
+                {/* 同訂購人資料：勾選後 auto-fill name/phone（永遠相關）+ 若為宅配且
+                    profile 有預設地址，一併帶入 city/district/zipCode/address。 */}
+                {isAuthenticated && (() => {
+                  const canUse = Boolean(userProfile?.name && userProfile?.phone)
+                  const hint = !userProfile
+                    ? '載入個人資料中…'
+                    : !canUse
+                    ? '請先到「帳號設定」填寫姓名與電話'
+                    : null
+                  const onToggle = (checked: boolean) => {
+                    setUseProfileData(checked)
+                    if (!checked || !userProfile) return
+                    const defaultAddr =
+                      userProfile.addresses.find((a) => a.isDefault) ??
+                      userProfile.addresses[0]
+                    setForm((prev) => ({
+                      ...prev,
+                      recipientName: userProfile.name || prev.recipientName,
+                      phone: userProfile.phone || prev.phone,
+                      ...(!isConvenienceStore && !isMeetup && defaultAddr
+                        ? {
+                            city: defaultAddr.city || prev.city,
+                            district: defaultAddr.district || prev.district,
+                            zipCode: defaultAddr.zipCode || prev.zipCode,
+                            address: defaultAddr.address || prev.address,
+                          }
+                        : {}),
+                    }))
+                  }
+                  return (
+                    <label
+                      className={`flex items-start gap-2 mb-4 text-sm cursor-pointer select-none ${
+                        canUse ? '' : 'opacity-60 cursor-not-allowed'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={useProfileData}
+                        disabled={!canUse}
+                        onChange={(e) => onToggle(e.target.checked)}
+                        className="mt-0.5 accent-gold-500"
+                      />
+                      <span>
+                        <span className="font-medium">同訂購人資料</span>
+                        <span className="text-muted-foreground ml-1.5">
+                          {!isConvenienceStore && !isMeetup
+                            ? '（自動填入姓名、電話、預設地址）'
+                            : '（自動填入姓名、電話）'}
+                        </span>
+                        {hint && (
+                          <span className="block text-xs text-muted-foreground mt-0.5">
+                            {hint}
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                  )
+                })()}
 
                 {/* 收件人基本資訊（宅配 / 超商 / 辦公室取貨都需要） */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -874,6 +1024,23 @@ export default function CheckoutPage() {
                         className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
                       />
                     </div>
+                    {/* 記錄此收件資料到地址簿（提交時若為新地址才真的存，否則靜默跳過） */}
+                    {isAuthenticated && (
+                      <label className="sm:col-span-2 flex items-start gap-2 text-sm cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={saveAddressToBook}
+                          onChange={(e) => setSaveAddressToBook(e.target.checked)}
+                          className="mt-0.5 accent-gold-500"
+                        />
+                        <span>
+                          記錄此收件資料到地址簿
+                          <span className="text-muted-foreground ml-1.5">
+                            （下次可在「同訂購人資料」快速帶入）
+                          </span>
+                        </span>
+                      </label>
+                    )}
                   </div>
                 )}
 
