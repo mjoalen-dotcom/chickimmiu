@@ -99,6 +99,18 @@ interface ShippingOption {
 const SHIPPING_OPTIONS: ShippingOption[] = [
   // 宅配
   {
+    id: 'hct',
+    type: 'home_delivery',
+    carrier: 'hct',
+    name: '新竹物流',
+    desc: '新竹物流到府配送（台灣本島）',
+    fee: 120,
+    freeThreshold: 1500,
+    estimatedDays: '2-4 個工作天',
+    icon: Truck,
+    cashOnDelivery: true,
+  },
+  {
     id: 'tcat',
     type: 'home_delivery',
     carrier: 'tcat',

@@ -24,8 +24,8 @@ export const ShippingMethods: CollectionConfig = {
   fields: [
     { name: 'name', label: '物流名稱', type: 'text', required: true, admin: { description: '例如：黑貓宅急便、7-11 超商取貨、郵局包裹' } },
     { name: 'carrier', label: '物流商', type: 'select', required: true, options: [
-      { label: '黑貓宅急便', value: 'tcat' },
       { label: '新竹物流', value: 'hct' },
+      { label: '黑貓宅急便', value: 'tcat' },
       { label: '7-ELEVEN 超商取貨', value: '711' },
       { label: '全家超商取貨', value: 'family' },
       { label: '萊爾富超商取貨', value: 'hilife' },
