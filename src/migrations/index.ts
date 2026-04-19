@@ -9,6 +9,7 @@ import * as migration_20260419_110000_add_media_folder from './20260419_110000_a
 import * as migration_20260419_180000_add_cod_fee from './20260419_180000_add_cod_fee';
 import * as migration_20260419_200000_add_invoice_profiles from './20260419_200000_add_invoice_profiles';
 import * as migration_20260419_210000_add_user_rewards from './20260419_210000_add_user_rewards';
+import * as migration_20260419_230000_add_orders_gifts from './20260419_230000_add_orders_gifts';
 
 export const migrations = [
   {
@@ -65,5 +66,10 @@ export const migrations = [
     up: migration_20260419_210000_add_user_rewards.up,
     down: migration_20260419_210000_add_user_rewards.down,
     name: '20260419_210000_add_user_rewards'
+  },
+  {
+    up: migration_20260419_230000_add_orders_gifts.up,
+    down: migration_20260419_230000_add_orders_gifts.down,
+    name: '20260419_230000_add_orders_gifts'
   },
 ];

@@ -88,6 +88,24 @@ export const Orders: CollectionConfig = {
         { name: 'subtotal', label: '小計', type: 'number', required: true, min: 0 },
       ],
     },
+    // ── 寶物箱隨單寄出獎項 ──
+    // 由 beforeChange hook 在 order create 時自動從 UserRewards 撈進來；
+    // admin 也可以手動編輯這個 array（例如客服補償場景）。不影響訂單總額。
+    {
+      name: 'gifts',
+      label: '隨單寄出寶物箱獎項',
+      type: 'array',
+      fields: [
+        { name: 'reward', label: '獎項', type: 'relationship', relationTo: 'user-rewards', required: true },
+        { name: 'rewardType', label: '類型（快照）', type: 'text' },
+        { name: 'displayName', label: '顯示名稱（快照）', type: 'text' },
+        { name: 'amount', label: '數量/面額（快照）', type: 'number' },
+      ],
+      admin: {
+        description:
+          '此訂單隨單寄出的寶物箱獎項（自動從會員未使用實體獎項附加，不影響訂單總金額）。admin 可手動調整。',
+      },
+    },
     // ── 金額 ──
     {
       name: 'subtotal',
@@ -284,6 +302,60 @@ export const Orders: CollectionConfig = {
   ],
   timestamps: true,
   hooks: {
+    // ── 寶物箱自動附加 ──
+    // 新訂單 create 時，把該會員所有 unused + 實體 + 未過期的 UserRewards
+    // 自動塞進 data.gifts。admin 可以在 admin panel 手動先填 data.gifts，
+    // 這種情況下 hook 不覆寫（已填 = 手動意圖）。
+    beforeChange: [
+      async ({ data, operation, req }) => {
+        if (operation !== 'create') return data
+        const existingGifts = (data.gifts as unknown[] | undefined) ?? []
+        if (existingGifts.length > 0) return data // 已手動填寫，尊重 admin 意圖
+
+        const customerId =
+          typeof data.customer === 'string' || typeof data.customer === 'number'
+            ? data.customer
+            : ((data.customer as unknown as Record<string, unknown>)?.id as string | number | undefined)
+        if (!customerId) return data
+
+        try {
+          const nowISO = new Date().toISOString()
+          const rewards = await req.payload.find({
+            collection: 'user-rewards',
+            where: {
+              and: [
+                { user: { equals: customerId } },
+                { state: { equals: 'unused' } },
+                { requiresPhysicalShipping: { equals: true } },
+                { expiresAt: { greater_than: nowISO } },
+              ],
+            },
+            limit: 50,
+            depth: 0,
+            overrideAccess: true,
+          })
+          if (rewards.docs.length === 0) return data
+
+          const gifts = rewards.docs.map((r) => {
+            const row = r as unknown as Record<string, unknown>
+            return {
+              reward: row.id as number,
+              rewardType: String(row.rewardType ?? ''),
+              displayName: String(row.displayName ?? ''),
+              amount: typeof row.amount === 'number' ? row.amount : undefined,
+            }
+          })
+          return { ...data, gifts }
+        } catch (err) {
+          req.payload.logger.error({
+            err,
+            msg: 'Orders beforeChange: UserRewards auto-attach failed',
+            customerId,
+          })
+          return data
+        }
+      },
+    ],
     afterChange: [
       async ({ doc, previousDoc, req, operation }) => {
         const payload = req.payload
@@ -545,6 +617,126 @@ export const Orders: CollectionConfig = {
       },
       // ── 信用分數 Hook ──
       orderCreditScoreHook,
+      // ── 寶物箱獎項 state 回流 ──
+      // 1) create 且 doc.gifts 非空：把 UserRewards 標記 pending_attach + attachedToOrder=doc.id
+      // 2) status → shipped / delivered：把本張單 attached 的 UserRewards 標 shipped + shippedAt
+      // 3) status → cancelled / refunded：只把還沒寄出的 UserRewards (state=pending_attach)
+      //    revert 成 unused；已 shipped 的不動（物已送出無法退）。
+      async ({ doc, previousDoc, req, operation }) => {
+        const payload = req.payload
+        const rawOrderId = (doc as { id?: number | string }).id
+        if (!rawOrderId) return
+        const orderId = Number(rawOrderId)
+        if (Number.isNaN(orderId)) return
+
+        const gifts = ((doc.gifts as unknown[] | undefined) ?? []) as Array<Record<string, unknown>>
+        const status = doc.status as string
+        const prevStatus = previousDoc?.status as string | undefined
+
+        // create：把 gifts 內每筆 UserRewards 更新 state=pending_attach
+        if (operation === 'create' && gifts.length > 0) {
+          for (const g of gifts) {
+            const rawRewardId =
+              typeof g.reward === 'number' || typeof g.reward === 'string'
+                ? g.reward
+                : ((g.reward as Record<string, unknown> | null)?.id as number | string | undefined)
+            const rewardId = rawRewardId != null ? Number(rawRewardId) : NaN
+            if (Number.isNaN(rewardId)) continue
+            try {
+              await payload.update({
+                collection: 'user-rewards',
+                id: rewardId,
+                data: {
+                  state: 'pending_attach',
+                  attachedToOrder: orderId,
+                },
+                overrideAccess: true,
+              })
+            } catch (err) {
+              payload.logger.error({
+                err,
+                msg: 'Orders afterChange: pending_attach 更新失敗',
+                rewardId,
+                orderId,
+              })
+            }
+          }
+        }
+
+        // status → shipped / delivered：標 shipped + shippedAt
+        const nowShipped =
+          (status === 'shipped' && prevStatus !== 'shipped') ||
+          (status === 'delivered' && prevStatus !== 'delivered' && prevStatus !== 'shipped')
+        if (nowShipped) {
+          try {
+            const attached = await payload.find({
+              collection: 'user-rewards',
+              where: {
+                and: [
+                  { attachedToOrder: { equals: orderId } },
+                  { state: { equals: 'pending_attach' } },
+                ],
+              },
+              limit: 100,
+              depth: 0,
+              overrideAccess: true,
+            })
+            const shippedAt = new Date().toISOString()
+            for (const r of attached.docs) {
+              await payload.update({
+                collection: 'user-rewards',
+                id: Number((r as unknown as { id: number | string }).id),
+                data: { state: 'shipped', shippedAt },
+                overrideAccess: true,
+              })
+            }
+          } catch (err) {
+            payload.logger.error({
+              err,
+              msg: 'Orders afterChange: shipped 狀態回流失敗',
+              orderId,
+            })
+          }
+        }
+
+        // status → cancelled / refunded：把尚未寄出的 rewards 還原為 unused
+        const nowCancelled =
+          (status === 'cancelled' && prevStatus !== 'cancelled') ||
+          (status === 'refunded' && prevStatus !== 'refunded')
+        if (nowCancelled) {
+          try {
+            const attached = await payload.find({
+              collection: 'user-rewards',
+              where: {
+                and: [
+                  { attachedToOrder: { equals: orderId } },
+                  { state: { equals: 'pending_attach' } },
+                ],
+              },
+              limit: 100,
+              depth: 0,
+              overrideAccess: true,
+            })
+            for (const r of attached.docs) {
+              await payload.update({
+                collection: 'user-rewards',
+                id: Number((r as unknown as { id: number | string }).id),
+                data: {
+                  state: 'unused',
+                  attachedToOrder: null as unknown as undefined,
+                },
+                overrideAccess: true,
+              })
+            }
+          } catch (err) {
+            payload.logger.error({
+              err,
+              msg: 'Orders afterChange: cancelled 狀態還原失敗',
+              orderId,
+            })
+          }
+        }
+      },
     ],
   },
 }
