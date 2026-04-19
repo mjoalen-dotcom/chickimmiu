@@ -134,7 +134,7 @@ export async function sendOrderConfirmationEmail(
     newebpay: '藍新支付 NewebPay',
     linepay: 'LINE Pay',
     cash_cod: '現金 — 宅配貨到付款',
-    cash_meetup: '現金 — 面交付款',
+    cash_meetup: '現金 — 到辦公室取貨付款',
   }
 
   const subject = `【CHIC KIM & MIU】訂單確認 ${orderNumber}`

@@ -31,7 +31,7 @@ export const ShippingMethods: CollectionConfig = {
       { label: '萊爾富超商取貨', value: 'hilife' },
       { label: 'OK 超商取貨', value: 'ok' },
       { label: '中華郵政', value: 'post' },
-      { label: '面交自取', value: 'meetup' },
+      { label: '到辦公室取貨', value: 'meetup' },
       { label: '國際快遞 DHL', value: 'dhl' },
       { label: '國際快遞 FedEx', value: 'fedex' },
       { label: '其他', value: 'other' },

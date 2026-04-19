@@ -191,12 +191,12 @@ export const GlobalSettings: GlobalConfig = {
             { label: 'Apple Pay', value: 'applepay' },
             { label: 'Google Pay', value: 'googlepay' },
             { label: '現金—宅配貨到付款', value: 'cash_cod' },
-            { label: '現金—面交付款', value: 'cash_meetup' },
+            { label: '現金—到辦公室取貨付款', value: 'cash_meetup' },
           ],
           admin: {
             description:
               '可複選。「現金—宅配貨到付款」需配合宅配/超商物流（物流 cashOnDelivery=true）；' +
-              '「現金—面交付款」需配合面交物流（carrier=meetup）。未勾選的付款方式在結帳頁不會顯示。',
+              '「現金—到辦公室取貨付款」需配合「到辦公室取貨」物流（carrier=meetup）。未勾選的付款方式在結帳頁不會顯示。',
           },
         },
         { name: 'currency', label: '預設幣別', type: 'text', defaultValue: 'TWD' },
