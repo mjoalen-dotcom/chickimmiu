@@ -76,6 +76,18 @@ export const MembershipTiers: CollectionConfig = {
       admin: { description: '顯示於會員中心稱號下方，例如「歡迎加入 CHIC KIM & MIU 大家庭」' },
     },
     {
+      name: 'tagline',
+      label: '等級標語',
+      type: 'text',
+      admin: { description: '顯示於 /membership-benefits 等級卡片頂部的短句，例如「初次綻放的優雅」' },
+    },
+    {
+      name: 'benefitsDescription',
+      label: '等級介紹文案',
+      type: 'textarea',
+      admin: { description: '該等級的故事性介紹（2-4 句），顯示於 /membership-benefits 卡片與 /account 當前等級區。可留空使用 frontSubtitle 作 fallback。' },
+    },
+    {
       name: 'level',
       label: '等級排序',
       type: 'number',

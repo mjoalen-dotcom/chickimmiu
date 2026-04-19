@@ -4,7 +4,7 @@ import { headers as nextHeaders } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { Crown, Coins, Wallet, TrendingUp, Gamepad2, ArrowRight, Package } from 'lucide-react'
+import { Crown, Coins, Wallet, TrendingUp, Gamepad2, ArrowRight, Package, Ticket, Truck, Gift, Sparkles } from 'lucide-react'
 import { CreditScoreCard } from '@/components/account/CreditScoreCard'
 
 export const metadata: Metadata = {
@@ -70,12 +70,23 @@ export default async function AccountPage() {
     0
 
   const tiers = tiersResult.docs as unknown as LooseRecord[]
-  const memberTier = user.memberTier as LooseRecord | null
+  const memberTier = (user.memberTier as LooseRecord | null) ?? (tiers[0] ?? null) as LooseRecord | null
   const currentLevel = memberTier ? ((memberTier.level as number) ?? 0) : 0
   const currentDisplayName = memberTier
     ? pickTierName(memberTier, gender)
     : pickTierName((tiers[0] ?? {}) as LooseRecord, gender) || '會員'
   const currentDiscountPercent = memberTier ? ((memberTier.discountPercent as number) ?? 0) : 0
+  const currentTagline = memberTier
+    ? (memberTier.tagline as string | null | undefined) ?? (memberTier.frontSubtitle as string | null | undefined) ?? null
+    : null
+  const currentDescription = memberTier
+    ? (memberTier.benefitsDescription as string | null | undefined) ?? null
+    : null
+  const currentMultiplier = memberTier ? ((memberTier.pointsMultiplier as number) ?? 1) : 1
+  const currentFreeShipping = memberTier ? ((memberTier.freeShippingThreshold as number) ?? 0) : 0
+  const currentLottery = memberTier ? ((memberTier.lotteryChances as number) ?? 0) : 0
+  const currentBirthdayGift = memberTier ? ((memberTier.birthdayGift as string | null | undefined) ?? null) : null
+  const currentCouponEnabled = memberTier ? Boolean(memberTier.exclusiveCouponEnabled) : false
 
   const nextTier = tiers.find((t) => ((t.level as number) ?? 0) === currentLevel + 1) ?? null
   const nextTierName = nextTier ? pickTierName(nextTier, gender) : null
@@ -106,6 +117,9 @@ export default async function AccountPage() {
           <div>
             <p className="text-xs tracking-widest text-gold-500 mb-1">MEMBERSHIP</p>
             <h2 className="text-xl font-serif">{currentDisplayName}</h2>
+            {currentTagline && (
+              <p className="text-xs text-gold-600/80 italic mt-0.5">{currentTagline}</p>
+            )}
             <p className="text-sm text-muted-foreground mt-1">{upgradeSubtitle}</p>
           </div>
           <div className="w-12 h-12 rounded-full bg-gold-500/10 flex items-center justify-center">
@@ -128,6 +142,40 @@ export default async function AccountPage() {
               style={{ width: `${progressPct}%` }}
             />
           </div>
+        </div>
+
+        {/* 等級介紹文案 */}
+        {currentDescription && (
+          <p className="text-xs text-foreground/70 leading-relaxed mt-5 pt-5 border-t border-cream-200/60">
+            {currentDescription}
+          </p>
+        )}
+
+        {/* 目前享有福利 */}
+        <div className="mt-5 pt-5 border-t border-cream-200/60">
+          <p className="text-xs font-medium text-foreground/80 mb-3">您目前享有的福利</p>
+          <div className="grid grid-cols-2 gap-2.5">
+            <BenefitChip icon={Ticket} label={currentDiscountPercent > 0 ? `${currentDiscountPercent}% 折扣` : '無折扣'} active={currentDiscountPercent > 0} />
+            <BenefitChip icon={TrendingUp} label={`${currentMultiplier}x 點數`} active={currentMultiplier > 1} />
+            <BenefitChip
+              icon={Truck}
+              label={currentFreeShipping === 0 ? '無條件免運' : `滿 NT$ ${currentFreeShipping.toLocaleString()} 免運`}
+              active={currentFreeShipping < 1000}
+            />
+            <BenefitChip
+              icon={Sparkles}
+              label={currentLottery > 0 ? `每月 ${currentLottery} 次抽獎` : '無抽獎'}
+              active={currentLottery > 0}
+            />
+            <BenefitChip icon={Gift} label={currentBirthdayGift ? '生日禮遇' : '無生日禮'} active={Boolean(currentBirthdayGift)} />
+            <BenefitChip icon={Crown} label={currentCouponEnabled ? '專屬優惠券' : '無專屬券'} active={currentCouponEnabled} />
+          </div>
+          <Link
+            href="/membership-benefits"
+            className="inline-flex items-center gap-1 text-xs text-gold-600 hover:text-gold-700 transition-colors mt-4"
+          >
+            查看所有會員等級與福利 <ArrowRight size={12} />
+          </Link>
         </div>
       </div>
 
@@ -222,6 +270,29 @@ export default async function AccountPage() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function BenefitChip({
+  icon: Icon,
+  label,
+  active,
+}: {
+  icon: React.ElementType
+  label: string
+  active: boolean
+}) {
+  return (
+    <div
+      className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-[11px] ${
+        active
+          ? 'bg-white/70 border border-cream-200 text-foreground'
+          : 'bg-cream-100/50 border border-cream-200/50 text-muted-foreground/60'
+      }`}
+    >
+      <Icon size={12} className={active ? 'text-gold-500' : 'text-cream-300'} />
+      <span className="truncate">{label}</span>
     </div>
   )
 }

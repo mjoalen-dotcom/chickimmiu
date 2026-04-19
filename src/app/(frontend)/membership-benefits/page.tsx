@@ -23,6 +23,9 @@ type TierRecord = {
   slug: string
   frontName: string
   frontNameMale?: string | null
+  frontSubtitle?: string | null
+  tagline?: string | null
+  benefitsDescription?: string | null
   level: number
   minSpent: number
   discountPercent: number
@@ -178,11 +181,22 @@ export default async function MembershipBenefitsPage() {
                     </div>
 
                     <h3 className="text-lg font-serif mb-1">{tierName}</h3>
-                    <p className="text-xs text-muted-foreground mb-5">
+                    {(tier.tagline || tier.frontSubtitle) && (
+                      <p className="text-xs text-gold-600/80 italic mb-2">
+                        {tier.tagline || tier.frontSubtitle}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground mb-4">
                       {minSpent === 0
                         ? '免費加入即享'
                         : `累計消費滿 NT$ ${minSpent.toLocaleString()}`}
                     </p>
+
+                    {tier.benefitsDescription && (
+                      <p className="text-xs text-foreground/70 leading-relaxed mb-5">
+                        {tier.benefitsDescription}
+                      </p>
+                    )}
 
                     {/* Benefits list */}
                     <div className="space-y-2.5">

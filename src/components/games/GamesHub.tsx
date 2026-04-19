@@ -29,9 +29,11 @@ const BADGES = [
 
 interface Props {
   enabledGames: EnabledGame[]
+  todayGamePoints?: number | null
+  badgeCount?: number | null
 }
 
-export function GamesHub({ enabledGames }: Props) {
+export function GamesHub({ enabledGames, todayGamePoints = null, badgeCount = null }: Props) {
   const [activeTab, setActiveTab] = useState<'games' | 'leaderboard' | 'badges'>('games')
   const [activeCat, setActiveCat] = useState<string>('all')
 
@@ -60,7 +62,9 @@ export function GamesHub({ enabledGames }: Props) {
 
           <div className="flex items-center justify-center gap-6 mt-6">
             <div className="text-center">
-              <p className="text-lg font-serif text-gold-600">—</p>
+              <p className="text-lg font-serif text-gold-600">
+                {todayGamePoints === null ? '—' : todayGamePoints.toLocaleString()}
+              </p>
               <p className="text-[10px] text-muted-foreground">今日已獲點數</p>
             </div>
             <div className="w-px h-8 bg-cream-200" />
@@ -70,7 +74,9 @@ export function GamesHub({ enabledGames }: Props) {
             </div>
             <div className="w-px h-8 bg-cream-200" />
             <div className="text-center">
-              <p className="text-lg font-serif text-gold-600">—</p>
+              <p className="text-lg font-serif text-gold-600">
+                {badgeCount === null ? '—' : badgeCount}
+              </p>
               <p className="text-[10px] text-muted-foreground">已獲得徽章</p>
             </div>
           </div>
