@@ -1,12 +1,43 @@
-'use client'
-
 import React from 'react'
+import { getPayload } from 'payload'
+import config from '@payload-config'
 
 /**
- * Payload CMS v3 自訂後台 Icon (favicon / 小圖示)
- * 顯示在瀏覽器分頁和後台收合導航時
+ * Admin sidebar icon (sidebar 收合時顯示)。
+ * - 從 GlobalSettings.site.favicon 讀取目前前台 favicon
+ * - 若未上傳 / DB 不可用，fallback 到原本 SVG CKMU icon
+ * - 注意：瀏覽器分頁的真正 favicon 由 <link rel="icon"> 控制，那是另一條路徑
  */
-export default function AdminIcon() {
+export default async function AdminIcon() {
+  let iconUrl: string | null = null
+  let iconAlt = 'CHIC KIM & MIU'
+
+  try {
+    const payload = await getPayload({ config })
+    const settings = await payload.findGlobal({ slug: 'global-settings', depth: 1 })
+    const site = (settings as { site?: { favicon?: { url?: string; alt?: string } | null } }).site
+    if (site?.favicon && typeof site.favicon === 'object' && site.favicon.url) {
+      iconUrl = site.favicon.url
+      if (site.favicon.alt) iconAlt = site.favicon.alt
+    }
+  } catch {
+    // DB 未連線：靜默 fallback
+  }
+
+  if (iconUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={iconUrl}
+        alt={iconAlt}
+        width={24}
+        height={24}
+        style={{ objectFit: 'contain', display: 'block' }}
+      />
+    )
+  }
+
+  // Fallback：原本 SVG CKMU icon
   return (
     <svg viewBox="0 0 200 200" width="24" height="24" style={{ color: '#C19A5B' }}>
       <circle cx="100" cy="100" r="90" fill="none" stroke="currentColor" strokeWidth="12"/>
