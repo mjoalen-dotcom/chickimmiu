@@ -8,6 +8,7 @@ import * as migration_20260419_100000_add_email_verification from './20260419_10
 import * as migration_20260419_110000_add_media_folder from './20260419_110000_add_media_folder';
 import * as migration_20260419_180000_add_cod_fee from './20260419_180000_add_cod_fee';
 import * as migration_20260419_200000_add_invoice_profiles from './20260419_200000_add_invoice_profiles';
+import * as migration_20260419_210000_add_user_rewards from './20260419_210000_add_user_rewards';
 
 export const migrations = [
   {
@@ -59,5 +60,10 @@ export const migrations = [
     up: migration_20260419_200000_add_invoice_profiles.up,
     down: migration_20260419_200000_add_invoice_profiles.down,
     name: '20260419_200000_add_invoice_profiles'
+  },
+  {
+    up: migration_20260419_210000_add_user_rewards.up,
+    down: migration_20260419_210000_add_user_rewards.down,
+    name: '20260419_210000_add_user_rewards'
   },
 ];
