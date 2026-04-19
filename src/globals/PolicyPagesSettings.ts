@@ -131,5 +131,32 @@ export const PolicyPagesSettings: GlobalConfig = {
     policyPageGroup('privacyPolicy', '隱私權政策', 'Privacy Policy'),
     policyPageGroup('returnPolicy', '退換貨政策', 'Return & Exchange Policy'),
     policyPageGroup('shoppingGuide', '購物說明', 'Shopping Guide'),
+    {
+      name: 'accountReturnsNotice',
+      label: '會員中心 — 退換貨須知（短版）',
+      type: 'group',
+      admin: {
+        description:
+          '顯示於「我的帳戶 > 退換貨」頁底部的提醒區塊。受眾為已下單會員，僅放關鍵守則（4-6 條），完整法規請寫在上方「退換貨政策」頁。',
+      },
+      fields: [
+        {
+          name: 'title',
+          label: '區塊標題',
+          type: 'text',
+          defaultValue: '退換貨須知',
+        },
+        {
+          name: 'items',
+          label: '須知條列',
+          type: 'array',
+          minRows: 1,
+          admin: {
+            description: '每筆一行；建議 4-6 條，每條 < 40 字。',
+          },
+          fields: [{ name: 'text', label: '條目', type: 'text', required: true }],
+        },
+      ],
+    },
   ],
 }
