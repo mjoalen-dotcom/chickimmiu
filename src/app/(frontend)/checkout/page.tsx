@@ -326,6 +326,14 @@ export default function CheckoutPage() {
       return
     }
 
+    // Orders.customer 是必填 relationship → 必須登入。
+    // （useCurrentUser 以 Payload cookie 為準，POST /api/orders 會驗同一 cookie。）
+    if (!isAuthenticated || !user) {
+      alert('請先登入後再結帳')
+      router.push('/login?redirect=/checkout')
+      return
+    }
+
     setIsProcessing(true)
 
     const now = new Date()
@@ -335,44 +343,92 @@ export default function CheckoutPage() {
 
     const utmParams = getStoredUTM()
 
-    // In production, this would create the order via Payload API
-    console.log('[Checkout] Creating order:', {
+    const orderItems = items.map((i) => ({
+      product: i.productId,
+      productName: i.name,
+      sku: i.variant?.sku,
+      variant: i.variant ? `${i.variant.colorName} / ${i.variant.size}` : undefined,
+      quantity: i.quantity,
+      unitPrice: i.salePrice ?? i.price,
+      subtotal: (i.salePrice ?? i.price) * i.quantity,
+    }))
+
+    const orderPayload = {
       orderNumber,
-      customer: user?.id || 'guest',
-      items: items.map((i) => ({
-        productId: i.productId,
-        name: i.name,
-        variant: i.variant ? `${i.variant.colorName} / ${i.variant.size}` : null,
-        quantity: i.quantity,
-        unitPrice: i.salePrice ?? i.price,
-        subtotal: (i.salePrice ?? i.price) * i.quantity,
-      })),
+      customer: user.id,
+      items: orderItems,
       subtotal,
       shippingFee,
+      codFee,
       total,
       paymentMethod: selectedPayment,
-      codFee,
-      shippingMethod: {
-        methodName: shippingOption?.name,
-        carrier: shippingOption?.carrier,
-        convenienceStore: isConvenienceStore ? storeInfo : null,
-        estimatedDays: shippingOption?.estimatedDays,
-      },
+      paymentStatus: 'unpaid' as const,
+      status: 'pending' as const,
       shippingAddress: isConvenienceStore
         ? {
             recipientName: form.recipientName,
             phone: form.phone,
             address: storeInfo.storeAddress,
-            city: '',
+            city: '超商取貨',
             district: '',
             zipCode: '',
           }
-        : form,
-      utm: utmParams,
-    })
+        : {
+            recipientName: form.recipientName,
+            phone: form.phone,
+            address: form.address,
+            city: form.city,
+            district: form.district,
+            zipCode: form.zipCode,
+          },
+      shippingMethod: {
+        methodName: shippingOption?.name,
+        carrier: shippingOption?.carrier,
+        convenienceStore:
+          isConvenienceStore && storeInfo.storeName
+            ? {
+                storeName: storeInfo.storeName,
+                storeId: storeInfo.storeId,
+                storeAddress: storeInfo.storeAddress,
+              }
+            : undefined,
+        estimatedDays: shippingOption?.estimatedDays,
+      },
+      customerNote: form.customerNote || undefined,
+    }
+
+    let createdOrderNumber = orderNumber
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(orderPayload),
+      })
+
+      if (!res.ok) {
+        const errBody = (await res.json().catch(() => null)) as
+          | { errors?: { message: string }[]; message?: string }
+          | null
+        const errMsg =
+          errBody?.errors?.[0]?.message || errBody?.message || `HTTP ${res.status}`
+        console.error('[Checkout] Order API failed:', errMsg, errBody, { utm: utmParams })
+        alert(`訂單建立失敗：${errMsg}`)
+        setIsProcessing(false)
+        return
+      }
+
+      const result = (await res.json()) as { doc?: { orderNumber?: string } }
+      createdOrderNumber = result.doc?.orderNumber || orderNumber
+    } catch (err) {
+      console.error('[Checkout] Order creation error:', err)
+      alert('訂單建立失敗，請檢查網路連線後再試')
+      setIsProcessing(false)
+      return
+    }
 
     trackPurchase({
-      transaction_id: orderNumber,
+      transaction_id: createdOrderNumber,
       value: total,
       currency: 'TWD',
       shipping: shippingFee,
@@ -387,10 +443,8 @@ export default function CheckoutPage() {
       })),
     })
 
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
     clearCart()
-    router.push(`/checkout/success/${orderNumber}`)
+    router.push(`/checkout/success/${createdOrderNumber}`)
   }
 
   if (items.length === 0) {
