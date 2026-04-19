@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
 import { signIn } from 'next-auth/react'
+import { useCurrentUser } from '@/lib/auth/useCurrentUser'
 import {
   CreditCard,
   Store,
@@ -193,7 +193,11 @@ const TAIWAN_CITIES = [
 ]
 
 export default function CheckoutPage() {
-  const { data: session } = useSession()
+  // Unified auth check — Payload cookie (email/pw + OAuth-after-bridge) first,
+  // NextAuth session as fallback for the brief OAuth-before-bridge window.
+  // useSession() alone misses Payload-only sessions, which is why logged-in
+  // email/pw users were still seeing the "登入後可快速填入收件資訊" prompt.
+  const { user, isAuthenticated, loading: authLoading } = useCurrentUser()
   const router = useRouter()
   const { items, clearCart } = useCartStore()
   const [selectedPayment, setSelectedPayment] = useState<PaymentMethodId>('ecpay')
@@ -334,7 +338,7 @@ export default function CheckoutPage() {
     // In production, this would create the order via Payload API
     console.log('[Checkout] Creating order:', {
       orderNumber,
-      customer: session?.user?.id || 'guest',
+      customer: user?.id || 'guest',
       items: items.map((i) => ({
         productId: i.productId,
         name: i.name,
@@ -430,8 +434,8 @@ export default function CheckoutPage() {
           <div className="grid lg:grid-cols-[1fr_400px] gap-8 lg:gap-12">
             {/* ── Left: Forms ── */}
             <div className="space-y-8">
-              {/* Social login prompt */}
-              {!session && (
+              {/* Social login prompt — hide once auth is confirmed (either way) */}
+              {!authLoading && !isAuthenticated && (
                 <div className="bg-gold-500/5 border border-gold-500/20 rounded-2xl p-5">
                   <p className="text-sm font-medium mb-2">
                     登入後可快速填入收件資訊
