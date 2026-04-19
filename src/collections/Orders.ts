@@ -23,7 +23,8 @@ export const Orders: CollectionConfig = {
   slug: 'orders',
   admin: {
     useAsTitle: 'orderNumber',
-    defaultColumns: ['orderNumber', 'customer', 'total', 'status', 'paymentStatus', 'createdAt'],
+    defaultColumns: ['orderNumber', 'customer', 'total', 'status', 'paymentMethod', 'paymentStatus', 'createdAt'],
+    listSearchableFields: ['orderNumber', 'customerEmail', 'customerName'],
     group: '訂單管理',
     description: '訂單紀錄與管理（含出貨單列印、取貨總報表）',
     components: {
@@ -150,7 +151,22 @@ export const Orders: CollectionConfig = {
         { label: '綠界科技 ECPay', value: 'ecpay' },
         { label: '藍新支付 NewebPay', value: 'newebpay' },
         { label: 'LINE Pay', value: 'linepay' },
+        { label: '現金—宅配貨到付款', value: 'cash_cod' },
+        { label: '現金—面交付款', value: 'cash_meetup' },
       ],
+      admin: {
+        description: 'cash_cod / cash_meetup 訂單預設 paymentStatus=unpaid，配送員/面交時收款後 admin 手動 mark paid',
+      },
+    },
+    {
+      name: 'codFee',
+      label: 'COD 手續費（新台幣）',
+      type: 'number',
+      defaultValue: 0,
+      admin: {
+        description: '只有 paymentMethod=cash_cod 時計入 total。預設讀 GlobalSettings.payment.codDefaultFee；admin 可 per-order 覆蓋',
+        condition: (data: Record<string, unknown>) => data?.paymentMethod === 'cash_cod',
+      },
     },
     {
       name: 'paymentStatus',
