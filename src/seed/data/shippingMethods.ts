@@ -9,7 +9,7 @@
 
 export type ShippingSeed = {
   name: string
-  carrier: 'tcat' | 'hct' | '711' | 'family' | 'hilife' | 'ok' | 'post' | 'dhl' | 'fedex' | 'other'
+  carrier: 'tcat' | 'hct' | '711' | 'family' | 'hilife' | 'ok' | 'post' | 'meetup' | 'dhl' | 'fedex' | 'other'
   description: string
   baseFee: number
   freeShippingThreshold: number
@@ -80,25 +80,6 @@ export const shippingMethods: ShippingSeed[] = [
     ],
   },
   {
-    name: '黑貓宅急便',
-    carrier: 'tcat',
-    description: '黑貓宅急便到府配送（台灣本島 + 部分離島）',
-    baseFee: 150,
-    freeShippingThreshold: 1500,
-    estimatedDays: '1-3 個工作天',
-    maxWeight: 20,
-    regions: ['taiwan', 'offshore'],
-    isActive: true,
-    sortOrder: 40,
-    trackingFlow: [
-      { step: '訂單成立', icon: '📝' },
-      { step: '理貨中', icon: '📦' },
-      { step: '已出貨', description: '已交由黑貓宅急便', icon: '🚚' },
-      { step: '配送中', description: '配送員已取件，即將送達', icon: '🛵' },
-      { step: '已送達', icon: '✅' },
-    ],
-  },
-  {
     name: '新竹物流',
     carrier: 'hct',
     description: '新竹物流到府配送（台灣本島）',
@@ -108,12 +89,31 @@ export const shippingMethods: ShippingSeed[] = [
     maxWeight: 20,
     regions: ['taiwan'],
     isActive: true,
-    sortOrder: 50,
+    sortOrder: 40,
     trackingFlow: [
       { step: '訂單成立', icon: '📝' },
       { step: '理貨中', icon: '📦' },
       { step: '已出貨', description: '已交由新竹物流', icon: '🚚' },
       { step: '配送中', icon: '🛵' },
+      { step: '已送達', icon: '✅' },
+    ],
+  },
+  {
+    name: '黑貓宅急便',
+    carrier: 'tcat',
+    description: '黑貓宅急便到府配送（台灣本島 + 部分離島）',
+    baseFee: 150,
+    freeShippingThreshold: 1500,
+    estimatedDays: '1-3 個工作天',
+    maxWeight: 20,
+    regions: ['taiwan', 'offshore'],
+    isActive: true,
+    sortOrder: 50,
+    trackingFlow: [
+      { step: '訂單成立', icon: '📝' },
+      { step: '理貨中', icon: '📦' },
+      { step: '已出貨', description: '已交由黑貓宅急便', icon: '🚚' },
+      { step: '配送中', description: '配送員已取件，即將送達', icon: '🛵' },
       { step: '已送達', icon: '✅' },
     ],
   },
@@ -134,6 +134,23 @@ export const shippingMethods: ShippingSeed[] = [
       { step: '已交寄', description: '已交由中華郵政', icon: '📮' },
       { step: '配送中', icon: '🚚' },
       { step: '已送達', icon: '✅' },
+    ],
+  },
+  {
+    name: '面交自取（現金付款）',
+    carrier: 'meetup',
+    description: '約定時間地點面交，僅支援現金付款；適合雙北市區短程交易',
+    baseFee: 0,
+    freeShippingThreshold: 0,
+    estimatedDays: '雙方約定時段',
+    regions: ['taiwan'],
+    isActive: true,
+    sortOrder: 65,
+    trackingFlow: [
+      { step: '訂單成立', description: '感謝您的訂購，我們已收到訂單', icon: '📝' },
+      { step: '備貨中', description: '商品正在打包中', icon: '📦' },
+      { step: '待面交', description: '已聯繫您確認面交時間地點', icon: '📞' },
+      { step: '完成面交', description: '面交完成，現金收款', icon: '🤝' },
     ],
   },
   {
