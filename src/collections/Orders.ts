@@ -321,40 +321,83 @@ export const Orders: CollectionConfig = {
           }
         }
 
-        // ── 訂單送達：自動發放點數（讀取 LoyaltySettings） ──
-        if (status === 'delivered' && prevStatus !== 'delivered') {
-          try {
-            const loyaltySettings = await payload.findGlobal({ slug: 'loyalty-settings' })
-            const autoTriggers = loyaltySettings.autoTriggers as unknown as Record<string, unknown> | undefined
-            const pointsConfig = loyaltySettings.pointsConfig as unknown as Record<string, unknown> | undefined
+        // ── 付款完成：發點數 + 更新累積消費/訂單統計 ──
+        // 觸發時機改成 paymentStatus === 'paid'（原本掛在 status==='delivered'）：
+        //   - Credit card / PayPal / LINE Pay：付款成功當下即觸發
+        //   - COD：driver 確認 + admin 勾 paid 時觸發
+        //   - 讓會員「買完 → 立刻看到點數入帳 + 消費金額更新」，不用等到出貨送達
+        // 舊的 delivered-trigger 會 double-credit，所以整塊搬到這裡。
+        const paymentStatus = doc.paymentStatus as string
+        const prevPaymentStatus = previousDoc?.paymentStatus as string | undefined
+        if (paymentStatus === 'paid' && prevPaymentStatus !== 'paid') {
+          const customerId =
+            typeof doc.customer === 'string'
+              ? doc.customer
+              : ((doc.customer as unknown as Record<string, unknown>)?.id as unknown as string)
+          const orderTotal = (doc.total as number) ?? 0
 
-            if (autoTriggers?.awardOnOrderDelivered && pointsConfig?.enabled) {
-              const pointsPerDollar = (pointsConfig.pointsPerDollar as number) ?? 1
-              const orderTotal = (doc.total as number) ?? 0
-              const basePoints = Math.floor(orderTotal * pointsPerDollar)
+          if (customerId) {
+            try {
+              const customer = await payload.findByID({ collection: 'users', id: customerId })
+              const customerData = customer as unknown as Record<string, unknown>
 
-              // 取得會員等級倍率
-              const customerId = typeof doc.customer === 'string' ? doc.customer : (doc.customer as unknown as Record<string, unknown>)?.id as unknown as string
-              if (customerId) {
-                const customer = await payload.findByID({ collection: 'users', id: customerId })
-                const tierSlug = (customer.memberTier as unknown as string) || 'bronze'
-                const tierMultipliers = loyaltySettings.tierMultipliers as unknown as Record<string, unknown> | undefined
-                const multiplierKey = `${tierSlug}Multiplier`
-                const multiplier = (tierMultipliers?.[multiplierKey] as number) ?? 1
-                const pointsEarned = Math.floor(basePoints * multiplier)
+              // ── 點數發放（依 LoyaltySettings + 會員倍率） ──
+              let pointsEarned = 0
+              try {
+                const loyaltySettings = await payload.findGlobal({ slug: 'loyalty-settings' })
+                const autoTriggers = loyaltySettings.autoTriggers as unknown as Record<string, unknown> | undefined
+                const pointsConfig = loyaltySettings.pointsConfig as unknown as Record<string, unknown> | undefined
 
-                // 實際寫入 User 點數
-                const currentPoints = (customer.points as number) ?? 0
-                await (payload.update as Function)({
-                  collection: 'users',
-                  id: customerId,
-                  data: { points: currentPoints + pointsEarned },
-                })
-                console.log(`[Loyalty] 訂單 ${doc.orderNumber} 送達，會員 ${customerId} 獲得 ${pointsEarned} 點（${tierSlug} ${multiplier}x）`)
+                // Accept either legacy awardOnOrderDelivered or new awardOnOrderPaid flag —
+                // the semantic intent was always "award on order completion", just shifted
+                // to paid. Admins don't need to flip a new toggle.
+                const shouldAward =
+                  Boolean(autoTriggers?.awardOnOrderPaid ?? autoTriggers?.awardOnOrderDelivered) &&
+                  Boolean(pointsConfig?.enabled)
+
+                if (shouldAward) {
+                  const pointsPerDollar = (pointsConfig?.pointsPerDollar as number) ?? 1
+                  const basePoints = Math.floor(orderTotal * pointsPerDollar)
+
+                  const rawTier = customerData.memberTier
+                  const tierSlug =
+                    typeof rawTier === 'string'
+                      ? rawTier
+                      : ((rawTier as unknown as Record<string, unknown>)?.slug as string) || 'bronze'
+                  const tierMultipliers =
+                    loyaltySettings.tierMultipliers as unknown as Record<string, unknown> | undefined
+                  const multiplier = (tierMultipliers?.[`${tierSlug}Multiplier`] as number) ?? 1
+                  pointsEarned = Math.floor(basePoints * multiplier)
+                }
+              } catch (err) {
+                console.error('[Orders Hook] LoyaltySettings 讀取失敗:', err)
               }
+
+              // ── 累積消費 / 訂單統計（單一 users.update 打平所有欄位） ──
+              const currentPoints = (customerData.points as number) ?? 0
+              const currentTotalSpent = (customerData.totalSpent as number) ?? 0
+              const currentLifetimeSpend = (customerData.lifetimeSpend as number) ?? 0
+              const currentAnnualSpend = (customerData.annualSpend as number) ?? 0
+              const currentOrderCount = (customerData.orderCount as number) ?? 0
+
+              await (payload.update as Function)({
+                collection: 'users',
+                id: customerId,
+                data: {
+                  points: currentPoints + pointsEarned,
+                  totalSpent: currentTotalSpent + orderTotal,
+                  lifetimeSpend: currentLifetimeSpend + orderTotal,
+                  annualSpend: currentAnnualSpend + orderTotal,
+                  orderCount: currentOrderCount + 1,
+                  lastOrderDate: new Date().toISOString(),
+                },
+              })
+              console.log(
+                `[Orders Hook] 付款完成：${doc.orderNumber} 會員 ${customerId} +${pointsEarned} 點，累積消費 +NT$${orderTotal}`,
+              )
+            } catch (err) {
+              console.error('[Orders Hook] 付款後統計更新失敗:', err)
             }
-          } catch (err) {
-            console.error('[Orders Hook] 點數發放失敗:', err)
           }
         }
 
@@ -427,6 +470,64 @@ export const Orders: CollectionConfig = {
           } catch (err) {
             console.error(`[Orders Hook] 自動開立發票異常:`, err)
           }
+        }
+      },
+      // ── 新訂單建立：收件地址自動寫回 user.addresses[] ──
+      // 原本結帳頁的「儲存此地址到我的地址簿」勾選框只寫回當下編輯的 form state；
+      // 客戶真正完成下單後地址沒有落地到 Users.addresses，下次結帳仍要重填一次。
+      // 這個 hook 在 create 時把 shippingAddress 自動去重加進地址簿，讓封測會員的
+      // 第二張訂單開始就能從地址簿直接挑（上一張訂單有存就跳過）。
+      // 超商取貨 + 到辦公室取貨 (meetup) 都 skip — 門市地址 / 面交特殊格式不算個人地址。
+      async ({ doc, operation, req }) => {
+        if (operation !== 'create') return
+        const payload = req.payload
+        const customerId =
+          typeof doc.customer === 'string'
+            ? doc.customer
+            : ((doc.customer as unknown as Record<string, unknown>)?.id as unknown as string)
+        if (!customerId) return
+
+        const shippingMethod = doc.shippingMethod as Record<string, unknown> | null | undefined
+        const convenienceStore = shippingMethod?.convenienceStore as Record<string, unknown> | null | undefined
+        if (convenienceStore?.storeName) return
+
+        const addr = (doc.shippingAddress as Record<string, unknown> | null | undefined) ?? {}
+        const addressStr = String(addr.address || '')
+        // meetup / 面交 fake-address format — not a real postal address
+        if (addressStr.startsWith('[到辦公室取貨]') || addressStr.startsWith('[面交]')) return
+        if (!addressStr || !addr.city || !addr.recipientName) return
+
+        try {
+          const customer = (await payload.findByID({ collection: 'users', id: customerId })) as unknown as Record<string, unknown>
+          const currentAddresses =
+            (customer.addresses as Record<string, unknown>[] | null | undefined) ?? []
+
+          const key = `${addr.recipientName ?? ''}|${addr.phone ?? ''}|${addr.city ?? ''}|${addr.district ?? ''}|${addr.address ?? ''}`
+          const alreadySaved = currentAddresses.some(
+            (a) =>
+              `${a.recipientName ?? ''}|${a.phone ?? ''}|${a.city ?? ''}|${a.district ?? ''}|${a.address ?? ''}` === key,
+          )
+          if (alreadySaved) return
+
+          const newEntry = {
+            label: '',
+            recipientName: (addr.recipientName as string) ?? '',
+            phone: (addr.phone as string) ?? '',
+            zipCode: (addr.zipCode as string) ?? '',
+            city: (addr.city as string) ?? '',
+            district: (addr.district as string) ?? '',
+            address: (addr.address as string) ?? '',
+            isDefault: currentAddresses.length === 0,
+          }
+
+          await (payload.update as Function)({
+            collection: 'users',
+            id: customerId,
+            data: { addresses: [...currentAddresses, newEntry] },
+          })
+          console.log(`[Orders Hook] 收件地址自動寫回 users.addresses：${customerId}`)
+        } catch (err) {
+          console.error('[Orders Hook] 地址自動儲存失敗:', err)
         }
       },
       // ── 信用分數 Hook ──

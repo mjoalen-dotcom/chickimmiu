@@ -26,27 +26,31 @@ import {
 /**
  * 訂單狀態變更時觸發信用分數調整
  *
- * - 訂單送達（delivered）：+8 基礎 + 金額加成（每 NT$1000 額外 +2，上限 +10）+ 準時收貨 +5
- * - 訂單取消（cancelled）：棄單 -6 或惡意取消 -20
- * - 首購偵測：首次購買額外 +15
+ * 觸發時機（2026-04-19 調整）：
+ * - `paymentStatus === 'paid'`：+8 基礎購買 + 金額加成（每 NT$1000 +2，上限 +10）+ 首購偵測 + 好客人表揚
+ *   原本這塊掛在 `status === 'delivered'`，封測會員反映「付完款後信用分數要等很久才動」；
+ *   搬到付款完成以對齊「付款一確認就看到分數變化」的預期。
+ * - `status === 'delivered'`：只發「準時收貨 +5」，避免與付款加分 double-credit。
+ * - `status === 'cancelled'`：棄單 -6 或惡意取消 -20（未變）。
  */
 export const orderCreditScoreHook: CollectionAfterChangeHook = async ({
   doc,
   previousDoc,
   req,
-  operation,
 }) => {
   try {
     const status = doc.status as string
     const prevStatus = previousDoc?.status as string | undefined
+    const paymentStatus = doc.paymentStatus as string
+    const prevPaymentStatus = previousDoc?.paymentStatus as string | undefined
     const customerId = typeof doc.customer === 'string'
       ? doc.customer
       : (doc.customer as unknown as Record<string, unknown>)?.id as unknown as string
 
     if (!customerId) return doc
 
-    // ── 訂單送達：加分 ──
-    if (status === 'delivered' && prevStatus !== 'delivered') {
+    // ── 付款完成：基礎購買 + 金額加成 + 首購 + 好客人表揚 ──
+    if (paymentStatus === 'paid' && prevPaymentStatus !== 'paid') {
       const orderTotal = (doc.total as number) ?? 0
       const orderId = doc.id as unknown as string
 
@@ -54,7 +58,7 @@ export const orderCreditScoreHook: CollectionAfterChangeHook = async ({
       const result = await adjustCreditScore({
         userId: customerId,
         reason: 'purchase',
-        description: `訂單 ${doc.orderNumber} 已送達`,
+        description: `訂單 ${doc.orderNumber} 付款完成`,
         relatedOrderId: orderId,
       })
 
@@ -70,25 +74,17 @@ export const orderCreditScoreHook: CollectionAfterChangeHook = async ({
         })
       }
 
-      // 準時收貨加分 +5
-      await adjustCreditScore({
-        userId: customerId,
-        reason: 'on_time_delivery',
-        description: `訂單 ${doc.orderNumber} 準時收貨`,
-        relatedOrderId: orderId,
-      })
-
-      // 首購偵測
+      // 首購偵測（以 paymentStatus: paid 為基準）
       try {
-        const orderCount = await req.payload.find({
+        const paidCount = await req.payload.find({
           collection: 'orders',
           where: {
             customer: { equals: customerId },
-            status: { equals: 'delivered' },
+            paymentStatus: { equals: 'paid' },
           },
           limit: 0,
         })
-        if (orderCount.totalDocs === 1) {
+        if (paidCount.totalDocs === 1) {
           await adjustCreditScore({
             userId: customerId,
             reason: 'first_purchase',
@@ -112,9 +108,20 @@ export const orderCreditScoreHook: CollectionAfterChangeHook = async ({
       const notification = getCreditChangeNotification(
         result.change,
         result.newScore,
-        '訂單送達',
+        '訂單付款',
       )
-      console.log(`[CreditScore] 訂單送達：${customerId} ${result.change > 0 ? '+' : ''}${result.change} → ${result.newScore} | ${notification.title}`)
+      console.log(`[CreditScore] 付款完成：${customerId} ${result.change > 0 ? '+' : ''}${result.change} → ${result.newScore} | ${notification.title}`)
+    }
+
+    // ── 訂單送達：準時收貨 +5 ──
+    if (status === 'delivered' && prevStatus !== 'delivered') {
+      const orderId = doc.id as unknown as string
+      await adjustCreditScore({
+        userId: customerId,
+        reason: 'on_time_delivery',
+        description: `訂單 ${doc.orderNumber} 準時收貨`,
+        relatedOrderId: orderId,
+      })
     }
 
     // ── 訂單取消：扣分 ──
