@@ -133,27 +133,40 @@ export const useCartStore = create<CartState>()(
  * localStorage. Pages that branch on `items.length === 0` must gate on this
  * first — otherwise the first client render (before Providers' useEffect
  * fires `persist.rehydrate()`) sees items=[] and can lock into the empty-cart
- * UI even after rehydration's setState runs (React 19 / Suspense ordering
- * makes the post-rehydrate re-render flaky when the subscriber has already
- * early-returned).
+ * UI even after rehydration's setState runs.
+ *
+ * Implementation: ignore `onFinishHydration` (it only fires for hydrations
+ * that *complete after* subscription, and on prod we observed it never firing
+ * — Providers' rehydrate had already resolved by the time we subscribed). Just
+ * await `rehydrate()` directly; it's idempotent in Zustand persist v5 (multiple
+ * concurrent calls share the same in-flight promise). A 1500ms safety timeout
+ * forces hydrated=true even if storage is wedged so the page never gets stuck
+ * on the skeleton — falling through to the populated/empty branches with
+ * whatever items state we have is strictly better than a permanent skeleton.
  */
 export function useCartHydrated(): boolean {
-  const [hydrated, setHydrated] = useState(false)
+  const [hydrated, setHydrated] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    try { return useCartStore.persist.hasHydrated() } catch { return false }
+  })
+
   useEffect(() => {
-    if (useCartStore.persist.hasHydrated()) {
-      setHydrated(true)
-      return
+    if (hydrated) return
+    let cancelled = false
+    const safety = setTimeout(() => { if (!cancelled) setHydrated(true) }, 1500)
+    Promise.resolve(useCartStore.persist.rehydrate())
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) {
+          clearTimeout(safety)
+          setHydrated(true)
+        }
+      })
+    return () => {
+      cancelled = true
+      clearTimeout(safety)
     }
-    const unsub = useCartStore.persist.onFinishHydration(() => setHydrated(true))
-    // Re-check synchronously in case hydration finished between the first
-    // check and subscribing (onFinishHydration only fires going forward).
-    if (useCartStore.persist.hasHydrated()) setHydrated(true)
-    // Defensive: kick rehydrate() ourselves in case Providers' effect hasn't
-    // fired yet (child effects run before parent effects, and Suspense
-    // boundaries in the layout can reorder commits). rehydrate() is
-    // idempotent — Zustand reads storage again and setState lands once.
-    useCartStore.persist.rehydrate()
-    return unsub
-  }, [])
+  }, [hydrated])
+
   return hydrated
 }
