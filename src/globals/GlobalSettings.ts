@@ -34,12 +34,61 @@ export const GlobalSettings: GlobalConfig = {
       label: '網站基本資訊',
       type: 'group',
       fields: [
+        {
+          name: 'sitePreview',
+          type: 'ui',
+          admin: {
+            components: {
+              Field: '@/components/admin/SiteBrandPreview',
+            },
+          },
+        },
         { name: 'siteName', label: '網站名稱', type: 'text', defaultValue: 'CHIC KIM & MIU' },
         { name: 'siteDescription', label: '網站描述', type: 'textarea', defaultValue: '融合高級極簡優雅與韓系可愛活力的台灣女裝品牌' },
-        { name: 'logo', label: '網站 Logo', type: 'upload', relationTo: 'media' },
-        { name: 'favicon', label: 'Favicon（.ico 或 .png）', type: 'upload', relationTo: 'media', admin: { description: '建議 32×32 或 64×64 像素的 .ico / .png 檔案' } },
-        { name: 'appleTouchIcon', label: 'Apple Touch Icon', type: 'upload', relationTo: 'media', admin: { description: 'iPhone/iPad 書籤圖示，建議 180×180 像素 PNG' } },
-        { name: 'ogImage', label: '預設社群分享圖片（OG Image）', type: 'upload', relationTo: 'media', admin: { description: '頁面未設定分享圖時的預設圖片，建議 1200×630 像素' } },
+        {
+          name: 'logo',
+          label: '網站 Logo',
+          type: 'upload',
+          relationTo: 'media',
+          admin: {
+            description:
+              '顯示於前台 header 與後台 top-nav。建議橫式比例：480-800 × 96-160 像素。' +
+              '優先使用 SVG（可任意放大不失真）或透明 PNG；JPG / WebP 亦可。',
+          },
+        },
+        {
+          name: 'favicon',
+          label: 'Favicon',
+          type: 'upload',
+          relationTo: 'media',
+          admin: {
+            description:
+              '瀏覽器分頁圖示。建議 32×32 或 64×64 像素的 .ico（多尺寸最佳）或 .png。' +
+              '亦會顯示於後台 sidebar 收合時的小圖示。',
+          },
+        },
+        {
+          name: 'appleTouchIcon',
+          label: 'Apple Touch Icon',
+          type: 'upload',
+          relationTo: 'media',
+          admin: {
+            description:
+              'iPhone / iPad「加入主畫面」書籤圖示。建議 180×180 像素 PNG，' +
+              '背景需為不透明（iOS 不支援透明背景）。',
+          },
+        },
+        {
+          name: 'ogImage',
+          label: '預設社群分享圖片（OG Image）',
+          type: 'upload',
+          relationTo: 'media',
+          admin: {
+            description:
+              '頁面未自訂分享圖時的預設圖片。建議 1200×630 像素（2:1 比例），JPG 或 PNG，' +
+              '檔案大小建議 < 1 MB 以利 Facebook / X / LINE 預覽載入。',
+          },
+        },
       ],
     },
 
