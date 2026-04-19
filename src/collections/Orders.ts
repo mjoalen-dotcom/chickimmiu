@@ -3,6 +3,7 @@ import type { CollectionConfig, Access, Where } from 'payload'
 import { isAdmin } from '../access/isAdmin'
 import { orderCreditScoreHook } from '../lib/crm/creditScoreHooks'
 import { autoIssueInvoiceForOrder } from '../lib/invoice/ecpayInvoiceEngine'
+import { sendOrderConfirmationEmail } from '../lib/email/orderConfirmation'
 
 /**
  * 訂單讀取權限：
@@ -397,6 +398,16 @@ export const Orders: CollectionConfig = {
               console.error(`[Orders Hook] 庫存回補失敗 (product: ${productId}):`, err)
             }
           }
+        }
+      },
+      // ── pending → processing：寄訂單確認信給顧客 ──
+      async ({ doc, previousDoc, req }) => {
+        const status = doc.status as string
+        const prevStatus = previousDoc?.status as string | undefined
+        if (status === 'processing' && prevStatus === 'pending') {
+          sendOrderConfirmationEmail(req.payload, doc as unknown as Record<string, unknown>).catch(
+            (err) => console.error('[Orders Hook] 訂單確認信寄送失敗:', err),
+          )
         }
       },
       // ── 付款成功：自動開立電子發票 ──

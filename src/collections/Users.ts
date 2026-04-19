@@ -228,13 +228,15 @@ export const Users: CollectionConfig = {
               type: 'upload',
               relationTo: 'media',
             },
-            // 公司發票資料（常用資料）—— 顧客於結帳時可快速帶入三聯式發票抬頭
+            // 公司發票資料（預設 / 常用資料）—— 顧客於結帳時可快速帶入三聯式發票抬頭
+            // 多筆需求請用下方 invoiceProfiles array（造型師代買等情境）
             {
               name: 'invoiceInfo',
-              label: '公司發票資料',
+              label: '公司發票資料（預設）',
               type: 'group',
               admin: {
-                description: '三聯式發票抬頭、統編等資料；顧客於結帳頁可一鍵套用，免重複填寫。',
+                description:
+                  '預設三聯式發票抬頭。顧客於結帳頁可一鍵套用。若需多筆（例如造型師代買多家公司），請用下方「其他發票資料」分筆紀錄。',
               },
               fields: [
                 {
@@ -277,6 +279,72 @@ export const Users: CollectionConfig = {
                       admin: { width: '50%' },
                     },
                   ],
+                },
+              ],
+            },
+            // 多筆公司發票資料 —— 造型師代買、跨公司採買等情境
+            {
+              name: 'invoiceProfiles',
+              label: '其他發票資料（多筆）',
+              type: 'array',
+              admin: {
+                description:
+                  '若同一帳號需開立給多家公司（造型師代買、家族代購等），可在此自由新增多筆，結帳時挑選即可。',
+              },
+              fields: [
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'profileName',
+                      label: '此筆別名',
+                      type: 'text',
+                      required: true,
+                      admin: { width: '40%', description: '方便辨識，例如「客戶 A 工作室」「家裡公司」' },
+                    },
+                    {
+                      name: 'invoiceTitle',
+                      label: '發票抬頭',
+                      type: 'text',
+                      required: true,
+                      admin: { width: '60%' },
+                    },
+                  ],
+                },
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'taxId',
+                      label: '統一編號',
+                      type: 'text',
+                      maxLength: 8,
+                      admin: { width: '40%', description: '8 碼數字' },
+                    },
+                    {
+                      name: 'invoiceContactName',
+                      label: '聯絡人',
+                      type: 'text',
+                      admin: { width: '30%' },
+                    },
+                    {
+                      name: 'invoicePhone',
+                      label: '聯絡電話',
+                      type: 'text',
+                      admin: { width: '30%' },
+                    },
+                  ],
+                },
+                {
+                  name: 'invoiceAddress',
+                  label: '發票寄送地址',
+                  type: 'text',
+                },
+                {
+                  name: 'note',
+                  label: '備註',
+                  type: 'text',
+                  admin: { description: '例如「客戶帳款代墊」「2026 春夏季使用」' },
                 },
               ],
             },

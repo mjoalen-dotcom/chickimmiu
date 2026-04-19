@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { auth as nextAuth } from '@/auth'
-import { User, ShoppingBag, Heart, MapPin, Gift, Settings, Crown, Share2, RotateCcw, Star, FileText, Gamepad2 } from 'lucide-react'
+import { User, ShoppingBag, Heart, MapPin, Gift, Settings, Crown, Share2, RotateCcw, Star, FileText, Gamepad2, Sparkles } from 'lucide-react'
 import { LogoutButton } from './LogoutButton'
 
 export const metadata: Metadata = {
@@ -21,6 +21,7 @@ const sidebarLinks = [
   { href: '/account/wishlist', label: '收藏清單', icon: Heart },
   { href: '/account/referrals', label: '推薦好友', icon: Share2 },
   { href: '/games', label: '好運遊戲', icon: Gamepad2 },
+  { href: '/account/treasure', label: '我的寶物箱', icon: Sparkles },
   { href: '/account/invoices', label: '電子發票', icon: FileText },
   { href: '/account/returns', label: '退換貨', icon: RotateCcw },
   { href: '/account/reviews', label: '我的評價', icon: Star },
