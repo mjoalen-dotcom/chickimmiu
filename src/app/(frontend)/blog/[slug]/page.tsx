@@ -6,6 +6,9 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeft, Calendar, User, ArrowRight } from 'lucide-react'
 import { ArticleJsonLd, BreadcrumbJsonLd } from '@/components/seo/JsonLd'
+import { RichText } from '@payloadcms/richtext-lexical/react'
+
+type RichTextData = React.ComponentProps<typeof RichText>['data']
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -174,30 +177,18 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
         )}
 
-        {/* Content placeholder */}
-        <div className="prose prose-sm max-w-none">
-          <div className="bg-white rounded-2xl border border-cream-200 p-8 md:p-12 space-y-6">
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              文章內容載入中，請稍候…
+        {/* Content */}
+        <div className="bg-white rounded-2xl border border-cream-200 p-8 md:p-12">
+          {post.content ? (
+            <RichText
+              data={post.content as RichTextData}
+              className="prose prose-sm md:prose-base max-w-none prose-headings:font-serif prose-headings:text-foreground prose-p:text-foreground/80 prose-p:leading-relaxed prose-a:text-gold-600 prose-a:no-underline hover:prose-a:underline prose-blockquote:border-l-gold-500 prose-blockquote:bg-cream-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:not-italic prose-img:rounded-xl prose-img:border prose-img:border-cream-200 prose-hr:border-cream-200"
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground leading-relaxed italic">
+              文章內容準備中…
             </p>
-            <div className="bg-cream-50 rounded-xl p-6 border-l-4 border-gold-500">
-              <p className="text-sm italic text-foreground/80">
-                「優雅不只是外在的穿著，更是一種從容的生活態度。」<br />
-                <span className="text-xs text-muted-foreground mt-1 block">— CHIC KIM &amp; MIU</span>
-              </p>
-            </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              在 CHIC KIM &amp; MIU，我們相信每一位女性都能找到屬於自己的風格。無論是日常通勤還是週末約會，只需幾個簡單的穿搭技巧，就能輕鬆打造高級感造型。
-            </p>
-            <h3 className="text-lg font-serif">Tips 1：選擇適合自己的基本色</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              米白、米杏、駝色、灰色是打造高級感的基礎。這些色彩不僅百搭，更能襯托出好氣色。
-            </p>
-            <h3 className="text-lg font-serif">Tips 2：一件好外套是秋冬的靈魂</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              投資一件剪裁合身的大衣或西裝外套，它能讓最簡單的 T-shirt + 牛仔褲也變得優雅起來。
-            </p>
-          </div>
+          )}
         </div>
 
         {/* Author */}
