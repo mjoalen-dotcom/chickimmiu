@@ -32,7 +32,7 @@ import { trackBeginCheckout, trackPurchase, getStoredUTM } from '@/lib/tracking'
 /* ── 付款方式 ──
  * cash_cod 只在所選物流支援貨到付款（cashOnDelivery=true）時顯示，
  * 且訂單總額（subtotal + shippingFee）≤ codMaxAmount 才能選。
- * cash_meetup 只在所選物流 type=meetup 時顯示；meetup tab 下也只有此付款可選。
+ * cash_meetup (到辦公室取貨付款) 只在所選物流 type=meetup 時顯示；該 tab 下也只有此付款可選。
  */
 type PaymentMethodId = 'paypal' | 'ecpay' | 'newebpay' | 'linepay' | 'cash_cod' | 'cash_meetup'
 interface PaymentMethodOption {
@@ -84,8 +84,8 @@ const PAYMENT_METHODS: PaymentMethodOption[] = [
   },
   {
     id: 'cash_meetup',
-    name: '面交付款（現金）',
-    desc: '約定時間地點面交時收取現金',
+    name: '到辦公室取貨付款（現金）',
+    desc: '到辦公室取貨時收取現金',
     icon: Handshake,
     color: 'text-amber-600',
     requiresMeetup: true,
@@ -195,16 +195,16 @@ const SHIPPING_OPTIONS: ShippingOption[] = [
     icon: Building2,
     cashOnDelivery: true,
   },
-  // 面交
+  // 到辦公室取貨
   {
     id: 'meetup',
     type: 'meetup',
     carrier: 'meetup',
-    name: '面交自取',
-    desc: '約定時間地點面交，僅支援現金付款',
+    name: '到辦公室取貨',
+    desc: '約定時段至辦公室取貨，僅支援現金付款',
     fee: 0,
     freeThreshold: 0,
-    estimatedDays: '雙方約定時段',
+    estimatedDays: '備貨完成後通知取貨',
     icon: Handshake,
   },
   // 國際
@@ -272,9 +272,9 @@ export default function CheckoutPage() {
     storeAddress: '',
   })
 
-  // 面交約定資訊
+  // 到辦公室取貨資訊（location 預設「辦公室」，customer 可改）
   const [meetupInfo, setMeetupInfo] = useState({
-    location: '',
+    location: '辦公室',
     preferredTime: '',
   })
 
@@ -374,9 +374,9 @@ export default function CheckoutPage() {
       return
     }
 
-    // 面交驗證
+    // 到辦公室取貨驗證
     if (isMeetup && (!meetupInfo.location.trim() || !meetupInfo.preferredTime.trim())) {
-      alert('請填寫面交地點與建議時段')
+      alert('請填寫取貨地點與建議時段')
       return
     }
 
@@ -431,11 +431,11 @@ export default function CheckoutPage() {
         ? {
             recipientName: form.recipientName,
             phone: form.phone,
-            // Orders.shippingMethod has no meetup sub-group, so meetup location +
-            // time are packed into the existing shippingAddress.address string
+            // Orders.shippingMethod has no meetup sub-group, so 取貨地點 + 時段
+            // are packed into the existing shippingAddress.address string
             // (admin can still read it in the order detail view).
-            address: `[面交] ${meetupInfo.location}（${meetupInfo.preferredTime}）`,
-            city: '面交自取',
+            address: `[到辦公室取貨] ${meetupInfo.location}（${meetupInfo.preferredTime}）`,
+            city: '到辦公室取貨',
             district: '',
             zipCode: '',
           }
@@ -601,7 +601,7 @@ export default function CheckoutPage() {
                     [
                       { type: 'convenience_store' as ShippingType, label: '超商取貨', icon: Building2 },
                       { type: 'home_delivery' as ShippingType, label: '宅配到府', icon: Truck },
-                      { type: 'meetup' as ShippingType, label: '面交自取', icon: Handshake },
+                      { type: 'meetup' as ShippingType, label: '到辦公室取貨', icon: Handshake },
                       { type: 'international' as ShippingType, label: '國際配送', icon: Plane },
                     ] as const
                   ).map((tab) => (
@@ -673,14 +673,14 @@ export default function CheckoutPage() {
               <div className="bg-white rounded-2xl border border-cream-200 p-6">
                 <h2 className="font-medium mb-5 flex items-center gap-2">
                   <MapPin size={18} className="text-gold-500" />
-                  {isConvenienceStore ? '取貨人資訊' : isMeetup ? '面交資訊' : '收件資訊'}
+                  {isConvenienceStore ? '取貨人資訊' : isMeetup ? '取貨資訊' : '收件資訊'}
                 </h2>
 
-                {/* 收件人基本資訊（宅配 / 超商 / 面交都需要） */}
+                {/* 收件人基本資訊（宅配 / 超商 / 辦公室取貨都需要） */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1.5 block">
-                      {isConvenienceStore ? '取貨人姓名' : isMeetup ? '面交人姓名' : '收件人姓名'} *
+                      {isConvenienceStore || isMeetup ? '取貨人姓名' : '收件人姓名'} *
                     </label>
                     <input
                       type="text"
@@ -771,20 +771,20 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                {/* 面交表單 */}
+                {/* 到辦公室取貨表單 */}
                 {isMeetup && (
                   <div className="mt-5 space-y-4">
                     <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-500/10 px-3 py-2 rounded-lg">
                       <Info size={14} className="mt-0.5 shrink-0" />
                       <p>
-                        面交僅支援現金付款。訂單成立後客服會聯繫您確認最終時間與地點，請填寫您方便的建議值。
+                        到辦公室取貨僅支援現金付款。訂單成立後客服會聯繫您確認取貨時間，請填寫您方便的建議時段。
                       </p>
                     </div>
 
                     <div>
                       <label className="text-xs text-muted-foreground mb-1.5 block flex items-center gap-1">
                         <MapPin size={12} className="text-gold-500" />
-                        建議面交地點 *
+                        取貨地點 *
                       </label>
                       <input
                         type="text"
@@ -793,7 +793,7 @@ export default function CheckoutPage() {
                         onChange={(e) =>
                           setMeetupInfo((prev) => ({ ...prev, location: e.target.value }))
                         }
-                        placeholder="例如：捷運忠孝復興站、台北101、新光三越南西店"
+                        placeholder="預設為辦公室；如需其他地點請自行更改"
                         className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
                       />
                     </div>
@@ -801,7 +801,7 @@ export default function CheckoutPage() {
                     <div>
                       <label className="text-xs text-muted-foreground mb-1.5 block flex items-center gap-1">
                         <Clock size={12} className="text-gold-500" />
-                        建議時段 *
+                        建議取貨時段 *
                       </label>
                       <input
                         type="text"
@@ -929,7 +929,7 @@ export default function CheckoutPage() {
                 </div>
                 {isMeetup && (
                   <p className="text-xs text-amber-700 mt-3">
-                    面交僅支援現金付款；如需信用卡 / 行動支付請改選宅配或超商取貨。
+                    到辦公室取貨僅支援現金付款；如需信用卡 / 行動支付請改選宅配或超商取貨。
                   </p>
                 )}
                 {!isMeetup && codBlockedByMax && shippingOption?.cashOnDelivery && (

@@ -153,10 +153,10 @@ export const Orders: CollectionConfig = {
         { label: '藍新支付 NewebPay', value: 'newebpay' },
         { label: 'LINE Pay', value: 'linepay' },
         { label: '現金—宅配貨到付款', value: 'cash_cod' },
-        { label: '現金—面交付款', value: 'cash_meetup' },
+        { label: '現金—到辦公室取貨付款', value: 'cash_meetup' },
       ],
       admin: {
-        description: 'cash_cod / cash_meetup 訂單預設 paymentStatus=unpaid，配送員/面交時收款後 admin 手動 mark paid',
+        description: 'cash_cod / cash_meetup 訂單預設 paymentStatus=unpaid，配送員到貨 / 客戶到辦公室取貨收款後 admin 手動 mark paid',
       },
     },
     {
