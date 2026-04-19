@@ -35,6 +35,7 @@ import { Invoices } from './collections/Invoices'
 import { MiniGameRecords } from './collections/MiniGameRecords'
 import { CardBattles } from './collections/CardBattles'
 import { GameLeaderboard } from './collections/GameLeaderboard'
+import { UserRewards } from './collections/UserRewards'
 
 import { GlobalSettings } from './globals/GlobalSettings'
 import { LoyaltySettings } from './globals/LoyaltySettings'
@@ -194,6 +195,7 @@ export default buildConfig({
     MiniGameRecords,
     CardBattles,
     GameLeaderboard,
+    UserRewards,
     LoginAttempts,
   ],
   globals: [GlobalSettings, LoyaltySettings, ReferralSettings, PointRedemptionSettings, RecommendationSettings, CRMSettings, SegmentationSettings, MarketingAutomationSettings, InvoiceSettings, GameSettings, HomepageSettings, AboutPageSettings, FAQPageSettings, PolicyPagesSettings, NavigationSettings],

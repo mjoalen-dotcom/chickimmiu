@@ -1,6 +1,9 @@
 import type { CollectionConfig, Access, Where } from 'payload'
 
+import type { UserReward } from '../payload-types'
 import { isAdmin } from '../access/isAdmin'
+
+type RewardType = UserReward['rewardType']
 
 /**
  * 遊戲紀錄讀取權限：
@@ -153,4 +156,68 @@ export const MiniGameRecords: CollectionConfig = {
       ],
     },
   ],
+  hooks: {
+    afterChange: [
+      // 贏家獎項自動進寶物箱（UserRewards 庫存）。
+      // 規則：
+      //   - 只在 create 時觸發（update 不重複建）
+      //   - result.outcome === 'win' 才算中獎
+      //   - prizeType ∈ {coupon, badge} → 建 UserRewards
+      //   - prizeType ∈ {points, credit} → 跳過（已直接寫入 user.points / user.shoppingCredit）
+      //   - prizeType = 'none' 或未設 → 跳過
+      // 新獎項（電影券 / 免運券 / 實體贈品）之後擴充 MiniGameRecords.prizeType 時同步補到 map。
+      async ({ doc, operation, req }) => {
+        if (operation !== 'create') return doc
+        const result = (doc as { result?: Record<string, unknown> }).result
+        if (!result || result.outcome !== 'win') return doc
+
+        const rewardTypeMap: Record<string, RewardType> = {
+          coupon: 'coupon',
+          badge: 'badge',
+        }
+        const prizeType = typeof result.prizeType === 'string' ? result.prizeType : undefined
+        const rewardType: RewardType | undefined = prizeType ? rewardTypeMap[prizeType] : undefined
+        if (!rewardType) return doc
+
+        // 預設 365 天有效期；admin 後續可手動調整
+        const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+        // badge / coupon 不需實體寄出；之後的 physical / gift_physical 類型再開回 true
+        const requiresPhysicalShipping = false
+
+        const playerId = (doc as { player?: unknown }).player
+        const displayName =
+          (typeof result.prizeDescription === 'string' && result.prizeDescription) ||
+          `${(doc as { gameType?: string }).gameType ?? '遊戲'} 獎品`
+
+        try {
+          await req.payload.create({
+            collection: 'user-rewards',
+            data: {
+              user: playerId as number,
+              sourceRecord: (doc as { id?: number }).id,
+              rewardType,
+              displayName,
+              amount: typeof result.prizeAmount === 'number' ? result.prizeAmount : undefined,
+              couponCode:
+                typeof result.couponCode === 'string' && result.couponCode
+                  ? result.couponCode
+                  : undefined,
+              state: 'unused',
+              expiresAt,
+              requiresPhysicalShipping,
+            },
+            overrideAccess: true,
+          })
+        } catch (err) {
+          req.payload.logger.error({
+            err,
+            msg: 'UserRewards auto-create failed from mini-game-record',
+            recordId: (doc as { id?: number }).id,
+          })
+        }
+
+        return doc
+      },
+    ],
+  },
 }
