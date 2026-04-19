@@ -3,12 +3,11 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, ArrowLeft } from 'lucide-react'
-import { useCartStore, useCartHydrated } from '@/stores/cartStore'
+import { useCartStore } from '@/stores/cartStore'
 import { CartCrossSell } from '@/components/recommendation/CartCrossSell'
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, clearCart } = useCartStore()
-  const hasHydrated = useCartHydrated()
 
   const subtotal = items.reduce(
     (sum, i) => sum + (i.salePrice ?? i.price) * i.quantity,
@@ -16,20 +15,6 @@ export default function CartPage() {
   )
   const shippingFee = subtotal >= 1000 ? 0 : 60
   const total = subtotal + shippingFee
-
-  if (!hasHydrated) {
-    return (
-      <main className="bg-cream-50 min-h-screen">
-        <div className="container py-16 text-center" aria-busy="true" aria-label="載入購物車中">
-          <div className="animate-pulse inline-flex flex-col items-center gap-4">
-            <div className="w-16 h-16 bg-cream-100 rounded-full" />
-            <div className="h-6 w-40 bg-cream-100 rounded" />
-            <div className="h-4 w-60 bg-cream-100 rounded" />
-          </div>
-        </div>
-      </main>
-    )
-  }
 
   if (items.length === 0) {
     return (

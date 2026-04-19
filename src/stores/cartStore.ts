@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { trackAddToCart } from '@/lib/tracking'
@@ -128,45 +127,3 @@ export const useCartStore = create<CartState>()(
   ),
 )
 
-/**
- * Returns `true` once the cart store has finished rehydrating from
- * localStorage. Pages that branch on `items.length === 0` must gate on this
- * first — otherwise the first client render (before Providers' useEffect
- * fires `persist.rehydrate()`) sees items=[] and can lock into the empty-cart
- * UI even after rehydration's setState runs.
- *
- * Implementation: ignore `onFinishHydration` (it only fires for hydrations
- * that *complete after* subscription, and on prod we observed it never firing
- * — Providers' rehydrate had already resolved by the time we subscribed). Just
- * await `rehydrate()` directly; it's idempotent in Zustand persist v5 (multiple
- * concurrent calls share the same in-flight promise). A 1500ms safety timeout
- * forces hydrated=true even if storage is wedged so the page never gets stuck
- * on the skeleton — falling through to the populated/empty branches with
- * whatever items state we have is strictly better than a permanent skeleton.
- */
-export function useCartHydrated(): boolean {
-  const [hydrated, setHydrated] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false
-    try { return useCartStore.persist.hasHydrated() } catch { return false }
-  })
-
-  useEffect(() => {
-    if (hydrated) return
-    let cancelled = false
-    const safety = setTimeout(() => { if (!cancelled) setHydrated(true) }, 1500)
-    Promise.resolve(useCartStore.persist.rehydrate())
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) {
-          clearTimeout(safety)
-          setHydrated(true)
-        }
-      })
-    return () => {
-      cancelled = true
-      clearTimeout(safety)
-    }
-  }, [hydrated])
-
-  return hydrated
-}
