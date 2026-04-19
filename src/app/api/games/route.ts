@@ -108,7 +108,17 @@ export async function GET(req: NextRequest) {
         configs: Object.fromEntries(
           Object.entries(GAME_CONFIGS).map(([key, cfg]) => [
             key,
-            { pointsCost: cfg.pointsCost, dailyLimit: cfg.dailyLimit },
+            {
+              pointsCost: cfg.pointsCost,
+              dailyLimit: cfg.dailyLimit,
+              // 把 prizeTable 曝給 client 讓 wheel / scratch UI 能 render 真正的獎項名稱；
+              // 刻意 strip `weight` — 機率是營運機密，不要透過 API 洩漏。
+              prizeTable: cfg.prizeTable.map((p) => ({
+                prize: p.prize,
+                type: p.type,
+                amount: p.amount,
+              })),
+            },
           ]),
         ),
         dailyStatus,
