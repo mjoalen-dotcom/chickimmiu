@@ -22,6 +22,8 @@ import {
   FileText,
   Heart,
   Banknote,
+  Handshake,
+  Clock,
 } from 'lucide-react'
 import { useCartStore } from '@/stores/cartStore'
 import { CheckoutLastChance } from '@/components/recommendation/CheckoutLastChance'
@@ -30,8 +32,9 @@ import { trackBeginCheckout, trackPurchase, getStoredUTM } from '@/lib/tracking'
 /* ── 付款方式 ──
  * cash_cod 只在所選物流支援貨到付款（cashOnDelivery=true）時顯示，
  * 且訂單總額（subtotal + shippingFee）≤ codMaxAmount 才能選。
+ * cash_meetup 只在所選物流 type=meetup 時顯示；meetup tab 下也只有此付款可選。
  */
-type PaymentMethodId = 'paypal' | 'ecpay' | 'newebpay' | 'linepay' | 'cash_cod'
+type PaymentMethodId = 'paypal' | 'ecpay' | 'newebpay' | 'linepay' | 'cash_cod' | 'cash_meetup'
 interface PaymentMethodOption {
   id: PaymentMethodId
   name: string
@@ -39,6 +42,7 @@ interface PaymentMethodOption {
   icon: typeof CreditCard
   color: string
   requiresCashOnDelivery?: boolean
+  requiresMeetup?: boolean
 }
 
 const PAYMENT_METHODS: PaymentMethodOption[] = [
@@ -78,10 +82,18 @@ const PAYMENT_METHODS: PaymentMethodOption[] = [
     color: 'text-emerald-600',
     requiresCashOnDelivery: true,
   },
+  {
+    id: 'cash_meetup',
+    name: '面交付款（現金）',
+    desc: '約定時間地點面交時收取現金',
+    icon: Handshake,
+    color: 'text-amber-600',
+    requiresMeetup: true,
+  },
 ]
 
 /* ── 物流方式 ── */
-type ShippingType = 'home_delivery' | 'convenience_store' | 'international'
+type ShippingType = 'home_delivery' | 'convenience_store' | 'meetup' | 'international'
 
 interface ShippingOption {
   id: string
@@ -183,6 +195,18 @@ const SHIPPING_OPTIONS: ShippingOption[] = [
     icon: Building2,
     cashOnDelivery: true,
   },
+  // 面交
+  {
+    id: 'meetup',
+    type: 'meetup',
+    carrier: 'meetup',
+    name: '面交自取',
+    desc: '約定時間地點面交，僅支援現金付款',
+    fee: 0,
+    freeThreshold: 0,
+    estimatedDays: '雙方約定時段',
+    icon: Handshake,
+  },
   // 國際
   {
     id: 'intl',
@@ -222,7 +246,7 @@ export default function CheckoutPage() {
     enabledMethods: string[]
     codDefaultFee: number
     codMaxAmount: number
-  }>({ enabledMethods: ['ecpay', 'cash_cod'], codDefaultFee: 30, codMaxAmount: 20000 })
+  }>({ enabledMethods: ['ecpay', 'cash_cod', 'cash_meetup'], codDefaultFee: 30, codMaxAmount: 20000 })
 
   useEffect(() => {
     fetch('/api/payment-settings')
@@ -248,6 +272,12 @@ export default function CheckoutPage() {
     storeAddress: '',
   })
 
+  // 面交約定資訊
+  const [meetupInfo, setMeetupInfo] = useState({
+    location: '',
+    preferredTime: '',
+  })
+
   // 電子發票
   const [invoiceType, setInvoiceType] = useState<'b2c_personal' | 'b2c_carrier' | 'b2b' | 'donation'>('b2c_personal')
   const [carrierType, setCarrierType] = useState<'none' | 'phone_barcode' | 'natural_cert'>('none')
@@ -258,6 +288,7 @@ export default function CheckoutPage() {
 
   const shippingOption = SHIPPING_OPTIONS.find((s) => s.id === selectedShipping)
   const isConvenienceStore = shippingOption?.type === 'convenience_store'
+  const isMeetup = shippingOption?.type === 'meetup'
 
   const subtotal = items.reduce(
     (sum, i) => sum + (i.salePrice ?? i.price) * i.quantity,
@@ -283,9 +314,14 @@ export default function CheckoutPage() {
   const codBlockedByMax =
     paymentSettings.codMaxAmount > 0 && baseTotalForCodCheck > paymentSettings.codMaxAmount
 
-  // 過濾可用付款方式：admin 啟用 + （若是 COD）物流支援 COD + 不超過上限
+  // 過濾可用付款方式：
+  //   1. admin 必須啟用
+  //   2. meetup 物流 → 只露 cash_meetup；其他物流 → 隱藏 cash_meetup
+  //   3. cash_cod 需物流支援 COD 且訂單金額未超上限
   const availablePayments = PAYMENT_METHODS.filter((pm) => {
     if (!paymentSettings.enabledMethods.includes(pm.id)) return false
+    if (isMeetup) return pm.requiresMeetup === true
+    if (pm.requiresMeetup) return false
     if (pm.requiresCashOnDelivery) {
       if (!shippingOption?.cashOnDelivery) return false
       if (codBlockedByMax) return false
@@ -338,6 +374,12 @@ export default function CheckoutPage() {
       return
     }
 
+    // 面交驗證
+    if (isMeetup && (!meetupInfo.location.trim() || !meetupInfo.preferredTime.trim())) {
+      alert('請填寫面交地點與建議時段')
+      return
+    }
+
     // Orders.customer 是必填 relationship → 必須登入。
     // （useCurrentUser 以 Payload cookie 為準，POST /api/orders 會驗同一 cookie。）
     if (!isAuthenticated || !user) {
@@ -382,6 +424,18 @@ export default function CheckoutPage() {
             phone: form.phone,
             address: storeInfo.storeAddress,
             city: '超商取貨',
+            district: '',
+            zipCode: '',
+          }
+        : isMeetup
+        ? {
+            recipientName: form.recipientName,
+            phone: form.phone,
+            // Orders.shippingMethod has no meetup sub-group, so meetup location +
+            // time are packed into the existing shippingAddress.address string
+            // (admin can still read it in the order detail view).
+            address: `[面交] ${meetupInfo.location}（${meetupInfo.preferredTime}）`,
+            city: '面交自取',
             district: '',
             zipCode: '',
           }
@@ -547,6 +601,7 @@ export default function CheckoutPage() {
                     [
                       { type: 'convenience_store' as ShippingType, label: '超商取貨', icon: Building2 },
                       { type: 'home_delivery' as ShippingType, label: '宅配到府', icon: Truck },
+                      { type: 'meetup' as ShippingType, label: '面交自取', icon: Handshake },
                       { type: 'international' as ShippingType, label: '國際配送', icon: Plane },
                     ] as const
                   ).map((tab) => (
@@ -618,14 +673,14 @@ export default function CheckoutPage() {
               <div className="bg-white rounded-2xl border border-cream-200 p-6">
                 <h2 className="font-medium mb-5 flex items-center gap-2">
                   <MapPin size={18} className="text-gold-500" />
-                  {isConvenienceStore ? '取貨人資訊' : '收件資訊'}
+                  {isConvenienceStore ? '取貨人資訊' : isMeetup ? '面交資訊' : '收件資訊'}
                 </h2>
 
-                {/* 收件人基本資訊（宅配與超商都需要） */}
+                {/* 收件人基本資訊（宅配 / 超商 / 面交都需要） */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1.5 block">
-                      {isConvenienceStore ? '取貨人姓名' : '收件人姓名'} *
+                      {isConvenienceStore ? '取貨人姓名' : isMeetup ? '面交人姓名' : '收件人姓名'} *
                     </label>
                     <input
                       type="text"
@@ -716,8 +771,54 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
+                {/* 面交表單 */}
+                {isMeetup && (
+                  <div className="mt-5 space-y-4">
+                    <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-500/10 px-3 py-2 rounded-lg">
+                      <Info size={14} className="mt-0.5 shrink-0" />
+                      <p>
+                        面交僅支援現金付款。訂單成立後客服會聯繫您確認最終時間與地點，請填寫您方便的建議值。
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block flex items-center gap-1">
+                        <MapPin size={12} className="text-gold-500" />
+                        建議面交地點 *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={meetupInfo.location}
+                        onChange={(e) =>
+                          setMeetupInfo((prev) => ({ ...prev, location: e.target.value }))
+                        }
+                        placeholder="例如：捷運忠孝復興站、台北101、新光三越南西店"
+                        className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block flex items-center gap-1">
+                        <Clock size={12} className="text-gold-500" />
+                        建議時段 *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={meetupInfo.preferredTime}
+                        onChange={(e) =>
+                          setMeetupInfo((prev) => ({ ...prev, preferredTime: e.target.value }))
+                        }
+                        placeholder="例如：週六下午 2-5 點、平日晚上 7 點後"
+                        className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* 宅配 / 國際地址表單 */}
-                {!isConvenienceStore && (
+                {!isConvenienceStore && !isMeetup && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                     <div className="relative">
                       <label className="text-xs text-muted-foreground mb-1.5 block">
@@ -826,13 +927,18 @@ export default function CheckoutPage() {
                     </button>
                   ))}
                 </div>
-                {codBlockedByMax && shippingOption?.cashOnDelivery && (
+                {isMeetup && (
+                  <p className="text-xs text-amber-700 mt-3">
+                    面交僅支援現金付款；如需信用卡 / 行動支付請改選宅配或超商取貨。
+                  </p>
+                )}
+                {!isMeetup && codBlockedByMax && shippingOption?.cashOnDelivery && (
                   <p className="text-xs text-amber-700 mt-3">
                     訂單金額超過 NT$ {paymentSettings.codMaxAmount.toLocaleString()}，
                     本訂單不適用貨到付款。
                   </p>
                 )}
-                {!shippingOption?.cashOnDelivery && (
+                {!isMeetup && !shippingOption?.cashOnDelivery && (
                   <p className="text-xs text-muted-foreground mt-3">
                     所選物流不支援貨到付款；改選宅配/超商可使用 COD。
                   </p>

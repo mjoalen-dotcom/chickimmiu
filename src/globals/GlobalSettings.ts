@@ -182,7 +182,7 @@ export const GlobalSettings: GlobalConfig = {
           label: '啟用的付款方式',
           type: 'select',
           hasMany: true,
-          defaultValue: ['ecpay', 'cash_cod'],
+          defaultValue: ['ecpay', 'cash_cod', 'cash_meetup'],
           options: [
             { label: 'PayPal', value: 'paypal' },
             { label: '綠界科技 ECPay', value: 'ecpay' },
@@ -195,8 +195,8 @@ export const GlobalSettings: GlobalConfig = {
           ],
           admin: {
             description:
-              '可複選。「現金—宅配貨到付款」需配合宅配/超商物流；' +
-              '「現金—面交付款」需配合面交物流（目前未啟用）。',
+              '可複選。「現金—宅配貨到付款」需配合宅配/超商物流（物流 cashOnDelivery=true）；' +
+              '「現金—面交付款」需配合面交物流（carrier=meetup）。未勾選的付款方式在結帳頁不會顯示。',
           },
         },
         { name: 'currency', label: '預設幣別', type: 'text', defaultValue: 'TWD' },
