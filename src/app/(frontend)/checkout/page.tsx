@@ -23,7 +23,7 @@ import {
   Heart,
   Banknote,
 } from 'lucide-react'
-import { useCartStore } from '@/stores/cartStore'
+import { useCartStore, useCartHydrated } from '@/stores/cartStore'
 import { CheckoutLastChance } from '@/components/recommendation/CheckoutLastChance'
 import { trackBeginCheckout, trackPurchase, getStoredUTM } from '@/lib/tracking'
 
@@ -200,6 +200,7 @@ export default function CheckoutPage() {
   const { user, isAuthenticated, loading: authLoading } = useCurrentUser()
   const router = useRouter()
   const { items, clearCart } = useCartStore()
+  const hasHydrated = useCartHydrated()
   const [selectedPayment, setSelectedPayment] = useState<PaymentMethodId>('ecpay')
   const [selectedShipping, setSelectedShipping] = useState('711')
   const [shippingTypeFilter, setShippingTypeFilter] = useState<ShippingType>('convenience_store')
@@ -391,6 +392,20 @@ export default function CheckoutPage() {
 
     clearCart()
     router.push(`/checkout/success/${orderNumber}`)
+  }
+
+  if (!hasHydrated) {
+    return (
+      <main className="bg-cream-50 min-h-screen">
+        <div className="container py-16 text-center" aria-busy="true" aria-label="載入結帳資訊中">
+          <div className="animate-pulse inline-flex flex-col items-center gap-4">
+            <div className="h-6 w-32 bg-cream-100 rounded" />
+            <div className="h-4 w-48 bg-cream-100 rounded" />
+            <div className="h-10 w-40 bg-cream-100 rounded-full mt-2" />
+          </div>
+        </div>
+      </main>
+    )
   }
 
   if (items.length === 0) {
