@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { trackAddToCart } from '@/lib/tracking'
@@ -126,3 +127,33 @@ export const useCartStore = create<CartState>()(
     },
   ),
 )
+
+/**
+ * Returns `true` once the cart store has finished rehydrating from
+ * localStorage. Pages that branch on `items.length === 0` must gate on this
+ * first — otherwise the first client render (before Providers' useEffect
+ * fires `persist.rehydrate()`) sees items=[] and can lock into the empty-cart
+ * UI even after rehydration's setState runs (React 19 / Suspense ordering
+ * makes the post-rehydrate re-render flaky when the subscriber has already
+ * early-returned).
+ */
+export function useCartHydrated(): boolean {
+  const [hydrated, setHydrated] = useState(false)
+  useEffect(() => {
+    if (useCartStore.persist.hasHydrated()) {
+      setHydrated(true)
+      return
+    }
+    const unsub = useCartStore.persist.onFinishHydration(() => setHydrated(true))
+    // Re-check synchronously in case hydration finished between the first
+    // check and subscribing (onFinishHydration only fires going forward).
+    if (useCartStore.persist.hasHydrated()) setHydrated(true)
+    // Defensive: kick rehydrate() ourselves in case Providers' effect hasn't
+    // fired yet (child effects run before parent effects, and Suspense
+    // boundaries in the layout can reorder commits). rehydrate() is
+    // idempotent — Zustand reads storage again and setState lands once.
+    useCartStore.persist.rehydrate()
+    return unsub
+  }, [])
+  return hydrated
+}
