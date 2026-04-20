@@ -156,7 +156,7 @@ export const Orders: CollectionConfig = {
       admin: { readOnly: true, description: '結帳時套用的 coupon code 快照' },
     },
     {
-      name: 'couponId',
+      name: 'coupon',
       label: '優惠券',
       type: 'relationship',
       relationTo: 'coupons',
@@ -513,11 +513,11 @@ export const Orders: CollectionConfig = {
     ],
     afterChange: [
       // ── 優惠券兌換記錄 ──
-      // order create 時若有 couponCode/couponId → 寫 CouponRedemptions 一筆
+      // order create 時若有 couponCode/coupon → 寫 CouponRedemptions 一筆
       // （該 collection 的 afterChange 會自動累加 coupons.usageCount）
       async ({ doc, operation, req }) => {
         if (operation !== 'create') return
-        const couponId = doc.couponId as number | string | Record<string, unknown> | null | undefined
+        const couponId = doc.coupon as number | string | Record<string, unknown> | null | undefined
         const discount = (doc.discountAmount as number) ?? 0
         if (!couponId || discount <= 0) return
         const couponIdResolved =
