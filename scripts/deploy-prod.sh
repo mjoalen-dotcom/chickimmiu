@@ -87,6 +87,22 @@ pm2 restart "$PM2_APP" --update-env
 # give Node + Next + Payload time to accept traffic
 sleep 4
 
+# 5b. Orphan next-server guard. pm2 treekill occasionally fails to propagate
+#     SIGTERM to next-server before pm2 spawns a replacement, leaving two
+#     next-server processes coexisting (~1.6GB RSS each) until OOM-kill
+#     takes the box down (2026-04-21 incident: 108× pm2 crash loop).
+#     The newest PID is pm2's live child; anything older is orphan.
+#     Pattern `^next-server \(` anchors to Next.js's own process title
+#     ("next-server (v15.5.15)") so this script's own bash doesn't match
+#     itself — plain `pgrep -f next-server` would self-match and kill
+#     the live process.
+ORPHANS=$(pgrep -f '^next-server \(' | head -n -1 || true)
+if [[ -n "$ORPHANS" ]]; then
+  log "  killing orphan next-server pids: $ORPHANS"
+  # shellcheck disable=SC2086
+  kill -9 $ORPHANS || true
+fi
+
 # 6. Health check — any non-200 on the critical paths aborts
 log "step 6/6: health check"
 for URL in "${HEALTH_PATHS[@]}"; do
