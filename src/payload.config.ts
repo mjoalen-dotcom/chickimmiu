@@ -241,6 +241,11 @@ export default buildConfig({
       url: process.env.DATABASE_URI || 'file:./data/chickimmiu.db',
       ...(process.env.DATABASE_AUTH_TOKEN ? { authToken: process.env.DATABASE_AUTH_TOKEN } : {}),
     },
+    // Env-gated schema push. Default OFF because the interactive prompt
+    // blocks DB writes in non-TTY stdin (observed: POST /api/users/login
+    // stalls 30s then succeeds but persists nothing). Set PAYLOAD_ENABLE_PUSH=true
+    // only when you explicitly want dev-mode schema drift without a migration file.
+    push: process.env.PAYLOAD_ENABLE_PUSH === 'true',
   }),
   email: emailAdapter,
   sharp,
