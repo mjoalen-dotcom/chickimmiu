@@ -44,7 +44,7 @@ export async function GET() {
     const notes = (settings.notes ?? {}) as Record<string, unknown>
 
     return NextResponse.json({
-      requireTOS: settings.requireTOS !== false,
+      requireTOS: settings.requireTos !== false,
       tosLinkText: typeof settings.tosLinkText === 'string' && settings.tosLinkText
         ? settings.tosLinkText
         : FALLBACK.tosLinkText,

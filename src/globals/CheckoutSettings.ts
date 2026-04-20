@@ -31,7 +31,7 @@ export const CheckoutSettings: GlobalConfig = {
   fields: [
     // ── 條款 / 行銷同意 ──
     {
-      name: 'requireTOS',
+      name: 'requireTos',
       label: '強制勾選同意服務條款',
       type: 'checkbox',
       defaultValue: true,
