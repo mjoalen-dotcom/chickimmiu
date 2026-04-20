@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
 import { revalidateCategory } from '../lib/revalidate'
+import { seedShoplineCategoriesEndpoint } from '../endpoints/seedShoplineCategories'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
@@ -18,6 +19,7 @@ export const Categories: CollectionConfig = {
     update: isAdmin,
     delete: isAdmin,
   },
+  endpoints: [seedShoplineCategoriesEndpoint],
   hooks: {
     afterChange: [
       ({ doc, previousDoc }) => {
