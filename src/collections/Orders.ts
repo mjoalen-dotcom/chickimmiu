@@ -12,6 +12,10 @@ import { calculateTier, TIER_LEVELS } from '../lib/crm/tierEngine'
 import { triggerJourney } from '../lib/crm/automationEngine'
 import { generateOrderNumber, type OrderNumberingSettings } from '../lib/commerce/orderNumbering'
 import { calculateOrderTax, type TaxSettingsLike } from '../lib/commerce/calculateTax'
+import {
+  mintCardsForPaidOrder,
+  revokeCardsForCancelledOrder,
+} from '../utils/mintCollectibleCards'
 
 /**
  * 訂單讀取權限：
@@ -919,6 +923,53 @@ export const Orders: CollectionConfig = {
             }
           } catch (err) {
             console.error(`[Orders Hook] 自動開立發票異常:`, err)
+          }
+        }
+      },
+      // ── 付款成功：Mint 造型卡（每件發 common，>NT$5000 商品額外發 limited） ──
+      async ({ doc, previousDoc, req }) => {
+        const paymentStatus = doc.paymentStatus as string
+        const prevPaymentStatus = previousDoc?.paymentStatus as string | undefined
+        if (paymentStatus === 'paid' && prevPaymentStatus !== 'paid') {
+          try {
+            const result = await mintCardsForPaidOrder(req.payload, {
+              id: doc.id as string | number,
+              orderNumber: doc.orderNumber as string | undefined,
+              customer: doc.customer as string | number,
+              items: (doc.items as unknown[]) as Parameters<typeof mintCardsForPaidOrder>[1]['items'],
+            })
+            console.log(
+              `[Orders Hook] 訂單 ${doc.orderNumber} mint 卡：+${result.commonsMinted} common, +${result.limitedMinted} limited${result.errors.length ? `（errors: ${result.errors.length}）` : ''}`,
+            )
+            if (result.errors.length) {
+              console.error('[Orders Hook] mint 卡部分失敗：', result.errors)
+            }
+          } catch (err) {
+            console.error('[Orders Hook] mint 卡異常：', err)
+          }
+        }
+      },
+      // ── 訂單取消：撤回該訂單 mint 的造型卡（status=active 的才撤） ──
+      async ({ doc, previousDoc, req }) => {
+        const status = doc.status as string
+        const prevStatus = previousDoc?.status as string | undefined
+        if (status === 'cancelled' && prevStatus !== 'cancelled') {
+          try {
+            const result = await revokeCardsForCancelledOrder(
+              req.payload,
+              doc.id as string | number,
+              doc.orderNumber as string | undefined,
+            )
+            if (result.revoked > 0) {
+              console.log(
+                `[Orders Hook] 訂單 ${doc.orderNumber} 取消撤卡：${result.revoked} 張`,
+              )
+            }
+            if (result.errors.length) {
+              console.error('[Orders Hook] 撤卡部分失敗：', result.errors)
+            }
+          } catch (err) {
+            console.error('[Orders Hook] 撤卡異常：', err)
           }
         }
       },
