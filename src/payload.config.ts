@@ -56,6 +56,8 @@ import { AboutPageSettings } from './globals/AboutPageSettings'
 import { FAQPageSettings } from './globals/FAQPageSettings'
 import { PolicyPagesSettings } from './globals/PolicyPagesSettings'
 import { NavigationSettings } from './globals/NavigationSettings'
+import { CheckoutSettings } from './globals/CheckoutSettings'
+import { OrderSettings } from './globals/OrderSettings'
 
 import { CreditScoreHistory } from './collections/CreditScoreHistory'
 import { PointsTransactions } from './collections/PointsTransactions'
@@ -214,7 +216,7 @@ export default buildConfig({
     StyleWishes,
     LoginAttempts,
   ],
-  globals: [GlobalSettings, LoyaltySettings, ReferralSettings, PointRedemptionSettings, RecommendationSettings, CRMSettings, SegmentationSettings, MarketingAutomationSettings, InvoiceSettings, GameSettings, HomepageSettings, AboutPageSettings, FAQPageSettings, PolicyPagesSettings, NavigationSettings],
+  globals: [GlobalSettings, LoyaltySettings, ReferralSettings, PointRedemptionSettings, RecommendationSettings, CRMSettings, SegmentationSettings, MarketingAutomationSettings, InvoiceSettings, GameSettings, HomepageSettings, AboutPageSettings, FAQPageSettings, PolicyPagesSettings, NavigationSettings, CheckoutSettings, OrderSettings],
   editor: lexicalEditor({
     features: ({ defaultFeatures }) => [
       ...defaultFeatures,

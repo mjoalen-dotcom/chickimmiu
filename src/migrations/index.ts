@@ -16,6 +16,7 @@ import * as migration_20260420_110000_add_style_game_rooms from './20260420_1100
 import * as migration_20260420_120000_add_style_votes from './20260420_120000_add_style_votes';
 import * as migration_20260420_130000_add_style_wishes from './20260420_130000_add_style_wishes';
 import * as migration_20260420_140000_add_global_settings_payment_cod_and_email_auth from './20260420_140000_add_global_settings_payment_cod_and_email_auth';
+import * as migration_20260421_200000_add_checkout_order_settings from './20260421_200000_add_checkout_order_settings';
 
 export const migrations = [
   {
@@ -107,5 +108,10 @@ export const migrations = [
     up: migration_20260420_140000_add_global_settings_payment_cod_and_email_auth.up,
     down: migration_20260420_140000_add_global_settings_payment_cod_and_email_auth.down,
     name: '20260420_140000_add_global_settings_payment_cod_and_email_auth'
+  },
+  {
+    up: migration_20260421_200000_add_checkout_order_settings.up,
+    down: migration_20260421_200000_add_checkout_order_settings.down,
+    name: '20260421_200000_add_checkout_order_settings'
   },
 ];
