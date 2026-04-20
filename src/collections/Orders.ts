@@ -4,6 +4,8 @@ import { isAdmin } from '../access/isAdmin'
 import { orderCreditScoreHook } from '../lib/crm/creditScoreHooks'
 import { autoIssueInvoiceForOrder } from '../lib/invoice/ecpayInvoiceEngine'
 import { sendOrderConfirmationEmail } from '../lib/email/orderConfirmation'
+import { calculateTier, TIER_LEVELS } from '../lib/crm/tierEngine'
+import { triggerJourney } from '../lib/crm/automationEngine'
 
 /**
  * 訂單讀取權限：
@@ -480,6 +482,102 @@ export const Orders: CollectionConfig = {
               console.log(
                 `[Orders Hook] 付款完成：${doc.orderNumber} 會員 ${customerId} +${pointsEarned} 點，累積消費 +NT$${orderTotal}`,
               )
+
+              // ── 自動升等（只升不降；降等由 /api/cron/annual-tier-reset 處理） ──
+              try {
+                const newLifetime = currentLifetimeSpend + orderTotal
+                const newAnnual = currentAnnualSpend + orderTotal
+                const newTierSlug = calculateTier(newLifetime, newAnnual)
+                const rawOldTier = customerData.memberTier
+                const oldTierSlug =
+                  typeof rawOldTier === 'string'
+                    ? rawOldTier
+                    : ((rawOldTier as unknown as Record<string, unknown>)?.slug as string) || 'ordinary'
+                const oldLevel = TIER_LEVELS[oldTierSlug] ?? 0
+                const newLevel = TIER_LEVELS[newTierSlug] ?? 0
+
+                if (newLevel > oldLevel) {
+                  const tierFind = await payload.find({
+                    collection: 'membership-tiers',
+                    where: { slug: { equals: newTierSlug } } satisfies Where,
+                    limit: 1,
+                    depth: 0,
+                  })
+                  const newTierDoc = tierFind.docs[0] as unknown as Record<string, unknown> | undefined
+                  if (newTierDoc) {
+                    const newTierId = newTierDoc.id as string | number
+                    const giftPoints = Number(newTierDoc.upgradeGiftPoints ?? 0) || 0
+                    const frontName = (newTierDoc.frontName as string) ?? newTierSlug
+
+                    await (payload.update as Function)({
+                      collection: 'users',
+                      id: customerId,
+                      data: {
+                        memberTier: newTierId,
+                        ...(giftPoints > 0
+                          ? { points: currentPoints + pointsEarned + giftPoints }
+                          : {}),
+                      },
+                    })
+
+                    if (giftPoints > 0) {
+                      try {
+                        await (payload.create as Function)({
+                          collection: 'points-transactions',
+                          data: {
+                            user: customerId,
+                            type: 'earn',
+                            amount: giftPoints,
+                            source: 'tier_upgrade',
+                            description: `升級至「${frontName}」贈點`,
+                          },
+                        })
+                      } catch (err) {
+                        console.error('[Orders Hook] 升級贈點 txn 建立失敗:', err)
+                      }
+                    }
+
+                    // 觸發所有 triggerEvent='tier_upgraded' 的 active event journey
+                    try {
+                      const journeys = await payload.find({
+                        collection: 'automation-journeys',
+                        where: {
+                          and: [
+                            { triggerType: { equals: 'event' } },
+                            { triggerEvent: { equals: 'tier_upgraded' } },
+                            { isActive: { equals: true } },
+                          ],
+                        } satisfies Where,
+                        limit: 50,
+                        depth: 0,
+                      })
+                      for (const j of journeys.docs) {
+                        const slug = (j as unknown as Record<string, unknown>).slug as string | undefined
+                        if (!slug) continue
+                        triggerJourney(slug, {
+                          userId: String(customerId),
+                          event: 'tier_upgraded',
+                          data: {
+                            oldTierSlug,
+                            newTierSlug,
+                            newTierFrontName: frontName,
+                            orderId: String(doc.id),
+                            orderNumber: String(doc.orderNumber ?? ''),
+                          },
+                        }).catch((err) => console.error('[Orders Hook] tier_upgraded journey 觸發失敗:', err))
+                      }
+                    } catch (err) {
+                      console.error('[Orders Hook] tier_upgraded journey 查詢失敗:', err)
+                    }
+
+                    console.log(
+                      `[Orders Hook] 會員 ${customerId} 升等：${oldTierSlug} → ${newTierSlug}${giftPoints > 0 ? `（+${giftPoints} 贈點）` : ''}`,
+                    )
+                  }
+                }
+              } catch (err) {
+                console.error('[Orders Hook] 升等判斷失敗:', err)
+              }
             } catch (err) {
               console.error('[Orders Hook] 付款後統計更新失敗:', err)
             }
