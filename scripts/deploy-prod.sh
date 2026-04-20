@@ -74,8 +74,23 @@ pnpm install $INSTALL_FLAG
 
 # 3. Run pending migrations — idempotent. Must happen BEFORE pm2 restart
 #    so new code boots against a schema it expects.
-log "step 3/6: pnpm payload migrate"
-pnpm payload migrate || fail "payload migrate failed" 3
+#
+#    `yes y |` auto-accepts Payload v3's "dev-mode dirty schema, proceed?
+#    (y/N)" prompt. In non-TTY ssh the default-No path silently takes, and
+#    `pnpm payload migrate` exits 0 with nothing applied — this masked PR
+#    #79's card-schema migration on 2026-04-21, caught only because the
+#    page 500'd on the missing table.
+#
+#    We check PIPESTATUS[1] (pnpm's own exit) because under `set -o pipefail`
+#    yes receives SIGPIPE the moment pnpm closes stdin and exits 141, which
+#    would otherwise make a successful migrate look failed. `set +e` around
+#    the pipeline lets us capture PIPESTATUS before `-e` trips on the 141.
+log "step 3/6: pnpm payload migrate (auto-accepting dev-mode prompt)"
+set +e
+yes y | pnpm payload migrate
+MIGRATE_STATUSES=("${PIPESTATUS[@]}")
+set -e
+[[ "${MIGRATE_STATUSES[1]:-1}" -eq 0 ]] || fail "payload migrate failed (pnpm exit ${MIGRATE_STATUSES[1]:-?})" 3
 
 # 4. Build — NO `rm -rf .next`. Content-hashed chunks coexist.
 log "step 4/6: pnpm build (no rm -rf, old chunks preserved)"
