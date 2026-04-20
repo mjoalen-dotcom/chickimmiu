@@ -16,7 +16,9 @@
     "seed:core": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedCore.ts",
     "seed:core:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedCore.ts -- --dry-run",
     "seed:plans": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedSubscriptionPlans.ts",
-    "seed:plans:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedSubscriptionPlans.ts -- --dry-run"
+    "seed:plans:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedSubscriptionPlans.ts -- --dry-run",
+    "seed:brand": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedBrandAssets.ts",
+    "seed:brand:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedBrandAssets.ts -- --dry-run"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",
