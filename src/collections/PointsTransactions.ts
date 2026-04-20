@@ -195,6 +195,7 @@ export const PointsTransactions: CollectionConfig = {
         { label: '管理員', value: 'admin' },
         { label: '點數過期', value: 'points_expiry' },
         { label: '歡迎禮', value: 'welcome' },
+        { label: '升等贈點', value: 'tier_upgrade' },
       ],
     },
     {
