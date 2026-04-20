@@ -40,6 +40,7 @@ import { default as default_0e7b23c75ea046975e1784ba01f82886 } from '@/component
 import { default as default_050b8b1c6d9a3c10e652a8eb94471e38 } from '@/components/admin/HelpNavLink'
 import { default as default_340cf3538fa47d0416e0abd461790ca4 } from '@/components/admin/AdminStyles'
 import { default as default_b49611ccd828469519fd79e264a9eb51 } from '@/components/admin/HelpView'
+import { default as default_memberTreasureBoxPanel } from '@/components/admin/MemberTreasureBoxPanel'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -86,5 +87,6 @@ export const importMap = {
   "@/components/admin/HelpNavLink#default": default_050b8b1c6d9a3c10e652a8eb94471e38,
   "@/components/admin/AdminStyles#default": default_340cf3538fa47d0416e0abd461790ca4,
   "@/components/admin/HelpView#default": default_b49611ccd828469519fd79e264a9eb51,
+  "@/components/admin/MemberTreasureBoxPanel#default": default_memberTreasureBoxPanel,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

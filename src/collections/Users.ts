@@ -1047,6 +1047,23 @@ export const Users: CollectionConfig = {
             },
           ],
         },
+
+        // ── TAB 8: Treasure Box & Points History ──────────────────
+        {
+          label: '寶物箱 & 點數紀錄',
+          description: '會員目前擁有的獎項庫存，以及所有點數獲得、兌換、過期、調整紀錄',
+          fields: [
+            {
+              name: 'treasureBoxPanel',
+              type: 'ui',
+              admin: {
+                components: {
+                  Field: '@/components/admin/MemberTreasureBoxPanel',
+                },
+              },
+            },
+          ],
+        },
       ],
     },
   ],
