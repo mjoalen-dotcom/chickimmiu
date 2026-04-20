@@ -64,15 +64,17 @@ async function getTiers(): Promise<TierRecord[]> {
   }
 }
 
-async function getSessionGender(): Promise<string | null> {
-  if (!process.env.DATABASE_URI) return null
+async function getSessionInfo(): Promise<{ isLoggedIn: boolean; gender: string | null }> {
+  if (!process.env.DATABASE_URI) return { isLoggedIn: false, gender: null }
   try {
     const payload = await getPayload({ config })
     const headersList = await nextHeaders()
     const { user } = await payload.auth({ headers: headersList })
-    return (user as unknown as Record<string, unknown>)?.gender as string | null ?? null
+    if (!user) return { isLoggedIn: false, gender: null }
+    const gender = (user as unknown as Record<string, unknown>)?.gender as string | null ?? null
+    return { isLoggedIn: true, gender }
   } catch {
-    return null
+    return { isLoggedIn: false, gender: null }
   }
 }
 
@@ -82,7 +84,8 @@ function pickTierName(tier: TierRecord, gender: string | null): string {
 }
 
 export default async function MembershipBenefitsPage() {
-  const [tiers, gender] = await Promise.all([getTiers(), getSessionGender()])
+  const [tiers, session] = await Promise.all([getTiers(), getSessionInfo()])
+  const { isLoggedIn, gender } = session
 
   return (
     <main className="bg-cream-50 min-h-screen">
@@ -101,21 +104,37 @@ export default async function MembershipBenefitsPage() {
             <br />
             等級越高，福利越豐富！
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
-            <Link
-              href="/register"
-              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-gold-500 text-white rounded-full text-sm tracking-wide hover:bg-gold-600 transition-colors"
-            >
-              立即加入會員
-              <Sparkles size={16} />
-            </Link>
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 border border-foreground/20 text-foreground rounded-full text-sm tracking-wide hover:bg-foreground/5 transition-colors"
-            >
-              已有帳號？登入
-            </Link>
-          </div>
+          {isLoggedIn ? (
+            <div className="flex flex-col items-center gap-3 mt-8">
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs tracking-widest border border-emerald-200">
+                <Sparkles size={14} />
+                已登入
+              </span>
+              <Link
+                href="/account/referrals"
+                className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-gold-500 text-white rounded-full text-sm tracking-wide hover:bg-gold-600 transition-colors"
+              >
+                <Heart size={16} />
+                邀請朋友
+              </Link>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
+              <Link
+                href="/register"
+                className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-gold-500 text-white rounded-full text-sm tracking-wide hover:bg-gold-600 transition-colors"
+              >
+                立即加入會員
+                <Sparkles size={16} />
+              </Link>
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center gap-2 px-8 py-3.5 border border-foreground/20 text-foreground rounded-full text-sm tracking-wide hover:bg-foreground/5 transition-colors"
+              >
+                已有帳號？登入
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 
