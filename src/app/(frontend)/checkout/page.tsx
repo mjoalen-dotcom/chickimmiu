@@ -617,7 +617,7 @@ export default function CheckoutPage() {
         ? `優惠券 ${appliedCoupon.couponCode}${appliedCoupon.freeShipping ? '（免運）' : ''}`
         : undefined,
       couponCode: appliedCoupon?.couponCode,
-      couponId: appliedCoupon?.couponId,
+      coupon: appliedCoupon?.couponId,
       paymentMethod: selectedPayment,
       paymentStatus: 'unpaid' as const,
       status: 'pending' as const,
