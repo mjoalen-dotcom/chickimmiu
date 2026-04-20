@@ -94,6 +94,62 @@ export const AboutPageSettings: GlobalConfig = {
       ],
     },
 
+    // ── Our Vision ──
+    {
+      name: 'ourVision',
+      label: '品牌願景 (Our Vision)',
+      type: 'group',
+      admin: {
+        description: '靚秀國際有限公司的品牌願景與 LOGO 意涵',
+      },
+      fields: [
+        {
+          name: 'enabled',
+          label: '顯示此區塊',
+          type: 'checkbox',
+          defaultValue: true,
+        },
+        {
+          name: 'subtitle',
+          label: '英文副標',
+          type: 'text',
+          defaultValue: 'Our Vision',
+        },
+        {
+          name: 'title',
+          label: '標題',
+          type: 'text',
+          defaultValue: '品牌願景',
+        },
+        {
+          name: 'logo',
+          label: 'Logo 圖片（選填）',
+          type: 'upload',
+          relationTo: 'media',
+          admin: {
+            description: '留空則使用預設 /images/logo-ckmu-white.webp',
+          },
+        },
+        {
+          name: 'logoBackgroundClass',
+          label: 'Logo 背景 Tailwind 類別',
+          type: 'text',
+          defaultValue: 'bg-[#1a1a1a]',
+          admin: {
+            description: '例：bg-[#1a1a1a] 讓白色 logo 顯示清楚',
+          },
+        },
+        {
+          name: 'content',
+          label: '願景文字內容',
+          type: 'textarea',
+          admin: {
+            description: '支援多段落（以空行分隔）。留空則使用預設 Our Vision 文字。',
+          },
+        },
+      ],
+    },
+
     // ── Brand Values ──
     {
       name: 'brandValues',
@@ -167,6 +223,63 @@ export const AboutPageSettings: GlobalConfig = {
           type: 'textarea',
           required: true,
           admin: { width: '50%' },
+        },
+      ],
+    },
+
+    // ── Legacy Gallery ──（從 chickimmiu.com 舊站 /pages/aboutus 匯入的圖片）
+    {
+      name: 'legacyGallery',
+      label: '品牌相簿 (Gallery)',
+      type: 'group',
+      admin: {
+        description: '從舊站 /pages/aboutus 匯入的品牌歷年圖片',
+      },
+      fields: [
+        {
+          name: 'enabled',
+          label: '顯示此區塊',
+          type: 'checkbox',
+          defaultValue: true,
+        },
+        {
+          name: 'subtitle',
+          label: '英文副標',
+          type: 'text',
+          defaultValue: 'Gallery',
+        },
+        {
+          name: 'title',
+          label: '標題',
+          type: 'text',
+          defaultValue: '品牌相簿',
+        },
+        {
+          name: 'description',
+          label: '描述',
+          type: 'textarea',
+          defaultValue: '品牌歷年精選照片，記錄 CKMU 每一段旅程。',
+        },
+        {
+          name: 'images',
+          label: '圖片列表',
+          type: 'array',
+          admin: {
+            description: '可輸入本地路徑（例：/images/about-legacy/01.png）或完整網址。',
+          },
+          fields: [
+            {
+              name: 'src',
+              label: '圖片路徑',
+              type: 'text',
+              required: true,
+            },
+            {
+              name: 'alt',
+              label: 'Alt 文字（選填）',
+              type: 'text',
+            },
+          ],
         },
       ],
     },

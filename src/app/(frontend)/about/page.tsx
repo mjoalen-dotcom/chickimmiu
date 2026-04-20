@@ -43,6 +43,16 @@ const DEFAULT_BUTTONS = [
   { label: 'Instagram', url: 'https://www.instagram.com/chickimmiu/', style: 'outline' as const, external: true },
 ]
 
+const DEFAULT_VISION_CONTENT = [
+  '靚秀國際有限公司（Chic Show International）期許能提供讓每個人成為時尚焦點的服裝。',
+  '我們的 LOGO 由「CHIC KIM & MIU」組成，以圓形鈕扣的造型呈現，象徵每個人時尚美好的關鍵節點。就像一顆鈕扣，將布料的兩端優雅連結，創造出保暖、美觀且充滿優雅氣質的經典，我們衷心希望透過每一件服裝，讓每個人找到專屬於自己的時尚美好，讓生命的每一段旅程，都成為難忘的經典時刻。',
+].join('\n\n')
+
+const DEFAULT_GALLERY_IMAGES = Array.from({ length: 42 }, (_, i) => ({
+  src: `/images/about-legacy/${String(i + 1).padStart(2, '0')}.png`,
+  alt: `CKMU 品牌相簿 ${i + 1}`,
+}))
+
 /* getMediaUrl imported from @/lib/media-url */
 
 /* ── Fetch CMS data ── */
@@ -70,6 +80,8 @@ export default async function AboutPage() {
 
   const hero = (settings?.hero || {}) as Record<string, unknown>
   const brandStory = (settings?.brandStory || {}) as Record<string, unknown>
+  const ourVision = (settings?.ourVision || {}) as Record<string, unknown>
+  const legacyGallery = (settings?.legacyGallery || {}) as Record<string, unknown>
   const contactCta = (settings?.contactCta || {}) as Record<string, unknown>
 
   const heroImage = getMediaUrl(hero.image) || 'https://shoplineimg.com/559df3efe37ec64e9f000092/69ce99f6a88927d62e71333c/1296x.webp?source_format=png'
@@ -81,6 +93,25 @@ export default async function AboutPage() {
   const timeline = (settings?.timeline as Array<Record<string, unknown>>) || DEFAULT_TIMELINE
   const storyText = (brandStory.contentFallback as string) || DEFAULT_STORY.join('\n\n')
   const storyParagraphs = storyText.split('\n\n').filter(Boolean)
+
+  // Our Vision
+  const visionEnabled = ourVision.enabled !== false // default true
+  const visionSubtitle = (ourVision.subtitle as string) || 'Our Vision'
+  const visionTitle = (ourVision.title as string) || '品牌願景'
+  const visionLogo = getMediaUrl(ourVision.logo) || '/images/logo-ckmu-white.webp'
+  const visionLogoBg = (ourVision.logoBackgroundClass as string) || 'bg-[#1a1a1a]'
+  const visionText = (ourVision.content as string) || DEFAULT_VISION_CONTENT
+  const visionParagraphs = visionText.split('\n\n').filter(Boolean)
+
+  // Legacy Gallery
+  const galleryEnabled = legacyGallery.enabled !== false
+  const gallerySubtitle = (legacyGallery.subtitle as string) || 'Gallery'
+  const galleryTitle = (legacyGallery.title as string) || '品牌相簿'
+  const galleryDesc = (legacyGallery.description as string) || '品牌歷年精選照片，記錄 CKMU 每一段旅程。'
+  const galleryImagesRaw = (legacyGallery.images as Array<Record<string, unknown>>) || []
+  const galleryImages = galleryImagesRaw.length > 0
+    ? galleryImagesRaw.map((g) => ({ src: String(g.src || ''), alt: (g.alt as string) || '' })).filter((g) => g.src)
+    : DEFAULT_GALLERY_IMAGES
 
   const ctaTitle = (contactCta.title as string) || '與我們聯繫'
   const ctaDesc = (contactCta.description as string) || '無論是商品諮詢、合作洽談、還是穿搭建議，歡迎隨時透過以下方式聯繫我們。'
@@ -127,6 +158,33 @@ export default async function AboutPage() {
             ))}
           </div>
         </section>
+
+        {/* ── Our Vision ── */}
+        {visionEnabled && (
+          <section className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className={`${visionLogoBg} px-8 py-10 md:py-14 flex items-center justify-center`}>
+              <Image
+                src={visionLogo}
+                alt="CHIC KIM & MIU"
+                width={480}
+                height={160}
+                unoptimized
+                className="w-full max-w-md h-auto object-contain"
+                priority={false}
+              />
+            </div>
+            <div className="p-8 md:p-10">
+              <p className="text-xs tracking-[0.3em] text-[#C19A5B] mb-2 uppercase">{visionSubtitle}</p>
+              <h2 className="text-2xl font-bold text-[#2C2C2C] mb-1">{visionTitle}</h2>
+              <div className="w-10 h-[2px] bg-[#C19A5B] mb-6" />
+              <div className="text-[#2C2C2C]/80 leading-relaxed space-y-4 text-[15px]">
+                {visionParagraphs.map((p, i) => (
+                  <p key={i}>{p}</p>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ── Brand Values ── */}
         {brandValues.length > 0 && (
@@ -176,6 +234,39 @@ export default async function AboutPage() {
                     <h3 className="text-base font-semibold text-[#2C2C2C] mt-0.5">{item.title as string}</h3>
                     <p className="text-sm text-[#2C2C2C]/70 mt-1 leading-relaxed">{item.description as string}</p>
                   </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── Legacy Gallery ── */}
+        {galleryEnabled && galleryImages.length > 0 && (
+          <section className="bg-white rounded-2xl shadow-sm p-8 md:p-10">
+            <div className="text-center mb-8">
+              <p className="text-xs tracking-[0.3em] text-[#C19A5B] mb-2 uppercase">{gallerySubtitle}</p>
+              <h2 className="text-2xl font-bold text-[#2C2C2C]">{galleryTitle}</h2>
+              <div className="w-10 h-[2px] bg-[#C19A5B] mx-auto mt-2" />
+              {galleryDesc && (
+                <p className="text-sm text-[#2C2C2C]/70 mt-3 max-w-xl mx-auto leading-relaxed">
+                  {galleryDesc}
+                </p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {galleryImages.map((img, i) => (
+                <div
+                  key={`${img.src}-${i}`}
+                  className="relative aspect-square overflow-hidden rounded-lg bg-[#F5EFE8] group"
+                >
+                  <Image
+                    src={img.src}
+                    alt={img.alt || `CKMU 品牌相簿 ${i + 1}`}
+                    fill
+                    unoptimized
+                    sizes="(min-width: 1024px) 20vw, (min-width: 640px) 33vw, 50vw"
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
                 </div>
               ))}
             </div>
