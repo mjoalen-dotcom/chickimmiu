@@ -6,6 +6,7 @@ import { autoIssueInvoiceForOrder } from '../lib/invoice/ecpayInvoiceEngine'
 import { sendOrderConfirmationEmail } from '../lib/email/orderConfirmation'
 import { calculateTier, TIER_LEVELS } from '../lib/crm/tierEngine'
 import { triggerJourney } from '../lib/crm/automationEngine'
+import { generateOrderNumber, type OrderNumberingSettings } from '../lib/commerce/orderNumbering'
 import { calculateOrderTax, type TaxSettingsLike } from '../lib/commerce/calculateTax'
 
 /**
@@ -52,7 +53,11 @@ export const Orders: CollectionConfig = {
       type: 'text',
       required: true,
       unique: true,
-      admin: { description: '格式：CKM-YYYYMMDD-XXXX' },
+      admin: {
+        readOnly: true,
+        description:
+          '下單時自動產生（讀 OrderSettings.numbering）。若 admin 手動建單留白，hook 會 beforeChange 階段補齊。',
+      },
     },
     // ── 訂單列表快捷按鈕：status=pending 時顯示「處理中 + 列印」，一鍵 PATCH
     //    status→processing 並開新分頁列印檢貨單（沿用 /api/order-print?id=）。
@@ -367,10 +372,40 @@ export const Orders: CollectionConfig = {
   ],
   timestamps: true,
   hooks: {
-    // ── 稅額自動計算 ──
-    // 每次 create/update 都重算（以保證 items 或 shippingFee 被 admin 手動改動後
-    // tax 欄位跟上）。失敗時 log 但不 throw，讓訂單還是能存檔（客服場景）。
+    // ── 訂單編號自動產生（beforeValidate 以確保 required 驗證前已有值） ──
+    // 若 caller（checkout / admin）已傳入 orderNumber 則尊重，不覆寫。
+    // Fallback：OrderSettings 讀取失敗或 race 時退回「CKMU+YYYYMMDD+timestamp-tail」
+    // 保證 DB NOT NULL / unique 不會擋下單。
+    beforeValidate: [
+      async ({ data, operation, req }) => {
+        if (operation !== 'create' || !data) return data
+        const incoming = String((data as Record<string, unknown>).orderNumber ?? '').trim()
+        if (incoming) return data
+
+        try {
+          const settings = (await req.payload.findGlobal({
+            slug: 'order-settings',
+            depth: 0,
+          })) as unknown as Record<string, unknown>
+          const numbering = (settings?.numbering ?? {}) as OrderNumberingSettings
+          const orderNumber = await generateOrderNumber(req.payload, numbering)
+          return { ...data, orderNumber }
+        } catch (err) {
+          req.payload.logger?.error?.({
+            err,
+            msg: 'Orders beforeValidate: orderNumber auto-gen failed, using fallback',
+          })
+          const now = new Date()
+          const ymd = now.toISOString().slice(0, 10).replace(/-/g, '')
+          const tail = String(now.getTime()).slice(-6)
+          return { ...data, orderNumber: `CKMU${ymd}${tail}` }
+        }
+      },
+    ],
     beforeChange: [
+      // ── 稅額自動計算 ──
+      // 每次 create/update 都重算（以保證 items 或 shippingFee 被 admin 手動改動後
+      // tax 欄位跟上）。失敗時 log 但不 throw，讓訂單還是能存檔（客服場景）。
       async ({ data, req }) => {
         try {
           const taxSettings = (await req.payload.findGlobal({
@@ -423,10 +458,10 @@ export const Orders: CollectionConfig = {
           return data
         }
       },
-    // ── 寶物箱自動附加 ──
-    // 新訂單 create 時，把該會員所有 unused + 實體 + 未過期的 UserRewards
-    // 自動塞進 data.gifts。admin 可以在 admin panel 手動先填 data.gifts，
-    // 這種情況下 hook 不覆寫（已填 = 手動意圖）。
+      // ── 寶物箱自動附加 ──
+      // 新訂單 create 時，把該會員所有 unused + 實體 + 未過期的 UserRewards
+      // 自動塞進 data.gifts。admin 可以在 admin panel 手動先填 data.gifts，
+      // 這種情況下 hook 不覆寫（已填 = 手動意圖）。
       async ({ data, operation, req }) => {
         if (operation !== 'create') return data
         const existingGifts = (data.gifts as unknown[] | undefined) ?? []

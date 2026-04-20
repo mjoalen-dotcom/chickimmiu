@@ -259,6 +259,36 @@ export default function CheckoutPage() {
       .catch(() => { /* 用預設 */ })
   }, [])
 
+  // 結帳設定（從 /api/checkout-settings 拉，失敗用 fallback）
+  type CheckoutCfg = {
+    requireTOS: boolean
+    tosLinkText: string
+    requireMarketingConsent: boolean
+    marketingConsentText: string
+    minOrderAmount: number
+    maxItemsPerOrder: number
+    notes: { allowOrderNote: boolean; orderNoteLabel: string; orderNoteMaxLength: number }
+  }
+  const [checkoutCfg, setCheckoutCfg] = useState<CheckoutCfg>({
+    requireTOS: true,
+    tosLinkText: '同意服務條款與隱私權政策',
+    requireMarketingConsent: false,
+    marketingConsentText: '我願意收到 CHIC KIM & MIU 最新活動與優惠資訊',
+    minOrderAmount: 0,
+    maxItemsPerOrder: 99,
+    notes: { allowOrderNote: true, orderNoteLabel: '給賣家的備註', orderNoteMaxLength: 200 },
+  })
+
+  const [tosAccepted, setTosAccepted] = useState(false)
+  const [marketingAccepted, setMarketingAccepted] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/checkout-settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => { if (s) setCheckoutCfg(s) })
+      .catch(() => { /* 用預設 */ })
+  }, [])
+
   // 稅務設定（TaxSettings global，失敗用台灣標準 5% 含稅）
   const [taxSettings, setTaxSettings] = useState<{
     defaultTaxIncluded: boolean
@@ -539,12 +569,26 @@ export default function CheckoutPage() {
       return
     }
 
-    setIsProcessing(true)
+    // 最低消費 / 最大件數 / TOS / 行銷同意（讀 CheckoutSettings）
+    if (checkoutCfg.minOrderAmount > 0 && subtotal < checkoutCfg.minOrderAmount) {
+      alert(`最低消費金額為 NT$${checkoutCfg.minOrderAmount.toLocaleString()}`)
+      return
+    }
+    const totalItems = items.reduce((n, i) => n + i.quantity, 0)
+    if (totalItems > checkoutCfg.maxItemsPerOrder) {
+      alert(`單筆訂單最多 ${checkoutCfg.maxItemsPerOrder} 件商品`)
+      return
+    }
+    if (checkoutCfg.requireTOS && !tosAccepted) {
+      alert('請先勾選同意服務條款')
+      return
+    }
+    if (checkoutCfg.requireMarketingConsent && !marketingAccepted) {
+      alert('請先勾選同意接收行銷訊息')
+      return
+    }
 
-    const now = new Date()
-    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '')
-    const rand = Math.random().toString(36).substring(2, 6).toUpperCase()
-    const orderNumber = `CKM-${dateStr}-${rand}`
+    setIsProcessing(true)
 
     const utmParams = getStoredUTM()
 
@@ -558,8 +602,9 @@ export default function CheckoutPage() {
       subtotal: (i.salePrice ?? i.price) * i.quantity,
     }))
 
+    // orderNumber 由 Orders.ts beforeValidate hook 依 OrderSettings.numbering 產生；
+    // client 不再自行產生（避免跟 admin 後台設定不一致）。
     const orderPayload = {
-      orderNumber,
       customer: user.id,
       items: orderItems,
       subtotal,
@@ -621,7 +666,7 @@ export default function CheckoutPage() {
       customerNote: form.customerNote || undefined,
     }
 
-    let createdOrderNumber = orderNumber
+    let createdOrderNumber = ''
     try {
       const res = await fetch('/api/orders', {
         method: 'POST',
@@ -643,7 +688,13 @@ export default function CheckoutPage() {
       }
 
       const result = (await res.json()) as { doc?: { orderNumber?: string } }
-      createdOrderNumber = result.doc?.orderNumber || orderNumber
+      createdOrderNumber = result.doc?.orderNumber || ''
+      if (!createdOrderNumber) {
+        console.error('[Checkout] Order created but no orderNumber in response', result)
+        alert('訂單建立成功但編號遺失，請聯繫客服')
+        setIsProcessing(false)
+        return
+      }
     } catch (err) {
       console.error('[Checkout] Order creation error:', err)
       alert('訂單建立失敗，請檢查網路連線後再試')
@@ -1155,18 +1206,26 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                {/* 訂單備註 */}
-                <div className="mt-4">
-                  <label className="text-xs text-muted-foreground mb-1.5 block">
-                    訂單備註（選填）
-                  </label>
-                  <textarea
-                    value={form.customerNote}
-                    onChange={(e) => updateForm('customerNote', e.target.value)}
-                    rows={2}
-                    className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40 resize-none"
-                  />
-                </div>
+                {/* 訂單備註（checkoutCfg.notes.allowOrderNote = false 時隱藏） */}
+                {checkoutCfg.notes.allowOrderNote && (
+                  <div className="mt-4">
+                    <label className="text-xs text-muted-foreground mb-1.5 block">
+                      {checkoutCfg.notes.orderNoteLabel}（選填，最多 {checkoutCfg.notes.orderNoteMaxLength} 字）
+                    </label>
+                    <textarea
+                      value={form.customerNote}
+                      onChange={(e) =>
+                        updateForm(
+                          'customerNote',
+                          e.target.value.slice(0, checkoutCfg.notes.orderNoteMaxLength),
+                        )
+                      }
+                      rows={2}
+                      maxLength={checkoutCfg.notes.orderNoteMaxLength}
+                      className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40 resize-none"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* ═══════════════════════════════════════ */}
@@ -1546,25 +1605,70 @@ export default function CheckoutPage() {
                   </span>
                 </div>
 
+                {checkoutCfg.minOrderAmount > 0 && subtotal < checkoutCfg.minOrderAmount && (
+                  <p className="text-xs text-rose-600 bg-rose-50 px-3 py-2 rounded-lg">
+                    本站最低消費為 NT$ {checkoutCfg.minOrderAmount.toLocaleString()}，
+                    還差 NT$ {(checkoutCfg.minOrderAmount - subtotal).toLocaleString()}
+                  </p>
+                )}
+
+                {/* TOS / 行銷同意（讀 CheckoutSettings）*/}
+                {checkoutCfg.requireTOS && (
+                  <label className="flex items-start gap-2 text-xs cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={tosAccepted}
+                      onChange={(e) => setTosAccepted(e.target.checked)}
+                      className="mt-0.5 accent-gold-500"
+                    />
+                    <span>
+                      我已閱讀並同意
+                      <Link href="/terms" className="text-gold-600 hover:underline mx-0.5">
+                        服務條款
+                      </Link>
+                      與
+                      <Link href="/privacy" className="text-gold-600 hover:underline mx-0.5">
+                        隱私權政策
+                      </Link>
+                    </span>
+                  </label>
+                )}
+                {checkoutCfg.requireMarketingConsent && (
+                  <label className="flex items-start gap-2 text-xs cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={marketingAccepted}
+                      onChange={(e) => setMarketingAccepted(e.target.checked)}
+                      className="mt-0.5 accent-gold-500"
+                    />
+                    <span>{checkoutCfg.marketingConsentText}</span>
+                  </label>
+                )}
+
                 <button
                   type="submit"
-                  disabled={isProcessing}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 bg-foreground text-cream-50 rounded-xl text-sm tracking-wide hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                  disabled={
+                    isProcessing ||
+                    (checkoutCfg.minOrderAmount > 0 && subtotal < checkoutCfg.minOrderAmount)
+                  }
+                  className="w-full flex items-center justify-center gap-2 py-3.5 bg-foreground text-cream-50 rounded-xl text-sm tracking-wide hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Lock size={14} />
                   {isProcessing ? '處理中...' : '確認付款'}
                 </button>
 
-                <p className="text-[10px] text-center text-muted-foreground leading-relaxed">
-                  點擊「確認付款」即表示您同意我們的
-                  <Link href="/terms" className="text-gold-600 hover:underline mx-0.5">
-                    服務條款
-                  </Link>
-                  與
-                  <Link href="/privacy" className="text-gold-600 hover:underline mx-0.5">
-                    隱私權政策
-                  </Link>
-                </p>
+                {!checkoutCfg.requireTOS && (
+                  <p className="text-[10px] text-center text-muted-foreground leading-relaxed">
+                    點擊「確認付款」即表示您同意我們的
+                    <Link href="/terms" className="text-gold-600 hover:underline mx-0.5">
+                      服務條款
+                    </Link>
+                    與
+                    <Link href="/privacy" className="text-gold-600 hover:underline mx-0.5">
+                      隱私權政策
+                    </Link>
+                  </p>
+                )}
               </div>
             </div>
           </div>
