@@ -426,6 +426,22 @@ export const Products: CollectionConfig = {
                 },
               ],
             },
+            /* 稅務類別 */
+            {
+              name: 'taxCategory',
+              label: '課稅類別',
+              type: 'select',
+              defaultValue: 'standard',
+              options: [
+                { label: '應稅 5%', value: 'standard' },
+                { label: '優惠稅率 0%', value: 'reduced' },
+                { label: '免稅', value: 'exempt' },
+                { label: '零稅率（外銷）', value: 'zero_rated' },
+              ],
+              admin: {
+                description: '預設為應稅 5%。詳細稅率設定在「稅務設定」global',
+              },
+            },
             /* 分類 & 標籤 */
             {
               name: 'category',
