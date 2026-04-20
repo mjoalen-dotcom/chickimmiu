@@ -124,6 +124,14 @@ export const Orders: CollectionConfig = {
       min: 0,
     },
     {
+      name: 'subtotalBeforeDiscount',
+      label: '優惠前小計',
+      type: 'number',
+      defaultValue: 0,
+      min: 0,
+      admin: { readOnly: true, description: '套用 coupon 之前的 subtotal 快照' },
+    },
+    {
       name: 'discountAmount',
       label: '折扣金額',
       type: 'number',
@@ -135,6 +143,19 @@ export const Orders: CollectionConfig = {
       label: '折扣原因',
       type: 'text',
       admin: { description: '例如：金牌會員 5% 折扣、優惠券 SUMMER2024' },
+    },
+    {
+      name: 'couponCode',
+      label: '優惠券代碼',
+      type: 'text',
+      admin: { readOnly: true, description: '結帳時套用的 coupon code 快照' },
+    },
+    {
+      name: 'couponId',
+      label: '優惠券',
+      type: 'relationship',
+      relationTo: 'coupons',
+      admin: { readOnly: true },
     },
     {
       name: 'shippingFee',
@@ -456,6 +477,44 @@ export const Orders: CollectionConfig = {
       },
     ],
     afterChange: [
+      // ── 優惠券兌換記錄 ──
+      // order create 時若有 couponCode/couponId → 寫 CouponRedemptions 一筆
+      // （該 collection 的 afterChange 會自動累加 coupons.usageCount）
+      async ({ doc, operation, req }) => {
+        if (operation !== 'create') return
+        const couponId = doc.couponId as number | string | Record<string, unknown> | null | undefined
+        const discount = (doc.discountAmount as number) ?? 0
+        if (!couponId || discount <= 0) return
+        const couponIdResolved =
+          typeof couponId === 'number' || typeof couponId === 'string'
+            ? couponId
+            : ((couponId as Record<string, unknown>).id as number | string | undefined)
+        if (couponIdResolved == null) return
+        const customerId =
+          typeof doc.customer === 'string' || typeof doc.customer === 'number'
+            ? doc.customer
+            : ((doc.customer as unknown as Record<string, unknown>)?.id as number | string | undefined)
+        try {
+          await (req.payload.create as Function)({
+            collection: 'coupon-redemptions',
+            data: {
+              coupon: couponIdResolved,
+              user: customerId,
+              order: doc.id,
+              discountAmount: discount,
+              redeemedAt: new Date().toISOString(),
+            },
+            overrideAccess: true,
+          })
+        } catch (err) {
+          req.payload.logger.error({
+            err,
+            msg: 'Orders afterChange: CouponRedemptions 建立失敗',
+            couponId: couponIdResolved,
+            orderId: doc.id,
+          })
+        }
+      },
       async ({ doc, previousDoc, req, operation }) => {
         const payload = req.payload
         const status = doc.status as string

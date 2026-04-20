@@ -24,6 +24,9 @@ import {
   Banknote,
   Handshake,
   Clock,
+  Tag,
+  X,
+  Check,
 } from 'lucide-react'
 import { useCartStore } from '@/stores/cartStore'
 import { CheckoutLastChance } from '@/components/recommendation/CheckoutLastChance'
@@ -346,6 +349,20 @@ export default function CheckoutPage() {
     preferredTime: '',
   })
 
+  // 優惠券（19A Coupons）
+  type AppliedCoupon = {
+    couponId: number | string
+    couponCode: string
+    name: string
+    discountType: 'percentage' | 'fixed' | 'free_shipping'
+    discountAmount: number
+    freeShipping: boolean
+  }
+  const [couponInput, setCouponInput] = useState('')
+  const [couponLoading, setCouponLoading] = useState(false)
+  const [couponError, setCouponError] = useState<string | null>(null)
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null)
+
   // 電子發票
   const [invoiceType, setInvoiceType] = useState<'b2c_personal' | 'b2c_carrier' | 'b2b' | 'donation'>('b2c_personal')
   const [carrierType, setCarrierType] = useState<'none' | 'phone_barcode' | 'natural_cert'>('none')
@@ -371,11 +388,15 @@ export default function CheckoutPage() {
     return shippingOption.fee
   }
 
-  const shippingFee = calcShippingFee()
+  const rawShippingFee = calcShippingFee()
+  // 免運優惠券：把運費歸零（仍保留原價於摘要顯示）
+  const shippingFee = appliedCoupon?.freeShipping ? 0 : rawShippingFee
 
   // COD 手續費：只有選 cash_cod 時才計入 total
   const codFee = selectedPayment === 'cash_cod' ? paymentSettings.codDefaultFee : 0
-  const total = subtotal + shippingFee + codFee
+  // 優惠券折扣（百分比 / 固定金額；free_shipping 走上方運費歸零路徑）
+  const couponDiscount = appliedCoupon && !appliedCoupon.freeShipping ? appliedCoupon.discountAmount : 0
+  const total = Math.max(0, subtotal + shippingFee + codFee - couponDiscount)
 
   // COD 上限檢查（不含 COD 手續費本身，避免 self-reference）
   const baseTotalForCodCheck = subtotal + shippingFee
@@ -429,6 +450,68 @@ export default function CheckoutPage() {
   const updateForm = (key: string, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }))
 
+  const handleApplyCoupon = async () => {
+    const code = couponInput.trim()
+    if (!code) {
+      setCouponError('請輸入優惠碼')
+      return
+    }
+    setCouponLoading(true)
+    setCouponError(null)
+    try {
+      const res = await fetch('/api/cart/apply-coupon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          code,
+          subtotal,
+          items: items.map((i) => ({
+            productId: i.productId,
+            subtotal: (i.salePrice ?? i.price) * i.quantity,
+          })),
+        }),
+      })
+      const body = (await res.json().catch(() => null)) as
+        | {
+            valid: boolean
+            reason?: string
+            couponId?: number | string
+            couponCode?: string
+            name?: string
+            discountType?: 'percentage' | 'fixed' | 'free_shipping'
+            discountAmount?: number
+            freeShipping?: boolean
+          }
+        | null
+      if (!body || !body.valid) {
+        setAppliedCoupon(null)
+        setCouponError(body?.reason || '優惠碼無法使用')
+        return
+      }
+      setAppliedCoupon({
+        couponId: body.couponId!,
+        couponCode: body.couponCode!,
+        name: body.name || body.couponCode!,
+        discountType: body.discountType!,
+        discountAmount: body.discountAmount ?? 0,
+        freeShipping: Boolean(body.freeShipping),
+      })
+      setCouponError(null)
+    } catch (err) {
+      console.error('[Checkout] apply-coupon error:', err)
+      setCouponError('驗證失敗，請稍後再試')
+    } finally {
+      setCouponLoading(false)
+    }
+  }
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null)
+    setCouponInput('')
+    setCouponError(null)
+  }
+
   const filteredShipping = SHIPPING_OPTIONS.filter(
     (s) => s.type === shippingTypeFilter,
   )
@@ -480,9 +563,16 @@ export default function CheckoutPage() {
       customer: user.id,
       items: orderItems,
       subtotal,
+      subtotalBeforeDiscount: subtotal,
       shippingFee,
       codFee,
       total,
+      discountAmount: couponDiscount,
+      discountReason: appliedCoupon
+        ? `優惠券 ${appliedCoupon.couponCode}${appliedCoupon.freeShipping ? '（免運）' : ''}`
+        : undefined,
+      couponCode: appliedCoupon?.couponCode,
+      couponId: appliedCoupon?.couponId,
       paymentMethod: selectedPayment,
       paymentStatus: 'unpaid' as const,
       status: 'pending' as const,
@@ -1079,6 +1169,74 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
+              {/* ═══════════════════════════════════════ */}
+              {/* ── 優惠碼 ── */}
+              {/* ═══════════════════════════════════════ */}
+              <div className="bg-white rounded-2xl border border-cream-200 p-6">
+                <h2 className="font-medium mb-5 flex items-center gap-2">
+                  <Tag size={18} className="text-gold-500" />
+                  優惠碼
+                </h2>
+                {appliedCoupon ? (
+                  <div className="flex items-start justify-between gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <Check size={16} className="mt-0.5 text-green-600 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">
+                          {appliedCoupon.couponCode}
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {appliedCoupon.name}
+                          </span>
+                        </p>
+                        <p className="text-xs text-green-700 mt-0.5">
+                          {appliedCoupon.freeShipping
+                            ? '已套用免運優惠'
+                            : `已折抵 NT$ ${appliedCoupon.discountAmount.toLocaleString()}`}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground shrink-0"
+                      aria-label="移除優惠券"
+                    >
+                      <X size={14} />
+                      移除
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={couponInput}
+                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                        placeholder="輸入優惠碼，例如 WELCOME10"
+                        className="flex-1 px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40 uppercase tracking-wide"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            handleApplyCoupon()
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        disabled={couponLoading || !couponInput.trim()}
+                        className="px-5 py-3 bg-foreground text-cream-50 rounded-xl text-sm hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {couponLoading ? '驗證中…' : '套用'}
+                      </button>
+                    </div>
+                    {couponError && (
+                      <p className="text-xs text-rose-600 mt-2">{couponError}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* ── AI 智能推薦：最後加購 ── */}
               <CheckoutLastChance />
 
@@ -1346,11 +1504,26 @@ export default function CheckoutPage() {
                       <span>NT$ {codFee}</span>
                     </div>
                   )}
+                  {appliedCoupon && (couponDiscount > 0 || appliedCoupon.freeShipping) && (
+                    <div className="flex justify-between text-green-700">
+                      <span className="flex items-center gap-1">
+                        <Tag size={12} />
+                        優惠券（{appliedCoupon.couponCode}）
+                      </span>
+                      <span>
+                        {appliedCoupon.freeShipping
+                          ? '免運'
+                          : `− NT$ ${couponDiscount.toLocaleString()}`}
+                      </span>
+                    </div>
+                  )}
                   {(() => {
                     const rate = taxSettings.defaultTaxRate || 0
                     if (rate <= 0) return null
+                    // 稅基：已扣優惠後的 subtotal + (可選) 運費
+                    const discountedSubtotal = Math.max(0, subtotal - couponDiscount)
                     const taxableBase =
-                      subtotal + (taxSettings.shippingTaxable ? shippingFee : 0)
+                      discountedSubtotal + (taxSettings.shippingTaxable ? shippingFee : 0)
                     const tax = taxSettings.defaultTaxIncluded
                       ? Math.round((taxableBase * rate) / (100 + rate))
                       : Math.round((taxableBase * rate) / 100)
