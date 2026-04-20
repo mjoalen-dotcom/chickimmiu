@@ -31,7 +31,8 @@ const nextConfig = {
     //     'Content-Security-Policy-Report-Only' 即可
     const csp = [
       "default-src 'self'",
-      "img-src 'self' data: blob: https://shoplineimg.com https://*.r2.cloudflarestorage.com https://pre.chickimmiu.com",
+      // gravatar.com：Payload admin 內建用 gravatar 顯示使用者頭像（UserChip、navbar）
+      "img-src 'self' data: blob: https://shoplineimg.com https://*.r2.cloudflarestorage.com https://pre.chickimmiu.com https://www.gravatar.com https://secure.gravatar.com",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googletagmanager.com https://www.google-analytics.com",
       "style-src 'self' 'unsafe-inline'",
       "connect-src 'self' https://www.google-analytics.com https://*.ecpay.com.tw https://sandbox-api-pay.line.me https://api-pay.line.me https://ccore.newebpay.com",
