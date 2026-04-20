@@ -1,11 +1,11 @@
 # Session 19 — post PR #61 (會員分群分析儀表板) 接續提示
 
-> **上 session (2026-04-20, hardcore-dewdney-8bfcb0 worktree) 一行總結**：做完會員分群儀表板 → tsc 0 err + build clean + PR #61 open；本機瀏覽器驗證因 worktree / main 共享 DB drizzle-push 衝突未跑成，需 prod 實測。
+> **上 session (2026-04-20, hardcore-dewdney-8bfcb0 worktree) 一行總結**：會員分群儀表板 → tsc 0 + build clean → PR #61 merge (`e7c6a90`) → prod deploy success（script 第 1 次掛在 nft.json missing，retry 過 pass）→ `/admin/member-analytics` 200、`/api/users/member-analytics` 401（auth 正常）。還缺 **admin 登入實測 UI**。
 
 ## 目前 SHA
 
-- local main / origin/main / prod：**38bd277**（`ops(deploy): atomic-ish prod deploy script that skips rm -rf .next (#58)`）
-- branch `claude/hardcore-dewdney-8bfcb0` @ **279cc28** — 上 session 產出，PR #61 waiting merge
+- origin/main / prod：**595a17c** (`feat(membership): auto-upgrade tiers on payment + annual reset cron (#62)` — 已含 PR #61 + PR #62)
+- 開 PR：**空**
 
 ## 上 session 做了什麼（PR #61）
 
@@ -36,17 +36,15 @@
 
 - ✅ `npx tsc --noEmit`：0 err
 - ✅ `pnpm build`：清
-- ⚠️ **本機瀏覽器驗證未完成**：worktree 把 main repo 的 `data/chickimmiu.db` 複製過來後，dev server 啟動會被 Payload 的 `drizzle-kit push` 偵測到 schema drift（因為 worktree code gen 出的 schema 跟 main repo 已經 push 過去的不完全一致），掛在互動式 prompt 上。`pnpm payload migrate` 跑過但 dev server 還是會再 push 一輪。Prod 環境不會有這問題（`db.push` 預設 false + 用 compiled migrations）。
-- **下 session 要做的**：PR #61 merge → prod deploy → 實測以下清單。
+- ⚠️ **本機瀏覽器驗證未完成**：worktree 把 main repo 的 `data/chickimmiu.db` 複製過來後，dev server 啟動會被 Payload 的 `drizzle-kit push` 偵測到 schema drift，掛在互動式 prompt 上。Prod 環境不會有這問題（`db.push` 預設 false + 用 compiled migrations）。
+- ✅ **Prod deploy 成功**：`595a17c`（PR #61 + #62 bundled）。第一次 `/root/deploy-ckmu.sh` 掛在 `pnpm build` stage「`_not-found/page.js.nft.json` ENOENT」；retry 一次就過。是 partial `.next` state 的暫時性問題，deploy script 沒 rm 所以留痕；下次如果再遇到直接 re-run 即可，別 rm -rf .next（memory line 12）。
+- ✅ Prod smoke tests：
+  - `curl https://pre.chickimmiu.com/api/users/member-analytics` → **401**（admin-only auth 正常擋）
+  - `curl https://pre.chickimmiu.com/admin/member-analytics` → **200**（page 渲染）
+  - Health check（/、/products、/account、/cart）都 200
+- ⚠️ **還缺**：admin 登入後實際看 UI 有沒有數字、heatmap、壽星名單。以下 checklist 由使用者或下 session 跑。
 
-## Prod 驗證 checklist（PR #61 merge 後）
-
-```bash
-# Deploy（照記憶 reference_prod_deploy_script + feedback_prod_delegated 授權）
-ssh root@5.223.85.14 /root/deploy-ckmu.sh
-```
-
-**沒有新 migration**（endpoint + admin view 純讀既有 schema），但 prod 還是要 `pnpm build` 讓 admin bundle 含新 view。deploy 腳本 PR #58 已經是 atomic-ish，跑即可。
+## Prod 驗證 checklist（使用者/下 session）
 
 然後：
 
