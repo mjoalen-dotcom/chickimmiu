@@ -33,17 +33,27 @@ const sidebarLinks = [
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {
   const payload = await getPayload({ config })
   const headersList = await nextHeaders()
-  const { user } = await payload.auth({ headers: headersList })
+  const [{ user }, session] = await Promise.all([
+    payload.auth({ headers: headersList }),
+    nextAuth(),
+  ])
   if (!user) {
     // OAuth (NextAuth) just completed but the Payload session cookie isn't set
     // (Auth.js v5 callback can't reliably write Set-Cookie on its redirect
     // response). Bounce through /api/auth/bridge so the cookie gets set from
     // a route handler we own, then come back here.
-    const session = await nextAuth()
     if (session?.user?.email) {
       redirect('/api/auth/bridge?next=/account')
     }
     redirect('/login?redirect=/account')
+  }
+  // 使用者在已登入狀態下按 OAuth 按鈕切帳號：NextAuth session 建好新身分了，
+  // 但舊的 payload-token cookie 還在 → 讓 bridge 覆蓋 cookie，否則畫面會
+  // 停在舊帳號（"原地打轉"）。
+  const payloadEmail = (user as unknown as { email?: string }).email?.toLowerCase()
+  const sessionEmail = session?.user?.email?.toLowerCase()
+  if (sessionEmail && payloadEmail && sessionEmail !== payloadEmail) {
+    redirect('/api/auth/bridge?next=/account')
   }
 
   return (
