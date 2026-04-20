@@ -32,6 +32,8 @@ import { default as default_99d8a7df13704a09eb2683c564fe3977 } from '@/component
 import { default as default_235ae141af0ae2ee10377f179570df1f } from '@/components/admin/ImageMigrationPanel'
 import { default as default_ab80819f8b2b0b37f8700bad83cb86aa } from '@/components/admin/OrderProcessingCellButton'
 import { default as default_be333bc994f41cc3f44396316cdf4a5e } from '@/components/admin/OrderToolsPanel'
+import { default as default_ac9b3343bdbbc9a11f639268e925829e } from '@/components/admin/ReturnApprovalCellButton'
+import { default as default_7b3334ccab91a8bc2d541f847ce2c885 } from '@/components/admin/ExchangeApprovalCellButton'
 import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { TableFeatureClient as TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { FixedToolbarFeatureClient as FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
@@ -41,11 +43,11 @@ import { default as default_b80a86fce1072afc84cd6a430a965697 } from '@/component
 import { default as default_0e7b23c75ea046975e1784ba01f82886 } from '@/components/admin/Dashboard'
 import { default as default_050b8b1c6d9a3c10e652a8eb94471e38 } from '@/components/admin/HelpNavLink'
 import { default as default_05d38308c8616a5c87df5f27002fab6e } from '@/components/admin/MemberAnalyticsNavLink'
-import { default as default_rpa_navlink } from '@/components/admin/RepeatPurchaseNavLink'
+import { default as default_886a0bab6fb08e47a5213238fa65631c } from '@/components/admin/RepeatPurchaseNavLink'
 import { default as default_340cf3538fa47d0416e0abd461790ca4 } from '@/components/admin/AdminStyles'
 import { default as default_b49611ccd828469519fd79e264a9eb51 } from '@/components/admin/HelpView'
 import { default as default_b3d544e796f2e72482a7e1ca06c557a3 } from '@/components/admin/MemberAnalyticsView'
-import { default as default_rpa_view } from '@/components/admin/RepeatPurchaseView'
+import { default as default_ff00d70a4277286e7d2a45db4d136e59 } from '@/components/admin/RepeatPurchaseView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -84,6 +86,8 @@ export const importMap = {
   "@/components/admin/ImageMigrationPanel#default": default_235ae141af0ae2ee10377f179570df1f,
   "@/components/admin/OrderProcessingCellButton#default": default_ab80819f8b2b0b37f8700bad83cb86aa,
   "@/components/admin/OrderToolsPanel#default": default_be333bc994f41cc3f44396316cdf4a5e,
+  "@/components/admin/ReturnApprovalCellButton#default": default_ac9b3343bdbbc9a11f639268e925829e,
+  "@/components/admin/ExchangeApprovalCellButton#default": default_7b3334ccab91a8bc2d541f847ce2c885,
   "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#TableFeatureClient": TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#FixedToolbarFeatureClient": FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
@@ -93,10 +97,10 @@ export const importMap = {
   "@/components/admin/Dashboard#default": default_0e7b23c75ea046975e1784ba01f82886,
   "@/components/admin/HelpNavLink#default": default_050b8b1c6d9a3c10e652a8eb94471e38,
   "@/components/admin/MemberAnalyticsNavLink#default": default_05d38308c8616a5c87df5f27002fab6e,
-  "@/components/admin/RepeatPurchaseNavLink#default": default_rpa_navlink,
+  "@/components/admin/RepeatPurchaseNavLink#default": default_886a0bab6fb08e47a5213238fa65631c,
   "@/components/admin/AdminStyles#default": default_340cf3538fa47d0416e0abd461790ca4,
   "@/components/admin/HelpView#default": default_b49611ccd828469519fd79e264a9eb51,
   "@/components/admin/MemberAnalyticsView#default": default_b3d544e796f2e72482a7e1ca06c557a3,
-  "@/components/admin/RepeatPurchaseView#default": default_rpa_view,
+  "@/components/admin/RepeatPurchaseView#default": default_ff00d70a4277286e7d2a45db4d136e59,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }
