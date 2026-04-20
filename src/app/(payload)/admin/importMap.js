@@ -41,9 +41,11 @@ import { default as default_b80a86fce1072afc84cd6a430a965697 } from '@/component
 import { default as default_0e7b23c75ea046975e1784ba01f82886 } from '@/components/admin/Dashboard'
 import { default as default_050b8b1c6d9a3c10e652a8eb94471e38 } from '@/components/admin/HelpNavLink'
 import { default as default_05d38308c8616a5c87df5f27002fab6e } from '@/components/admin/MemberAnalyticsNavLink'
+import { default as default_rpa_navlink } from '@/components/admin/RepeatPurchaseNavLink'
 import { default as default_340cf3538fa47d0416e0abd461790ca4 } from '@/components/admin/AdminStyles'
 import { default as default_b49611ccd828469519fd79e264a9eb51 } from '@/components/admin/HelpView'
 import { default as default_b3d544e796f2e72482a7e1ca06c557a3 } from '@/components/admin/MemberAnalyticsView'
+import { default as default_rpa_view } from '@/components/admin/RepeatPurchaseView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -91,8 +93,10 @@ export const importMap = {
   "@/components/admin/Dashboard#default": default_0e7b23c75ea046975e1784ba01f82886,
   "@/components/admin/HelpNavLink#default": default_050b8b1c6d9a3c10e652a8eb94471e38,
   "@/components/admin/MemberAnalyticsNavLink#default": default_05d38308c8616a5c87df5f27002fab6e,
+  "@/components/admin/RepeatPurchaseNavLink#default": default_rpa_navlink,
   "@/components/admin/AdminStyles#default": default_340cf3538fa47d0416e0abd461790ca4,
   "@/components/admin/HelpView#default": default_b49611ccd828469519fd79e264a9eb51,
   "@/components/admin/MemberAnalyticsView#default": default_b3d544e796f2e72482a7e1ca06c557a3,
+  "@/components/admin/RepeatPurchaseView#default": default_rpa_view,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

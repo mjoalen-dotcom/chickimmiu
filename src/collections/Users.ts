@@ -6,6 +6,7 @@ import { createExportEndpoint, createImportEndpoint, type FieldMapping } from '.
 import { customerRegisterEndpoint } from '../endpoints/customerRegister'
 import { customerLogoutEndpoint } from '../endpoints/customerLogout'
 import { memberAnalyticsEndpoint } from '../endpoints/memberAnalytics'
+import { repeatPurchaseEndpoint } from '../endpoints/repeatPurchaseAnalytics'
 import { generateUniqueReferralCode } from '../lib/referralCode'
 
 const userFieldMappings: FieldMapping[] = [
@@ -123,6 +124,7 @@ export const Users: CollectionConfig = {
     customerRegisterEndpoint,
     customerLogoutEndpoint,
     memberAnalyticsEndpoint,
+    repeatPurchaseEndpoint,
   ],
   hooks: {
     // 新增使用者時（admin 建立、customer /register、OAuth 橋接皆適用）自動產生

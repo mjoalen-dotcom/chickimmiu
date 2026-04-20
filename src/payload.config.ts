@@ -157,6 +157,7 @@ export default buildConfig({
       beforeNavLinks: [
         '@/components/admin/HelpNavLink',
         '@/components/admin/MemberAnalyticsNavLink',
+        '@/components/admin/RepeatPurchaseNavLink',
         '@/components/admin/AdminStyles',
       ],
       views: {
@@ -167,6 +168,10 @@ export default buildConfig({
         memberAnalytics: {
           Component: '@/components/admin/MemberAnalyticsView',
           path: '/member-analytics',
+        },
+        repeatPurchase: {
+          Component: '@/components/admin/RepeatPurchaseView',
+          path: '/repeat-purchase',
         },
       },
     },

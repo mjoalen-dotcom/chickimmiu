@@ -2,6 +2,13 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "chickimmiu-next-3008",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev", "-p", "3008"],
+      "port": 3008,
+      "autoPort": false
+    },
+    {
       "name": "chickimmiu-next",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["dev", "-p", "3001"],
