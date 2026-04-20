@@ -4,8 +4,9 @@ import { headers as nextHeaders } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { Crown, Coins, Wallet, TrendingUp, Gamepad2, ArrowRight, Package, Ticket, Truck, Gift, Sparkles } from 'lucide-react'
+import { Crown, Coins, Wallet, TrendingUp, Gamepad2, ArrowRight, Package, Ticket, Truck, Gift, Sparkles, Award, Gem } from 'lucide-react'
 import { CreditScoreCard } from '@/components/account/CreditScoreCard'
+import AccountAvatarUpload from '@/components/account/AccountAvatarUpload'
 
 export const metadata: Metadata = {
   title: '會員總覽',
@@ -48,7 +49,7 @@ export default async function AccountPage() {
   const { user: sessionUser } = await payload.auth({ headers: headersList })
   if (!sessionUser) redirect('/login?redirect=/account')
 
-  const [userDoc, tiersResult, ordersResult] = await Promise.all([
+  const [userDoc, tiersResult, ordersResult, badgesResult, treasuresResult] = await Promise.all([
     payload.findByID({ collection: 'users', id: sessionUser.id, depth: 1 }),
     payload.find({ collection: 'membership-tiers', sort: 'level', limit: 20, depth: 0 }),
     payload.find({
@@ -56,6 +57,31 @@ export default async function AccountPage() {
       where: { customer: { equals: sessionUser.id } },
       sort: '-createdAt',
       limit: 3,
+      depth: 0,
+    }),
+    // 勳章：包含所有狀態（badge 通常不會 consume，全部都算擁有）
+    payload.find({
+      collection: 'user-rewards',
+      where: {
+        and: [
+          { user: { equals: sessionUser.id } },
+          { rewardType: { equals: 'badge' } },
+        ],
+      },
+      limit: 1,
+      depth: 0,
+    }),
+    // 寶物：非 badge 的可用獎項（unused / pending_attach / shipped）
+    payload.find({
+      collection: 'user-rewards',
+      where: {
+        and: [
+          { user: { equals: sessionUser.id } },
+          { rewardType: { not_equals: 'badge' } },
+          { state: { in: ['unused', 'pending_attach', 'shipped'] } },
+        ],
+      },
+      limit: 1,
       depth: 0,
     }),
   ])
@@ -68,6 +94,13 @@ export default async function AccountPage() {
     (user.lifetimeSpend as number | null | undefined) ??
     (user.totalSpent as number | null | undefined) ??
     0
+  const displayName = (user.name as string) ?? (user.email as string) ?? '會員'
+  const avatarUrl =
+    user.avatar && typeof user.avatar === 'object'
+      ? ((user.avatar as LooseRecord).url as string | undefined) ?? null
+      : null
+  const badgesCount = badgesResult.totalDocs
+  const treasuresCount = treasuresResult.totalDocs
 
   const tiers = tiersResult.docs as unknown as LooseRecord[]
   const memberTier = (user.memberTier as LooseRecord | null) ?? (tiers[0] ?? null) as LooseRecord | null
@@ -111,6 +144,9 @@ export default async function AccountPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* 大頭貼 */}
+      <AccountAvatarUpload currentAvatarUrl={avatarUrl} displayName={displayName} />
+
       {/* 會員等級卡 */}
       <div className="bg-gradient-to-br from-cream-100 to-blush-50 rounded-2xl p-6 md:p-8 border border-cream-200">
         <div className="flex items-start justify-between mb-6">
@@ -180,22 +216,63 @@ export default async function AccountPage() {
       </div>
 
       {/* 數據卡片 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { icon: Coins, label: '會員點數', value: points.toLocaleString(), color: 'text-gold-500' },
-          { icon: Wallet, label: '購物金', value: `NT$ ${shoppingCredit.toLocaleString()}`, color: 'text-green-600' },
-          { icon: TrendingUp, label: '累計消費', value: `NT$ ${lifetimeSpend.toLocaleString()}`, color: 'text-blue-600' },
-          { icon: Crown, label: '會員折扣', value: `${currentDiscountPercent}%`, color: 'text-purple-600' },
-        ].map((card) => (
-          <div
-            key={card.label}
-            className="bg-white rounded-xl p-4 border border-cream-200"
-          >
-            <card.icon size={20} className={`${card.color} mb-3`} />
-            <p className="text-xs text-muted-foreground">{card.label}</p>
-            <p className="text-lg font-medium mt-1">{card.value}</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {/* 會員點數 → /account/points（保留點數明細） */}
+        <Link
+          href="/account/points"
+          className="group bg-white rounded-xl p-4 border border-cream-200 hover:border-gold-400/50 hover:shadow-sm transition-all"
+        >
+          <Coins size={20} className="text-gold-500 mb-3" />
+          <p className="text-xs text-muted-foreground">會員點數</p>
+          <p className="text-lg font-medium mt-1">{points.toLocaleString()}</p>
+        </Link>
+
+        {/* 購物金 */}
+        <div className="bg-white rounded-xl p-4 border border-cream-200">
+          <Wallet size={20} className="text-green-600 mb-3" />
+          <p className="text-xs text-muted-foreground">購物金</p>
+          <p className="text-lg font-medium mt-1">NT$ {shoppingCredit.toLocaleString()}</p>
+        </div>
+
+        {/* 累計消費 */}
+        <div className="bg-white rounded-xl p-4 border border-cream-200">
+          <TrendingUp size={20} className="text-blue-600 mb-3" />
+          <p className="text-xs text-muted-foreground">累計消費</p>
+          <p className="text-lg font-medium mt-1">NT$ {lifetimeSpend.toLocaleString()}</p>
+        </div>
+
+        {/* 會員折扣 */}
+        <div className="bg-white rounded-xl p-4 border border-cream-200">
+          <Crown size={20} className="text-purple-600 mb-3" />
+          <p className="text-xs text-muted-foreground">會員折扣</p>
+          <p className="text-lg font-medium mt-1">{currentDiscountPercent}%</p>
+        </div>
+
+        {/* 我的勳章 → /account/treasure */}
+        <Link
+          href="/account/treasure"
+          className="group bg-white rounded-xl p-4 border border-cream-200 hover:border-gold-400/50 hover:shadow-sm transition-all relative"
+        >
+          <Award size={20} className="text-amber-600 mb-3" />
+          <p className="text-xs text-muted-foreground">我的勳章</p>
+          <div className="flex items-baseline justify-between mt-1">
+            <p className="text-lg font-medium">{badgesCount.toLocaleString()}</p>
+            <ArrowRight size={14} className="text-cream-300 group-hover:text-gold-500 group-hover:translate-x-0.5 transition-all" />
           </div>
-        ))}
+        </Link>
+
+        {/* 我的寶物 → /account/treasure */}
+        <Link
+          href="/account/treasure"
+          className="group bg-white rounded-xl p-4 border border-cream-200 hover:border-gold-400/50 hover:shadow-sm transition-all relative"
+        >
+          <Gem size={20} className="text-rose-500 mb-3" />
+          <p className="text-xs text-muted-foreground">我的寶物</p>
+          <div className="flex items-baseline justify-between mt-1">
+            <p className="text-lg font-medium">{treasuresCount.toLocaleString()}</p>
+            <ArrowRight size={14} className="text-cream-300 group-hover:text-gold-500 group-hover:translate-x-0.5 transition-all" />
+          </div>
+        </Link>
       </div>
 
       {/* 信用分數 */}
