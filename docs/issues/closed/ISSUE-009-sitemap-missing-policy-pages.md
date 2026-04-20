@@ -2,6 +2,7 @@
 
 **Severity**: P2 Medium（SEO）
 **Detected**: 2026-04-18 QA
+**Resolved**: 2026-04-20 — `src/app/sitemap.ts` 補 /collections /about /faq /shopping-guide /packaging /terms /privacy-policy /return-policy 共 8 條 Dev server 實測回 15 條靜態 + 動態商品/部落格/Landing Pages
 **Area**: SEO / Sitemap
 
 ## 症狀
