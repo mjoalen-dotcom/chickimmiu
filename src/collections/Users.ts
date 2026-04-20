@@ -5,6 +5,7 @@ import { isAdminOrSelf } from '../access/isAdminOrSelf'
 import { createExportEndpoint, createImportEndpoint, type FieldMapping } from '../endpoints/importExport'
 import { customerRegisterEndpoint } from '../endpoints/customerRegister'
 import { customerLogoutEndpoint } from '../endpoints/customerLogout'
+import { generateUniqueReferralCode } from '../lib/referralCode'
 
 const userFieldMappings: FieldMapping[] = [
   { key: 'name', label: '姓名' },
@@ -122,6 +123,20 @@ export const Users: CollectionConfig = {
     customerLogoutEndpoint,
   ],
   hooks: {
+    // 新增使用者時（admin 建立、customer /register、OAuth 橋接皆適用）自動產生
+    // 8 字元推薦碼。已帶值（import、seed、手動指定）則保留不動。
+    beforeChange: [
+      async ({ data, operation, req }) => {
+        if (operation !== 'create') return data
+        if (data?.referralCode) return data
+        try {
+          data.referralCode = await generateUniqueReferralCode(req.payload)
+        } catch {
+          // 產碼失敗不擋 create；使用者首次讀 /account/referrals 時會 lazy backfill
+        }
+        return data
+      },
+    ],
     // 成功登入後寫一筆 login-attempts 作稽核；失敗不寫（由 Payload maxLoginAttempts 擋）。
     // 寫入失敗不該影響使用者登入流程，統一 swallow。
     afterLogin: [
