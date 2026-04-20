@@ -196,6 +196,7 @@ export const PointsTransactions: CollectionConfig = {
         { label: '點數過期', value: 'points_expiry' },
         { label: '歡迎禮', value: 'welcome' },
         { label: '升等贈點', value: 'tier_upgrade' },
+        { label: '銷毀造型卡', value: 'card_burn' },
       ],
     },
     {
