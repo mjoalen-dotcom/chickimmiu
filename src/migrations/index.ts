@@ -11,6 +11,10 @@ import * as migration_20260419_200000_add_invoice_profiles from './20260419_2000
 import * as migration_20260419_210000_add_user_rewards from './20260419_210000_add_user_rewards';
 import * as migration_20260419_230000_add_orders_gifts from './20260419_230000_add_orders_gifts';
 import * as migration_20260419_235500_add_membership_tier_descriptions from './20260419_235500_add_membership_tier_descriptions';
+import * as migration_20260420_100000_add_style_submissions from './20260420_100000_add_style_submissions';
+import * as migration_20260420_110000_add_style_game_rooms from './20260420_110000_add_style_game_rooms';
+import * as migration_20260420_120000_add_style_votes from './20260420_120000_add_style_votes';
+import * as migration_20260420_130000_add_style_wishes from './20260420_130000_add_style_wishes';
 
 export const migrations = [
   {
@@ -77,5 +81,25 @@ export const migrations = [
     up: migration_20260419_235500_add_membership_tier_descriptions.up,
     down: migration_20260419_235500_add_membership_tier_descriptions.down,
     name: '20260419_235500_add_membership_tier_descriptions'
+  },
+  {
+    up: migration_20260420_100000_add_style_submissions.up,
+    down: migration_20260420_100000_add_style_submissions.down,
+    name: '20260420_100000_add_style_submissions'
+  },
+  {
+    up: migration_20260420_110000_add_style_game_rooms.up,
+    down: migration_20260420_110000_add_style_game_rooms.down,
+    name: '20260420_110000_add_style_game_rooms'
+  },
+  {
+    up: migration_20260420_120000_add_style_votes.up,
+    down: migration_20260420_120000_add_style_votes.down,
+    name: '20260420_120000_add_style_votes'
+  },
+  {
+    up: migration_20260420_130000_add_style_wishes.up,
+    down: migration_20260420_130000_add_style_wishes.down,
+    name: '20260420_130000_add_style_wishes'
   },
 ];

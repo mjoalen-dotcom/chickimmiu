@@ -52,6 +52,15 @@ export const MiniGameRecords: CollectionConfig = {
         { label: '電影抽獎', value: 'movie_lottery' },
         { label: '穿搭挑戰', value: 'fashion_challenge' },
         { label: '抽卡片比大小', value: 'card_battle' },
+        // ── 8 social/UGC 遊戲（PR-1 擴充；對應 style-submissions / style-game-rooms / style-votes / style-wishes）──
+        { label: '穿搭 PK', value: 'style_pk' },
+        { label: '穿搭接龍', value: 'style_relay' },
+        { label: '每週挑戰', value: 'weekly_challenge' },
+        { label: '好友共創', value: 'co_create' },
+        { label: '穿搭盲盒', value: 'blind_box' },
+        { label: '女王投票', value: 'queen_vote' },
+        { label: '團體穿搭房', value: 'team_style' },
+        { label: '穿搭許願池', value: 'wish_pool' },
       ],
     },
     {
