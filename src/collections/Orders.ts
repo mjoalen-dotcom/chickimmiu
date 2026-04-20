@@ -4,6 +4,10 @@ import { isAdmin } from '../access/isAdmin'
 import { orderCreditScoreHook } from '../lib/crm/creditScoreHooks'
 import { autoIssueInvoiceForOrder } from '../lib/invoice/ecpayInvoiceEngine'
 import { sendOrderConfirmationEmail } from '../lib/email/orderConfirmation'
+import { sendOrderShippedEmail } from '../lib/email/orderShipped'
+import { sendOrderCancelledEmail } from '../lib/email/orderCancelled'
+import { sendOrderRefundedEmail } from '../lib/email/orderRefunded'
+import { sendAdminNewOrderAlert } from '../lib/email/adminNewOrderAlert'
 import { calculateTier, TIER_LEVELS } from '../lib/crm/tierEngine'
 import { triggerJourney } from '../lib/crm/automationEngine'
 import { generateOrderNumber, type OrderNumberingSettings } from '../lib/commerce/orderNumbering'
@@ -817,14 +821,86 @@ export const Orders: CollectionConfig = {
           }
         }
       },
-      // ── pending → processing：寄訂單確認信給顧客 ──
+      // ── pending → processing：寄訂單確認信給顧客（OrderSettings.sendConfirmationEmail） ──
       async ({ doc, previousDoc, req }) => {
         const status = doc.status as string
         const prevStatus = previousDoc?.status as string | undefined
         if (status === 'processing' && prevStatus === 'pending') {
+          try {
+            const settings = (await req.payload.findGlobal({
+              slug: 'order-settings',
+            })) as unknown as { notifications?: { sendConfirmationEmail?: boolean } }
+            if (settings?.notifications?.sendConfirmationEmail === false) return
+          } catch {
+            // 讀 global 失敗沿用預設行為（寄）
+          }
           sendOrderConfirmationEmail(req.payload, doc as unknown as Record<string, unknown>).catch(
             (err) => console.error('[Orders Hook] 訂單確認信寄送失敗:', err),
           )
+        }
+      },
+      // ── status → shipped：寄出貨通知信（OrderSettings.sendShippedEmail） ──
+      async ({ doc, previousDoc, req }) => {
+        const status = doc.status as string
+        const prevStatus = previousDoc?.status as string | undefined
+        if (status !== 'shipped' || prevStatus === 'shipped') return
+        try {
+          const settings = (await req.payload.findGlobal({
+            slug: 'order-settings',
+          })) as unknown as { notifications?: { sendShippedEmail?: boolean } }
+          if (settings?.notifications?.sendShippedEmail === false) return
+        } catch {
+          // fall through — 預設寄
+        }
+        sendOrderShippedEmail(req.payload, doc as unknown as Record<string, unknown>).catch(
+          (err) => console.error('[Orders Hook] 出貨通知信寄送失敗:', err),
+        )
+      },
+      // ── status → cancelled：寄取消通知信（無 toggle，一律寄） ──
+      async ({ doc, previousDoc, req }) => {
+        const status = doc.status as string
+        const prevStatus = previousDoc?.status as string | undefined
+        if (status === 'cancelled' && prevStatus !== 'cancelled') {
+          sendOrderCancelledEmail(req.payload, doc as unknown as Record<string, unknown>).catch(
+            (err) => console.error('[Orders Hook] 取消通知信寄送失敗:', err),
+          )
+        }
+      },
+      // ── status → refunded：寄退款通知信（無 toggle，一律寄） ──
+      async ({ doc, previousDoc, req }) => {
+        const status = doc.status as string
+        const prevStatus = previousDoc?.status as string | undefined
+        if (status === 'refunded' && prevStatus !== 'refunded') {
+          sendOrderRefundedEmail(req.payload, doc as unknown as Record<string, unknown>).catch(
+            (err) => console.error('[Orders Hook] 退款通知信寄送失敗:', err),
+          )
+        }
+      },
+      // ── create：寄 admin 新單通知（OrderSettings.sendAdminNewOrderAlert + adminAlertEmails） ──
+      async ({ doc, operation, req }) => {
+        if (operation !== 'create') return
+        try {
+          const settings = (await req.payload.findGlobal({
+            slug: 'order-settings',
+          })) as unknown as {
+            notifications?: {
+              sendAdminNewOrderAlert?: boolean
+              adminAlertEmails?: Array<{ email?: string }>
+            }
+          }
+          const notif = settings?.notifications
+          if (notif?.sendAdminNewOrderAlert === false) return
+          const emails = (notif?.adminAlertEmails ?? [])
+            .map((e) => e?.email)
+            .filter((e): e is string => Boolean(e))
+          if (emails.length === 0) return
+          sendAdminNewOrderAlert(
+            req.payload,
+            doc as unknown as Record<string, unknown>,
+            emails,
+          ).catch((err) => console.error('[Orders Hook] admin 新單通知失敗:', err))
+        } catch (err) {
+          console.error('[Orders Hook] 讀 order-settings 失敗:', err)
         }
       },
       // ── 付款成功：自動開立電子發票 ──
