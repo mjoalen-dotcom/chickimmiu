@@ -68,6 +68,8 @@ import { AutomationLogs } from './collections/AutomationLogs'
 import { CustomerServiceTickets } from './collections/CustomerServiceTickets'
 import { MemberSegments } from './collections/MemberSegments'
 import { LoginAttempts } from './collections/LoginAttempts'
+import { Coupons } from './collections/Coupons'
+import { CouponRedemptions } from './collections/CouponRedemptions'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -220,6 +222,8 @@ export default buildConfig({
     AddOnProducts,
     GiftRules,
     Bundles,
+    Coupons,
+    CouponRedemptions,
   ],
   globals: [GlobalSettings, LoyaltySettings, ReferralSettings, PointRedemptionSettings, RecommendationSettings, CRMSettings, SegmentationSettings, MarketingAutomationSettings, InvoiceSettings, TaxSettings, GameSettings, HomepageSettings, AboutPageSettings, FAQPageSettings, PolicyPagesSettings, NavigationSettings],
   editor: lexicalEditor({

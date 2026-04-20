@@ -19,6 +19,7 @@ import * as migration_20260420_140000_add_global_settings_payment_cod_and_email_
 import * as migration_20260420_200000_add_about_vision_and_gallery from './20260420_200000_add_about_vision_and_gallery';
 import * as migration_20260421_100000_add_tax from './20260421_100000_add_tax';
 import * as migration_20260422_000000_add_promo_trio from './20260422_000000_add_promo_trio';
+import * as migration_20260422_100000_add_coupons from './20260422_100000_add_coupons';
 
 export const migrations = [
   {
@@ -125,5 +126,10 @@ export const migrations = [
     up: migration_20260422_000000_add_promo_trio.up,
     down: migration_20260422_000000_add_promo_trio.down,
     name: '20260422_000000_add_promo_trio'
+  },
+  {
+    up: migration_20260422_100000_add_coupons.up,
+    down: migration_20260422_100000_add_coupons.down,
+    name: '20260422_100000_add_coupons'
   },
 ];
