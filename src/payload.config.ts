@@ -40,6 +40,9 @@ import { StyleSubmissions } from './collections/StyleSubmissions'
 import { StyleGameRooms } from './collections/StyleGameRooms'
 import { StyleVotes } from './collections/StyleVotes'
 import { StyleWishes } from './collections/StyleWishes'
+import { AddOnProducts } from './collections/AddOnProducts'
+import { GiftRules } from './collections/GiftRules'
+import { Bundles } from './collections/Bundles'
 
 import { GlobalSettings } from './globals/GlobalSettings'
 import { LoyaltySettings } from './globals/LoyaltySettings'
@@ -214,6 +217,9 @@ export default buildConfig({
     StyleVotes,
     StyleWishes,
     LoginAttempts,
+    AddOnProducts,
+    GiftRules,
+    Bundles,
   ],
   globals: [GlobalSettings, LoyaltySettings, ReferralSettings, PointRedemptionSettings, RecommendationSettings, CRMSettings, SegmentationSettings, MarketingAutomationSettings, InvoiceSettings, TaxSettings, GameSettings, HomepageSettings, AboutPageSettings, FAQPageSettings, PolicyPagesSettings, NavigationSettings],
   editor: lexicalEditor({

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import { useCartStore } from '@/stores/cartStore'
 import { CheckoutLastChance } from '@/components/recommendation/CheckoutLastChance'
+import { PromoUpsellSection } from '@/components/cart/PromoUpsellSection'
 import { trackBeginCheckout, trackPurchase, getStoredUTM } from '@/lib/tracking'
 
 /* ── 付款方式 ──
@@ -1271,7 +1272,8 @@ export default function CheckoutPage() {
             </div>
 
             {/* ── Right: Order summary ── */}
-            <div className="lg:sticky lg:top-28 h-fit">
+            <div className="lg:sticky lg:top-28 h-fit space-y-4">
+              <PromoUpsellSection />
               <div className="bg-white rounded-2xl border border-cream-200 p-6 space-y-5">
                 <h2 className="font-medium">訂單摘要</h2>
 
