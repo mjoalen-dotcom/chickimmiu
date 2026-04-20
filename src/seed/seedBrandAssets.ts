@@ -146,7 +146,7 @@ async function main() {
 
   // Update GlobalSettings.site, skipping any field already set by user
   const current = await payload.findGlobal({ slug: 'global-settings', depth: 0 })
-  const site = ((current as Record<string, unknown>).site || {}) as Record<string, unknown>
+  const site = ((current as unknown as Record<string, unknown>).site || {}) as Record<string, unknown>
   const patch: Record<string, unknown> = { ...site }
   const changes: string[] = []
 
@@ -177,7 +177,11 @@ async function main() {
   process.exit(0)
 }
 
-main().catch((e: unknown) => {
-  log('ERROR: ' + (e instanceof Error ? e.stack || e.message : String(e)))
+// ⚠️ MUST be top-level await — same reason as seedCore.ts:
+// `payload run` does `await import(script); process.exit(0);`. A fire-and-forget
+// `main().catch(...)` returns the module promise immediately and the CLI exits
+// before getPayload() resolves, so you'd see "start" then silent exit 0.
+await main().catch((e: unknown) => {
+  log('FATAL: ' + (e instanceof Error ? e.stack || e.message : String(e)))
   process.exit(1)
 })
