@@ -113,7 +113,7 @@ export const GAME_DEFS: GameDef[] = [
     description: '上傳穿搭照，與玩家PK投票！',
     category: 'challenge',
     categoryLabel: '穿搭挑戰',
-    implementationStatus: 'stub',
+    implementationStatus: 'ready',
   },
   {
     id: 'style-relay',
