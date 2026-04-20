@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
-import { Suspense } from 'react'
 import { Noto_Sans_TC, Noto_Serif_TC } from 'next/font/google'
 import { getPayload } from 'payload'
 import config from '@payload-config'
@@ -310,14 +309,24 @@ export default async function FrontendLayout({
       <body className="font-sans antialiased bg-background text-foreground">
         <Providers>
           <BootBeaconCleanup />
-          {/* Suspense around TrackingProvider is required because it calls
-              useSearchParams(), which in Next.js 15 + React 19 forces the
-              entire unwrapped ancestor tree to bail out to client-side
-              rendering. Without the boundary, any hydration-time crash
-              (storage blocked, third-party script throwing) takes down the
-              whole page before global-error can catch it. The boundary
-              contains the CSR bailout to just the tracking subtree. */}
-          <Suspense fallback={null}>
+          {/* Previously this subtree was wrapped in <Suspense fallback={null}>
+              because TrackingProvider calls useSearchParams() and the comment
+              claimed the boundary "contains the CSR bailout to just the
+              tracking subtree".
+              Removed (2026-04-19) — that boundary was the root cause of
+              /cart and /checkout staying stuck on "購物車是空的" even when
+              localStorage had items. In Next.js 15.5 + React 19 streaming
+              SSR the boundary's content was streamed into a <div id="S:0">
+              and the matching <template id="B:0">, but $RC() never fired on
+              the client (window.$RB.length stayed at 2 forever). The whole
+              wrapped subtree (Navbar + main + Footer) had no React fiber
+              attached, so the cart store's rehydrate setState never
+              triggered a re-render of CheckoutPage and the empty-cart UI
+              stayed frozen. Floating UI outside the boundary hydrated
+              fine, which is why the bug looked cart-specific.
+              The CSR-bailout concern from useSearchParams is moot here:
+              this layout already declares `dynamic = 'force-dynamic'` at
+              the top, so there's nothing to bail out from. */}
             <TrackingProvider>
             {/* Global JSON-LD */}
             <OrganizationJsonLd
@@ -361,7 +370,6 @@ export default async function FrontendLayout({
               footerSections={footerSections || undefined}
             />
             </TrackingProvider>
-          </Suspense>
 
           <CartDrawer />
           <ExitIntentPopup />
