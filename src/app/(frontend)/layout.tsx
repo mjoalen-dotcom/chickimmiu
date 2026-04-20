@@ -144,6 +144,9 @@ export async function generateMetadata(): Promise<Metadata> {
     category: 'fashion',
     other: {
       'theme-color': '#C19A5B',
+      // Chrome 108+ deprecation: prefer the standard mobile-web-app-capable.
+      // Keep the Apple-prefixed sibling for older iOS Safari that still reads it.
+      'mobile-web-app-capable': 'yes',
       'apple-mobile-web-app-capable': 'yes',
       'apple-mobile-web-app-status-bar-style': 'default',
       'apple-mobile-web-app-title': siteName,
