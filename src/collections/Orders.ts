@@ -6,6 +6,7 @@ import { autoIssueInvoiceForOrder } from '../lib/invoice/ecpayInvoiceEngine'
 import { sendOrderConfirmationEmail } from '../lib/email/orderConfirmation'
 import { calculateTier, TIER_LEVELS } from '../lib/crm/tierEngine'
 import { triggerJourney } from '../lib/crm/automationEngine'
+import { calculateOrderTax, type TaxSettingsLike } from '../lib/commerce/calculateTax'
 
 /**
  * 訂單讀取權限：
@@ -143,6 +144,41 @@ export const Orders: CollectionConfig = {
       type: 'number',
       required: true,
       min: 0,
+    },
+    // ── 稅額 ──
+    // beforeChange hook 會依 TaxSettings + 各 line item 的 product.taxCategory
+    // 自動填這 4 個欄位（admin 可 override，但每次 save 會重算）。
+    {
+      name: 'taxAmount',
+      label: '稅額（商品 + 運費）',
+      type: 'number',
+      defaultValue: 0,
+      min: 0,
+      admin: { readOnly: true, description: '由系統依 TaxSettings 自動計算' },
+    },
+    {
+      name: 'taxRate',
+      label: '適用稅率（%）',
+      type: 'number',
+      defaultValue: 5,
+      min: 0,
+      admin: { readOnly: true },
+    },
+    {
+      name: 'subtotalExcludingTax',
+      label: '商品未稅小計',
+      type: 'number',
+      defaultValue: 0,
+      min: 0,
+      admin: { readOnly: true },
+    },
+    {
+      name: 'shippingTaxAmount',
+      label: '運費稅額',
+      type: 'number',
+      defaultValue: 0,
+      min: 0,
+      admin: { readOnly: true },
     },
     // ── 會員點數 / 購物金使用 ──
     {
@@ -304,11 +340,67 @@ export const Orders: CollectionConfig = {
   ],
   timestamps: true,
   hooks: {
+    // ── 稅額自動計算 ──
+    // 每次 create/update 都重算（以保證 items 或 shippingFee 被 admin 手動改動後
+    // tax 欄位跟上）。失敗時 log 但不 throw，讓訂單還是能存檔（客服場景）。
+    beforeChange: [
+      async ({ data, req }) => {
+        try {
+          const taxSettings = (await req.payload.findGlobal({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            slug: 'tax-settings' as any,
+          })) as unknown as TaxSettingsLike
+          if (!taxSettings) return data
+
+          const rawItems = (data.items as unknown as Array<Record<string, unknown>> | undefined) ?? []
+          const lineItems: { amount: number; taxCategory?: string }[] = []
+
+          for (const li of rawItems) {
+            const amount = Number(li?.subtotal ?? 0)
+            if (!amount || amount <= 0) continue
+            const productRef = li?.product
+            let taxCategory: string | undefined
+            const productId =
+              typeof productRef === 'string' || typeof productRef === 'number'
+                ? productRef
+                : ((productRef as Record<string, unknown> | null)?.id as
+                    | string
+                    | number
+                    | undefined)
+            if (productId != null) {
+              try {
+                const prod = (await req.payload.findByID({
+                  collection: 'products',
+                  id: productId,
+                  depth: 0,
+                })) as unknown as Record<string, unknown>
+                taxCategory = (prod?.taxCategory as string) || 'standard'
+              } catch {
+                taxCategory = 'standard'
+              }
+            }
+            lineItems.push({ amount, taxCategory })
+          }
+
+          const shippingFee = Number(data.shippingFee ?? 0) || 0
+          const result = calculateOrderTax(lineItems, shippingFee, taxSettings)
+
+          return {
+            ...data,
+            taxAmount: result.taxAmount,
+            taxRate: result.taxRate,
+            subtotalExcludingTax: result.subtotalExcludingTax,
+            shippingTaxAmount: result.shippingTaxAmount,
+          }
+        } catch (err) {
+          req.payload.logger.error({ err, msg: 'Orders beforeChange: tax calc failed' })
+          return data
+        }
+      },
     // ── 寶物箱自動附加 ──
     // 新訂單 create 時，把該會員所有 unused + 實體 + 未過期的 UserRewards
     // 自動塞進 data.gifts。admin 可以在 admin panel 手動先填 data.gifts，
     // 這種情況下 hook 不覆寫（已填 = 手動意圖）。
-    beforeChange: [
       async ({ data, operation, req }) => {
         if (operation !== 'create') return data
         const existingGifts = (data.gifts as unknown[] | undefined) ?? []

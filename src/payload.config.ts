@@ -50,6 +50,7 @@ import { CRMSettings } from './globals/CRMSettings'
 import { SegmentationSettings } from './globals/SegmentationSettings'
 import { MarketingAutomationSettings } from './globals/MarketingAutomationSettings'
 import { InvoiceSettings } from './globals/InvoiceSettings'
+import { TaxSettings } from './globals/TaxSettings'
 import { GameSettings } from './globals/GameSettings'
 import { HomepageSettings } from './globals/HomepageSettings'
 import { AboutPageSettings } from './globals/AboutPageSettings'
@@ -214,7 +215,7 @@ export default buildConfig({
     StyleWishes,
     LoginAttempts,
   ],
-  globals: [GlobalSettings, LoyaltySettings, ReferralSettings, PointRedemptionSettings, RecommendationSettings, CRMSettings, SegmentationSettings, MarketingAutomationSettings, InvoiceSettings, GameSettings, HomepageSettings, AboutPageSettings, FAQPageSettings, PolicyPagesSettings, NavigationSettings],
+  globals: [GlobalSettings, LoyaltySettings, ReferralSettings, PointRedemptionSettings, RecommendationSettings, CRMSettings, SegmentationSettings, MarketingAutomationSettings, InvoiceSettings, TaxSettings, GameSettings, HomepageSettings, AboutPageSettings, FAQPageSettings, PolicyPagesSettings, NavigationSettings],
   editor: lexicalEditor({
     features: ({ defaultFeatures }) => [
       ...defaultFeatures,

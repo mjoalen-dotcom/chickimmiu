@@ -255,6 +255,26 @@ export default function CheckoutPage() {
       .catch(() => { /* 用預設 */ })
   }, [])
 
+  // 稅務設定（TaxSettings global，失敗用台灣標準 5% 含稅）
+  const [taxSettings, setTaxSettings] = useState<{
+    defaultTaxIncluded: boolean
+    defaultTaxRate: number
+    shippingTaxable: boolean
+  }>({ defaultTaxIncluded: true, defaultTaxRate: 5, shippingTaxable: true })
+  useEffect(() => {
+    fetch('/api/globals/tax-settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => {
+        if (!s) return
+        setTaxSettings({
+          defaultTaxIncluded: Boolean(s.defaultTaxIncluded ?? true),
+          defaultTaxRate: Number(s.defaultTaxRate ?? 5),
+          shippingTaxable: Boolean(s.shippingTaxable ?? true),
+        })
+      })
+      .catch(() => { /* 用預設 */ })
+  }, [])
+
   // Full profile fetch (name / phone / addresses) — useCurrentUser only exposes
   // id/email/name so we re-pull /api/users/me here to back the "同訂購人資料"
   // autofill + "記錄此收件資料到地址簿" address-book append flow.
@@ -1324,6 +1344,24 @@ export default function CheckoutPage() {
                       <span>NT$ {codFee}</span>
                     </div>
                   )}
+                  {(() => {
+                    const rate = taxSettings.defaultTaxRate || 0
+                    if (rate <= 0) return null
+                    const taxableBase =
+                      subtotal + (taxSettings.shippingTaxable ? shippingFee : 0)
+                    const tax = taxSettings.defaultTaxIncluded
+                      ? Math.round((taxableBase * rate) / (100 + rate))
+                      : Math.round((taxableBase * rate) / 100)
+                    if (tax <= 0) return null
+                    return (
+                      <div className="flex justify-between text-[11px] text-muted-foreground">
+                        <span>
+                          {taxSettings.defaultTaxIncluded ? '含' : '加收'} {rate}% 營業稅
+                        </span>
+                        <span>NT$ {tax.toLocaleString()}</span>
+                      </div>
+                    )
+                  })()}
                 </div>
 
                 <div className="border-t border-cream-200 pt-4 flex justify-between items-baseline">
