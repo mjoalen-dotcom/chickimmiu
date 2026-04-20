@@ -5,6 +5,7 @@ import { isAdminOrSelf } from '../access/isAdminOrSelf'
 import { createExportEndpoint, createImportEndpoint, type FieldMapping } from '../endpoints/importExport'
 import { customerRegisterEndpoint } from '../endpoints/customerRegister'
 import { customerLogoutEndpoint } from '../endpoints/customerLogout'
+import { memberAnalyticsEndpoint } from '../endpoints/memberAnalytics'
 import { generateUniqueReferralCode } from '../lib/referralCode'
 
 const userFieldMappings: FieldMapping[] = [
@@ -121,6 +122,7 @@ export const Users: CollectionConfig = {
     createImportEndpoint('users', userFieldMappings),
     customerRegisterEndpoint,
     customerLogoutEndpoint,
+    memberAnalyticsEndpoint,
   ],
   hooks: {
     // 新增使用者時（admin 建立、customer /register、OAuth 橋接皆適用）自動產生
