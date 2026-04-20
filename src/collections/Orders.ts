@@ -88,6 +88,12 @@ export const Orders: CollectionConfig = {
         { name: 'quantity', label: '數量', type: 'number', required: true, min: 1 },
         { name: 'unitPrice', label: '單價', type: 'number', required: true, min: 0 },
         { name: 'subtotal', label: '小計', type: 'number', required: true, min: 0 },
+        // ── 19D 促銷三件套：加購 / 贈品 / 組合商品標記 ──
+        { name: 'bundleRef', label: '組合商品', type: 'relationship', relationTo: 'bundles', admin: { description: '此行若屬於某組合商品的一部分則標記' } },
+        { name: 'isGift', label: '是否為贈品', type: 'checkbox', defaultValue: false, admin: { description: '贈品行 price 應為 0，不列入 subtotal' } },
+        { name: 'isAddOn', label: '是否為加購品', type: 'checkbox', defaultValue: false },
+        { name: 'giftRuleRef', label: '觸發贈品規則', type: 'relationship', relationTo: 'gift-rules' },
+        { name: 'addOnRuleRef', label: '觸發加購規則', type: 'relationship', relationTo: 'add-on-products' },
       ],
     },
     // ── 寶物箱隨單寄出獎項 ──
