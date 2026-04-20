@@ -13,6 +13,8 @@ export type TierSeed = {
   frontName: string
   frontNameMale?: string
   frontSubtitle: string
+  tagline?: string
+  benefitsDescription?: string
   level: number
   minSpent: number
   annualSpentThreshold: number
@@ -38,6 +40,8 @@ export const membershipTiers: TierSeed[] = [
     frontName: '優雅初遇者',
     frontNameMale: '翩翩紳士',
     frontSubtitle: '歡迎加入 CHIC KIM & MIU 大家庭',
+    tagline: '優雅旅程的起點',
+    benefitsDescription: '加入 CHIC KIM & MIU 的第一步，享有點數累積、會員專屬活動與新品搶先看。每一次消費都在為下一個等級鋪路，我們期待與你一起走過每一段優雅時刻。',
     level: 0,
     minSpent: 0,
     annualSpentThreshold: 0,
@@ -59,6 +63,8 @@ export const membershipTiers: TierSeed[] = [
     frontName: '曦漾仙子',
     frontNameMale: '溫雅學者',
     frontSubtitle: '初次綻放的優雅',
+    tagline: '初次綻放的優雅',
+    benefitsDescription: '累積消費滿 NT$ 5,000 即成為銅牌會員，享有 3% 購物折扣、每月一次幸運抽獎機會，以及生日月 8% 專屬優惠券。你的優雅旅程，從這裡開始被看見。',
     level: 1,
     minSpent: 5000,
     annualSpentThreshold: 3000,
@@ -81,6 +87,8 @@ export const membershipTiers: TierSeed[] = [
     frontName: '優漾女神',
     frontNameMale: '雋永騎士',
     frontSubtitle: '從容自信的姿態',
+    tagline: '從容自信的姿態',
+    benefitsDescription: '銀牌會員享有 5% 折扣、1.2 倍點數回饋、每月兩次抽獎，以及專屬 5% 優惠券。從容自信，來自於你每一次精心的選擇；我們以免運門檻降至 NT$ 1,000 回饋你的信賴。',
     level: 2,
     minSpent: 15000,
     annualSpentThreshold: 8000,
@@ -104,6 +112,8 @@ export const membershipTiers: TierSeed[] = [
     frontName: '金曦女王',
     frontNameMale: '金曜貴公子',
     frontSubtitle: '閃耀動人的風采',
+    tagline: '閃耀動人的風采',
+    benefitsDescription: '金牌會員是品牌的閃耀核心：8% 購物折扣、1.5 倍點數、每月三次抽獎、免運門檻 NT$ 800，以及生日月 12% 專屬優惠加上限定禮盒。你的風采，值得被我們用心呈現。',
     level: 3,
     minSpent: 40000,
     annualSpentThreshold: 20000,
@@ -127,6 +137,8 @@ export const membershipTiers: TierSeed[] = [
     frontName: '星耀皇后',
     frontNameMale: '星耀侯爵',
     frontSubtitle: '卓越超凡的氣質',
+    tagline: '卓越超凡的氣質',
+    benefitsDescription: '白金會員享有 12% 購物折扣、2 倍點數、無條件免運、每月五次抽獎，以及 VIP 專屬配飾禮。卓越超凡的氣質，來自於你對細節的執著；我們以品牌最高規格的禮遇回應你的選擇。',
     level: 4,
     minSpent: 100000,
     annualSpentThreshold: 50000,
@@ -150,6 +162,8 @@ export const membershipTiers: TierSeed[] = [
     frontName: '璀璨天后',
     frontNameMale: '璀璨國王',
     frontSubtitle: '巔峰無可取代',
+    tagline: '巔峰無可取代',
+    benefitsDescription: '鑽石會員是 CHIC KIM & MIU 金字塔頂端的象徵：15% 折扣、3 倍點數、無條件免運、每月十次抽獎，以及手作珠寶級生日禮與 VIP 祝賀花束。巔峰無可取代，因為你就是品牌故事裡最重要的主角。',
     level: 5,
     minSpent: 300000,
     annualSpentThreshold: 150000,

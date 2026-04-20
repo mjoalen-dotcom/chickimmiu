@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Shield, TrendingUp, TrendingDown, Info, ChevronDown, Star, AlertTriangle } from 'lucide-react'
+import { Shield, TrendingUp, TrendingDown, Info, ChevronDown, Star, AlertTriangle, HelpCircle } from 'lucide-react'
 
 interface CreditHistory {
   change: number
@@ -100,6 +101,14 @@ export function CreditScoreCard({ userId }: { userId?: string }) {
           <div className="flex items-center gap-2">
             <Shield size={18} className="text-gold-500" />
             <h3 className="text-sm font-medium">您的信用分數</h3>
+            <Link
+              href="/credit-score"
+              aria-label="信用分數制度說明"
+              title="信用分數制度說明"
+              className="text-muted-foreground/60 hover:text-gold-600 transition-colors"
+            >
+              <HelpCircle size={14} />
+            </Link>
           </div>
           <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}>
             <span>{colors.icon}</span>
