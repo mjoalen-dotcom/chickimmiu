@@ -6,9 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeft, Calendar, User, ArrowRight } from 'lucide-react'
 import { ArticleJsonLd, BreadcrumbJsonLd } from '@/components/seo/JsonLd'
-import { RichText } from '@payloadcms/richtext-lexical/react'
-
-type RichTextData = React.ComponentProps<typeof RichText>['data']
+import { RenderLexical } from '@/components/lexical/RenderLexical'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -177,16 +175,14 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
         )}
 
-        {/* Content */}
+        {/* Content — Lexical richText rendered via RenderLexical；
+            支援 productButton block 直接連到商品頁並帶 ?ref=blog-{slug} 追蹤。 */}
         <div className="bg-white rounded-2xl border border-cream-200 p-8 md:p-12">
           {post.content ? (
-            <RichText
-              data={post.content as RichTextData}
-              className="prose prose-sm md:prose-base max-w-none prose-headings:font-serif prose-headings:text-foreground prose-p:text-foreground/80 prose-p:leading-relaxed prose-a:text-gold-600 prose-a:no-underline hover:prose-a:underline prose-blockquote:border-l-gold-500 prose-blockquote:bg-cream-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:not-italic prose-img:rounded-xl prose-img:border prose-img:border-cream-200 prose-hr:border-cream-200"
-            />
+            <RenderLexical content={post.content} blogSlug={slug} />
           ) : (
             <p className="text-sm text-muted-foreground leading-relaxed italic">
-              文章內容準備中…
+              本篇文章尚未撰寫內容。
             </p>
           )}
         </div>

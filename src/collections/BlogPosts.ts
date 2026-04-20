@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import {
+  BlocksFeature,
   EXPERIMENTAL_TableFeature,
   FixedToolbarFeature,
   HorizontalRuleFeature,
@@ -90,6 +91,10 @@ export const BlogPosts: CollectionConfig = {
         //   3. HorizontalRuleFeature — 水平分隔線（顯式加入，defaultFeatures 有
         //      但若未來全域被精簡這裡仍保有）
         //   4. UploadFeature — 內嵌圖片（與全域一致）
+        //   5. BlocksFeature — 自訂區塊：目前有「商品按鈕」（productButton），
+        //      在文章任意位置插入連往商品頁的 CTA 按鈕，前台渲染成金色膠囊按鈕
+        //      並附 ?ref=blog-{slug} 便於分析；商品透過 relationship 選取，
+        //      不會因商品改名/改 slug 而失效。
         // 其它 defaults（Heading/Bold/Italic/Underline/Strikethrough/InlineCode/
         // Subscript/Superscript/Link/AutoLink/Lists/Checklist/Blockquote/Align/
         // Indent/Relationship/ParagraphFeature）照用。
@@ -99,12 +104,55 @@ export const BlogPosts: CollectionConfig = {
           HorizontalRuleFeature(),
           EXPERIMENTAL_TableFeature(),
           UploadFeature({ collections: { media: { fields: [] } } }),
+          BlocksFeature({
+            blocks: [
+              {
+                slug: 'productButton',
+                labels: { singular: '商品按鈕', plural: '商品按鈕' },
+                fields: [
+                  {
+                    name: 'product',
+                    label: '商品',
+                    type: 'relationship',
+                    relationTo: 'products',
+                    required: true,
+                  },
+                  {
+                    name: 'label',
+                    label: '按鈕文字',
+                    type: 'text',
+                    defaultValue: '立即購買',
+                    admin: { description: '預設「立即購買」，可自訂為「前往選購」「搶先購買」等' },
+                  },
+                  {
+                    name: 'variant',
+                    label: '按鈕樣式',
+                    type: 'select',
+                    required: true,
+                    defaultValue: 'primary',
+                    options: [
+                      { label: '金色實心（主按鈕）', value: 'primary' },
+                      { label: '米色外框（次按鈕）', value: 'secondary' },
+                    ],
+                  },
+                  {
+                    name: 'fullWidth',
+                    label: '整行寬度',
+                    type: 'checkbox',
+                    defaultValue: false,
+                    admin: { description: '勾選後按鈕會佔滿整行寬度，適合段落之間的強調 CTA' },
+                  },
+                ],
+              },
+            ],
+          }),
         ],
       }),
       admin: {
         description:
           '支援標題（H1–H6）、粗體 / 斜體 / 底線 / 刪除線、引言、條列、核取清單、超連結、' +
-          '表格、水平線、圖片、左右對齊與縮排。頂部工具列永遠顯示；選取文字可叫出浮動選單做快速格式化。',
+          '表格、水平線、圖片、左右對齊與縮排。頂部工具列永遠顯示；選取文字可叫出浮動選單做快速格式化。' +
+          '另可用「區塊」按鈕插入「商品按鈕」CTA，直接連到任一商品頁。',
       },
     },
     {
