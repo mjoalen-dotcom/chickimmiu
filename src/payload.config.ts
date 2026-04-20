@@ -36,6 +36,10 @@ import { MiniGameRecords } from './collections/MiniGameRecords'
 import { CardBattles } from './collections/CardBattles'
 import { GameLeaderboard } from './collections/GameLeaderboard'
 import { UserRewards } from './collections/UserRewards'
+import { StyleSubmissions } from './collections/StyleSubmissions'
+import { StyleGameRooms } from './collections/StyleGameRooms'
+import { StyleVotes } from './collections/StyleVotes'
+import { StyleWishes } from './collections/StyleWishes'
 
 import { GlobalSettings } from './globals/GlobalSettings'
 import { LoyaltySettings } from './globals/LoyaltySettings'
@@ -119,7 +123,7 @@ const emailAdapter = process.env.RESEND_API_KEY
  *   CRM：CreditScoreHistory、PointsTransactions、AutomationJourneys、AutomationLogs、CustomerServiceTickets、MemberSegments
  *   行銷自動化：MarketingCampaigns、MessageTemplates、ABTests、MarketingExecutionLogs、FestivalTemplates、BirthdayCampaigns
  *   VIP 管家：ConciergeServiceRequests
- *   遊戲系統：MiniGameRecords、CardBattles、GameLeaderboard
+ *   遊戲系統：MiniGameRecords、CardBattles、GameLeaderboard、UserRewards、StyleSubmissions、StyleGameRooms、StyleVotes、StyleWishes
  *   媒體資源：Media
  *
  * Globals（10 個）：
@@ -196,6 +200,10 @@ export default buildConfig({
     CardBattles,
     GameLeaderboard,
     UserRewards,
+    StyleSubmissions,
+    StyleGameRooms,
+    StyleVotes,
+    StyleWishes,
     LoginAttempts,
   ],
   globals: [GlobalSettings, LoyaltySettings, ReferralSettings, PointRedemptionSettings, RecommendationSettings, CRMSettings, SegmentationSettings, MarketingAutomationSettings, InvoiceSettings, GameSettings, HomepageSettings, AboutPageSettings, FAQPageSettings, PolicyPagesSettings, NavigationSettings],
