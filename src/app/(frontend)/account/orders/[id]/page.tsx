@@ -12,6 +12,7 @@ import {
   Clock,
   XCircle,
   RotateCcw,
+  ArrowRightLeft,
   MapPin,
   FileText,
   CreditCard,
@@ -175,6 +176,36 @@ export default async function OrderDetailPage({
           </div>
         )}
       </div>
+
+      {/* Return / exchange actions — visible for shipped / delivered orders */}
+      {(status === 'shipped' || status === 'delivered') && (
+        <div className="bg-white rounded-2xl border border-cream-200 p-5">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h3 className="text-sm font-medium mb-1">商品有問題嗎？</h3>
+              <p className="text-xs text-muted-foreground">
+                收到商品後 7 天內可申請退貨或換貨。
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/account/returns/new?orderId=${id}`}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-cream-200 text-sm hover:border-gold-400 hover:text-gold-600 transition-colors"
+              >
+                <RotateCcw size={14} />
+                申請退貨
+              </Link>
+              <Link
+                href={`/account/exchanges/new?orderId=${id}`}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gold-500 text-white text-sm hover:bg-gold-600 transition-colors"
+              >
+                <ArrowRightLeft size={14} />
+                申請換貨
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Items */}
       <div className="bg-white rounded-2xl border border-cream-200 p-5">

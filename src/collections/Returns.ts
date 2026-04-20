@@ -1,6 +1,9 @@
 import type { CollectionConfig } from 'payload'
 import { isAdmin } from '../access/isAdmin'
 import { returnCreditScoreHook } from '../lib/crm/creditScoreHooks'
+import { sendReturnRequestedEmail } from '../lib/email/returnRequested'
+import { sendReturnDecisionEmail } from '../lib/email/returnDecision'
+import { sendAdminReturnAlert } from '../lib/email/adminReturnAlert'
 
 /**
  * 退貨單 Collection
@@ -13,7 +16,7 @@ export const Returns: CollectionConfig = {
   admin: {
     group: '訂單管理',
     description: '退貨申請管理與審核',
-    defaultColumns: ['returnNumber', 'order', 'status', 'createdAt'],
+    defaultColumns: ['returnNumber', 'order', 'quickApproval', 'createdAt'],
   },
   access: {
     read: ({ req: { user } }) => {
@@ -27,6 +30,18 @@ export const Returns: CollectionConfig = {
   },
   fields: [
     { name: 'returnNumber', label: '退貨單號', type: 'text', required: true, unique: true, admin: { readOnly: true } },
+    // Admin list-view quick-action：status=pending 時顯示「核准 / 拒絕」按鈕，
+    // 其他狀態顯示狀態文字（取代單純讀值）。沿用 OrderProcessingCellButton pattern。
+    {
+      name: 'quickApproval',
+      type: 'ui',
+      label: '狀態 / 快捷',
+      admin: {
+        components: {
+          Cell: '@/components/admin/ReturnApprovalCellButton',
+        },
+      },
+    },
     { name: 'order', label: '原始訂單', type: 'relationship', relationTo: 'orders', required: true },
     { name: 'customer', label: '申請人', type: 'relationship', relationTo: 'users', required: true },
     {
@@ -143,6 +158,67 @@ export const Returns: CollectionConfig = {
               console.error(`[Returns Hook] 庫存回補失敗 (product: ${productId}):`, err)
             }
           }
+        }
+      },
+      // ── 申請確認信（顧客）+ admin 新退貨通知 ──
+      async ({ doc, operation, req }) => {
+        if (operation !== 'create') return
+        sendReturnRequestedEmail(
+          req.payload,
+          doc as unknown as Record<string, unknown>,
+          'return',
+        ).catch((err) => console.error('[Returns Hook] 退貨申請信寄送失敗:', err))
+        try {
+          const settings = (await req.payload.findGlobal({
+            slug: 'order-settings',
+          })) as unknown as {
+            notifications?: {
+              sendAdminNewOrderAlert?: boolean
+              adminAlertEmails?: Array<{ email?: string }>
+            }
+          }
+          const notif = settings?.notifications
+          if (notif?.sendAdminNewOrderAlert === false) return
+          const emails = (notif?.adminAlertEmails ?? [])
+            .map((e) => e?.email)
+            .filter((e): e is string => Boolean(e))
+          if (emails.length === 0) return
+          sendAdminReturnAlert(
+            req.payload,
+            doc as unknown as Record<string, unknown>,
+            'return',
+            emails,
+          ).catch((err) => console.error('[Returns Hook] admin 退貨通知失敗:', err))
+        } catch (err) {
+          console.error('[Returns Hook] 讀 order-settings 失敗:', err)
+        }
+      },
+      // ── 狀態變更：審核結果 / 完成通知（顧客） ──
+      async ({ doc, previousDoc, req }) => {
+        const status = doc.status as string
+        const prevStatus = previousDoc?.status as string | undefined
+        if (!prevStatus || status === prevStatus) return
+        if (status === 'approved' && prevStatus === 'pending') {
+          sendReturnDecisionEmail(
+            req.payload,
+            doc as unknown as Record<string, unknown>,
+            'return',
+            'approved',
+          ).catch((err) => console.error('[Returns Hook] 核准通知信寄送失敗:', err))
+        } else if (status === 'rejected' && prevStatus !== 'rejected') {
+          sendReturnDecisionEmail(
+            req.payload,
+            doc as unknown as Record<string, unknown>,
+            'return',
+            'rejected',
+          ).catch((err) => console.error('[Returns Hook] 拒絕通知信寄送失敗:', err))
+        } else if (status === 'refunded' && prevStatus !== 'refunded') {
+          sendReturnDecisionEmail(
+            req.payload,
+            doc as unknown as Record<string, unknown>,
+            'return',
+            'finalized',
+          ).catch((err) => console.error('[Returns Hook] 退款完成信寄送失敗:', err))
         }
       },
       // ── 信用分數 Hook ──
