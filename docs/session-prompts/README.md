@@ -17,6 +17,13 @@
 - [05-real-ai-data.md](./05-real-ai-data.md) — 真推薦引擎 + UGC 真實資料 + 相關商品
 - [06-cron-runner.md](./06-cron-runner.md) — cron 端點 + 自動化 runner + points bug
 
+**Wave 4 — Shopline Gap 平行計畫（2026-04-20 新增）**
+- [19-master-shopline-gap-parallel-plan.md](./19-master-shopline-gap-parallel-plan.md) — **Master 計畫總覽**
+- [19A-coupons.md](./19A-coupons.md) — Coupons 優惠券（P0-1）✅ 可立即開
+- [19B-tax.md](./19B-tax.md) — 稅金 + 發票（P0-2）✅ 可平行 19A
+- [19C-checkout-order-settings.md](./19C-checkout-order-settings.md) — 結帳/訂單設定（P0-3+4）✅ 可平行 19A/19B
+- [19D-promo-trio.md](./19D-promo-trio.md) — 加購/贈品/組合（P1）⚠️ 等 19A merged
+
 ## 每組 prompt 的固定段落
 
 1. **Context** — 專案概覽、當前 commit、branch
@@ -48,3 +55,7 @@
 | 05 | real-ai-data | ⬜ | `feat/real-recommendations` | — |
 | 06 | cron-runner | ⬜ | `feat/cron-runner` | — |
 | 07 | security-polish | ⬜ | `chore/security-polish` | — |
+| 19A | coupons | ⬜ | `feat/coupons` | — |
+| 19B | tax-settings | ⬜ | `feat/tax-settings` | — |
+| 19C | checkout-order-settings | ⬜ | `feat/checkout-order-settings` | — |
+| 19D | promo-trio | ⬜ | `feat/promo-trio` | ⚠️ 等 19A |
