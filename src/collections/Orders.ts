@@ -347,8 +347,7 @@ export const Orders: CollectionConfig = {
       async ({ data, req }) => {
         try {
           const taxSettings = (await req.payload.findGlobal({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            slug: 'tax-settings' as any,
+            slug: 'tax-settings',
           })) as unknown as TaxSettingsLike
           if (!taxSettings) return data
 
