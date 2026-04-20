@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 
+import { generateUniqueReferralCode } from '@/lib/referralCode'
+
 import ReferralsClient, {
   type ReferralSummary, type ReferralHistoryItem, type TierBonusRow, type RewardRules,
 } from './ReferralsClient'
@@ -67,6 +69,24 @@ export default async function ReferralsPage() {
     id: sessionUser.id,
     depth: 1,
   })) as unknown as LooseRecord
+
+  // Phase 6 — 舊會員（beforeChange hook 加入之前建的帳號）沒有 referralCode，
+  // 首次造訪這頁時 lazy backfill 一次。產碼失敗（DB 緊張）不擋 render，使用者
+  // 會看到空字串，下次再試。
+  if (!user.referralCode) {
+    try {
+      const newCode = await generateUniqueReferralCode(payload)
+      await payload.update({
+        collection: 'users',
+        id: sessionUser.id,
+        data: { referralCode: newCode },
+        overrideAccess: true,
+      })
+      user.referralCode = newCode
+    } catch {
+      // swallow — 下次進頁面再試
+    }
+  }
 
   const thisMonthStart = new Date()
   thisMonthStart.setDate(1)
