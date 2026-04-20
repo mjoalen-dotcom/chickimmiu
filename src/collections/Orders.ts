@@ -7,6 +7,7 @@ import { sendOrderConfirmationEmail } from '../lib/email/orderConfirmation'
 import { calculateTier, TIER_LEVELS } from '../lib/crm/tierEngine'
 import { triggerJourney } from '../lib/crm/automationEngine'
 import { generateOrderNumber, type OrderNumberingSettings } from '../lib/commerce/orderNumbering'
+import { calculateOrderTax, type TaxSettingsLike } from '../lib/commerce/calculateTax'
 
 /**
  * 訂單讀取權限：
@@ -93,6 +94,12 @@ export const Orders: CollectionConfig = {
         { name: 'quantity', label: '數量', type: 'number', required: true, min: 1 },
         { name: 'unitPrice', label: '單價', type: 'number', required: true, min: 0 },
         { name: 'subtotal', label: '小計', type: 'number', required: true, min: 0 },
+        // ── 19D 促銷三件套：加購 / 贈品 / 組合商品標記 ──
+        { name: 'bundleRef', label: '組合商品', type: 'relationship', relationTo: 'bundles', admin: { description: '此行若屬於某組合商品的一部分則標記' } },
+        { name: 'isGift', label: '是否為贈品', type: 'checkbox', defaultValue: false, admin: { description: '贈品行 price 應為 0，不列入 subtotal' } },
+        { name: 'isAddOn', label: '是否為加購品', type: 'checkbox', defaultValue: false },
+        { name: 'giftRuleRef', label: '觸發贈品規則', type: 'relationship', relationTo: 'gift-rules' },
+        { name: 'addOnRuleRef', label: '觸發加購規則', type: 'relationship', relationTo: 'add-on-products' },
       ],
     },
     // ── 寶物箱隨單寄出獎項 ──
@@ -122,6 +129,14 @@ export const Orders: CollectionConfig = {
       min: 0,
     },
     {
+      name: 'subtotalBeforeDiscount',
+      label: '優惠前小計',
+      type: 'number',
+      defaultValue: 0,
+      min: 0,
+      admin: { readOnly: true, description: '套用 coupon 之前的 subtotal 快照' },
+    },
+    {
       name: 'discountAmount',
       label: '折扣金額',
       type: 'number',
@@ -133,6 +148,19 @@ export const Orders: CollectionConfig = {
       label: '折扣原因',
       type: 'text',
       admin: { description: '例如：金牌會員 5% 折扣、優惠券 SUMMER2024' },
+    },
+    {
+      name: 'couponCode',
+      label: '優惠券代碼',
+      type: 'text',
+      admin: { readOnly: true, description: '結帳時套用的 coupon code 快照' },
+    },
+    {
+      name: 'couponId',
+      label: '優惠券',
+      type: 'relationship',
+      relationTo: 'coupons',
+      admin: { readOnly: true },
     },
     {
       name: 'shippingFee',
@@ -148,6 +176,41 @@ export const Orders: CollectionConfig = {
       type: 'number',
       required: true,
       min: 0,
+    },
+    // ── 稅額 ──
+    // beforeChange hook 會依 TaxSettings + 各 line item 的 product.taxCategory
+    // 自動填這 4 個欄位（admin 可 override，但每次 save 會重算）。
+    {
+      name: 'taxAmount',
+      label: '稅額（商品 + 運費）',
+      type: 'number',
+      defaultValue: 0,
+      min: 0,
+      admin: { readOnly: true, description: '由系統依 TaxSettings 自動計算' },
+    },
+    {
+      name: 'taxRate',
+      label: '適用稅率（%）',
+      type: 'number',
+      defaultValue: 5,
+      min: 0,
+      admin: { readOnly: true },
+    },
+    {
+      name: 'subtotalExcludingTax',
+      label: '商品未稅小計',
+      type: 'number',
+      defaultValue: 0,
+      min: 0,
+      admin: { readOnly: true },
+    },
+    {
+      name: 'shippingTaxAmount',
+      label: '運費稅額',
+      type: 'number',
+      defaultValue: 0,
+      min: 0,
+      admin: { readOnly: true },
     },
     // ── 會員點數 / 購物金使用 ──
     {
@@ -340,6 +403,61 @@ export const Orders: CollectionConfig = {
       },
     ],
     beforeChange: [
+      // ── 稅額自動計算 ──
+      // 每次 create/update 都重算（以保證 items 或 shippingFee 被 admin 手動改動後
+      // tax 欄位跟上）。失敗時 log 但不 throw，讓訂單還是能存檔（客服場景）。
+      async ({ data, req }) => {
+        try {
+          const taxSettings = (await req.payload.findGlobal({
+            slug: 'tax-settings',
+          })) as unknown as TaxSettingsLike
+          if (!taxSettings) return data
+
+          const rawItems = (data.items as unknown as Array<Record<string, unknown>> | undefined) ?? []
+          const lineItems: { amount: number; taxCategory?: string }[] = []
+
+          for (const li of rawItems) {
+            const amount = Number(li?.subtotal ?? 0)
+            if (!amount || amount <= 0) continue
+            const productRef = li?.product
+            let taxCategory: string | undefined
+            const productId =
+              typeof productRef === 'string' || typeof productRef === 'number'
+                ? productRef
+                : ((productRef as Record<string, unknown> | null)?.id as
+                    | string
+                    | number
+                    | undefined)
+            if (productId != null) {
+              try {
+                const prod = (await req.payload.findByID({
+                  collection: 'products',
+                  id: productId,
+                  depth: 0,
+                })) as unknown as Record<string, unknown>
+                taxCategory = (prod?.taxCategory as string) || 'standard'
+              } catch {
+                taxCategory = 'standard'
+              }
+            }
+            lineItems.push({ amount, taxCategory })
+          }
+
+          const shippingFee = Number(data.shippingFee ?? 0) || 0
+          const result = calculateOrderTax(lineItems, shippingFee, taxSettings)
+
+          return {
+            ...data,
+            taxAmount: result.taxAmount,
+            taxRate: result.taxRate,
+            subtotalExcludingTax: result.subtotalExcludingTax,
+            shippingTaxAmount: result.shippingTaxAmount,
+          }
+        } catch (err) {
+          req.payload.logger.error({ err, msg: 'Orders beforeChange: tax calc failed' })
+          return data
+        }
+      },
       // ── 寶物箱自動附加 ──
       // 新訂單 create 時，把該會員所有 unused + 實體 + 未過期的 UserRewards
       // 自動塞進 data.gifts。admin 可以在 admin panel 手動先填 data.gifts，
@@ -394,6 +512,44 @@ export const Orders: CollectionConfig = {
       },
     ],
     afterChange: [
+      // ── 優惠券兌換記錄 ──
+      // order create 時若有 couponCode/couponId → 寫 CouponRedemptions 一筆
+      // （該 collection 的 afterChange 會自動累加 coupons.usageCount）
+      async ({ doc, operation, req }) => {
+        if (operation !== 'create') return
+        const couponId = doc.couponId as number | string | Record<string, unknown> | null | undefined
+        const discount = (doc.discountAmount as number) ?? 0
+        if (!couponId || discount <= 0) return
+        const couponIdResolved =
+          typeof couponId === 'number' || typeof couponId === 'string'
+            ? couponId
+            : ((couponId as Record<string, unknown>).id as number | string | undefined)
+        if (couponIdResolved == null) return
+        const customerId =
+          typeof doc.customer === 'string' || typeof doc.customer === 'number'
+            ? doc.customer
+            : ((doc.customer as unknown as Record<string, unknown>)?.id as number | string | undefined)
+        try {
+          await (req.payload.create as Function)({
+            collection: 'coupon-redemptions',
+            data: {
+              coupon: couponIdResolved,
+              user: customerId,
+              order: doc.id,
+              discountAmount: discount,
+              redeemedAt: new Date().toISOString(),
+            },
+            overrideAccess: true,
+          })
+        } catch (err) {
+          req.payload.logger.error({
+            err,
+            msg: 'Orders afterChange: CouponRedemptions 建立失敗',
+            couponId: couponIdResolved,
+            orderId: doc.id,
+          })
+        }
+      },
       async ({ doc, previousDoc, req, operation }) => {
         const payload = req.payload
         const status = doc.status as string

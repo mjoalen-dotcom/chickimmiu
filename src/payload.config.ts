@@ -40,6 +40,9 @@ import { StyleSubmissions } from './collections/StyleSubmissions'
 import { StyleGameRooms } from './collections/StyleGameRooms'
 import { StyleVotes } from './collections/StyleVotes'
 import { StyleWishes } from './collections/StyleWishes'
+import { AddOnProducts } from './collections/AddOnProducts'
+import { GiftRules } from './collections/GiftRules'
+import { Bundles } from './collections/Bundles'
 
 import { GlobalSettings } from './globals/GlobalSettings'
 import { LoyaltySettings } from './globals/LoyaltySettings'
@@ -50,6 +53,7 @@ import { CRMSettings } from './globals/CRMSettings'
 import { SegmentationSettings } from './globals/SegmentationSettings'
 import { MarketingAutomationSettings } from './globals/MarketingAutomationSettings'
 import { InvoiceSettings } from './globals/InvoiceSettings'
+import { TaxSettings } from './globals/TaxSettings'
 import { GameSettings } from './globals/GameSettings'
 import { HomepageSettings } from './globals/HomepageSettings'
 import { AboutPageSettings } from './globals/AboutPageSettings'
@@ -66,6 +70,8 @@ import { AutomationLogs } from './collections/AutomationLogs'
 import { CustomerServiceTickets } from './collections/CustomerServiceTickets'
 import { MemberSegments } from './collections/MemberSegments'
 import { LoginAttempts } from './collections/LoginAttempts'
+import { Coupons } from './collections/Coupons'
+import { CouponRedemptions } from './collections/CouponRedemptions'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -215,8 +221,13 @@ export default buildConfig({
     StyleVotes,
     StyleWishes,
     LoginAttempts,
+    AddOnProducts,
+    GiftRules,
+    Bundles,
+    Coupons,
+    CouponRedemptions,
   ],
-  globals: [GlobalSettings, LoyaltySettings, ReferralSettings, PointRedemptionSettings, RecommendationSettings, CRMSettings, SegmentationSettings, MarketingAutomationSettings, InvoiceSettings, GameSettings, HomepageSettings, AboutPageSettings, FAQPageSettings, PolicyPagesSettings, NavigationSettings, CheckoutSettings, OrderSettings],
+  globals: [GlobalSettings, LoyaltySettings, ReferralSettings, PointRedemptionSettings, RecommendationSettings, CRMSettings, SegmentationSettings, MarketingAutomationSettings, InvoiceSettings, TaxSettings, GameSettings, HomepageSettings, AboutPageSettings, FAQPageSettings, PolicyPagesSettings, NavigationSettings, CheckoutSettings, OrderSettings],
   editor: lexicalEditor({
     features: ({ defaultFeatures }) => [
       ...defaultFeatures,

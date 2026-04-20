@@ -211,6 +211,23 @@ export const Invoices: CollectionConfig = {
         { label: '混合', value: 'mixed' },
       ],
     },
+    // ── 稅額分解（讀自訂單 tax hook 結果）──
+    // ECPay 電子發票 API 需要分三欄：應稅銷售額、零稅率、免稅。
+    // 由 Orders.ts beforeChange tax hook 或 invoice engine 填。
+    {
+      name: 'taxBreakdown',
+      label: '稅額分解（發票用）',
+      type: 'group',
+      admin: {
+        description: '應稅 / 零稅率 / 免稅 分別金額；ECPay 發票開立時需此欄位',
+      },
+      fields: [
+        { name: 'standardTaxable', label: '應稅銷售額', type: 'number', defaultValue: 0, admin: { readOnly: true } },
+        { name: 'standardTax', label: '應稅稅額', type: 'number', defaultValue: 0, admin: { readOnly: true } },
+        { name: 'zeroRatedSales', label: '零稅率銷售額', type: 'number', defaultValue: 0, admin: { readOnly: true } },
+        { name: 'exemptSales', label: '免稅銷售額', type: 'number', defaultValue: 0, admin: { readOnly: true } },
+      ],
+    },
 
     // ── 綠界回傳資料 ──
     {
