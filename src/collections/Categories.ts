@@ -3,6 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { isAdmin } from '../access/isAdmin'
 import { revalidateCategory } from '../lib/revalidate'
 import { seedShoplineCategoriesEndpoint } from '../endpoints/seedShoplineCategories'
+import { categoryReorderEndpoint } from '../endpoints/categoryTreeReorder'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
@@ -12,6 +13,13 @@ export const Categories: CollectionConfig = {
     group: '商品管理',
     description: '商品分類管理（支援多層次分類：主分類 > 子分類 > 細分類）',
     listSearchableFields: ['name', 'slug'],
+    components: {
+      views: {
+        list: {
+          Component: '@/components/admin/CategoryTreeView',
+        },
+      },
+    },
   },
   access: {
     read: () => true,
@@ -19,7 +27,7 @@ export const Categories: CollectionConfig = {
     update: isAdmin,
     delete: isAdmin,
   },
-  endpoints: [seedShoplineCategoriesEndpoint],
+  endpoints: [seedShoplineCategoriesEndpoint, categoryReorderEndpoint],
   hooks: {
     afterChange: [
       ({ doc, previousDoc }) => {
