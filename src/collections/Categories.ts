@@ -7,6 +7,10 @@ import { categoryReorderEndpoint } from '../endpoints/categoryTreeReorder'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
+  labels: {
+    singular: '商品分類',
+    plural: '商品分類',
+  },
   admin: {
     useAsTitle: 'name',
     defaultColumns: ['name', 'slug', 'parent', 'level', 'sortOrder', 'productCount', 'updatedAt'],
