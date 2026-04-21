@@ -595,7 +595,8 @@ function TreeRow({
         opacity: isDragging ? 0.5 : 1,
       }}
     >
-      {/* before-zone (top half) */}
+      {/* before-zone (top half) — visual only; pointer-events:none so drag handle + action buttons are clickable.
+          @dnd-kit useDroppable uses rect-based collision detection, so pointer capture is NOT required to register as a drop target. */}
       <div
         ref={beforeDrop.setNodeRef}
         style={{
@@ -606,10 +607,10 @@ function TreeRow({
           height: '50%',
           zIndex: 2,
           borderTop: isBeforeActive ? '3px solid #0ea5e9' : '3px solid transparent',
-          pointerEvents: 'auto',
+          pointerEvents: 'none',
         }}
       />
-      {/* into-zone (bottom half) */}
+      {/* into-zone (bottom half) — see comment above for pointer-events:none rationale */}
       <div
         ref={intoDrop.setNodeRef}
         style={{
@@ -620,7 +621,7 @@ function TreeRow({
           height: '50%',
           zIndex: 2,
           background: isIntoActive ? 'rgba(14,165,233,0.15)' : 'transparent',
-          pointerEvents: 'auto',
+          pointerEvents: 'none',
         }}
       />
 
