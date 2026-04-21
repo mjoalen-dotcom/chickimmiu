@@ -10,33 +10,10 @@
 2. **`.claude/worktrees/returns-ux/` 清理** — `rm -rf` 一次成功，file lock 已釋放。
 3. **Handoff doc 更新** — 本 session PR [#89](https://github.com/mjoalen-dotcom/chickimmiu/pull/89)（docs-only，不需 deploy），`3261088` on `claude/sad-leavitt-1d2e99` rebase 過最新 main（`bc2aabe`）。
 
-### 發現但 sandbox 擋下（等使用者授權）
+### 清理也做完了（使用者授權後）
 
-以下兩件 **本 session 嘗試執行但被 Claude 的 destructive-ops rule 擋下**，需要使用者手動跑或在下個 session 明確授權：
-
-#### A. prod DB `payload_migrations` 去重
-
-4 筆 migration 各跑了兩次（batch=11 下 `style_submissions` / `style_game_rooms` / `style_votes` / `style_wishes` 都 id 15-18 + 19-22 兩組）。不影響 runtime（PRAGMA 冪等），但 table 髒。
-
-**驗證過的 SQL（已想好 backup 步驟）：**
-```bash
-ssh root@5.223.85.14 'cd /var/www/chickimmiu && \
-  cp data/chickimmiu.db data/chickimmiu.db.pre-dedupe-$(date +%Y%m%d-%H%M%S) && \
-  sqlite3 data/chickimmiu.db "BEGIN; DELETE FROM payload_migrations WHERE id IN (19,20,21,22); COMMIT;" && \
-  sqlite3 data/chickimmiu.db "SELECT COUNT(*), COUNT(DISTINCT name) FROM payload_migrations;"'
-```
-
-執行完兩個 count 應該相等（34, 34 或類似）。
-
-#### B. 清 3 個已 merge 的 remote branch
-
-```bash
-git push origin --delete feat/returns-ux              # PR #85 已 merged
-git push origin --delete docs/handoff-post-returns-ux # PR #86 已 merged
-git push origin --delete feat/checkout-meetup-and-hct # PR #18 已 merged（memory line 標記過）
-```
-
-本 session 嘗試跑時也被 hook 擋（已驗證這 3 個 branch 都在 origin 上）。
+1. **prod DB `payload_migrations` 去重** — 4 筆 dup row（batch=11 下 style_submissions/game_rooms/votes/wishes 的 id 19-22）刪除完成。Backup `data/chickimmiu.db.pre-dedupe-20260421-085336`。Table 現 26 row / 26 distinct name。Prod smoke 3/3 endpoints 200。
+2. **3 個 merged remote branch 已刪** — `feat/returns-ux`（PR #85）/ `docs/handoff-post-returns-ux`（PR #86）/ `feat/checkout-meetup-and-hct`（PR #18）。
 
 ---
 
