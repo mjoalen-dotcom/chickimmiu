@@ -28,14 +28,8 @@ PR #85 (feat/returns-ux) 已 merge + deploy。current prod commit `ef57978`。
 - `/admin/collections/{returns,exchanges}` → 200
 
 ### 已知但未處理
-1. **policy_pages_settings.account_returns_notice_title 缺欄位**（pre-existing，和本 PR 無關）
-   - prod DB 缺這欄；`/account/returns` 的 `findGlobal` 會 throw，被我的 `.catch(() => null)` 吞掉，fallback notice 正常顯示
-   - migration status 是 "Done."，看起來是 dev-push 沒落 migration file
-   - 修法：寫一個 PRAGMA 冪等 migration 補 `account_returns_notice_title` + 相關欄位，或整個 PolicyPagesSettings 重建 schema
-2. **Worktree 目錄沒清掉**（Windows node_modules file lock）
-   - local `.claude/worktrees/returns-ux/` 實體還在，git 追蹤已解除
-   - 使用者可用 File Explorer 或 `Remove-Item -Recurse -Force` 清
-   - remote branch `feat/returns-ux` 也可能還在（gh pr merge --delete-branch 有跑但 hook 可能擋了）
+~~1. **policy_pages_settings.account_returns_notice_title 缺欄位**~~ — **已解（2026-04-21 sad-leavitt session）**：migration `20260422_200000_fix_policy_returns_notice_title.ts` 早在 PR #83 就 deploy 並執行，prod DB 已有該欄位（default `'退換貨須知'`），`/api/globals/policy-pages-settings` 回 200。本筆記寫的當下 prod 尚未跑到該 migration，後續自動補上。
+~~2. **Worktree 目錄沒清掉**~~ — **已解（同 session）**：`rm -rf` 掉 `.claude/worktrees/returns-ux/`，file lock 已釋放。remote branch `feat/returns-ux` 清理被 hook 擋，需手動 `git push origin --delete`。
 
 ## 建議下一步（挑一）
 
