@@ -10,11 +10,17 @@ import { isAdmin } from '../access/isAdmin'
  */
 export const MemberSegments: CollectionConfig = {
   slug: 'member-segments',
+  labels: {
+    singular: '會員分群紀錄',
+    plural: '會員分群紀錄',
+  },
   admin: {
     group: '會員管理',
     useAsTitle: 'segmentLabel',
     defaultColumns: ['user', 'currentSegment', 'segmentLabel', 'compositeScore', 'segmentChangedAt'],
-    description: '會員分群資料與歷史紀錄',
+    description:
+      '【資料表】每位會員的當前分群（1 位會員 = 1 筆），由每日凌晨排程自動寫入，請勿手動編輯。' +
+      '演算法權重、判定門檻、排程時間請至「會員分群設定」Global 調整。',
   },
   access: {
     read: isAdmin,
