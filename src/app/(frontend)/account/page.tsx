@@ -4,7 +4,7 @@ import { headers as nextHeaders } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { Crown, Coins, Wallet, TrendingUp, Gamepad2, ArrowRight, Package, Ticket, Truck, Gift, Sparkles, Award, Gem } from 'lucide-react'
+import { Crown, Coins, Wallet, TrendingUp, Gamepad2, ArrowRight, Package, Ticket, Truck, Gift, Sparkles, Award, Gem, Layers } from 'lucide-react'
 import { CreditScoreCard } from '@/components/account/CreditScoreCard'
 import AccountAvatarUpload from '@/components/account/AccountAvatarUpload'
 
@@ -270,6 +270,19 @@ export default async function AccountPage() {
           <p className="text-xs text-muted-foreground">我的寶物</p>
           <div className="flex items-baseline justify-between mt-1">
             <p className="text-lg font-medium">{treasuresCount.toLocaleString()}</p>
+            <ArrowRight size={14} className="text-cream-300 group-hover:text-gold-500 group-hover:translate-x-0.5 transition-all" />
+          </div>
+        </Link>
+
+        {/* 我的造型卡 → /account/cards */}
+        <Link
+          href="/account/cards"
+          className="group bg-white rounded-xl p-4 border border-cream-200 hover:border-gold-400/50 hover:shadow-sm transition-all relative"
+        >
+          <Layers size={20} className="text-amber-500 mb-3" />
+          <p className="text-xs text-muted-foreground">造型卡</p>
+          <div className="flex items-baseline justify-between mt-1">
+            <p className="text-lg font-medium">收藏</p>
             <ArrowRight size={14} className="text-cream-300 group-hover:text-gold-500 group-hover:translate-x-0.5 transition-all" />
           </div>
         </Link>

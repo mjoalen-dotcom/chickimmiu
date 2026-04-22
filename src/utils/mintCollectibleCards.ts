@@ -1,6 +1,8 @@
 import crypto from 'crypto'
 import type { Payload } from 'payload'
 
+import { LIMITED_PRICE_THRESHOLD as THRESHOLD } from './collectibleCardConstants'
+
 /**
  * 造型卡 mint 工具。
  *
@@ -17,7 +19,7 @@ import type { Payload } from 'payload'
  *   lock / FOR UPDATE。
  */
 
-const LIMITED_PRICE_THRESHOLD = 5000 // 商品定價 > NT$5,000 才發限量卡
+const LIMITED_PRICE_THRESHOLD = THRESHOLD
 
 function generateDesignSeed(): string {
   return crypto.randomBytes(16).toString('hex')
