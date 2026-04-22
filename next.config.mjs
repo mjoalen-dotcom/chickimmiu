@@ -29,15 +29,25 @@ const nextConfig = {
     //     但 Payload admin UI 某些動態載入也用到，為了 admin 穩定先保留）
     //   - 若 prod 監控 CSP violation 要用 report-only 模式，把 key 換成
     //     'Content-Security-Policy-Report-Only' 即可
+    // Meta Pixel / Messenger allowlist
+    //   - connect.facebook.net：Pixel 的 fbevents.js base script + Messenger chat plugin
+    //     都由此路徑載入（注意是 .net 不是 .com，Meta 用不同 domain 分離腳本交付與事件回傳）
+    //   - www.facebook.com / *.facebook.com：Pixel 1x1 beacon 圖、事件 POST、Messenger iframe
+    //   - GlobalSettings.tracking.metaPixelId 有值時 GTMScript.tsx 會注入這支腳本；
+    //     CSP 擋住的話瀏覽器 console 會噴 Refused to load，Pixel 完全失效
     const csp = [
       "default-src 'self'",
       // gravatar.com：Payload admin 內建用 gravatar 顯示使用者頭像（UserChip、navbar）
-      "img-src 'self' data: blob: https://shoplineimg.com https://*.r2.cloudflarestorage.com https://pre.chickimmiu.com https://www.gravatar.com https://secure.gravatar.com",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googletagmanager.com https://www.google-analytics.com",
+      // www.facebook.com：Meta Pixel 1x1 beacon 追蹤像素
+      "img-src 'self' data: blob: https://shoplineimg.com https://*.r2.cloudflarestorage.com https://pre.chickimmiu.com https://www.gravatar.com https://secure.gravatar.com https://www.facebook.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net",
       "style-src 'self' 'unsafe-inline'",
-      "connect-src 'self' https://www.google-analytics.com https://*.ecpay.com.tw https://sandbox-api-pay.line.me https://api-pay.line.me https://ccore.newebpay.com",
+      // *.facebook.com 涵蓋 graph.facebook.com（CAPI、若瀏覽器端實作）+ www.facebook.com
+      //   （Pixel 事件 POST）+ 其他 Meta 子網域
+      "connect-src 'self' https://www.google-analytics.com https://*.ecpay.com.tw https://sandbox-api-pay.line.me https://api-pay.line.me https://ccore.newebpay.com https://*.facebook.com",
       "font-src 'self' data:",
-      "frame-src https://*.ecpay.com.tw",
+      // Messenger chat plugin iframe 嵌入 www.facebook.com
+      "frame-src https://*.ecpay.com.tw https://www.facebook.com",
       "frame-ancestors 'self'",
       "object-src 'none'",
       "base-uri 'self'",
