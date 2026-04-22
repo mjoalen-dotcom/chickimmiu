@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { getPayload, getFieldsToSign, jwtSign } from 'payload'
 import config from '@payload-config'
 import { auth as nextAuth } from '@/auth'
@@ -9,6 +8,14 @@ import { auth as nextAuth } from '@/auth'
 // from a callback is silently dropped from the final headers. A standalone
 // route handler that we own does pick up cookie writes, so /account redirects
 // here when it sees a NextAuth session but no Payload session.
+//
+// Set the cookie via `response.cookies.set()` instead of `cookies().set()` —
+// when this handler returns its own NextResponse.redirect(), Next 15 does not
+// reliably propagate `cookies()` mutations onto the custom response (see
+// vercel/next.js discussions), which would cause Set-Cookie to be silently
+// dropped and /account to loop forever: layout sees no payload-token → send
+// back to bridge → bridge sets cookie (dropped) → redirect → layout sees no
+// cookie again. Mutating the redirect response directly avoids that drop.
 //
 // Next.js 15 constructs `request.url` from the internal bind address (e.g.
 // `http://localhost:3000/...`), not the incoming Host header, so redirects
@@ -75,8 +82,8 @@ export async function GET(request: Request) {
         : 'lax'
   const secure = Boolean(authConfig.cookies?.secure) || sameSite === 'none'
 
-  const store = await cookies()
-  store.set({
+  const response = NextResponse.redirect(new URL(next, base))
+  response.cookies.set({
     name: `${cookiePrefix}-token`,
     value: token,
     httpOnly: true,
@@ -86,6 +93,5 @@ export async function GET(request: Request) {
     domain: authConfig.cookies?.domain || undefined,
     maxAge: authConfig.tokenExpiration,
   })
-
-  return NextResponse.redirect(new URL(next, base))
+  return response
 }
