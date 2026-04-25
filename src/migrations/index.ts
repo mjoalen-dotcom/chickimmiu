@@ -23,6 +23,8 @@ import * as migration_20260421_200000_add_checkout_order_settings from './202604
 import * as migration_20260422_000000_add_promo_trio from './20260422_000000_add_promo_trio';
 import * as migration_20260422_100000_add_coupons from './20260422_100000_add_coupons';
 import * as migration_20260422_200000_fix_policy_returns_notice_title from './20260422_200000_fix_policy_returns_notice_title';
+import * as migration_20260426_120000_add_daily_horoscopes from './20260426_120000_add_daily_horoscopes';
+import * as migration_20260426_130000_add_users_birth_time from './20260426_130000_add_users_birth_time';
 
 export const migrations = [
   {
@@ -149,5 +151,15 @@ export const migrations = [
     up: migration_20260422_200000_fix_policy_returns_notice_title.up,
     down: migration_20260422_200000_fix_policy_returns_notice_title.down,
     name: '20260422_200000_fix_policy_returns_notice_title'
+  },
+  {
+    up: migration_20260426_120000_add_daily_horoscopes.up,
+    down: migration_20260426_120000_add_daily_horoscopes.down,
+    name: '20260426_120000_add_daily_horoscopes'
+  },
+  {
+    up: migration_20260426_130000_add_users_birth_time.up,
+    down: migration_20260426_130000_add_users_birth_time.down,
+    name: '20260426_130000_add_users_birth_time'
   },
 ];

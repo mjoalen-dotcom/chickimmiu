@@ -229,6 +229,24 @@ export const Users: CollectionConfig = {
               ],
             },
             {
+              name: 'birthTime',
+              label: '出生時間（選填）',
+              type: 'text',
+              admin: {
+                description:
+                  '24 小時制 HH:mm（e.g. 14:30）。用於更精準的星座上升星座推算；未來知醫聯盟可推導 12 時辰（子丑寅卯…）。',
+                placeholder: 'HH:mm',
+              },
+              validate: (value: unknown) => {
+                if (value == null || value === '') return true
+                if (typeof value !== 'string') return '請輸入 HH:mm 格式'
+                if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) {
+                  return '時間格式錯誤（須為 HH:mm，e.g. 09:05、14:30、23:59）'
+                }
+                return true
+              },
+            },
+            {
               name: 'gender',
               label: '性別',
               type: 'select',

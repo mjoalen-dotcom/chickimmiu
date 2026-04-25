@@ -7,6 +7,7 @@ import config from '@payload-config'
 import { Crown, Coins, Wallet, TrendingUp, Gamepad2, ArrowRight, Package, Ticket, Truck, Gift, Sparkles, Award, Gem, Layers } from 'lucide-react'
 import { CreditScoreCard } from '@/components/account/CreditScoreCard'
 import AccountAvatarUpload from '@/components/account/AccountAvatarUpload'
+import { HoroscopeBlock } from '@/components/account/HoroscopeBlock'
 
 export const metadata: Metadata = {
   title: '會員總覽',
@@ -146,6 +147,9 @@ export default async function AccountPage() {
     <div className="space-y-6 animate-fade-in">
       {/* 大頭貼 */}
       <AccountAvatarUpload currentAvatarUrl={avatarUrl} displayName={displayName} />
+
+      {/* 今日星座運勢 + 穿搭推薦 */}
+      <HoroscopeBlock />
 
       {/* 會員等級卡 */}
       <div className="bg-gradient-to-br from-cream-100 to-blush-50 rounded-2xl p-6 md:p-8 border border-cream-200">
