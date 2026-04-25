@@ -29,13 +29,30 @@ export const customerRegisterEndpoint: Endpoint = {
   handler: async (req: PayloadRequest) => {
     try {
       const raw = (await req.json?.()) as
-        | { email?: string; password?: string; name?: string; referralCode?: string; acceptTerms?: boolean }
+        | {
+            email?: string
+            password?: string
+            name?: string
+            birthday?: string
+            referralCode?: string
+            acceptTerms?: boolean
+          }
         | undefined
       const email = (raw?.email || '').trim().toLowerCase()
       const password = raw?.password || ''
       const name = (raw?.name || '').trim()
       const referralCodeInput = (raw?.referralCode || '').trim()
       const acceptTerms = Boolean(raw?.acceptTerms)
+
+      // 生日（選填）— 接受 ISO 字串 / yyyy-mm-dd；不合法或未來日期就略過（不擋註冊）
+      let birthdayISO: string | undefined
+      const birthdayRaw = (raw?.birthday || '').trim()
+      if (birthdayRaw) {
+        const t = new Date(birthdayRaw).getTime()
+        if (Number.isFinite(t) && t <= Date.now()) {
+          birthdayISO = new Date(t).toISOString()
+        }
+      }
 
       if (!email || !/.+@.+\..+/.test(email)) {
         return Response.json({ error: 'invalid_email', message: 'Email 格式不正確' }, { status: 400 })
@@ -101,6 +118,7 @@ export const customerRegisterEndpoint: Endpoint = {
         password,
         name,
         role: 'customer',
+        ...(birthdayISO ? { birthday: birthdayISO } : {}),
         ...(referredById !== undefined ? { referredBy: referredById } : {}),
       } as Record<string, unknown>
 
