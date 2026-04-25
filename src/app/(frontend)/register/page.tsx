@@ -22,6 +22,7 @@ export default function RegisterPage() {
     name: '',
     email: '',
     password: '',
+    birthday: '',
     referralCode: '',
     acceptTerms: false,
   })
@@ -45,6 +46,9 @@ export default function RegisterPage() {
           name: form.name.trim(),
           email: form.email.trim().toLowerCase(),
           password: form.password,
+          birthday: form.birthday
+            ? new Date(form.birthday).toISOString()
+            : undefined,
           referralCode: form.referralCode.trim() || undefined,
           acceptTerms: form.acceptTerms,
         }),
@@ -151,6 +155,18 @@ export default function RegisterPage() {
             onChange={(e) => update('password', e.target.value)}
             className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
           />
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">
+              生日（選填，用於生日禮與生日月優惠）
+            </label>
+            <input
+              type="date"
+              value={form.birthday}
+              onChange={(e) => update('birthday', e.target.value)}
+              max={new Date().toISOString().slice(0, 10)}
+              className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
+            />
+          </div>
           <input
             type="text"
             placeholder="推薦碼（選填）"
