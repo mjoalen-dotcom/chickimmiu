@@ -75,6 +75,7 @@ import { MemberSegments } from './collections/MemberSegments'
 import { LoginAttempts } from './collections/LoginAttempts'
 import { Coupons } from './collections/Coupons'
 import { CouponRedemptions } from './collections/CouponRedemptions'
+import { DailyHoroscopes } from './collections/DailyHoroscopes'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -237,6 +238,7 @@ export default buildConfig({
     CollectibleCardTemplates,
     CollectibleCards,
     CollectibleCardEvents,
+    DailyHoroscopes,
   ],
   globals: [GlobalSettings, LoyaltySettings, ReferralSettings, PointRedemptionSettings, RecommendationSettings, CRMSettings, SegmentationSettings, MarketingAutomationSettings, InvoiceSettings, TaxSettings, GameSettings, HomepageSettings, AboutPageSettings, FAQPageSettings, PolicyPagesSettings, NavigationSettings, CheckoutSettings, OrderSettings],
   editor: lexicalEditor({
