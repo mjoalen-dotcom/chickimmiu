@@ -34,6 +34,7 @@ export const customerRegisterEndpoint: Endpoint = {
             password?: string
             name?: string
             birthday?: string
+            birthTime?: string
             referralCode?: string
             acceptTerms?: boolean
           }
@@ -52,6 +53,14 @@ export const customerRegisterEndpoint: Endpoint = {
         if (Number.isFinite(t) && t <= Date.now()) {
           birthdayISO = new Date(t).toISOString()
         }
+      }
+
+      // 出生時間（選填）— 必須是 24h HH:mm；不合法就略過（不擋註冊）。
+      // 沿用 Users.ts 同一條 regex，後台 validate 也吃同一規則。
+      let birthTime: string | undefined
+      const birthTimeRaw = (raw?.birthTime || '').trim()
+      if (birthTimeRaw && /^([01]\d|2[0-3]):[0-5]\d$/.test(birthTimeRaw)) {
+        birthTime = birthTimeRaw
       }
 
       if (!email || !/.+@.+\..+/.test(email)) {
@@ -119,6 +128,7 @@ export const customerRegisterEndpoint: Endpoint = {
         name,
         role: 'customer',
         ...(birthdayISO ? { birthday: birthdayISO } : {}),
+        ...(birthTime ? { birthTime } : {}),
         ...(referredById !== undefined ? { referredBy: referredById } : {}),
       } as Record<string, unknown>
 
