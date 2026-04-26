@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getPayload, getFieldsToSign, jwtSign } from 'payload'
+import { addSessionToUser } from 'payload/shared'
 import config from '@payload-config'
 import { auth as nextAuth } from '@/auth'
 
@@ -134,9 +135,35 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL('/login?error=auth_config_missing', base))
   }
 
+  // Payload v3.x 預設 `auth.useSessions: true`，JWT strategy 在 verify 階段會檢查
+  // `decodedPayload.sid` 是否對得上 `user.sessions[]` 內任一 record；缺任一個就回 null user，
+  // 接著 /account layout 又把人推回 bridge → 第二次踩 loop guard → `session_bridge_failed`。
+  // 所以簽 JWT 之前必須先把 session 寫進 user.sessions（同 Payload 內建 login operation 走的路）。
+  // `sessions` 欄位的 access.update:false 阻擋一般 payload.update，要走 db 層；
+  // `addSessionToUser` 內部呼叫 `payload.db.updateOne({...,req})`，drizzle 那層只在
+  // `req.transactionID` 存在時才用 req，傳空物件即可。
+  let sid: string | undefined
+  try {
+    const result = await addSessionToUser({
+      collectionConfig: usersConfig,
+      payload,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      req: {} as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      user: user as any,
+    })
+    sid = result.sid
+  } catch (err) {
+    console.error('[auth/bridge] addSessionToUser failed for user', user.id, err)
+    return NextResponse.redirect(
+      new URL('/login?error=session_bridge_failed&redirect=' + encodeURIComponent(next), base),
+    )
+  }
+
   const fieldsToSign = getFieldsToSign({
     collectionConfig: usersConfig,
     email: user.email || sessionEmail,
+    sid,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     user: user as any,
   })
