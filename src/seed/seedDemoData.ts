@@ -491,7 +491,10 @@ async function seedDemo() {
   process.exit(0)
 }
 
-seedDemo().catch((err) => {
+// ⚠️ MUST be top-level await — see seedCore.ts for full explanation.
+// `payload run` does `await import(scriptPath)` then `process.exit(0)`;
+// fire-and-forget would let the import resolve before seedDemo() finishes.
+await seedDemo().catch((err) => {
   log('❌ ERROR: ' + (err?.stack || err))
   process.exit(1)
 })
