@@ -20,7 +20,9 @@
     "seed:brand": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedBrandAssets.ts",
     "seed:brand:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedBrandAssets.ts -- --dry-run",
     "seed:about": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedAboutDefaults.ts",
-    "seed:about:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedAboutDefaults.ts -- --dry-run"
+    "seed:about:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedAboutDefaults.ts -- --dry-run",
+    "seed:demo": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedDemoData.ts",
+    "seed:demo:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedDemoData.ts -- --dry-run"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
