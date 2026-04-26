@@ -57,6 +57,23 @@ export const UserRewards: CollectionConfig = {
       },
     },
     {
+      name: 'redemptionRef',
+      label: '來源兌換項目',
+      type: 'relationship',
+      relationTo: 'points-redemptions',
+      admin: {
+        description: '若本筆 reward 來自會員點數兌換，記錄兌換的 PointsRedemption；用於 maxPerUser / maxPerDay 檢查',
+      },
+    },
+    {
+      name: 'pointsCostSnapshot',
+      label: '兌換時花費點數（快照）',
+      type: 'number',
+      admin: {
+        description: '從 PointsRedemption.pointsCost 寫入；後續 admin 改價不影響此筆',
+      },
+    },
+    {
       name: 'rewardType',
       label: '獎項類型',
       type: 'select',

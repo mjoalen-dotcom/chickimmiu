@@ -173,6 +173,67 @@ export const PointsRedemptions: CollectionConfig = {
         },
       ],
     },
+
+    // ── 實體出貨設定 ──
+    // 兌換後寫入 user-rewards（requiresPhysicalShipping=true），下次客戶下單時
+    // Orders.beforeChange 會自動把該 reward attach 進 order.gifts[]，隨單寄出。
+    // gifts[] 不影響訂單金額，且 Returns.items[] 不能 ref 贈品 → 結構上無法單獨退貨。
+    {
+      name: 'physicalConfig',
+      label: '實體出貨設定',
+      type: 'group',
+      admin: {
+        condition: (_, siblingData) =>
+          ['physical', 'movie_ticket', 'gift_physical'].includes(siblingData?.type || ''),
+        description:
+          '實體類型獎品（如 physical / movie_ticket）兌換後會寫一筆 user-rewards，等候會員下一張訂單時自動隨單寄出。',
+      },
+      fields: [
+        {
+          name: 'linkedProduct',
+          label: '關聯商品（可選）',
+          type: 'relationship',
+          relationTo: 'products',
+          admin: { description: '若此獎品就是站內某項商品，可關聯以共用圖片 / 描述 / 變體' },
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'physicalSku',
+              label: 'SKU / 出貨備註',
+              type: 'text',
+              admin: { width: '60%', description: '例如「絲巾-黑色-M」、揀貨人員會看到' },
+            },
+            {
+              name: 'validityDays',
+              label: '有效天數',
+              type: 'number',
+              defaultValue: 365,
+              min: 1,
+              admin: { width: '40%', description: 'user-rewards.expiresAt = 兌換時 + N 天' },
+            },
+          ],
+        },
+        {
+          name: 'shippingNote',
+          label: '出貨注意事項',
+          type: 'textarea',
+          admin: { description: '會帶到 user-rewards.redemptionInstructions 給揀貨/客服參考' },
+        },
+        {
+          name: 'rewardTypeOverride',
+          label: 'UserReward 類型',
+          type: 'select',
+          defaultValue: 'gift_physical',
+          options: [
+            { label: '贈品（實體）', value: 'gift_physical' },
+            { label: '電影券（實體）', value: 'movie_ticket_physical' },
+          ],
+          admin: { description: '寫進 user-rewards 的 rewardType；影響寶物箱顯示' },
+        },
+      ],
+    },
   ],
   timestamps: true,
 }
