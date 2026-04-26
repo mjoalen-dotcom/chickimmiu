@@ -81,6 +81,9 @@ export const Orders: CollectionConfig = {
     components: {
       beforeListTable: [
         {
+          path: '@/components/admin/OrderBulkShipPanel',
+        },
+        {
           path: '@/components/admin/OrderToolsPanel',
         },
         {
