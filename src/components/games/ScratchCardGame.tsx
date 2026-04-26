@@ -6,22 +6,23 @@ import { motion } from 'framer-motion'
 interface Props { settings: Record<string, unknown> }
 
 /**
- * 刮刮樂 — 接通後端版本
- * ────────────────────
- * 原本是 3-格相符 match-game 的純 client stub（`PRIZE_POOL` 本地隨機）。
- * 後端 `/api/games` POST { action:'play', gameType:'scratch_card' } 回傳**單一獎項**，
- * 所以 UI 也同步簡化成「刮開揭曉一張獎」。
+ * 刮刮樂 — 3 格刮版
+ * ───────────────────
+ * 後端 `/api/games` POST { action:'play', gameType:'scratch_card' } 回單一獎項，
+ * UI 用 3 個獨立 canvas cell 視覺化「三格相符」的傳統刮刮樂體驗。
  *
  * 流程：
  *   - Mount → GET /api/games 取 dailyStatus.scratch_card + prizeTable
- *   - 第一次下滑刮時 → POST /api/games 建 record + 扣點 + 發獎
- *   - 回傳獎項存 state；canvas 繼續讓 user 刮
- *   - 刮開 45% 自動揭曉 → 顯示結果 + 入帳訊息 + 剩餘次數
+ *   - 第一次刮任一格時 → POST /api/games 建 record + 扣點 + 發獎
+ *   - 後端確認後 3 格皆 unlock 開放刮，獎項 icon 在 3 格 reveal 同一個（相符）
+ *   - 任一格刮滿 45% 即自動揭曉該格；3 格皆揭曉 → 顯示完整結果 + 入帳訊息
  *
  * 錯誤態：未登入 / 點數不足 / 今日上限 → 不允許刮、顯示訊息。
  */
 
 const POINTS_COST = 30
+const REVEAL_THRESHOLD = 0.45
+const CELL_COUNT = 3
 
 type PrizeEntry = { prize: string; type: string; amount: number }
 type DailyStatus = {
@@ -50,16 +51,20 @@ export function ScratchCardGame({}: Props) {
   const [playError, setPlayError] = useState<string | null>(null)
 
   const [result, setResult] = useState<PrizeResp | null>(null)
-  const [revealed, setRevealed] = useState(false)
-  const [scratchProgress, setScratchProgress] = useState(0)
+  const [revealedCells, setRevealedCells] = useState<boolean[]>(() =>
+    Array(CELL_COUNT).fill(false),
+  )
+  const [progressPerCell, setProgressPerCell] = useState<number[]>(() =>
+    Array(CELL_COUNT).fill(0),
+  )
   const [committing, setCommitting] = useState(false)
   const [committed, setCommitted] = useState(false)
 
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const isDrawing = useRef(false)
-  const totalPixels = useRef(0)
-  // 最新 prizeTable 不直接用在 UI render（爬 rarity 不重要），只為 future-proof；目前僅用 result
+  const canvasRefs = useRef<Array<HTMLCanvasElement | null>>(Array(CELL_COUNT).fill(null))
+  const drawingCellRef = useRef<number | null>(null)
   const prizeTable = useRef<PrizeEntry[]>([])
+
+  const allRevealed = revealedCells.every(Boolean)
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -93,7 +98,7 @@ export function ScratchCardGame({}: Props) {
     fetchStatus()
   }, [fetchStatus])
 
-  // 第一次刮時 commit play
+  // 第一次刮任一格時 commit play
   const commitPlay = useCallback(async () => {
     if (committed || committing) return false
     if (!dailyStatus?.canPlay) return false
@@ -113,7 +118,7 @@ export function ScratchCardGame({}: Props) {
       }
       if (!res.ok || !json.success || !json.data) {
         setPlayError(json.error || `遊戲失敗 (HTTP ${res.status})`)
-        fetchStatus() // 可能 limit 或 points 改變
+        fetchStatus()
         setCommitting(false)
         return false
       }
@@ -128,13 +133,18 @@ export function ScratchCardGame({}: Props) {
     }
   }, [committed, committing, dailyStatus, fetchStatus])
 
-  const initCanvas = useCallback((canvas: HTMLCanvasElement | null) => {
-    if (!canvas) return
-    canvasRef.current = canvas
+  const initCanvas = useCallback((index: number, canvas: HTMLCanvasElement | null) => {
+    if (!canvas) {
+      canvasRefs.current[index] = null
+      return
+    }
+    canvasRefs.current[index] = canvas
 
     const dpr = 1
-    canvas.width = canvas.offsetWidth * dpr
-    canvas.height = canvas.offsetHeight * dpr
+    if (canvas.width === 0) {
+      canvas.width = canvas.offsetWidth * dpr
+      canvas.height = canvas.offsetHeight * dpr
+    }
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
@@ -143,33 +153,23 @@ export function ScratchCardGame({}: Props) {
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     ctx.fillStyle = 'rgba(255,255,255,0.12)'
-    ctx.font = `bold ${14 * dpr}px serif`
-    for (let y = 20 * dpr; y < canvas.height; y += 30 * dpr) {
-      for (let x = 0; x < canvas.width; x += 80 * dpr) {
+    ctx.font = `bold ${10 * dpr}px serif`
+    for (let y = 18 * dpr; y < canvas.height; y += 22 * dpr) {
+      for (let x = 0; x < canvas.width; x += 50 * dpr) {
         ctx.fillText('CKMU', x, y)
       }
     }
 
-    ctx.font = `bold ${16 * dpr}px serif`
-    ctx.fillStyle = 'rgba(255,255,255,0.7)'
+    ctx.font = `bold ${12 * dpr}px serif`
+    ctx.fillStyle = 'rgba(255,255,255,0.75)'
     ctx.textAlign = 'center'
-    ctx.fillText('用手指刮開這裡 ↓', canvas.width / 2, canvas.height / 2 - 8)
-    ctx.font = `${10 * dpr}px serif`
-    ctx.fillStyle = 'rgba(255,255,255,0.4)'
-    ctx.fillText('刮滿 45% 自動揭曉', canvas.width / 2, canvas.height / 2 + 12)
-
-    totalPixels.current = canvas.width * canvas.height
+    ctx.fillText('刮開', canvas.width / 2, canvas.height / 2)
   }, [])
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas || revealed) return
-    if (canvas.width === 0) initCanvas(canvas)
-  }, [initCanvas, revealed])
-
-  const checkProgress = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas || revealed) return
+  const checkProgress = useCallback((cellIndex: number) => {
+    const canvas = canvasRefs.current[cellIndex]
+    if (!canvas) return
+    if (revealedCells[cellIndex]) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
@@ -181,18 +181,30 @@ export function ScratchCardGame({}: Props) {
     }
     const sampledTotal = Math.ceil(data.length / 16)
     const progress = transparent / sampledTotal
-    setScratchProgress(progress)
 
-    if (progress >= 0.45 && committed) {
-      setRevealed(true)
-      fetchStatus()
+    setProgressPerCell((prev) => {
+      const next = [...prev]
+      next[cellIndex] = progress
+      return next
+    })
+
+    if (progress >= REVEAL_THRESHOLD && committed) {
+      setRevealedCells((prev) => {
+        if (prev[cellIndex]) return prev
+        const next = [...prev]
+        next[cellIndex] = true
+        // 全 reveal 時重新拉一次狀態（剩餘次數會更新）
+        if (next.every(Boolean)) fetchStatus()
+        return next
+      })
     }
-  }, [revealed, committed, fetchStatus])
+  }, [revealedCells, committed, fetchStatus])
 
-  const scratch = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawing.current || revealed) return
-    if (!committed) return // 尚未 commit 時不實際刮（應該也走不到這裡）
-    const canvas = canvasRef.current
+  const scratchAt = useCallback((cellIndex: number, e: React.MouseEvent | React.TouchEvent) => {
+    if (drawingCellRef.current !== cellIndex) return
+    if (revealedCells[cellIndex]) return
+    if (!committed) return
+    const canvas = canvasRefs.current[cellIndex]
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
@@ -215,26 +227,27 @@ export function ScratchCardGame({}: Props) {
 
     ctx.globalCompositeOperation = 'destination-out'
     ctx.beginPath()
-    ctx.arc(x, y, 25 * scaleX, 0, Math.PI * 2)
+    ctx.arc(x, y, 18 * scaleX, 0, Math.PI * 2)
     ctx.fill()
 
-    checkProgress()
-  }, [revealed, committed, checkProgress])
+    checkProgress(cellIndex)
+  }, [revealedCells, committed, checkProgress])
 
-  const handleStart = useCallback(async (e: React.MouseEvent | React.TouchEvent) => {
+  const handleStart = useCallback(async (cellIndex: number, e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault()
-    if (revealed) return
-    // 第一次按下時先 commit play，backend 成功才開始刮
+    if (revealedCells[cellIndex]) return
     if (!committed) {
       const ok = await commitPlay()
       if (!ok) return
     }
-    isDrawing.current = true
-  }, [revealed, committed, commitPlay])
+    drawingCellRef.current = cellIndex
+  }, [revealedCells, committed, commitPlay])
 
-  const handleEnd = useCallback(() => {
-    isDrawing.current = false
-    checkProgress()
+  const handleEnd = useCallback((cellIndex: number) => {
+    if (drawingCellRef.current === cellIndex) {
+      drawingCellRef.current = null
+    }
+    checkProgress(cellIndex)
   }, [checkProgress])
 
   const remaining = dailyStatus?.remaining ?? 0
@@ -271,6 +284,7 @@ export function ScratchCardGame({}: Props) {
   }
 
   const canScratch = dailyStatus?.canPlay ?? false
+  const prizeIcon = result ? (PRIZE_ICONS[result.prize.type] || '🎁') : '🎁'
 
   return (
     <div className="max-w-sm mx-auto text-center">
@@ -284,9 +298,9 @@ export function ScratchCardGame({}: Props) {
           </p>
         </div>
         <ul className="text-xs text-muted-foreground space-y-1">
-          <li>• 用手指／滑鼠刮開金色區域</li>
-          <li>• 刮滿 <span className="text-gold-600 font-medium">45%</span> 自動揭曉</li>
-          <li>• 獎項依系統機率抽出，已自動入帳</li>
+          <li>• 刮開三格金色區域揭曉獎項</li>
+          <li>• 每格刮滿 <span className="text-gold-600 font-medium">45%</span> 自動揭曉</li>
+          <li>• 三格圖案相符即代表中獎，獎項已自動入帳</li>
         </ul>
         {requiresPoints && freePlaysLeft === 0 && remaining > 0 && (
           <p className="text-xs text-amber-600 mt-2">
@@ -298,64 +312,70 @@ export function ScratchCardGame({}: Props) {
         )}
       </div>
 
-      {/* Scratch area */}
-      <div className="relative w-full aspect-[3/2] bg-white rounded-2xl border-2 border-gold-400 overflow-hidden mb-6 shadow-lg">
-        {/* Prize reveal layer */}
-        <div className="absolute inset-0 flex items-center justify-center p-4">
-          {!committed && !revealed ? (
-            <div className="text-center text-muted-foreground">
-              <p className="text-3xl mb-2">🎁</p>
-              <p className="text-xs">開始刮揭曉獎項</p>
-            </div>
-          ) : result ? (
+      {/* 3-cell scratch row */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {Array.from({ length: CELL_COUNT }).map((_, i) => {
+          const cellRevealed = revealedCells[i]
+          return (
             <div
-              className={`flex-1 h-full rounded-xl flex items-center justify-center text-center transition-all duration-500 ${
-                revealed
-                  ? 'bg-gradient-to-br from-gold-400 to-amber-500 text-white scale-105 shadow-lg'
-                  : 'bg-cream-100 border border-cream-200'
-              }`}
+              key={i}
+              className="relative aspect-square bg-white rounded-2xl border-2 border-gold-400 overflow-hidden shadow-sm"
             >
-              <div>
-                <p className="text-4xl mb-2">{PRIZE_ICONS[result.prize.type] || '🎁'}</p>
-                <p className="text-lg font-bold">{result.prize.prize}</p>
+              {/* Prize reveal layer */}
+              <div className="absolute inset-0 flex items-center justify-center p-2">
+                {!committed ? (
+                  <div className="text-center text-muted-foreground">
+                    <p className="text-xl">🎁</p>
+                  </div>
+                ) : (
+                  <div
+                    className={`w-full h-full rounded-xl flex items-center justify-center text-center transition-all duration-500 ${
+                      cellRevealed
+                        ? 'bg-gradient-to-br from-gold-400 to-amber-500 text-white scale-105'
+                        : 'bg-cream-100'
+                    }`}
+                  >
+                    <p className="text-3xl">{prizeIcon}</p>
+                  </div>
+                )}
               </div>
-            </div>
-          ) : (
-            <div className="text-center text-muted-foreground">
-              <p className="text-2xl">⏳</p>
-              <p className="text-xs mt-2">處理中...</p>
-            </div>
-          )}
-        </div>
 
-        {/* Canvas scratch layer */}
-        {!revealed && canScratch && (
-          <canvas
-            ref={initCanvas}
-            className="absolute inset-0 w-full h-full cursor-crosshair touch-none"
-            onMouseDown={handleStart}
-            onMouseUp={handleEnd}
-            onMouseLeave={handleEnd}
-            onMouseMove={scratch}
-            onTouchStart={handleStart}
-            onTouchEnd={handleEnd}
-            onTouchMove={scratch}
-          />
-        )}
+              {/* Canvas scratch layer */}
+              {!cellRevealed && canScratch && (
+                <canvas
+                  ref={(el) => initCanvas(i, el)}
+                  className="absolute inset-0 w-full h-full cursor-crosshair touch-none"
+                  onMouseDown={(e) => handleStart(i, e)}
+                  onMouseUp={() => handleEnd(i)}
+                  onMouseLeave={() => handleEnd(i)}
+                  onMouseMove={(e) => scratchAt(i, e)}
+                  onTouchStart={(e) => handleStart(i, e)}
+                  onTouchEnd={() => handleEnd(i)}
+                  onTouchMove={(e) => scratchAt(i, e)}
+                />
+              )}
+            </div>
+          )
+        })}
       </div>
 
-      {/* Progress bar */}
-      {!revealed && committed && (
+      {/* Aggregate progress bar */}
+      {committed && !allRevealed && (
         <div className="mb-4">
           <div className="h-2 bg-cream-200 rounded-full overflow-hidden">
             <motion.div
               className="h-full bg-gradient-to-r from-gold-400 to-gold-600 rounded-full"
-              animate={{ width: `${Math.min(scratchProgress * 100 / 0.45, 100)}%` }}
+              animate={{
+                width: `${Math.min(
+                  (progressPerCell.reduce((a, b) => a + b, 0) / CELL_COUNT) * 100 / REVEAL_THRESHOLD,
+                  100,
+                )}%`,
+              }}
               transition={{ duration: 0.2 }}
             />
           </div>
           <p className="text-xs text-muted-foreground mt-1.5">
-            刮開進度：{Math.min(Math.round(scratchProgress * 100 / 0.45), 100)}%
+            已揭曉 {revealedCells.filter(Boolean).length} / {CELL_COUNT} 格
           </p>
         </div>
       )}
@@ -369,7 +389,7 @@ export function ScratchCardGame({}: Props) {
       )}
 
       {/* Result */}
-      {revealed && result && (
+      {allRevealed && result && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}

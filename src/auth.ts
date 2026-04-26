@@ -82,10 +82,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       try {
         const payload = await getPayload({ config })
         const socialField = PROVIDER_SOCIAL_FIELD[account.provider]
+        // OAuth provider 回 mixed-case email 也要對得上 Payload 已 lowercase 的紀錄
+        const email = user.email.toLowerCase()
 
         const { docs } = await payload.find({
           collection: 'users',
-          where: { email: { equals: user.email } },
+          where: { email: { equals: email } },
           limit: 1,
         })
 
@@ -94,35 +96,50 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (docs.length === 0) {
           // 新社群使用者 → 建立 Users 紀錄（隨機密碼只是為了過 Payload auth 必填檢查，
           // 社群使用者不會走 email/pw 流程；之後若想把帳號降級成一般帳號得走 reset-password）
+          //
+          // _verified:true + disableVerificationEmail:true：OAuth provider 已替我們做完
+          // email 驗證，Payload 不必再寄信。沒帶這兩個欄位會讓新帳號 _verified=false →
+          // /api/auth/bridge 雖能簽 JWT，但 payload.auth() 在 verify 開啟時會拒絕未驗證 user，
+          // 造成 /account → bridge → /account 無限循環。
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           payloadUser = (await (payload as any).create({
             collection: 'users',
             data: {
-              email: user.email,
+              email,
               password: `social_${crypto.randomUUID()}_${Date.now()}`,
-              name: user.name || user.email.split('@')[0],
+              name: user.name || email.split('@')[0],
               role: 'customer',
+              _verified: true,
               ...(socialField
                 ? { socialLogins: { [socialField]: account.providerAccountId } }
                 : {}),
             },
-          })) as typeof payloadUser
-        } else if (socialField) {
-          const existing = docs[0] as unknown as Record<string, unknown>
-          const currentSocial = (existing.socialLogins || {}) as Record<string, unknown>
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          payloadUser = (await (payload.update as any)({
-            collection: 'users',
-            id: docs[0].id,
-            data: {
-              socialLogins: {
-                ...currentSocial,
-                [socialField]: account.providerAccountId,
-              },
-            },
+            disableVerificationEmail: true,
           })) as typeof payloadUser
         } else {
-          payloadUser = docs[0] as unknown as typeof payloadUser
+          const existing = docs[0] as unknown as Record<string, unknown>
+          const currentSocial = (existing.socialLogins || {}) as Record<string, unknown>
+          const alreadyVerified = (existing as { _verified?: boolean })._verified === true
+          const updateData: Record<string, unknown> = {}
+          if (socialField) {
+            updateData.socialLogins = {
+              ...currentSocial,
+              [socialField]: account.providerAccountId,
+            }
+          }
+          // 救援先前 OAuth 建立的未驗證帳號（無此 backfill 會永遠卡 bridge loop）
+          if (!alreadyVerified) updateData._verified = true
+
+          if (Object.keys(updateData).length > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            payloadUser = (await (payload.update as any)({
+              collection: 'users',
+              id: docs[0].id,
+              data: updateData,
+            })) as typeof payloadUser
+          } else {
+            payloadUser = docs[0] as unknown as typeof payloadUser
+          }
         }
 
         return true

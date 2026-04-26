@@ -30,10 +30,34 @@ function resolveBaseUrl(request: Request): string {
   return new URL(request.url).origin
 }
 
+const LOOP_GUARD_COOKIE = '_ckmu_bridge_attempt'
+const LOOP_GUARD_MAX_AGE = 30 // 秒；> bridge → layout 來回時間，< 使用者重新嘗試的耐心
+
 export async function GET(request: Request) {
   const base = resolveBaseUrl(request)
-  const rawNext = new URL(request.url).searchParams.get('next') || '/account'
+  const url = new URL(request.url)
+  const rawNext = url.searchParams.get('next') || '/account'
   const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/account'
+
+  // Loop guard：用 short-lived cookie 計次。bridge 設好 Payload session cookie 後，
+  // 如果 layout 又把使用者推回 bridge（代表 Payload 仍拒絕該 cookie），第二次踏進來
+  // 就停損 — 重導去 /login 顯示明確錯誤，而不是無限循環。
+  const cookieHeader = request.headers.get('cookie') || ''
+  const guardMatch = cookieHeader.match(new RegExp(`(?:^|;\\s*)${LOOP_GUARD_COOKIE}=(\\d+)`))
+  const previousAttempts = guardMatch ? parseInt(guardMatch[1], 10) || 0 : 0
+  if (previousAttempts >= 1) {
+    const failResponse = NextResponse.redirect(
+      new URL('/login?error=session_bridge_failed&redirect=' + encodeURIComponent(next), base),
+    )
+    // 清掉 guard cookie，讓使用者下次重試時能正常走流程
+    failResponse.cookies.set({
+      name: LOOP_GUARD_COOKIE,
+      value: '',
+      path: '/',
+      maxAge: 0,
+    })
+    return failResponse
+  }
 
   const session = await nextAuth()
   if (!session?.user?.email) {
@@ -41,15 +65,34 @@ export async function GET(request: Request) {
   }
 
   const payload = await getPayload({ config })
+  // 統一 lowercase 找 user：OAuth provider 偶爾回 mixed-case email，Payload 內部存 lowercase
+  const sessionEmail = session.user.email.toLowerCase()
   const { docs } = await payload.find({
     collection: 'users',
-    where: { email: { equals: session.user.email } },
+    where: { email: { equals: sessionEmail } },
     limit: 1,
   })
   if (docs.length === 0) {
     return NextResponse.redirect(new URL('/login?error=user_not_found', base))
   }
-  const user = docs[0] as unknown as { id: string | number; email?: string } & Record<string, unknown>
+  const user = docs[0] as unknown as { id: string | number; email?: string; _verified?: boolean } & Record<string, unknown>
+
+  // 自我修復：之前透過舊版 signIn callback 建立的 OAuth 帳號 _verified=false，
+  // 會讓 payload.auth() 拒絕該 cookie → 永遠回到 bridge → 循環。OAuth 流程本來就視為
+  // email 已驗，找到未驗證帳號就 backfill 成已驗證。
+  if (user._verified !== true) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (payload.update as any)({
+        collection: 'users',
+        id: user.id,
+        data: { _verified: true },
+      })
+      user._verified = true
+    } catch (err) {
+      console.error('[auth/bridge] failed to backfill _verified for user', user.id, err)
+    }
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const usersConfig = (payload as any).collections?.users?.config
@@ -60,7 +103,7 @@ export async function GET(request: Request) {
 
   const fieldsToSign = getFieldsToSign({
     collectionConfig: usersConfig,
-    email: user.email || session.user.email,
+    email: user.email || sessionEmail,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     user: user as any,
   })
@@ -92,6 +135,16 @@ export async function GET(request: Request) {
     sameSite,
     domain: authConfig.cookies?.domain || undefined,
     maxAge: authConfig.tokenExpiration,
+  })
+  // Loop guard 記次：30 秒內如果 layout 又把人推回來就停損
+  response.cookies.set({
+    name: LOOP_GUARD_COOKIE,
+    value: String(previousAttempts + 1),
+    httpOnly: true,
+    path: '/',
+    secure,
+    sameSite: 'lax',
+    maxAge: LOOP_GUARD_MAX_AGE,
   })
   return response
 }
