@@ -178,9 +178,21 @@ main.template-default__main {
   box-sizing: border-box !important;
 }
 
-// 防 vertical scrollbar 進出造成水平 jitter
-html {
+// 防 vertical scrollbar 進出造成水平 jitter。
+// N2.1: Payload v3 admin 真正 scroll 容器是 body / .template-default__main
+// 而非 html，只設 html 不夠 → 切 collection 時內容高度變化、那層 scrollbar
+// 進出仍會推 main 寬度跳動，雖然 nav 是 fixed 位置不動，視覺上整頁仍在抖。
+// 三層全加 + body 強制永遠保留 vertical scrollbar + reset body margin
+// 一次解決所有 viewport jitter。
+html,
+body,
+.template-default__main {
   scrollbar-gutter: stable;
+}
+
+body {
+  margin: 0 !important;
+  overflow-y: scroll !important;
 }
 
 // App header 也要避開 nav 區
