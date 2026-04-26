@@ -23,6 +23,26 @@ export default function LoginPage() {
   const registeredFlag = search.get('registered') === '1'
   const needVerifyFlag = search.get('verify') === '1'
   const verifiedFlag = search.get('verified') === '1'
+  // `?error=` 來源：(a) NextAuth `pages.error: '/login'` — OAuth 失敗時自動帶；
+  // (b) /api/auth/bridge — JWE 解不開或迴圈停損時主動帶。把代碼翻成中文讓使用者
+  // 知道為何剛剛被踢回來，否則只看到「跳回 /login」會以為網站壞了。
+  const urlError = search.get('error')
+  const errorMessage = ((): string | null => {
+    if (!urlError) return null
+    if (urlError === 'session_invalid')
+      return '社群登入連線過期，已清除舊登入資料；請重新點選下方社群按鈕登入。'
+    if (urlError === 'session_bridge_failed')
+      return '建立登入狀態失敗（可能是 cookie 被瀏覽器擋下）；請確認允許第三方 cookie 後重試。'
+    if (urlError === 'user_not_found')
+      return '社群帳號未對應到任何會員；請改用 email/密碼登入或重新註冊。'
+    if (urlError === 'auth_config_missing')
+      return '伺服器登入設定缺漏，請聯繫客服。'
+    if (urlError === 'OAuthAccountNotLinked')
+      return '此 email 已用其他登入方式註冊；請改用原本的方式登入。'
+    if (/^OAuth/.test(urlError))
+      return `社群登入失敗（${urlError}），請稍後再試或改用 email 登入。`
+    return `登入失敗：${urlError}`
+  })()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -83,6 +103,11 @@ export default function LoginPage() {
         {verifiedFlag && (
           <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             Email 驗證完成，請登入您的帳號。
+          </div>
+        )}
+        {errorMessage && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+            {errorMessage}
           </div>
         )}
 
@@ -151,6 +176,8 @@ export default function LoginPage() {
         {/* Email / Password */}
         <form className="space-y-4" onSubmit={handleSubmit} noValidate>
           <input
+            id="login-email"
+            name="email"
             type="email"
             placeholder="Email"
             autoComplete="email"
@@ -160,6 +187,8 @@ export default function LoginPage() {
             className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
           />
           <input
+            id="login-password"
+            name="password"
             type="password"
             placeholder="密碼"
             autoComplete="current-password"
