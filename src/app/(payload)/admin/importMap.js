@@ -1,6 +1,8 @@
 import { default as default_2155efc8584149395a6a7408e7342b75 } from '@/components/admin/MemberTreasureBoxPanel'
 import { default as default_131a3f06e1429f7f0173fc5b4da87663 } from '@/components/admin/ImportExportButtons'
 import { default as default_7daf04b168de0230737ba8fdd5db8d46 } from '@/components/admin/MediaUploadRulesNotice'
+import { FolderTableCell as FolderTableCell_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
+import { FolderField as FolderField_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 import { default as default_ebf9d2025b92d97c921799c47cf282d1 } from '@/components/admin/CategoryTreeView'
 import { RscEntryLexicalCell as RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
 import { RscEntryLexicalField as RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
@@ -39,6 +41,7 @@ import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0
 import { TableFeatureClient as TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { FixedToolbarFeatureClient as FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { default as default_2d3b6dcbebce75fc2ef5ac094f4218f0 } from '@/components/admin/ColorField'
+import { FolderTypeField as FolderTypeField_2b8867833a34864a02ddf429b0728a40 } from '@payloadcms/next/client'
 import { default as default_6f27c4d8c2613c9dc60f5fcd3b7e600a } from '@/components/admin/SiteBrandPreview'
 import { default as default_d500ae2ad98a0a33d640ae0ac1a3417c } from '@/components/admin/AdminIcon'
 import { default as default_b80a86fce1072afc84cd6a430a965697 } from '@/components/admin/AdminLogo'
@@ -58,6 +61,8 @@ export const importMap = {
   "@/components/admin/MemberTreasureBoxPanel#default": default_2155efc8584149395a6a7408e7342b75,
   "@/components/admin/ImportExportButtons#default": default_131a3f06e1429f7f0173fc5b4da87663,
   "@/components/admin/MediaUploadRulesNotice#default": default_7daf04b168de0230737ba8fdd5db8d46,
+  "@payloadcms/next/rsc#FolderTableCell": FolderTableCell_f9c02e79a4aed9a3924487c0cd4cafb1,
+  "@payloadcms/next/rsc#FolderField": FolderField_f9c02e79a4aed9a3924487c0cd4cafb1,
   "@/components/admin/CategoryTreeView#default": default_ebf9d2025b92d97c921799c47cf282d1,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalField": RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e,
@@ -96,6 +101,7 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#TableFeatureClient": TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#FixedToolbarFeatureClient": FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@/components/admin/ColorField#default": default_2d3b6dcbebce75fc2ef5ac094f4218f0,
+  "@payloadcms/next/client#FolderTypeField": FolderTypeField_2b8867833a34864a02ddf429b0728a40,
   "@/components/admin/SiteBrandPreview#default": default_6f27c4d8c2613c9dc60f5fcd3b7e600a,
   "@/components/admin/AdminIcon#default": default_d500ae2ad98a0a33d640ae0ac1a3417c,
   "@/components/admin/AdminLogo#default": default_b80a86fce1072afc84cd6a430a965697,

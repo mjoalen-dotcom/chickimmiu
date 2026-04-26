@@ -152,6 +152,15 @@ const emailAdapter = process.env.RESEND_API_KEY
  *   GameSettings — 遊戲系統設定（各遊戲免費次數、獎勵、排行榜、徽章）
  */
 export default buildConfig({
+  // 啟用 Payload 內建資料夾系統（v3 native folders，experimental but stable enough）
+  //   - 自動建立 `payload-folders` collection（樹狀，自我參照 folder 欄位）
+  //   - 已開 folders 的 collection（目前只有 Media）會多一個 `folder` relationship +
+  //     admin 列表多一個 grid / list toggle + drag-drop 移動圖片到資料夾
+  //   - collectionSpecific:true（預設）= 每個資料夾用 folderType[] 鎖定可放的 collection；
+  //     將來開放更多 collection 用 folder 時不需設定每個資料夾
+  //   - browseByFolder:true（預設）= dashboard 多一個「依資料夾瀏覽」入口
+  //   - 對應 Media.ts `folders: true` + migration `enable_payload_folders`
+  folders: {},
   admin: {
     user: Users.slug,
     importMap: {
