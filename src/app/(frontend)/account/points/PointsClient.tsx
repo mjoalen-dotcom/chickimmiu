@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Coins, Crown, Gift, Truck, Ticket, Sparkles, Star, TrendingUp,
   Timer, Flame, Heart, Dice6, Package, AlertTriangle,
-  HandHeart, Palette, Zap, ChevronRight,
+  HandHeart, Palette, Zap, ChevronRight, X, CheckCircle2,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -86,12 +87,55 @@ export default function PointsClient({
   user: UserLite
   testimonials: TestimonialItem[]
 }) {
+  const router = useRouter()
   const [tab, setTab] = useState<Tab>('shop')
   const points = user.points
   const credit = user.shoppingCredit
   const expiringPoints = user.expiringPoints
   const expiringDays = user.expiringDays
   const currentTierColor = TIER_HEX_COLORS[user.currentTierSlug] ?? TIER_HEX_COLORS.ordinary
+
+  // 兌換流程：點按鈕 → 開 confirm modal → 送 API → 顯示 toast → router.refresh()
+  // 兌換規則跟使用者說明：扣點不可退、隨下一張訂單寄出、不能單獨退貨
+  const SHIPPABLE_TYPES = new Set(['physical', 'movie_ticket', 'gift_physical'])
+  const [confirmItem, setConfirmItem] = useState<ShopItemLite | null>(null)
+  const [redeeming, setRedeeming] = useState(false)
+  const [toast, setToast] = useState<
+    { kind: 'success' | 'error'; text: string } | null
+  >(null)
+
+  async function handleConfirmRedeem() {
+    if (!confirmItem) return
+    setRedeeming(true)
+    try {
+      const res = await fetch('/api/v1/points', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ redemptionId: confirmItem.id }),
+      })
+      const json = (await res.json().catch(() => ({}))) as {
+        success?: boolean
+        error?: string
+        message?: string
+      }
+      if (res.ok && json.success) {
+        setToast({
+          kind: 'success',
+          text: json.message ?? '兌換成功！獎品將隨您的下一張訂單寄出',
+        })
+        setConfirmItem(null)
+        router.refresh()
+      } else {
+        setToast({ kind: 'error', text: json.error ?? '兌換失敗，請稍後再試' })
+      }
+    } catch {
+      setToast({ kind: 'error', text: '網路錯誤，請稍後再試' })
+    } finally {
+      setRedeeming(false)
+      setTimeout(() => setToast(null), 4000)
+    }
+  }
 
   const badgeIcon = (badge: string | null) => {
     switch (badge) {
@@ -304,14 +348,29 @@ export default function PointsClient({
 
                       {/* CTA */}
                       <button
-                        disabled={!canAfford}
+                        disabled={!canAfford || !SHIPPABLE_TYPES.has(item.type)}
+                        onClick={() => {
+                          if (!SHIPPABLE_TYPES.has(item.type)) {
+                            setToast({
+                              kind: 'error',
+                              text: '此類型獎品需於指定活動或洽客服兌換',
+                            })
+                            setTimeout(() => setToast(null), 4000)
+                            return
+                          }
+                          setConfirmItem(item)
+                        }}
                         className={`w-full mt-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                          canAfford
+                          canAfford && SHIPPABLE_TYPES.has(item.type)
                             ? 'bg-gold-500 text-white hover:bg-gold-600'
                             : 'bg-cream-100 text-muted-foreground cursor-not-allowed'
                         }`}
                       >
-                        {canAfford ? '立即兌換' : '點數不足'}
+                        {!SHIPPABLE_TYPES.has(item.type)
+                          ? '活動兌換'
+                          : canAfford
+                          ? '立即兌換'
+                          : '點數不足'}
                       </button>
                     </div>
                   )
@@ -430,6 +489,125 @@ export default function PointsClient({
                 </div>
               )}
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Toast：操作結果 ── */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            key="redeem-toast"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm ${
+              toast.kind === 'success'
+                ? 'bg-green-500 text-white'
+                : 'bg-red-500 text-white'
+            }`}
+          >
+            {toast.kind === 'success' ? (
+              <CheckCircle2 size={16} />
+            ) : (
+              <AlertTriangle size={16} />
+            )}
+            <span>{toast.text}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── 兌換確認 Modal ── */}
+      <AnimatePresence>
+        {confirmItem && (
+          <motion.div
+            key="redeem-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4"
+            onClick={() => !redeeming && setConfirmItem(null)}
+          >
+            <motion.div
+              initial={{ y: 60, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 60, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-6 shadow-xl"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-base font-medium">確認兌換</h3>
+                <button
+                  type="button"
+                  disabled={redeeming}
+                  onClick={() => setConfirmItem(null)}
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label="關閉"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="bg-cream-50 rounded-xl p-4 mb-4">
+                <p className="text-sm font-medium mb-1">{confirmItem.name}</p>
+                {confirmItem.description && (
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {confirmItem.description}
+                  </p>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">兌換需要</span>
+                  <span className="text-lg font-medium text-gold-600">
+                    {confirmItem.pointsCost.toLocaleString()} 點
+                  </span>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs text-muted-foreground">兌換後餘額</span>
+                  <span className="text-sm">
+                    {(points - confirmItem.pointsCost).toLocaleString()} 點
+                  </span>
+                </div>
+              </div>
+
+              <ul className="space-y-2 mb-5 text-xs text-muted-foreground">
+                <li className="flex gap-2">
+                  <Package size={14} className="text-gold-500 shrink-0 mt-0.5" />
+                  <span>
+                    獎品將進入您的「<strong className="text-foreground">寶物箱</strong>
+                    」，於下一張<strong className="text-foreground">付款訂單</strong>
+                    產生時自動隨單寄出。
+                  </span>
+                </li>
+                <li className="flex gap-2">
+                  <AlertTriangle size={14} className="text-red-400 shrink-0 mt-0.5" />
+                  <span>
+                    兌換後點數立即扣除，
+                    <strong className="text-foreground">無法取消或退回</strong>
+                    ；隨單寄出之獎品
+                    <strong className="text-foreground">不接受單獨退貨</strong>。
+                  </span>
+                </li>
+              </ul>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={redeeming}
+                  onClick={() => setConfirmItem(null)}
+                  className="flex-1 py-2.5 rounded-lg text-xs font-medium border border-cream-200 hover:bg-cream-50 disabled:opacity-50"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  disabled={redeeming}
+                  onClick={handleConfirmRedeem}
+                  className="flex-1 py-2.5 rounded-lg text-xs font-medium bg-gold-500 text-white hover:bg-gold-600 disabled:bg-gold-400 disabled:cursor-wait"
+                >
+                  {redeeming ? '兌換中…' : '確認兌換'}
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
