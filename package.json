@@ -49,6 +49,7 @@
     "next-auth": "5.0.0-beta.25",
     "payload": "^3.83.0",
     "react": "^19.0.0",
+    "react-colorful": "^5.6.1",
     "react-dom": "^19.0.0",
     "sharp": "0.33.5",
     "tailwind-merge": "^2.5.4",
