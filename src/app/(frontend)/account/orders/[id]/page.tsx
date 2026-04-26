@@ -18,6 +18,9 @@ import {
   CreditCard,
 } from 'lucide-react'
 
+import { getSelfServiceEligibility } from '@/lib/commerce/orderSelfService'
+import { OrderSelfServiceActions } from './OrderSelfServiceActions'
+
 export const metadata: Metadata = {
   title: '訂單詳情',
   robots: { index: false, follow: false },
@@ -128,6 +131,16 @@ export default async function OrderDetailPage({
   const customerNote = (orderDoc.customerNote as string) ?? ''
   const trackingNumber = (orderDoc.trackingNumber as string) ?? ''
 
+  const selfService = getSelfServiceEligibility(orderDoc)
+  const initialAddressForm = {
+    recipientName: (shippingAddress.recipientName as string) ?? '',
+    phone: (shippingAddress.phone as string) ?? '',
+    zipCode: (shippingAddress.zipCode as string) ?? '',
+    city: (shippingAddress.city as string) ?? '',
+    district: (shippingAddress.district as string) ?? '',
+    address: (shippingAddress.address as string) ?? '',
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -176,6 +189,17 @@ export default async function OrderDetailPage({
           </div>
         )}
       </div>
+
+      {/* Customer self-service window — cancel / edit address while pending + within 30min */}
+      {(selfService.canCancel ||
+        selfService.canEditAddress ||
+        selfService.reason) && (
+        <OrderSelfServiceActions
+          orderId={id}
+          eligibility={selfService}
+          initialAddress={initialAddressForm}
+        />
+      )}
 
       {/* Return / exchange actions — visible for shipped / delivered orders */}
       {(status === 'shipped' || status === 'delivered') && (
