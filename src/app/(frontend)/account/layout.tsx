@@ -33,9 +33,16 @@ const sidebarLinks = [
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {
   const payload = await getPayload({ config })
   const headersList = await nextHeaders()
+  // `nextAuth()` 在 session cookie 損毀時可能拋 JWTSessionError 而不是回 null（看內部
+  // 解碼路徑），整層 layout 跟著炸 → 使用者收到 500 或被框架導去最近的 error.tsx，
+  // 看起來就像「莫名跳回登入」。包 try/catch 後 fallback 成沒 session：bridge 那邊也
+  // 會碰到一樣狀況，會在那裡清掉壞 cookie。
   const [{ user }, session] = await Promise.all([
     payload.auth({ headers: headersList }),
-    nextAuth(),
+    nextAuth().catch((err) => {
+      console.error('[account/layout] nextAuth() threw, treating as no session', err)
+      return null
+    }),
   ])
   if (!user) {
     // OAuth (NextAuth) just completed but the Payload session cookie isn't set

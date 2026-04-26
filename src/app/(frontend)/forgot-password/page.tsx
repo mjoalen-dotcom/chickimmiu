@@ -67,6 +67,8 @@ export default function ForgotPasswordPage() {
         ) : (
           <form className="space-y-4" onSubmit={handleSubmit} noValidate>
             <input
+              id="forgot-email"
+              name="email"
               type="email"
               placeholder="Email"
               autoComplete="email"

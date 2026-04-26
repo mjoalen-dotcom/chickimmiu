@@ -130,6 +130,8 @@ export default function RegisterPage() {
 
         <form className="space-y-4" onSubmit={handleSubmit} noValidate>
           <input
+            id="register-name"
+            name="name"
             type="text"
             placeholder="姓名"
             autoComplete="name"
@@ -139,6 +141,8 @@ export default function RegisterPage() {
             className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
           />
           <input
+            id="register-email"
+            name="email"
             type="email"
             placeholder="Email"
             autoComplete="email"
@@ -148,6 +152,8 @@ export default function RegisterPage() {
             className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
           />
           <input
+            id="register-password"
+            name="password"
             type="password"
             placeholder="密碼（至少 8 個字元）"
             autoComplete="new-password"
@@ -163,7 +169,10 @@ export default function RegisterPage() {
                 生日（選填）
               </label>
               <input
+                id="register-birthday"
+                name="bday"
                 type="date"
+                autoComplete="bday"
                 value={form.birthday}
                 onChange={(e) => update('birthday', e.target.value)}
                 max={new Date().toISOString().slice(0, 10)}
@@ -175,6 +184,8 @@ export default function RegisterPage() {
                 出生時間（選填）
               </label>
               <input
+                id="register-birth-time"
+                name="birthTime"
                 type="time"
                 value={form.birthTime}
                 onChange={(e) => update('birthTime', e.target.value)}
@@ -186,6 +197,8 @@ export default function RegisterPage() {
             </p>
           </div>
           <input
+            id="register-referral-code"
+            name="referralCode"
             type="text"
             placeholder="推薦碼（選填）"
             value={form.referralCode}
@@ -195,6 +208,8 @@ export default function RegisterPage() {
 
           <label className="flex items-start gap-2 text-xs text-muted-foreground leading-relaxed cursor-pointer">
             <input
+              id="register-accept-terms"
+              name="acceptTerms"
               type="checkbox"
               checked={form.acceptTerms}
               onChange={(e) => update('acceptTerms', e.target.checked)}

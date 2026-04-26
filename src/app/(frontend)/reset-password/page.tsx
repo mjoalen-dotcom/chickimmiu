@@ -85,6 +85,8 @@ export default function ResetPasswordPage() {
         ) : (
           <form className="space-y-4" onSubmit={handleSubmit} noValidate>
             <input
+              id="reset-password-new"
+              name="password"
               type="password"
               placeholder="新密碼（至少 8 個字元）"
               autoComplete="new-password"
@@ -95,6 +97,8 @@ export default function ResetPasswordPage() {
               className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
             />
             <input
+              id="reset-password-confirm"
+              name="passwordConfirm"
               type="password"
               placeholder="再次輸入新密碼"
               autoComplete="new-password"

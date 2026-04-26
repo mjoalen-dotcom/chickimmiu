@@ -33,6 +33,25 @@ function resolveBaseUrl(request: Request): string {
 const LOOP_GUARD_COOKIE = '_ckmu_bridge_attempt'
 const LOOP_GUARD_MAX_AGE = 30 // 秒；> bridge → layout 來回時間，< 使用者重新嘗試的耐心
 
+// 把 NextAuth 寫過的 session cookie 全清掉。Auth.js v5 會把大 session 切 chunk
+// 寫成 `authjs.session-token.0` / `.1` 等；secure cookie 變體叫 `__Secure-authjs.session-token`。
+// 任一個損毀都會讓整個 session 解不開，所以全清，下次 OAuth 才能拿到乾淨的一份。
+function clearStaleAuthCookies(response: NextResponse, cookieHeader: string): NextResponse {
+  const candidates = new Set<string>()
+  for (const piece of cookieHeader.split(/;\s*/)) {
+    const eq = piece.indexOf('=')
+    if (eq <= 0) continue
+    const name = piece.slice(0, eq)
+    if (/^(?:__Secure-)?authjs\.session-token(?:\.\d+)?$/.test(name)) {
+      candidates.add(name)
+    }
+  }
+  for (const name of candidates) {
+    response.cookies.set({ name, value: '', path: '/', maxAge: 0 })
+  }
+  return response
+}
+
 export async function GET(request: Request) {
   const base = resolveBaseUrl(request)
   const url = new URL(request.url)
@@ -59,7 +78,21 @@ export async function GET(request: Request) {
     return failResponse
   }
 
-  const session = await nextAuth()
+  // `nextAuth()` 會在 session cookie 損毀（例如 AUTH_SECRET 換過、舊 chunk 殘留、跨部署遺留）
+  // 時拋出 JWTSessionError: Invalid Compact JWE。原本沒包 try/catch 會讓 bridge 直接 500 →
+  // 使用者看到的是中性的「跳回登入」沒有原因。捕捉後主動清掉所有 NextAuth 相關 cookie
+  // （含 chunk 變體 `.0` `.1`），導去 /login?error=session_invalid 並把原 redirect 帶回，
+  // 使用者重新點 OAuth 即可拿到全新乾淨的 session。
+  let session: Awaited<ReturnType<typeof nextAuth>> = null
+  try {
+    session = await nextAuth()
+  } catch (err) {
+    console.error('[auth/bridge] nextAuth() threw — clearing stale cookies', err)
+    return clearStaleAuthCookies(
+      NextResponse.redirect(new URL('/login?error=session_invalid&redirect=' + encodeURIComponent(next), base)),
+      cookieHeader,
+    )
+  }
   if (!session?.user?.email) {
     return NextResponse.redirect(new URL('/login?redirect=' + encodeURIComponent(next), base))
   }
