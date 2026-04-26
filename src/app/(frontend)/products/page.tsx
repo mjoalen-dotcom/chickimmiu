@@ -29,9 +29,12 @@ export default async function ProductsPage({
     try {
       const payload = await getPayload({ config })
 
-      // Fetch categories with parent populated
+      // Fetch categories with parent populated. Hide categories with
+      // isActive=false (admin "停用"). not_equals:false also keeps legacy
+      // rows where the field is null/undefined.
       const catResult = await payload.find({
         collection: 'categories',
+        where: { isActive: { not_equals: false } },
         limit: 100,
         sort: 'name',
         depth: 1,
