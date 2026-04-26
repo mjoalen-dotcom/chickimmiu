@@ -29,6 +29,24 @@ export const HomepageSettings: GlobalConfig = {
     ],
   },
   fields: [
+    // ── Hero 版型覆寫 ──
+    {
+      name: 'heroLayoutOverride',
+      label: 'Hero 版型覆寫',
+      type: 'select',
+      defaultValue: 'inherit',
+      admin: {
+        description: '保持「沿用主題」可讓主題（春/夏/秋/冬）切換時 hero 版型自動跟著換；若想固定某一版型不受主題影響，選下面 4 個之一。',
+      },
+      options: [
+        { label: '沿用主題設定', value: 'inherit' },
+        { label: 'Split — 左文右圖', value: 'split' },
+        { label: 'Editorial — 全幅 + 左下標題', value: 'editorial' },
+        { label: 'Cinematic — 全幅 + 中央 + 黑色 bar', value: 'cinematic' },
+        { label: 'Magazine — 全幅 + 金色細框', value: 'magazine' },
+      ],
+    },
+
     // ── 輪播橫幅 ──
     {
       name: 'heroBanners',

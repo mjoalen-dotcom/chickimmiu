@@ -46,6 +46,7 @@ import { Bundles } from './collections/Bundles'
 import { CollectibleCardTemplates } from './collections/CollectibleCardTemplates'
 import { CollectibleCards } from './collections/CollectibleCards'
 import { CollectibleCardEvents } from './collections/CollectibleCardEvents'
+import { SiteThemes } from './collections/SiteThemes'
 
 import { GlobalSettings } from './globals/GlobalSettings'
 import { LoyaltySettings } from './globals/LoyaltySettings'
@@ -239,6 +240,7 @@ export default buildConfig({
     CollectibleCards,
     CollectibleCardEvents,
     DailyHoroscopes,
+    SiteThemes,
   ],
   globals: [GlobalSettings, LoyaltySettings, ReferralSettings, PointRedemptionSettings, RecommendationSettings, CRMSettings, SegmentationSettings, MarketingAutomationSettings, InvoiceSettings, TaxSettings, GameSettings, HomepageSettings, AboutPageSettings, FAQPageSettings, PolicyPagesSettings, NavigationSettings, CheckoutSettings, OrderSettings],
   editor: lexicalEditor({

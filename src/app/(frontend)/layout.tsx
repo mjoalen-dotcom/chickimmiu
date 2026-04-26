@@ -20,6 +20,7 @@ import { ExitIntentPopup } from '@/components/recommendation/ExitIntentPopup'
 import { GTMScript } from '@/components/tracking/GTMScript'
 import { TrackingProvider } from '@/components/tracking/TrackingProvider'
 import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/seo/JsonLd'
+import { ThemeStyles } from '@/components/layout/ThemeStyles'
 
 const notoSansTC = Noto_Sans_TC({
   subsets: ['latin'],
@@ -192,6 +193,11 @@ export default async function FrontendLayout({
   return (
     <html lang="zh-Hant-TW" className={`${notoSansTC.variable} ${notoSerifTC.variable}`}>
       <head>
+        {/* Active SiteThemes preset → :root CSS variables. Sits at the very
+            top of <head> so the rest of the page renders with the right
+            tokens; falls back to globals.css :root values when no active
+            theme exists. */}
+        <ThemeStyles />
         {/* iOS Safari / iPad privacy hardening — MUST run before ANY other JS
             that touches storage. When the user enables "Block All Cookies",
             "Prevent Cross-Site Tracking", Lockdown Mode, or Private Browsing,

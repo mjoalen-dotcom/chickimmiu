@@ -5,7 +5,7 @@ import {
   ShoppingBag, Heart, Tag, Flame, Star, Package, Clock, Globe,
 } from 'lucide-react'
 import { HeroCarousel } from '@/components/home/HeroCarousel'
-import type { HeroSlide } from '@/components/home/HeroCarousel'
+import type { HeroSlide, HeroVariant } from '@/components/home/HeroCarousel'
 import { UGCGallery } from '@/components/ugc/UGCGallery'
 import { getPayload } from 'payload'
 import { getMediaUrl, normalizeMediaUrl } from '@/lib/media-url'
@@ -32,6 +32,7 @@ function getProductImage(product: Record<string, unknown>): string | undefined {
 async function fetchHomeData() {
   const defaults = {
     homepage: null as Record<string, unknown> | null,
+    activeTheme: null as Record<string, unknown> | null,
     newProducts: [] as Record<string, unknown>[],
     hotProducts: [] as Record<string, unknown>[],
     heroBanners: [] as string[],
@@ -49,6 +50,20 @@ async function fetchHomeData() {
       homepage = await payload.findGlobal({ slug: 'homepage-settings', depth: 2 }) as unknown as Record<string, unknown>
     } catch {
       // Global may not exist yet (first run before migration)
+    }
+
+    // Fetch active site theme (for hero variant + layout heights)
+    let activeTheme: Record<string, unknown> | null = null
+    try {
+      const themeResult = await payload.find({
+        collection: 'site-themes',
+        where: { isActive: { equals: true } },
+        limit: 1,
+        depth: 0,
+      })
+      activeTheme = (themeResult.docs[0] as unknown as Record<string, unknown>) || null
+    } catch {
+      // Collection may not exist yet (first run before migration) — fall back to defaults
     }
 
     const newLimit = (homepage?.newProductsSection as Record<string, unknown>)?.limit as number || 8
@@ -89,14 +104,14 @@ async function fetchHomeData() {
       } catch { /* blog collection may be empty */ }
     }
 
-    return { homepage, newProducts, hotProducts, heroBanners, blogPosts }
+    return { homepage, activeTheme, newProducts, hotProducts, heroBanners, blogPosts }
   } catch {
     return defaults
   }
 }
 
 export default async function HomePage() {
-  const { homepage, newProducts, hotProducts, heroBanners, blogPosts } = await fetchHomeData()
+  const { homepage, activeTheme, newProducts, hotProducts, heroBanners, blogPosts } = await fetchHomeData()
 
   // ── CMS Hero Slides ──
   const cmsBanners = homepage?.heroBanners as Array<Record<string, unknown>> | undefined
@@ -109,6 +124,21 @@ export default async function HomePage() {
         ctaText: b.ctaText as string | undefined,
       })).filter((s) => s.image)
     : undefined
+
+  // ── Hero variant resolution ──
+  // 優先序：HomepageSettings.heroLayoutOverride > activeTheme.heroLayout > 'split'
+  const validVariants: HeroVariant[] = ['split', 'editorial', 'cinematic', 'magazine']
+  const overrideRaw = homepage?.heroLayoutOverride as string | undefined
+  const themeLayout = activeTheme?.heroLayout as string | undefined
+  const heroVariant: HeroVariant =
+    overrideRaw && overrideRaw !== 'inherit' && validVariants.includes(overrideRaw as HeroVariant)
+      ? (overrideRaw as HeroVariant)
+      : themeLayout && validVariants.includes(themeLayout as HeroVariant)
+        ? (themeLayout as HeroVariant)
+        : 'split'
+
+  const heroMinDesktop = (activeTheme?.heroMinHeightDesktop as number | undefined)
+  const heroMinMobile = (activeTheme?.heroMinHeightMobile as number | undefined)
 
   // ── Quick Menu ──
   const cmsQuickMenu = homepage?.quickMenu as Array<Record<string, unknown>> | undefined
@@ -165,7 +195,13 @@ export default async function HomePage() {
   return (
     <main>
       {/* ── Hero Carousel ── */}
-      <HeroCarousel banners={heroBanners} slides={heroSlides} />
+      <HeroCarousel
+        banners={heroBanners}
+        slides={heroSlides}
+        variant={heroVariant}
+        minHeightDesktop={heroMinDesktop}
+        minHeightMobile={heroMinMobile}
+      />
 
       {/* ── 快速選單 ── */}
       <section className="bg-white border-b border-cream-200">

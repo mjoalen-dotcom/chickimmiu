@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss'
+import tailwindcssAnimate from 'tailwindcss-animate'
 
 /**
  * CHIC KIM & MIU Tailwind 設定
@@ -40,6 +41,17 @@ const config: Config = {
           100: '#FBEDE8',
           200: '#F6D7CD',
           300: '#EFBBAA',
+        },
+        // 主題 token（runtime 由 SiteThemes active doc 注入 :root，
+        // 預設 fallback 在 src/app/(frontend)/globals.css :root）
+        // 用 RGB channel + <alpha-value> 形式以支援 bg-brand-primary/40 等 alpha
+        brand: {
+          primary: 'rgb(var(--theme-primary) / <alpha-value>)',
+          accent: 'rgb(var(--theme-accent) / <alpha-value>)',
+          surface: 'rgb(var(--theme-surface) / <alpha-value>)',
+          ink: 'rgb(var(--theme-ink) / <alpha-value>)',
+          'on-primary': 'rgb(var(--theme-on-primary) / <alpha-value>)',
+          'on-accent': 'rgb(var(--theme-on-accent) / <alpha-value>)',
         },
         // shadcn/ui 語意色
         border: 'hsl(var(--border))',
@@ -106,7 +118,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [tailwindcssAnimate],
 }
 
 export default config
