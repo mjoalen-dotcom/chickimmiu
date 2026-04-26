@@ -9,8 +9,10 @@
  *   node scripts/pack-image-downloader.mjs
  *
  * 何時要重跑：
- *   - tools/image-downloader/ 底下任何檔案改動後（程式 / README）
- *   - 因為 zip 是 binary，git diff 看不出來，所以改完源碼順手跑這個腳本再 commit
+ *   - 通常不用手動跑 — `.githooks/pre-commit` 偵測到 tools/image-downloader/
+ *     有改動會自動跑這個腳本並把產出 zip 加進 commit。
+ *   - 想單獨打包做測試、或 hook 被 SKIP_IMAGE_DOWNLOADER_PACK=1 / --no-verify 跳過時，
+ *     再手動跑這支。
  *
  * 跨平台：
  *   - Windows：用內建 PowerShell Compress-Archive（不用裝額外工具）
