@@ -24,7 +24,7 @@ export function CookieConsentBanner({
   const text =
     bannerText ||
     '本網站使用 Cookie 以提供更好的瀏覽體驗與個人化推薦。繼續使用即表示您同意我們的 Cookie 政策。'
-  const privacyUrl = privacyPolicyUrl || '/privacy'
+  const privacyUrl = privacyPolicyUrl || '/privacy-policy'
   const btnText = acceptButtonText || '我知道了'
 
   useEffect(() => {

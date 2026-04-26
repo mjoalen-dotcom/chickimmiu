@@ -1627,7 +1627,7 @@ export default function CheckoutPage() {
                         服務條款
                       </Link>
                       與
-                      <Link href="/privacy" className="text-gold-600 hover:underline mx-0.5">
+                      <Link href="/privacy-policy" className="text-gold-600 hover:underline mx-0.5">
                         隱私權政策
                       </Link>
                     </span>
@@ -1664,7 +1664,7 @@ export default function CheckoutPage() {
                       服務條款
                     </Link>
                     與
-                    <Link href="/privacy" className="text-gold-600 hover:underline mx-0.5">
+                    <Link href="/privacy-policy" className="text-gold-600 hover:underline mx-0.5">
                       隱私權政策
                     </Link>
                   </p>
