@@ -7,21 +7,22 @@ import type { AdminViewServerProps } from 'payload'
  * ─────────────────────
  * 後台使用說明頁，集中所有「怎麼用」的操作指引與完整的站台架構地圖。
  *
- * 結構（14 節）：
+ * 結構（15 節）：
  *   1. 網站架構總覽        — 34 collections + 15 globals 分域
  *   2. 首次上線 checklist  — go-live 前必檢項目
  *   3. 權限與角色
  *   4. 媒體上傳規則
  *   5. 相簿 / 資料夾分類
- *   6. 商品圖整批上傳（開發中）
- *   7. 商品列表批次操作
- *   8. 會員等級 & 點數系統
- *   9. 訂單管理流程
- *   10. 行銷 & CRM 自動化
- *   11. 內容管理
- *   12. 遊戲系統
- *   13. 發票 & 稅務
- *   14. 常見問題排障
+ *   6. 從供應商網站抓圖    — Python CLI + /api/media/import-from-supplier
+ *   7. 商品圖整批上傳（開發中）
+ *   8. 商品列表批次操作
+ *   9. 會員等級 & 點數系統
+ *   10. 訂單管理流程
+ *   11. 行銷 & CRM 自動化
+ *   12. 內容管理
+ *   13. 遊戲系統
+ *   14. 發票 & 稅務
+ *   15. 常見問題排障
  *
  * 對應程式：
  *   - src/collections/Media.ts beforeChange 驗證
@@ -416,8 +417,163 @@ const blocks: Block[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════
-  // 6. 商品圖整批上傳
+  // 6. 從供應商網站抓圖（Python CLI + /api/media/import-from-supplier）
   // ══════════════════════════════════════════════════════════════════════
+  {
+    title: '從供應商網站抓圖（Sinsang / 1688 / 自家後台）',
+    body: (
+      <>
+        <p style={pStyle}>
+          針對「供應商給的圖片要先抓下來再上架」這個常見痛點，後台提供一支 <strong>Python 命令列工具</strong>，
+          可從韓國 sinsangmarket、中國 1688 / Alibaba、自家 chickimmiu PDP 等網頁批量抓圖、自動分類成
+          主圖 / 細節圖，產出 <code style={codeStyle}>manifest.json</code> 後可一鍵餵進 Media。
+        </p>
+
+        <div
+          style={{
+            display: 'flex',
+            gap: 12,
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            marginTop: 16,
+            marginBottom: 16,
+          }}
+        >
+          <a
+            href="/downloads/image-downloader.zip"
+            download
+            style={{
+              display: 'inline-block',
+              padding: '10px 20px',
+              background: 'var(--theme-success-500, #16a34a)',
+              color: '#fff',
+              borderRadius: 8,
+              fontWeight: 600,
+              textDecoration: 'none',
+              fontSize: 14,
+            }}
+          >
+            ⬇ 下載工具（image-downloader.zip）
+          </a>
+          <span style={{ fontSize: 12, color: 'var(--theme-elevation-500, #888)' }}>
+            約 23 KB · 4 個檔案 · 需要 Python 3.9+
+          </span>
+        </div>
+
+        <h3 style={h3Style}>第一次安裝（約 5 分鐘）</h3>
+        <ol style={ulStyle}>
+          <li>下載 zip 並解壓到電腦，例如桌面 <code style={codeStyle}>image-downloader/</code>。</li>
+          <li>
+            確認電腦有 Python 3.9 以上：打開命令提示字元 / Terminal，跑
+            <code style={codeStyle}>python --version</code>。沒有的話到{' '}
+            <a href="https://www.python.org/downloads/" target="_blank" rel="noopener noreferrer">
+              python.org
+            </a>{' '}
+            下載安裝（Windows 安裝精靈第一步記得勾「Add Python to PATH」）。
+          </li>
+          <li>
+            進到解壓後的資料夾，跑：
+            <pre style={{ ...pStyle, ...codeStyle, padding: 12, overflow: 'auto', fontSize: 12 }}>
+{`python -m venv .venv
+.venv\\Scripts\\activate          # Windows
+# 或 source .venv/bin/activate   # macOS / Linux
+pip install -r requirements.txt`}
+            </pre>
+          </li>
+        </ol>
+
+        <h3 style={h3Style}>抓單一商品頁</h3>
+        <pre style={{ ...pStyle, ...codeStyle, padding: 12, overflow: 'auto', fontSize: 12 }}>
+{`python image_downloader.py -u https://www.chickimmiu.com/products/<slug>`}
+        </pre>
+        <p style={pStyle}>
+          圖會下載到當下資料夾的 <code style={codeStyle}>downloads/&lt;頁面 slug&gt;/</code>，
+          並產出 <code style={codeStyle}>manifest.json</code>（含每張圖的解析度、分類、md5）。
+        </p>
+
+        <h3 style={h3Style}>批次抓多個商品</h3>
+        <p style={pStyle}>
+          新增一個 <code style={codeStyle}>urls.txt</code>，每行一個 URL（# 開頭視為註解）：
+        </p>
+        <pre style={{ ...pStyle, ...codeStyle, padding: 12, overflow: 'auto', fontSize: 12 }}>
+{`# 第一波春夏新品
+https://sinsangmarket.kr/item/100001
+https://sinsangmarket.kr/item/100002
+https://detail.1688.com/offer/700123456789.html`}
+        </pre>
+        <pre style={{ ...pStyle, ...codeStyle, padding: 12, overflow: 'auto', fontSize: 12 }}>
+{`python image_downloader.py -f urls.txt -o downloads/2026-spring/ --sharpen`}
+        </pre>
+
+        <h3 style={h3Style}>抓完之後一鍵上傳 Media</h3>
+        <p style={pStyle}>
+          檢查 <code style={codeStyle}>downloads/</code> 裡的圖、刪掉不要的之後，
+          用同捆的 <code style={codeStyle}>upload_to_payload.py</code> 全傳到後台 Media：
+        </p>
+        <pre style={{ ...pStyle, ...codeStyle, padding: 12, overflow: 'auto', fontSize: 12 }}>
+{`python upload_to_payload.py \\
+  --base-url https://www.chickimmiu.com \\
+  --email <你的後台 email> \\
+  --password <密碼> \\
+  --manifest downloads/2026-spring/manifest.json \\
+  --categories main,detail`}
+        </pre>
+        <p style={pStyle}>
+          <strong>斷點續傳</strong>：中途斷線重跑同樣指令會自動跳過已上傳的；紀錄寫在
+          <code style={codeStyle}>uploaded.json</code>。傳完每張圖會在
+          <strong>媒體資源 → Media</strong> 列表出現，<code style={codeStyle}>folder</code> 欄位
+          自動填成商品頁的 slug，方便用相簿名稱篩選。
+        </p>
+
+        <h3 style={h3Style}>進階：直接後台貼 URL（不需要本機 Python）</h3>
+        <p style={pStyle}>
+          後台另提供 <code style={codeStyle}>POST /api/media/import-from-supplier</code> endpoint，
+          admin 帳號可從 DevTools console 直接呼叫：
+        </p>
+        <pre style={{ ...pStyle, ...codeStyle, padding: 12, overflow: 'auto', fontSize: 12 }}>
+{`fetch('/api/media/import-from-supplier', {
+  method: 'POST',
+  credentials: 'include',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    url: 'https://www.chickimmiu.com/products/<slug>',
+    maxImages: 30,
+    dryRun: true,    // 先預覽不實際入庫；確認後改 false 再跑一次
+  })
+}).then(r => r.json()).then(console.log)`}
+        </pre>
+        <p style={pStyle}>
+          <strong>注意</strong>：被 Cloudflare bot challenge 保護的站（sinsangmarket、部分 1688）
+          伺服器端會 403 抓不到，請改走上面命令列路線從你的瀏覽器 cookie 抓。
+        </p>
+
+        <h3 style={h3Style}>故障排除</h3>
+        <ul style={ulStyle}>
+          <li>
+            <strong><code style={codeStyle}>[Empty] xxx 沒有抽到任何圖片</code></strong>
+            ——多半是 SPA 動態載入，或需要登入。前者改用 Playwright（README 有教），
+            後者請從瀏覽器 DevTools → Cookies 拷出來。
+          </li>
+          <li>
+            <strong>大量 <code style={codeStyle}>[HTTP 403]</code></strong>
+            ——降低 <code style={codeStyle}>--workers</code> 到 2-3，部分 CDN 對並發很敏感。
+          </li>
+          <li>
+            <strong>圖片解析度不夠</strong> —— 加
+            <code style={codeStyle}>--upscale 1600 --sharpen</code> 把短邊放大到 1600px + 銳利化。
+          </li>
+          <li>
+            其他問題請看 zip 內 <code style={codeStyle}>README.md</code> 的 FAQ 與已知限制章節。
+          </li>
+        </ul>
+      </>
+    ),
+  },
+
+  // ══════════════════════════════════════════════════════════════════════
+  // 7. 商品圖整批上傳
+  // ══════════════════════════════════════════════════════════════════════
+  // (留為原 section 7 — 拖曳資料夾批次上傳，仍開發中)
   {
     title: '商品圖整批上傳（資料夾拖曳）',
     body: (
@@ -456,7 +612,7 @@ const blocks: Block[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════
-  // 7. 商品列表批次操作
+  // 8. 商品列表批次操作
   // ══════════════════════════════════════════════════════════════════════
   {
     title: '商品列表批次操作',
@@ -508,7 +664,7 @@ const blocks: Block[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════
-  // 8. 會員等級 & 點數系統
+  // 9. 會員等級 & 點數系統
   // ══════════════════════════════════════════════════════════════════════
   {
     title: '會員等級 & 點數系統',
@@ -595,7 +751,7 @@ const blocks: Block[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════
-  // 9. 訂單管理流程
+  // 10. 訂單管理流程
   // ══════════════════════════════════════════════════════════════════════
   {
     title: '訂單管理流程',
@@ -661,7 +817,7 @@ const blocks: Block[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════
-  // 10. 行銷 & CRM 自動化
+  // 11. 行銷 & CRM 自動化
   // ══════════════════════════════════════════════════════════════════════
   {
     title: '行銷 & CRM 自動化',
@@ -730,7 +886,7 @@ const blocks: Block[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════
-  // 11. 內容管理
+  // 12. 內容管理
   // ══════════════════════════════════════════════════════════════════════
   {
     title: '內容管理',
@@ -800,7 +956,7 @@ const blocks: Block[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════
-  // 12. 遊戲系統
+  // 13. 遊戲系統
   // ══════════════════════════════════════════════════════════════════════
   {
     title: '遊戲系統',
@@ -846,7 +1002,7 @@ const blocks: Block[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════
-  // 13. 發票 & 稅務
+  // 14. 發票 & 稅務
   // ══════════════════════════════════════════════════════════════════════
   {
     title: '發票 & 稅務',
@@ -887,7 +1043,7 @@ const blocks: Block[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════
-  // 14. 常見問題排障
+  // 15. 常見問題排障
   // ══════════════════════════════════════════════════════════════════════
   {
     title: '常見問題排障',
