@@ -101,7 +101,7 @@ async function seedDemo() {
         subtotal: orderSubtotal,
         total: orderSubtotal + 100,
         shippingFee: 100,
-        status: 'completed',
+        status: 'delivered',
         paymentStatus: 'paid',
         shippingAddress: {
           recipientName: 'Demo 客戶',
