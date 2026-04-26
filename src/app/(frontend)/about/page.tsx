@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { Heart, Sparkles, Globe2, Users, ShieldCheck, Truck, Star, Gift, Gem, Trophy } from 'lucide-react'
 import { getMediaUrl } from '@/lib/media-url'
+import LegacyGallery from './LegacyGallery'
 
 /* ── Icon Map ── */
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -253,23 +254,7 @@ export default async function AboutPage() {
                 </p>
               )}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {galleryImages.map((img, i) => (
-                <div
-                  key={`${img.src}-${i}`}
-                  className="relative aspect-square overflow-hidden rounded-lg bg-[#F5EFE8] group"
-                >
-                  <Image
-                    src={img.src}
-                    alt={img.alt || `CKMU 品牌相簿 ${i + 1}`}
-                    fill
-                    unoptimized
-                    sizes="(min-width: 1024px) 20vw, (min-width: 640px) 33vw, 50vw"
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
-              ))}
-            </div>
+            <LegacyGallery images={galleryImages} />
           </section>
         )}
 
