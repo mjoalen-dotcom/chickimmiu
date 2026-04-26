@@ -555,7 +555,9 @@ export const importFromSupplierEndpoint: Endpoint = {
           collection: 'media',
           data: {
             alt: d.cand.alt || stem,
-            folder,
+            // 寫入文字標籤；真資料夾 (Payload native folders) 留給 admin 後手動分類
+            // 或未來在 PR2 加上「自動建立同名資料夾並關聯」的邏輯
+            folderName: folder,
           },
           file: {
             name: filename,

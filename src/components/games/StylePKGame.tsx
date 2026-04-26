@@ -244,7 +244,8 @@ export function StylePKGame({ settings }: Props) {
         '_payload',
         JSON.stringify({
           alt: caption.slice(0, 60) || '穿搭 PK 投稿',
-          folder: 'ugc/style-pk',
+          // 文字標籤；real folder 關聯由 admin 手動指派或後續 PR 自動化
+          folderName: 'ugc/style-pk',
         }),
       )
       const upRes = await fetch('/api/media', {
