@@ -145,11 +145,50 @@ p, span, div, h1, h2, h3, h4, h5, h6, li, td, th, label, a {
   box-shadow: 2px 0 12px rgba(0, 0, 0, 0.18) !important;
 }
 
-// Prevent the app-header (44px high, z-index:30) from clipping nav groups.
-// The <aside.nav> is position:sticky top:0 — shift it below the header.
-aside.nav {
+// ─── N2: NAV FIXED POSITION（避免點 nav 後頁面跳動 / 整條 nav 跟著捲）────
+// Payload v3 default 把 aside.nav 設成 position:sticky；當不同 collection
+// 列表高度不一致 / scrollbar 出現消失，會造成（A）整頁向上跳到舊 scrollTop
+// （B）nav 看似跟著 main scroll（C）240px 內容寬度水平 jitter。
+// 改成 fixed 永遠釘在視窗左側，main 補 margin-left 240px，加 scrollbar-gutter
+// 一次解 ABC 三種 case。
+aside.nav,
+.template-default__nav {
+  position: fixed !important;
   top: 44px !important;
+  left: 0 !important;
+  width: var(--nav-width) !important;
   height: calc(100vh - 44px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  z-index: 25 !important; // < app-header(30) 防蓋 logo
+}
+
+// Main / 內容區補回 240px 空缺；強制 block 排版避免 grid/flex 殘餘
+// 把 fixed aside 視為 0 寬時把 main 拉滿全寬。
+.template-default {
+  display: block !important;
+}
+
+.template-default__wrap,
+.template-default__main,
+main.template-default__main {
+  margin-left: var(--nav-width) !important;
+  width: calc(100% - var(--nav-width)) !important;
+  max-width: calc(100% - var(--nav-width)) !important;
+  box-sizing: border-box !important;
+}
+
+// 防 vertical scrollbar 進出造成水平 jitter
+html {
+  scrollbar-gutter: stable;
+}
+
+// App header 也要避開 nav 區
+.app-header,
+.template-default__header,
+header.app-header {
+  margin-left: var(--nav-width) !important;
+  width: calc(100% - var(--nav-width)) !important;
 }
 
 // Nav header / brand area
