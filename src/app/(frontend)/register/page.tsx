@@ -23,6 +23,7 @@ export default function RegisterPage() {
     email: '',
     password: '',
     birthday: '',
+    birthTime: '',
     referralCode: '',
     acceptTerms: false,
   })
@@ -49,6 +50,7 @@ export default function RegisterPage() {
           birthday: form.birthday
             ? new Date(form.birthday).toISOString()
             : undefined,
+          birthTime: form.birthTime || undefined,
           referralCode: form.referralCode.trim() || undefined,
           acceptTerms: form.acceptTerms,
         }),
@@ -155,17 +157,33 @@ export default function RegisterPage() {
             onChange={(e) => update('password', e.target.value)}
             className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
           />
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
-              生日（選填，用於生日禮與生日月優惠）
-            </label>
-            <input
-              type="date"
-              value={form.birthday}
-              onChange={(e) => update('birthday', e.target.value)}
-              max={new Date().toISOString().slice(0, 10)}
-              className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                生日（選填）
+              </label>
+              <input
+                type="date"
+                value={form.birthday}
+                onChange={(e) => update('birthday', e.target.value)}
+                max={new Date().toISOString().slice(0, 10)}
+                className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                出生時間（選填）
+              </label>
+              <input
+                type="time"
+                value={form.birthTime}
+                onChange={(e) => update('birthTime', e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
+              />
+            </div>
+            <p className="col-span-2 text-[11px] text-muted-foreground -mt-2">
+              用於生日禮、生日月優惠，以及更精準的星座／占星推算（不確定請留白）
+            </p>
           </div>
           <input
             type="text"

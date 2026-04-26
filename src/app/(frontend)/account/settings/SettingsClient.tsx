@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { User, Mail, Phone, Calendar, Lock, Ruler, FileText } from 'lucide-react'
+import { User, Mail, Phone, Calendar, Clock, Lock, Ruler, FileText } from 'lucide-react'
 
 export type SettingsInitial = {
   userId: string
@@ -11,6 +11,7 @@ export type SettingsInitial = {
   email: string
   phone: string
   birthday: string
+  birthTime: string
   bodyProfile: {
     height: string
     weight: string
@@ -50,6 +51,7 @@ export default function SettingsClient({ initial }: { initial: SettingsInitial }
     name: initial.name,
     phone: initial.phone,
     birthday: initial.birthday,
+    birthTime: initial.birthTime,
   })
   const [body, setBody] = useState({ ...initial.bodyProfile })
   const [invoice, setInvoice] = useState({ ...initial.invoiceInfo })
@@ -62,6 +64,10 @@ export default function SettingsClient({ initial }: { initial: SettingsInitial }
       name: form.name.trim(),
       phone: strOrNull(form.phone),
       birthday: form.birthday ? new Date(form.birthday).toISOString() : null,
+      birthTime:
+        form.birthTime && /^([01]\d|2[0-3]):[0-5]\d$/.test(form.birthTime)
+          ? form.birthTime
+          : null,
       bodyProfile: {
         height: numOrNull(body.height),
         weight: numOrNull(body.weight),
@@ -149,7 +155,23 @@ export default function SettingsClient({ initial }: { initial: SettingsInitial }
                 type="date"
                 value={form.birthday}
                 onChange={(e) => setForm({ ...form, birthday: e.target.value })}
+                max={new Date().toISOString().slice(0, 10)}
                 className={inputCls}
+              />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>
+              出生時間（選填，更精準的星座推算用）
+            </label>
+            <div className="flex items-center gap-2">
+              <Clock size={14} className="text-muted-foreground shrink-0" />
+              <input
+                type="time"
+                value={form.birthTime}
+                onChange={(e) => setForm({ ...form, birthTime: e.target.value })}
+                className={inputCls}
+                placeholder="HH:mm"
               />
             </div>
           </div>
