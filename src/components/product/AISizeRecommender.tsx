@@ -181,9 +181,13 @@ export function AISizeRecommender({ availableSizes, onSizeSelect, productCategor
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] text-muted-foreground">身高（cm）</label>
+                  <label htmlFor="ai-size-height" className="text-[10px] text-muted-foreground">身高（cm）</label>
                   <input
+                    id="ai-size-height"
+                    name="height"
                     type="number"
+                    inputMode="numeric"
+                    autoComplete="off"
                     value={height}
                     onChange={(e) => setHeight(e.target.value)}
                     placeholder="165"
@@ -193,9 +197,13 @@ export function AISizeRecommender({ availableSizes, onSizeSelect, productCategor
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-muted-foreground">體重（kg）</label>
+                  <label htmlFor="ai-size-weight" className="text-[10px] text-muted-foreground">體重（kg）</label>
                   <input
+                    id="ai-size-weight"
+                    name="weight"
                     type="number"
+                    inputMode="numeric"
+                    autoComplete="off"
                     value={weight}
                     onChange={(e) => setWeight(e.target.value)}
                     placeholder="55"
@@ -207,8 +215,10 @@ export function AISizeRecommender({ availableSizes, onSizeSelect, productCategor
               </div>
 
               <div>
-                <label className="text-[10px] text-muted-foreground">身形（選填）</label>
+                <label htmlFor="ai-size-body-shape" className="text-[10px] text-muted-foreground">身形（選填）</label>
                 <select
+                  id="ai-size-body-shape"
+                  name="bodyShape"
                   value={bodyShape}
                   onChange={(e) => setBodyShape(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-cream-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gold-400/40"
