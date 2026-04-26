@@ -911,17 +911,6 @@ input.rs__input,
 .template-minimal__content h1,
 .template-minimal__content h2 {
   color: var(--color-brand-navy) !important;
-
-  &::before {
-    content: 'CHIC KIM & MIU';
-    display: block;
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--color-brand-gold);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
 }
 
 // ─── Media Uploads ──────────────────────────────────────────────────
