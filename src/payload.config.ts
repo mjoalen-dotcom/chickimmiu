@@ -172,6 +172,7 @@ export default buildConfig({
         '@/components/admin/MemberAnalyticsNavLink',
         '@/components/admin/RepeatPurchaseNavLink',
         '@/components/admin/AdminStyles',
+        '@/components/admin/NavScrollPersist',
       ],
       views: {
         help: {
