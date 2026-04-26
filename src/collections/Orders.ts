@@ -1,6 +1,7 @@
 import type { CollectionConfig, Access, Where } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
+import { createExportEndpoint, type FieldMapping } from '../endpoints/importExport'
 import { orderCreditScoreHook } from '../lib/crm/creditScoreHooks'
 import { autoIssueInvoiceForOrder } from '../lib/invoice/ecpayInvoiceEngine'
 import { sendOrderConfirmationEmail } from '../lib/email/orderConfirmation'
@@ -32,6 +33,43 @@ const readOwnOrReferral: Access = ({ req: { user } }) => {
   return { customer: { equals: user.id } }
 }
 
+const orderFieldMappings: FieldMapping[] = [
+  // 識別
+  { key: 'orderNumber', label: '訂單編號' },
+  { key: 'createdAt', label: '建立時間' },
+  { key: 'status', label: '訂單狀態' },
+  // 顧客（depth 預設 2 會 populate customer relationship）
+  { key: 'customer.email', label: '顧客 Email' },
+  { key: 'customer.name', label: '顧客姓名' },
+  // 收件
+  { key: 'shippingAddress.recipientName', label: '收件人' },
+  { key: 'shippingAddress.phone', label: '收件電話' },
+  { key: 'shippingAddress.zipCode', label: '郵遞區號' },
+  { key: 'shippingAddress.city', label: '縣市' },
+  { key: 'shippingAddress.district', label: '鄉鎮區' },
+  { key: 'shippingAddress.address', label: '詳細地址' },
+  // 金額
+  { key: 'subtotal', label: '商品小計' },
+  { key: 'shippingFee', label: '運費' },
+  { key: 'codFee', label: 'COD 手續費' },
+  { key: 'discountAmount', label: '折扣金額' },
+  { key: 'taxAmount', label: '稅額' },
+  { key: 'total', label: '訂單總額' },
+  // 付款
+  { key: 'paymentMethod', label: '付款方式' },
+  { key: 'paymentStatus', label: '付款狀態' },
+  { key: 'paymentTransactionId', label: '金流交易編號' },
+  // 物流
+  { key: 'shippingMethod.methodName', label: '配送方式' },
+  { key: 'shippingMethod.carrier', label: '物流商' },
+  { key: 'trackingNumber', label: '託運單號' },
+  // 優惠
+  { key: 'couponCode', label: '優惠碼' },
+  // 備註
+  { key: 'customerNote', label: '顧客備註' },
+  { key: 'adminNote', label: '管理備註' },
+]
+
 export const Orders: CollectionConfig = {
   slug: 'orders',
   admin: {
@@ -44,6 +82,9 @@ export const Orders: CollectionConfig = {
       beforeListTable: [
         {
           path: '@/components/admin/OrderToolsPanel',
+        },
+        {
+          path: '@/components/admin/OrderExportButton',
         },
       ],
     },
@@ -379,6 +420,7 @@ export const Orders: CollectionConfig = {
     },
   ],
   timestamps: true,
+  endpoints: [createExportEndpoint('orders', orderFieldMappings)],
   hooks: {
     // ── 訂單編號自動產生（beforeValidate 以確保 required 驗證前已有值） ──
     // 若 caller（checkout / admin）已傳入 orderNumber 則尊重，不覆寫。
