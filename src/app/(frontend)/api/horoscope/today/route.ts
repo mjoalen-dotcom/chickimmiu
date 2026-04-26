@@ -6,6 +6,7 @@ import config from '@payload-config'
 import { getSeedHoroscope } from '@/lib/horoscope/seed'
 import { generateViaGroq } from '@/lib/horoscope/groq'
 import type { HoroscopeContent } from '@/lib/horoscope/types'
+import { normalizeMediaUrl } from '@/lib/media-url'
 import {
   getZodiacFromBirthday,
   normalizeGender,
@@ -214,7 +215,7 @@ async function matchProducts(payload: any, styleKeywords: string[]): Promise<Mat
           ],
         },
         limit: want,
-        depth: 1,
+        depth: 2,
         overrideAccess: true,
       })
       const matched = result.docs.map(toMatchedProduct)
@@ -228,7 +229,7 @@ async function matchProducts(payload: any, styleKeywords: string[]): Promise<Mat
         },
         sort: '-createdAt',
         limit: want - matched.length,
-        depth: 1,
+        depth: 2,
         overrideAccess: true,
       })
       const filled: MatchedProduct[] = [...matched, ...fillResult.docs.map(toMatchedProduct)]
@@ -253,15 +254,20 @@ async function matchProducts(payload: any, styleKeywords: string[]): Promise<Mat
 
 function toMatchedProduct(p: unknown): MatchedProduct {
   const r = p as Record<string, unknown>
-  const featured = r.featuredImage as Record<string, unknown> | null | undefined
+  // Mirror /products listing: prefer images[0].image, fall back to featuredImage.
+  // Most CKMU products only populate `images` (admin description even says
+  // featuredImage falls back to first gallery image). Run through normalizeMediaUrl
+  // to rewrite /api/media/file/* → /media/* (CF Tunnel can't proxy Payload binaries).
+  const images = r.images as Array<{ image?: { url?: string } }> | undefined
+  const firstGalleryUrl = images?.[0]?.image?.url
+  const featured = r.featuredImage as { url?: string } | null | undefined
+  const rawUrl = firstGalleryUrl ?? featured?.url ?? null
   return {
     id: r.id as string | number,
     name: String(r.name ?? '—'),
     slug: String(r.slug ?? ''),
     price: Number(r.price ?? 0),
     salePrice: r.salePrice == null ? null : Number(r.salePrice),
-    imageUrl: featured && typeof featured === 'object'
-      ? (featured.url as string | undefined) ?? null
-      : null,
+    imageUrl: normalizeMediaUrl(rawUrl) ?? null,
   }
 }
