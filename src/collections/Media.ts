@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url'
 
 import { isAdmin } from '../access/isAdmin'
 import { revalidateMedia } from '../lib/revalidate'
+import { importFromSupplierEndpoint } from '../endpoints/importFromSupplier'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -34,6 +35,7 @@ export const Media: CollectionConfig = {
     update: ({ req: { user } }) => Boolean(user),
     delete: isAdmin,
   },
+  endpoints: [importFromSupplierEndpoint],
   hooks: {
     // 上傳驗證：白名單 MIME、大小上限、禁路徑字元
     //   - 替 Payload 的 mimeTypes 做二次校驗（防 multipart 偽造）

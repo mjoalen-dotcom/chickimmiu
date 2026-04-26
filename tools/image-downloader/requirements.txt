@@ -1,0 +1,7 @@
+# 電商產品圖片快速下載工具 — 依賴清單
+# Python 3.9+
+
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+Pillow>=10.0.0
+tqdm>=4.66.0
