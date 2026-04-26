@@ -4,7 +4,7 @@ import { headers as nextHeaders } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { Crown, Coins, Wallet, TrendingUp, Gamepad2, ArrowRight, Package, Ticket, Truck, Gift, Sparkles, Award, Gem, Layers } from 'lucide-react'
+import { Crown, Coins, Wallet, TrendingUp, Gamepad2, ArrowRight, Package, Ticket, Truck, Gift, Sparkles, Award, Gem, Layers, Receipt } from 'lucide-react'
 import { CreditScoreCard } from '@/components/account/CreditScoreCard'
 import AccountAvatarUpload from '@/components/account/AccountAvatarUpload'
 import { HoroscopeBlock } from '@/components/account/HoroscopeBlock'
@@ -44,13 +44,37 @@ const STATUS_LABEL: Record<string, string> = {
   refunded: '已退款',
 }
 
+const POINTS_SOURCE_LABEL: Record<string, string> = {
+  purchase: '購買',
+  review: '評價',
+  referral: '推薦',
+  birthday: '生日',
+  monthly_bonus: '月度獎勵',
+  game: '遊戲',
+  redemption: '兌換',
+  order_refund: '訂單退款',
+  admin: '管理員調整',
+  points_expiry: '點數過期',
+  welcome: '歡迎禮',
+  tier_upgrade: '升等贈點',
+  card_burn: '銷毀造型卡',
+}
+
+const POINTS_TYPE_LABEL: Record<string, string> = {
+  earn: '獲得',
+  redeem: '兌換',
+  expire: '過期',
+  admin_adjust: '管理員調整',
+  refund_deduct: '退款扣回',
+}
+
 export default async function AccountPage() {
   const payload = await getPayload({ config })
   const headersList = await nextHeaders()
   const { user: sessionUser } = await payload.auth({ headers: headersList })
   if (!sessionUser) redirect('/login?redirect=/account')
 
-  const [userDoc, tiersResult, ordersResult, badgesResult, treasuresResult] = await Promise.all([
+  const [userDoc, tiersResult, ordersResult, badgesResult, treasuresResult, pointsTxnsResult] = await Promise.all([
     payload.findByID({ collection: 'users', id: sessionUser.id, depth: 1 }),
     payload.find({ collection: 'membership-tiers', sort: 'level', limit: 20, depth: 0 }),
     payload.find({
@@ -83,6 +107,15 @@ export default async function AccountPage() {
         ],
       },
       limit: 1,
+      depth: 0,
+    }),
+    // 點數異動最近 6 筆（PointsTransactions.access.read = isAdmin，這裡用 server-side
+    // payload.find 直接讀，不需 overrideAccess — payload.find 在 server context 不套 access）
+    payload.find({
+      collection: 'points-transactions',
+      where: { user: { equals: sessionUser.id } },
+      sort: '-createdAt',
+      limit: 6,
       depth: 0,
     }),
   ])
@@ -138,6 +171,21 @@ export default async function AccountPage() {
     status: (o.status as string) ?? 'pending',
     statusLabel: STATUS_LABEL[(o.status as string) ?? 'pending'] ?? '待處理',
   }))
+
+  const recentPointsTxns = (pointsTxnsResult.docs as unknown as LooseRecord[]).map((t) => {
+    const amount = (t.amount as number) ?? 0
+    const type = (t.type as string) ?? 'earn'
+    const source = (t.source as string) ?? ''
+    const description = (t.description as string) || POINTS_SOURCE_LABEL[source] || POINTS_TYPE_LABEL[type] || '點數異動'
+    return {
+      id: String(t.id),
+      date: formatDate(t.createdAt),
+      description,
+      amount,
+      balance: (t.balance as number) ?? null,
+      isEarn: amount >= 0,
+    }
+  })
 
   const upgradeSubtitle = nextTier
     ? `再消費 NT$ ${remainingToNext.toLocaleString()} 即可升級為「${nextTierName}」`
@@ -360,6 +408,57 @@ export default async function AccountPage() {
                   <p className="text-xs text-muted-foreground">{order.statusLabel}</p>
                 </div>
               </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 點數明細 */}
+      <div className="bg-white rounded-2xl p-6 border border-cream-200">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Receipt size={18} className="text-gold-500" />
+            <h3 className="font-medium">點數明細</h3>
+          </div>
+          <Link href="/account/points" className="flex items-center gap-1 text-xs text-gold-600 hover:text-gold-700 transition-colors">
+            查看全部 <ArrowRight size={12} />
+          </Link>
+        </div>
+        {recentPointsTxns.length === 0 ? (
+          <div className="text-center py-10 text-sm text-muted-foreground">
+            <Coins size={32} className="mx-auto text-cream-200 mb-3" />
+            <p>尚無點數異動紀錄</p>
+            <p className="text-xs mt-1">完成訂單、評價、推薦好友皆可獲得點數</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {recentPointsTxns.map((txn) => (
+              <div
+                key={txn.id}
+                className="flex items-center justify-between py-2.5 border-b border-cream-100 last:border-0"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                      txn.isEarn ? 'bg-green-50 text-green-600' : 'bg-rose-50 text-rose-500'
+                    }`}
+                  >
+                    {txn.isEarn ? '+' : '−'}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm truncate">{txn.description}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{txn.date}</p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0 pl-3">
+                  <p className={`text-sm font-medium ${txn.isEarn ? 'text-green-600' : 'text-rose-500'}`}>
+                    {txn.isEarn ? '+' : ''}{txn.amount.toLocaleString()}
+                  </p>
+                  {txn.balance != null && (
+                    <p className="text-[10px] text-muted-foreground">餘 {txn.balance.toLocaleString()}</p>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         )}
