@@ -1,7 +1,7 @@
 # CHIC KIM & MIU 電商平台 分階段開發 Checklist
 
 **Stage**：封閉測試（pre.chickimmiu.com）
-**Last updated**：2026-04-19
+**Last updated**：2026-04-27
 
 ---
 
@@ -14,6 +14,7 @@
 | **Phase 3** 遊樂場系統連結 | ⚪ 未開始 | 外部 API、身份對應、前台點數顯示 |
 | **Phase 4** 完整訂單系統 | ⚪ 未開始 | Orders schema 已有；結帳 → Order → 狀態流 → 確認信 + 發票 待接 |
 | **Phase 5** 金流與進階功能 | ⚪ 未開始 | ECPay 正式、PayPal、推薦引擎、Gamification、CSP 強化 |
+| **Phase 6** 庫存履約缺口 | ⚪ 未開始 | Session 25 master plan：StockMovements / 批次出貨 / 盤點 / 訂單匯出 / Dashboard |
 
 ---
 
@@ -82,3 +83,17 @@
 - [ ] 完整 CSP 與安全強化（Meta Pixel、OAuth 橋接等）
 
 **完成標準**：可使用真實金流結帳，網站進入正式上線準備
+
+---
+
+## Phase 6：庫存履約缺口（P0+P1，Session 25）
+
+**目標**：補齊封測一週後暴露的後台營運缺口；對照 Shopline 後台 14 主選單把「庫存 WMS / 履約工作流 / 基本報表」拉回 P0+P1。Master plan：[`docs/session-prompts/25-master-inventory-fulfillment-parallel-plan.md`](session-prompts/25-master-inventory-fulfillment-parallel-plan.md)
+
+- [ ] **25A** 庫存異動 Ledger + 進貨單（StockMovements append-only + PurchaseOrders；改 Orders/Returns/Exchanges 走統一 service）— 地基，必先做
+- [ ] **25B** 批次出貨工作流 + 客戶端物流追蹤 UI（Orders.ts carrier+trackingNumber 已有；只缺 admin 批次操作 + tracking URL）
+- [ ] **25C** 盤點單（StockTakes confirm 後寫 adjustment movement；不可逆）— 等 25A
+- [ ] **25D** 訂單 CSV/Excel 匯出（複用 createExportEndpoint）— 1 晚搞完
+- [ ] **25E** 營運 Dashboard（4 KPI + Top10 熱賣 + 待出貨表）— 純讀
+
+**完成標準**：admin 一打開首頁就看到關鍵營運指標；任何 stock 變動有 ledger trace；出貨/盤點/匯出都不需手動翻 list view。
