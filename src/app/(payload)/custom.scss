@@ -592,13 +592,21 @@ button[class*='btn--style-error'] {
 }
 
 // ─── Cards / Panels ────────────────────────────────────────────────────────────
+// CRITICAL: do NOT use [class*='card'] / [class*='collapsible'] / [class*='group-field']
+// here — those substring selectors also match `.card__click`, `.card__title`,
+// `.collapsible__toggle`, etc. The default Payload Dashboard renders each
+// collection card as `.card` with an overlay `<a class="btn card__click ...">`
+// stretched `position:absolute; inset:0`. If we set a white background on
+// `.card__click`, the overlay paints over the title and every card looks blank
+// (this was the "Globals 以下都看不到" bug). Match `.card` exactly instead.
 
 .card,
-[class*='card'],
+.dashboard__card,
 .render-fields__sections > *,
-[class*='collapsible'],
+.collapsible,
 .field-type.group > .group-field__wrap,
-[class*='group-field'] {
+.group-field,
+.group-field__wrap {
   background-color: #ffffff !important;
   border: 1px solid var(--color-brand-cream-mid) !important;
   border-radius: 8px !important;
