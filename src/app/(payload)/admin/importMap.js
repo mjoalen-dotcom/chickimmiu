@@ -51,6 +51,7 @@ import { default as default_05d38308c8616a5c87df5f27002fab6e } from '@/component
 import { default as default_886a0bab6fb08e47a5213238fa65631c } from '@/components/admin/RepeatPurchaseNavLink'
 import { default as default_340cf3538fa47d0416e0abd461790ca4 } from '@/components/admin/AdminStyles'
 import { default as default_navscrollpersist00000000000000000 } from '@/components/admin/NavScrollPersist'
+import { default as default_adminusermenu00000000000000000000 } from '@/components/admin/AdminUserMenu'
 import { default as default_b49611ccd828469519fd79e264a9eb51 } from '@/components/admin/HelpView'
 import { default as default_b3d544e796f2e72482a7e1ca06c557a3 } from '@/components/admin/MemberAnalyticsView'
 import { default as default_ff00d70a4277286e7d2a45db4d136e59 } from '@/components/admin/RepeatPurchaseView'
@@ -111,6 +112,7 @@ export const importMap = {
   "@/components/admin/RepeatPurchaseNavLink#default": default_886a0bab6fb08e47a5213238fa65631c,
   "@/components/admin/AdminStyles#default": default_340cf3538fa47d0416e0abd461790ca4,
   "@/components/admin/NavScrollPersist#default": default_navscrollpersist00000000000000000,
+  "@/components/admin/AdminUserMenu#default": default_adminusermenu00000000000000000000,
   "@/components/admin/HelpView#default": default_b49611ccd828469519fd79e264a9eb51,
   "@/components/admin/MemberAnalyticsView#default": default_b3d544e796f2e72482a7e1ca06c557a3,
   "@/components/admin/RepeatPurchaseView#default": default_ff00d70a4277286e7d2a45db4d136e59,
