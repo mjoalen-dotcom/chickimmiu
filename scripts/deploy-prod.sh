@@ -41,7 +41,8 @@
 #   # or, without --frozen-lockfile (when lockfile genuinely changed):
 #   ssh root@5.223.85.14 /root/deploy-ckmu.sh --update-lockfile
 #
-# Exit codes: 0 ok, 1 health check failed, 2 build failed, 3 migrate failed.
+# Exit codes: 0 ok, 1 health check failed, 2 build failed, 3 migrate failed,
+#             4 generate:importmap failed.
 
 set -euo pipefail
 
@@ -102,6 +103,21 @@ yes y | pnpm payload migrate
 MIGRATE_STATUSES=("${PIPESTATUS[@]}")
 set -e
 [[ "${MIGRATE_STATUSES[1]:-1}" -eq 0 ]] || fail "payload migrate failed (pnpm exit ${MIGRATE_STATUSES[1]:-?})" 3
+
+# 3b. Regenerate Payload admin importMap.js — MUST happen BEFORE build so
+#     `next build` picks up the fresh map. Source-of-truth is the live
+#     state of every collection's `admin.components.*` paths; if a PR
+#     adds an admin component but its author forgot to commit a regenerated
+#     importMap.js, the component source ships to prod but Payload's admin
+#     runtime can't resolve it (silently renders nothing). Audit on
+#     2026-04-27 caught 3 dropped components: PageTemplatePicker (#134),
+#     OrderBulkShipPanel (#128), OrderExportButton (#125). Running
+#     `pnpm payload generate:importmap` here makes that class of bug
+#     impossible — the script always writes the canonical importMap from
+#     the current source tree, regardless of what main has committed.
+#     Cheap (~3-5s); safe to re-run; produces no diff if nothing changed.
+log "step 3b/6: pnpm payload generate:importmap"
+pnpm payload generate:importmap || fail "generate:importmap failed" 4
 
 # 4. Build — NO `rm -rf .next` (live chunks). But .next/cache (webpack
 #    incremental) is build-only and CAN be cleared safely. Stale chunk-ID
