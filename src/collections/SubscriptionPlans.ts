@@ -12,7 +12,7 @@ export const SubscriptionPlans: CollectionConfig = {
   slug: 'subscription-plans',
   labels: { singular: '訂閱方案', plural: '訂閱方案' },
   admin: {
-    group: '會員管理',
+    group: '會員與 CRM',
     useAsTitle: 'name',
     description: '管理訂閱會員制方案（月費/年費/優惠/獎勵）',
     defaultColumns: ['name', 'monthlyPrice', 'yearlyPrice', 'isActive', 'sortOrder'],

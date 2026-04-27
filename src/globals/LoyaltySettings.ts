@@ -12,6 +12,7 @@ export const LoyaltySettings: GlobalConfig = {
   slug: 'loyalty-settings',
   label: '忠誠度計畫設定',
   admin: {
+    group: '會員與 CRM',
     description: '會員點數計算、各等級權益、兌換規則、遊戲次數完整設定',
   },
   access: {

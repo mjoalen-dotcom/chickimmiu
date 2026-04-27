@@ -11,7 +11,7 @@ export const SegmentationSettings: GlobalConfig = {
   slug: 'segmentation-settings',
   label: '會員分群設定',
   admin: {
-    group: '會員管理',
+    group: '會員與 CRM',
     description:
       '【設定】分群演算法權重、判定門檻、每日排程時間。此處改動後，下一次排程會以新參數重算所有會員並寫入「會員分群紀錄」collection。',
   },

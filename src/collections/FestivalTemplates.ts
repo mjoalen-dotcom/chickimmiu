@@ -12,7 +12,7 @@ export const FestivalTemplates: CollectionConfig = {
   slug: 'festival-templates',
   labels: { singular: '節慶模板', plural: '節慶模板' },
   admin: {
-    group: '行銷自動化',
+    group: '行銷推廣',
     useAsTitle: 'festivalName',
     description: '節慶／假日行銷模板管理',
   },

@@ -22,7 +22,7 @@ const readOwnBattles: Access = ({ req: { user } }) => {
 export const CardBattles: CollectionConfig = {
   slug: 'card-battles',
   admin: {
-    group: '遊戲系統',
+    group: '互動體驗',
     useAsTitle: 'roomCode',
     defaultColumns: ['roomCode', 'challenger', 'opponent', 'status', 'result.winner', 'createdAt'],
     description: '抽卡片比大小對戰房間',

@@ -14,7 +14,7 @@ export const CRMSettings: GlobalConfig = {
   slug: 'crm-settings',
   label: 'CRM 系統設定',
   admin: {
-    group: '會員管理',
+    group: '會員與 CRM',
     description: '信用分數權重、自動化規則、AI 客服、通知模板完整設定',
   },
   access: {

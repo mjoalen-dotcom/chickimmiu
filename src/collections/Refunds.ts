@@ -11,7 +11,7 @@ export const Refunds: CollectionConfig = {
   slug: 'refunds',
   labels: { singular: '退款單', plural: '退款單' },
   admin: {
-    group: '訂單管理',
+    group: '訂單與物流',
     description: '退款與折讓管理',
     defaultColumns: ['refundNumber', 'order', 'type', 'amount', 'status', 'createdAt'],
   },

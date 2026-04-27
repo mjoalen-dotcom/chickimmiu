@@ -39,7 +39,7 @@ export const Users: CollectionConfig = {
   admin: {
     useAsTitle: 'email',
     defaultColumns: ['name', 'email', 'role', 'memberTier', 'points', 'totalSpent', 'creditStatus', 'createdAt'],
-    group: '會員管理',
+    group: '會員與 CRM',
     description: '系統使用者（管理員、合作夥伴、一般會員）— 分區管理介面',
     components: {
       beforeListTable: [

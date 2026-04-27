@@ -411,7 +411,7 @@ export const Pages: CollectionConfig = {
   admin: {
     useAsTitle: 'title',
     defaultColumns: ['title', 'slug', 'status', 'updatedAt'],
-    group: '頁面管理',
+    group: '內容與頁面',
     description: '活動一頁式網頁（模組化 Section Builder）— 五種快速樣板可一鍵建立',
     components: {
       beforeListTable: [

@@ -53,7 +53,8 @@ export const GameSettings: GlobalConfig = {
   slug: 'game-settings',
   label: '遊戲系統設定',
   admin: {
-    group: '遊戲系統',
+    group: '互動體驗',
+    description: '各遊戲免費次數、獎勵、排行榜、徽章規則設定',
   },
   access: {
     read: () => true,

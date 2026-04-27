@@ -21,7 +21,7 @@ export const DailyHoroscopes: CollectionConfig = {
   admin: {
     useAsTitle: 'date',
     defaultColumns: ['date', 'zodiacSign', 'gender', 'generatedBy', 'updatedAt'],
-    group: '會員體驗',
+    group: '互動體驗',
     description:
       '每日星座運勢快取（lazy 生成：使用者第一次進 /account 才會寫入）。可手動覆蓋文案。',
   },

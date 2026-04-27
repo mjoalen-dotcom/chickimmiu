@@ -31,7 +31,7 @@ export const PointsTransactions: CollectionConfig = {
   slug: 'points-transactions',
   labels: { singular: '點數異動', plural: '點數異動' },
   admin: {
-    group: '會員管理',
+    group: '會員與 CRM',
     useAsTitle: 'description',
     defaultColumns: ['user', 'type', 'amount', 'balance', 'source', 'createdAt'],
     description: '會員點數異動紀錄（正數=獲得、負數=扣除；balance 為異動後餘額）',

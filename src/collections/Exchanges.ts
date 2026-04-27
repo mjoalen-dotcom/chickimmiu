@@ -11,7 +11,7 @@ export const Exchanges: CollectionConfig = {
   slug: 'exchanges',
   labels: { singular: '換貨單', plural: '換貨單' },
   admin: {
-    group: '訂單管理',
+    group: '訂單與物流',
     description: '換貨申請管理',
     defaultColumns: ['exchangeNumber', 'order', 'quickApproval', 'createdAt'],
   },
