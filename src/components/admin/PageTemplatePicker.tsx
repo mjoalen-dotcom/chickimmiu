@@ -161,6 +161,25 @@ const accentBarStyle = (color: string): React.CSSProperties => ({
   background: color,
 })
 
+const previewLinkStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: 10,
+  right: 10,
+  fontSize: 11,
+  fontWeight: 500,
+  color: '#6B6560',
+  background: '#fff',
+  border: '1px solid #E8DDD0',
+  borderRadius: 999,
+  padding: '4px 10px',
+  textDecoration: 'none',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 4,
+  zIndex: 2,
+  transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease',
+}
+
 const messageStyle: React.CSSProperties = {
   margin: '8px 20px 16px',
   padding: '10px 14px',
@@ -226,7 +245,7 @@ export default function PageTemplatePicker() {
         <div style={titleStyle}>
           <span style={{ fontSize: 18 }}>✨</span>
           <span>快速樣板（一鍵建立活動一頁式網頁）</span>
-          <span style={captionStyle}>選一個風格 → 自動建立 draft → 跳轉編輯</span>
+          <span style={captionStyle}>點卡片 → 建立 draft；點「👁 預覽」→ 新分頁先看樣本</span>
         </div>
         <span
           style={{
@@ -286,6 +305,28 @@ export default function PageTemplatePicker() {
                   }}
                 >
                   <div style={accentBarStyle(t.accent)} />
+                  <a
+                    href={`/preview/templates/${t.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    style={previewLinkStyle}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = t.accent
+                      e.currentTarget.style.color = '#fff'
+                      e.currentTarget.style.borderColor = t.accent
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#fff'
+                      e.currentTarget.style.color = '#6B6560'
+                      e.currentTarget.style.borderColor = '#E8DDD0'
+                    }}
+                    aria-label={`預覽 ${t.name}`}
+                  >
+                    <span aria-hidden>👁</span>
+                    <span>預覽</span>
+                  </a>
                   <div style={{ paddingLeft: 8 }}>
                     <div style={cardEmojiStyle}>{t.emoji}</div>
                     <div style={cardNameStyle}>{t.name}</div>
