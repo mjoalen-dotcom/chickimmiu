@@ -5,7 +5,7 @@ import { isAdmin } from '../access/isAdmin'
 export const AutomationLogs: CollectionConfig = {
   slug: 'automation-logs',
   admin: {
-    group: '行銷推廣',
+    group: '④ 行銷推廣',
     useAsTitle: 'status',
     defaultColumns: ['journey', 'user', 'status', 'currentStep', 'createdAt'],
     description: '自動化旅程執行紀錄',

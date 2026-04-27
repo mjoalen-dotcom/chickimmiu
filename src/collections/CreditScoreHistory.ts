@@ -40,7 +40,7 @@ export const CreditScoreHistory: CollectionConfig = {
   slug: 'credit-score-history',
   labels: { singular: '信用分數異動', plural: '信用分數異動' },
   admin: {
-    group: '會員與 CRM',
+    group: '③ 會員與 CRM',
     useAsTitle: 'reason',
     defaultColumns: ['user', 'change', 'reason', 'newScore', 'createdAt'],
     description: '會員信用分數異動紀錄（change 為變動值，正數=加分、負數=扣分；分數範圍 0-100）',

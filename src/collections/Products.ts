@@ -57,7 +57,7 @@ export const Products: CollectionConfig = {
       'isNew',
       'updatedAt',
     ],
-    group: '商品管理',
+    group: '② 商品管理',
     description: '商品資料管理（含變體、庫存、分類、CSV/Excel 匯入匯出）',
     listSearchableFields: ['name', 'slug', 'productSku'],
     components: {

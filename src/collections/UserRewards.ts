@@ -26,7 +26,7 @@ const isOwnerOrAdmin: Access = ({ req: { user } }) => {
 export const UserRewards: CollectionConfig = {
   slug: 'user-rewards',
   admin: {
-    group: '會員與 CRM',
+    group: '③ 會員與 CRM',
     useAsTitle: 'displayName',
     defaultColumns: ['user', 'rewardType', 'displayName', 'state', 'expiresAt', 'createdAt'],
     description: '會員寶物箱獎項庫存（實體 / 電子券 / 優惠券 / 贈品）',

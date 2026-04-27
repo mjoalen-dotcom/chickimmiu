@@ -110,7 +110,7 @@ export const PolicyPagesSettings: GlobalConfig = {
   slug: 'policy-pages-settings',
   label: '政策與說明頁面',
   admin: {
-    group: '內容與頁面',
+    group: '⑥ 內容與頁面',
     description: '管理服務條款、隱私權政策、退換貨政策、購物說明等頁面內容',
   },
   access: {

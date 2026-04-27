@@ -20,7 +20,7 @@ export const AddOnProducts: CollectionConfig = {
   slug: 'add-on-products',
   labels: { singular: '加購品規則', plural: '加購品規則' },
   admin: {
-    group: '行銷推廣',
+    group: '④ 行銷推廣',
     useAsTitle: 'name',
     description: '結帳加購（cart 達門檻後可用專價加購指定商品）',
     defaultColumns: ['name', 'product', 'addOnPrice', 'isActive', 'priority'],

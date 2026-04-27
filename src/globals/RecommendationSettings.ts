@@ -11,7 +11,7 @@ export const RecommendationSettings: GlobalConfig = {
   slug: 'recommendation-settings',
   label: 'AI 推薦引擎設定',
   admin: {
-    group: '行銷推廣',
+    group: '④ 行銷推廣',
     description: '智能加購、交叉銷售、各頁面推薦權重',
   },
   access: {

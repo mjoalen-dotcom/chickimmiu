@@ -14,7 +14,7 @@ export const MarketingAutomationSettings: GlobalConfig = {
   slug: 'marketing-automation-settings',
   label: '行銷自動化設定',
   admin: {
-    group: '行銷推廣',
+    group: '④ 行銷推廣',
     description: '通道優先順序、A/B 測試、個人化、節慶、生日活動規則',
   },
   access: {

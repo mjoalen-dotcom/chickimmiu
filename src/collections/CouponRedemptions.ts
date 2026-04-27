@@ -18,7 +18,7 @@ export const CouponRedemptions: CollectionConfig = {
   admin: {
     useAsTitle: 'id',
     defaultColumns: ['coupon', 'user', 'order', 'discountAmount', 'redeemedAt'],
-    group: '行銷推廣',
+    group: '④ 行銷推廣',
     description: '每次優惠券套用的紀錄；寫入時自動累加 coupon.usageCount',
   },
   access: {

@@ -15,7 +15,7 @@ export const MemberSegments: CollectionConfig = {
     plural: '會員分群紀錄',
   },
   admin: {
-    group: '會員與 CRM',
+    group: '③ 會員與 CRM',
     useAsTitle: 'segmentLabel',
     defaultColumns: ['user', 'currentSegment', 'segmentLabel', 'compositeScore', 'segmentChangedAt'],
     description:

@@ -13,7 +13,7 @@ export const HomepageSettings: GlobalConfig = {
   slug: 'homepage-settings',
   label: '首頁設定',
   admin: {
-    group: '內容與頁面',
+    group: '⑥ 內容與頁面',
     description: '管理首頁所有區塊的內容與顯示設定',
   },
   access: {

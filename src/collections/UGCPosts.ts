@@ -12,7 +12,7 @@ export const UGCPosts: CollectionConfig = {
   slug: 'ugc-posts',
   labels: { singular: 'UGC 貼文', plural: 'UGC 貼文' },
   admin: {
-    group: '互動體驗',
+    group: '⑤ 互動體驗',
     description: 'UGC 社群內容聚合（Instagram / Facebook / 手動匯入）',
     defaultColumns: ['authorName', 'platform', 'status', 'isPinned', 'likes', 'createdAt'],
   },

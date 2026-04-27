@@ -20,7 +20,7 @@ const readOwn: Access = ({ req: { user } }) => {
 export const MiniGameRecords: CollectionConfig = {
   slug: 'mini-game-records',
   admin: {
-    group: '互動體驗',
+    group: '⑤ 互動體驗',
     useAsTitle: 'gameType',
     defaultColumns: ['player', 'gameType', 'result.outcome', 'result.prizeAmount', 'createdAt'],
     description: '所有小遊戲的遊玩紀錄',
