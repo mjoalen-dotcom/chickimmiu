@@ -12,7 +12,7 @@ export const MarketingExecutionLogs: CollectionConfig = {
   slug: 'marketing-execution-logs',
   labels: { singular: '行銷執行紀錄', plural: '行銷執行紀錄' },
   admin: {
-    group: '行銷自動化',
+    group: '行銷推廣',
     description: '行銷訊息發送與互動紀錄',
     defaultColumns: ['campaign', 'user', 'channel', 'status', 'sentAt'],
   },

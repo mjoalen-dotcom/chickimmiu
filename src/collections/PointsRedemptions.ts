@@ -18,7 +18,7 @@ export const PointsRedemptions: CollectionConfig = {
   slug: 'points-redemptions',
   labels: { singular: '點數兌換', plural: '點數兌換' },
   admin: {
-    group: '會員管理',
+    group: '會員與 CRM',
     description: '點數兌換獎品、抽獎、優惠券管理',
     useAsTitle: 'name',
     defaultColumns: ['name', 'type', 'pointsCost', 'stock', 'redeemed', 'isActive', 'sortOrder'],

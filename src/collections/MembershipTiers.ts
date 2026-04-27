@@ -23,7 +23,7 @@ export const MembershipTiers: CollectionConfig = {
   admin: {
     useAsTitle: 'frontName',
     defaultColumns: ['frontName', 'slug', 'level', 'minSpent', 'annualSpentThreshold', 'discountPercent', 'pointsMultiplier'],
-    group: '會員管理',
+    group: '會員與 CRM',
     description: '會員等級規則設定（6 層：T0 優雅初遇者 → T5 璀璨天后）前台稱號與後台分級碼完全分離',
   },
   access: {

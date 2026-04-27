@@ -18,7 +18,7 @@ export const Bundles: CollectionConfig = {
   slug: 'bundles',
   labels: { singular: '組合商品', plural: '組合商品' },
   admin: {
-    group: '促銷活動',
+    group: '行銷推廣',
     useAsTitle: 'name',
     description: '多商品打包銷售（/bundles/<slug> 可獨立 PDP）',
     defaultColumns: ['name', 'slug', 'bundlePrice', 'savings', 'isActive'],

@@ -13,7 +13,7 @@ export const PointRedemptionSettings: GlobalConfig = {
   label: '點數消耗設定',
   admin: {
     description: '點數到期提醒、限時活動、消耗心理學參數',
-    group: '會員管理',
+    group: '會員與 CRM',
   },
   access: {
     read: () => true,

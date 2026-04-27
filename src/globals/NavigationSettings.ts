@@ -12,7 +12,7 @@ export const NavigationSettings: GlobalConfig = {
   slug: 'navigation-settings',
   label: '導覽設定',
   admin: {
-    group: '頁面管理',
+    group: '內容與頁面',
     description: '管理公告橫幅、主選單連結',
   },
   access: {

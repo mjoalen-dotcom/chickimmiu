@@ -18,7 +18,7 @@ export const CheckoutSettings: GlobalConfig = {
   slug: 'checkout-settings',
   label: '結帳設定',
   admin: {
-    group: '訂單管理',
+    group: '訂單與物流',
     description: '結帳頁表單必填欄位、最低消費、備註欄設定',
   },
   access: {

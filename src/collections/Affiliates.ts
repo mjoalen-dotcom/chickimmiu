@@ -28,7 +28,7 @@ export const Affiliates: CollectionConfig = {
   admin: {
     useAsTitle: 'referralCode',
     defaultColumns: ['user', 'referralCode', 'commissionRate', 'totalEarnings', 'withdrawableAmount', 'status'],
-    group: '合作夥伴',
+    group: '互動體驗',
     description: '合作夥伴分潤資料管理',
   },
   access: {

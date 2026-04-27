@@ -14,7 +14,7 @@ export const Returns: CollectionConfig = {
   slug: 'returns',
   labels: { singular: '退貨單', plural: '退貨單' },
   admin: {
-    group: '訂單管理',
+    group: '訂單與物流',
     description: '退貨申請管理與審核',
     defaultColumns: ['returnNumber', 'order', 'quickApproval', 'createdAt'],
   },

@@ -23,7 +23,7 @@ export const Coupons: CollectionConfig = {
   admin: {
     useAsTitle: 'code',
     defaultColumns: ['code', 'name', 'discountType', 'discountValue', 'usageCount', 'expiresAt', 'isActive'],
-    group: '行銷活動',
+    group: '行銷推廣',
     description: '折扣碼 / 優惠券設定；前台 /checkout 輸入 code 套用',
     listSearchableFields: ['code', 'name'],
   },

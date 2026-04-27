@@ -11,6 +11,7 @@ export const ReferralSettings: GlobalConfig = {
   slug: 'referral-settings',
   label: '推薦計畫設定',
   admin: {
+    group: '會員與 CRM',
     description: '推薦碼獎勵規則、等級加成、防濫用機制完整設定',
   },
   access: {

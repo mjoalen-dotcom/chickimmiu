@@ -26,7 +26,7 @@ const readOwnVotes: Access = ({ req: { user } }) => {
 export const StyleVotes: CollectionConfig = {
   slug: 'style-votes',
   admin: {
-    group: '遊戲系統',
+    group: '互動體驗',
     useAsTitle: 'voteType',
     defaultColumns: ['voter', 'submission', 'voteType', 'score', 'createdAt'],
     description: '穿搭作品投票記錄（feed 排序 / 作弊清理用）',

@@ -11,7 +11,7 @@ export const ABTests: CollectionConfig = {
   slug: 'ab-tests',
   labels: { singular: 'A/B 測試', plural: 'A/B 測試' },
   admin: {
-    group: '行銷自動化',
+    group: '行銷推廣',
     useAsTitle: 'testName',
     description: 'A/B 測試實驗管理',
   },

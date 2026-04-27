@@ -12,7 +12,7 @@ export const MarketingCampaigns: CollectionConfig = {
   slug: 'marketing-campaigns',
   labels: { singular: '行銷活動', plural: '行銷活動' },
   admin: {
-    group: '行銷自動化',
+    group: '行銷推廣',
     useAsTitle: 'campaignName',
     description: '管理所有行銷活動與排程',
   },

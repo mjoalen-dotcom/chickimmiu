@@ -15,7 +15,7 @@ export const ConciergeServiceRequests: CollectionConfig = {
     plural: '管家服務請求',
   },
   admin: {
-    group: 'VIP 管家服務',
+    group: '互動體驗',
     useAsTitle: 'requestNumber',
     defaultColumns: ['requestNumber', 'requester', 'serviceType', 'priority', 'status', 'createdAt'],
     description: 'T5 璀璨天后私人生活管家服務請求管理',
