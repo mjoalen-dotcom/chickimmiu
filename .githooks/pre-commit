@@ -1,0 +1,52 @@
+#!/bin/sh
+# .githooks/pre-commit
+# ──────────────────────
+# 自動維護 public/downloads/image-downloader.zip 與 tools/image-downloader/ 同步。
+#
+# 觸發條件：staged 改動裡有 tools/image-downloader/* 任一檔案
+#   → 跑 node scripts/pack-image-downloader.mjs 重新打包
+#   → 把新的 public/downloads/image-downloader.zip 加進這個 commit
+#
+# 啟用方式：
+#   pnpm install     # prepare script 會跑 git config core.hooksPath .githooks
+# 或手動：
+#   git config core.hooksPath .githooks
+#
+# 跳過此 hook（不建議）：
+#   SKIP_IMAGE_DOWNLOADER_PACK=1 git commit ...
+# 或：
+#   git commit --no-verify        # 整套 pre-commit 都跳
+
+set -e
+
+# 緊急逃生口
+if [ "${SKIP_IMAGE_DOWNLOADER_PACK:-}" = "1" ]; then
+  exit 0
+fi
+
+# 抓出本次 staged 的檔案清單；只看 ACMR（新增/修改/重新命名）
+CHANGED="$(git diff --cached --name-only --diff-filter=ACMR -- 'tools/image-downloader/' 2>/dev/null || true)"
+
+if [ -z "$CHANGED" ]; then
+  # 沒人動工具源碼，不需要重新打包
+  exit 0
+fi
+
+echo "[pre-commit] tools/image-downloader/ 有改動 → 重新打包 zip"
+echo "$CHANGED" | sed 's/^/  · /'
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "[pre-commit] 找不到 node，無法重打 zip。"
+  echo "[pre-commit] 請安裝 Node.js，或加 SKIP_IMAGE_DOWNLOADER_PACK=1 跳過此 hook。"
+  exit 1
+fi
+
+# 跑 pack 腳本
+if ! node scripts/pack-image-downloader.mjs; then
+  echo "[pre-commit] zip 重打失敗，commit 已中止。"
+  exit 1
+fi
+
+# 把重打的 zip 加進這個 commit（idempotent，沒變就 no-op）
+git add public/downloads/image-downloader.zip
+echo "[pre-commit] zip 已重新打包並 staged"
