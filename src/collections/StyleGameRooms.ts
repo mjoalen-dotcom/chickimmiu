@@ -34,6 +34,7 @@ const canReadRoom: Access = ({ req: { user } }) => {
 
 export const StyleGameRooms: CollectionConfig = {
   slug: 'style-game-rooms',
+  labels: { singular: '穿搭遊戲房', plural: '穿搭遊戲房' },
   admin: {
     group: '⑤ 互動體驗',
     useAsTitle: 'roomCode',

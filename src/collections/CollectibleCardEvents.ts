@@ -34,6 +34,7 @@ const readOwnEvents: Access = ({ req: { user } }) => {
 
 export const CollectibleCardEvents: CollectionConfig = {
   slug: 'collectible-card-events',
+  labels: { singular: '卡牌事件記錄', plural: '卡牌事件記錄' },
   admin: {
     group: '⑤ 互動體驗',
     useAsTitle: 'action',

@@ -36,6 +36,7 @@ const readOwnCards: Access = ({ req: { user } }) => {
 
 export const CollectibleCards: CollectionConfig = {
   slug: 'collectible-cards',
+  labels: { singular: '收藏卡牌', plural: '收藏卡牌' },
   admin: {
     group: '⑤ 互動體驗',
     useAsTitle: 'displayTitle',

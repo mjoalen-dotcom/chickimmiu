@@ -46,6 +46,7 @@ const canUpdateOwnOpen: Access = ({ req: { user } }) => {
 
 export const StyleWishes: CollectionConfig = {
   slug: 'style-wishes',
+  labels: { singular: '穿搭許願池', plural: '穿搭許願池' },
   admin: {
     group: '⑤ 互動體驗',
     useAsTitle: 'title',

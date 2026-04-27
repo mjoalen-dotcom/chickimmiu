@@ -27,6 +27,7 @@ const dirname = path.dirname(filename)
  */
 export const Media: CollectionConfig = {
   slug: 'media',
+  labels: { singular: '媒體庫', plural: '媒體庫' },
   folders: true,
   admin: {
     group: '⑥ 內容與頁面',

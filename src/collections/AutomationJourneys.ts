@@ -4,6 +4,7 @@ import { isAdmin } from '../access/isAdmin'
 
 export const AutomationJourneys: CollectionConfig = {
   slug: 'automation-journeys',
+  labels: { singular: '自動化旅程', plural: '自動化旅程' },
   admin: {
     group: '④ 行銷推廣',
     useAsTitle: 'name',

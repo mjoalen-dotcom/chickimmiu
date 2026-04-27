@@ -44,6 +44,7 @@ const productFieldMappings: FieldMapping[] = [
  */
 export const Products: CollectionConfig = {
   slug: 'products',
+  labels: { singular: '商品', plural: '商品' },
   admin: {
     useAsTitle: 'name',
     defaultColumns: [

@@ -20,6 +20,7 @@ import { safeRevalidate } from '../lib/revalidate'
  */
 export const MembershipTiers: CollectionConfig = {
   slug: 'membership-tiers',
+  labels: { singular: '會員等級', plural: '會員等級' },
   admin: {
     useAsTitle: 'frontName',
     defaultColumns: ['frontName', 'slug', 'level', 'minSpent', 'annualSpentThreshold', 'discountPercent', 'pointsMultiplier'],

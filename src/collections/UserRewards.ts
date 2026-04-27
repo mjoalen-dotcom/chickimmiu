@@ -25,6 +25,7 @@ const isOwnerOrAdmin: Access = ({ req: { user } }) => {
 
 export const UserRewards: CollectionConfig = {
   slug: 'user-rewards',
+  labels: { singular: '會員獎勵', plural: '會員獎勵' },
   admin: {
     group: '③ 會員與 CRM',
     useAsTitle: 'displayName',

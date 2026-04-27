@@ -408,6 +408,7 @@ const KOLPersona: Block = {
 
 export const Pages: CollectionConfig = {
   slug: 'pages',
+  labels: { singular: '頁面', plural: '頁面' },
   admin: {
     useAsTitle: 'title',
     defaultColumns: ['title', 'slug', 'status', 'updatedAt'],
