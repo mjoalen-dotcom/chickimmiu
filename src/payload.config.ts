@@ -210,9 +210,7 @@ export default buildConfig({
       },
       beforeDashboard: ['@/components/admin/Dashboard'],
       beforeNavLinks: [
-        '@/components/admin/HelpNavLink',
-        '@/components/admin/MemberAnalyticsNavLink',
-        '@/components/admin/RepeatPurchaseNavLink',
+        '@/components/admin/CKMUDashboardNavGroup',
         '@/components/admin/AdminStyles',
         '@/components/admin/NavScrollPersist',
         '@/components/admin/AdminUserMenu',
