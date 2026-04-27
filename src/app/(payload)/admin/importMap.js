@@ -34,12 +34,15 @@ import { default as default_e668e9854d72bcea32f70845627cdf0d } from '@/component
 import { default as default_99d8a7df13704a09eb2683c564fe3977 } from '@/components/admin/ShoplineImportPanel'
 import { default as default_235ae141af0ae2ee10377f179570df1f } from '@/components/admin/ImageMigrationPanel'
 import { default as default_ab80819f8b2b0b37f8700bad83cb86aa } from '@/components/admin/OrderProcessingCellButton'
+import { default as default_8ae569cef047456396f977e84e1f356b } from '@/components/admin/OrderBulkShipPanel'
 import { default as default_be333bc994f41cc3f44396316cdf4a5e } from '@/components/admin/OrderToolsPanel'
+import { default as default_9d7e3eddacf50cc2af6eec17731f6fad } from '@/components/admin/OrderExportButton'
 import { default as default_ac9b3343bdbbc9a11f639268e925829e } from '@/components/admin/ReturnApprovalCellButton'
 import { default as default_7b3334ccab91a8bc2d541f847ce2c885 } from '@/components/admin/ExchangeApprovalCellButton'
 import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { TableFeatureClient as TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { FixedToolbarFeatureClient as FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { default as default_35c860dac7cd35087c887518997aff75 } from '@/components/admin/PageTemplatePicker'
 import { default as default_2d3b6dcbebce75fc2ef5ac094f4218f0 } from '@/components/admin/ColorField'
 import { FolderTypeField as FolderTypeField_2b8867833a34864a02ddf429b0728a40 } from '@payloadcms/next/client'
 import { default as default_6f27c4d8c2613c9dc60f5fcd3b7e600a } from '@/components/admin/SiteBrandPreview'
@@ -50,8 +53,8 @@ import { default as default_050b8b1c6d9a3c10e652a8eb94471e38 } from '@/component
 import { default as default_05d38308c8616a5c87df5f27002fab6e } from '@/components/admin/MemberAnalyticsNavLink'
 import { default as default_886a0bab6fb08e47a5213238fa65631c } from '@/components/admin/RepeatPurchaseNavLink'
 import { default as default_340cf3538fa47d0416e0abd461790ca4 } from '@/components/admin/AdminStyles'
-import { default as default_navscrollpersist00000000000000000 } from '@/components/admin/NavScrollPersist'
-import { default as default_adminusermenu00000000000000000000 } from '@/components/admin/AdminUserMenu'
+import { default as default_550b036f5ba594f02403b10f8dc4b8c7 } from '@/components/admin/NavScrollPersist'
+import { default as default_c4734b417dd2f37db2adf0e6ec330b48 } from '@/components/admin/AdminUserMenu'
 import { default as default_b49611ccd828469519fd79e264a9eb51 } from '@/components/admin/HelpView'
 import { default as default_b3d544e796f2e72482a7e1ca06c557a3 } from '@/components/admin/MemberAnalyticsView'
 import { default as default_ff00d70a4277286e7d2a45db4d136e59 } from '@/components/admin/RepeatPurchaseView'
@@ -95,12 +98,15 @@ export const importMap = {
   "@/components/admin/ShoplineImportPanel#default": default_99d8a7df13704a09eb2683c564fe3977,
   "@/components/admin/ImageMigrationPanel#default": default_235ae141af0ae2ee10377f179570df1f,
   "@/components/admin/OrderProcessingCellButton#default": default_ab80819f8b2b0b37f8700bad83cb86aa,
+  "@/components/admin/OrderBulkShipPanel#default": default_8ae569cef047456396f977e84e1f356b,
   "@/components/admin/OrderToolsPanel#default": default_be333bc994f41cc3f44396316cdf4a5e,
+  "@/components/admin/OrderExportButton#default": default_9d7e3eddacf50cc2af6eec17731f6fad,
   "@/components/admin/ReturnApprovalCellButton#default": default_ac9b3343bdbbc9a11f639268e925829e,
   "@/components/admin/ExchangeApprovalCellButton#default": default_7b3334ccab91a8bc2d541f847ce2c885,
   "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#TableFeatureClient": TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#FixedToolbarFeatureClient": FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  "@/components/admin/PageTemplatePicker#default": default_35c860dac7cd35087c887518997aff75,
   "@/components/admin/ColorField#default": default_2d3b6dcbebce75fc2ef5ac094f4218f0,
   "@payloadcms/next/client#FolderTypeField": FolderTypeField_2b8867833a34864a02ddf429b0728a40,
   "@/components/admin/SiteBrandPreview#default": default_6f27c4d8c2613c9dc60f5fcd3b7e600a,
@@ -111,8 +117,8 @@ export const importMap = {
   "@/components/admin/MemberAnalyticsNavLink#default": default_05d38308c8616a5c87df5f27002fab6e,
   "@/components/admin/RepeatPurchaseNavLink#default": default_886a0bab6fb08e47a5213238fa65631c,
   "@/components/admin/AdminStyles#default": default_340cf3538fa47d0416e0abd461790ca4,
-  "@/components/admin/NavScrollPersist#default": default_navscrollpersist00000000000000000,
-  "@/components/admin/AdminUserMenu#default": default_adminusermenu00000000000000000000,
+  "@/components/admin/NavScrollPersist#default": default_550b036f5ba594f02403b10f8dc4b8c7,
+  "@/components/admin/AdminUserMenu#default": default_c4734b417dd2f37db2adf0e6ec330b48,
   "@/components/admin/HelpView#default": default_b49611ccd828469519fd79e264a9eb51,
   "@/components/admin/MemberAnalyticsView#default": default_b3d544e796f2e72482a7e1ca06c557a3,
   "@/components/admin/RepeatPurchaseView#default": default_ff00d70a4277286e7d2a45db4d136e59,
