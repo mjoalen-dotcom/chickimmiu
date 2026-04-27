@@ -233,60 +233,99 @@ export default buildConfig({
       },
     },
   },
+  // Collections array order determines sidebar group order in admin UI.
+  // Payload v3 groups by `admin.group` and sorts groups by the position of
+  // the FIRST collection registered for each group. Re-order the array to
+  // re-order the sidebar groups. (The ①…⑦ prefix in group names is a visual
+  // hint only; it does not influence sort.)
   collections: [
-    Users,
-    Media,
-    Categories,
-    SizeCharts,
-    MembershipTiers,
-    SubscriptionPlans,
-    Products,
-    ProductReviews,
+    // ① 訂單與物流
     Orders,
     Returns,
     Refunds,
     Exchanges,
     ShippingMethods,
-    Affiliates,
-    BlogPosts,
-    Pages,
-    UGCPosts,
+    Invoices,
+    // ② 商品管理
+    Categories,
+    SizeCharts,
+    Products,
+    ProductReviews,
+    // ③ 會員與 CRM
+    Users,
+    MembershipTiers,
+    SubscriptionPlans,
     PointsRedemptions,
     CreditScoreHistory,
     PointsTransactions,
+    MemberSegments,
+    UserRewards,
+    // ④ 行銷推廣
     AutomationJourneys,
     AutomationLogs,
-    CustomerServiceTickets,
-    MemberSegments,
     MarketingCampaigns,
     MessageTemplates,
     ABTests,
     MarketingExecutionLogs,
     FestivalTemplates,
     BirthdayCampaigns,
-    ConciergeServiceRequests,
-    Invoices,
-    MiniGameRecords,
-    CardBattles,
-    GameLeaderboard,
-    UserRewards,
-    StyleSubmissions,
-    StyleGameRooms,
-    StyleVotes,
-    StyleWishes,
-    LoginAttempts,
     AddOnProducts,
     GiftRules,
     Bundles,
     Coupons,
     CouponRedemptions,
+    // ⑤ 互動體驗
+    Affiliates,
+    UGCPosts,
+    CustomerServiceTickets,
+    ConciergeServiceRequests,
+    MiniGameRecords,
+    CardBattles,
+    GameLeaderboard,
+    StyleSubmissions,
+    StyleGameRooms,
+    StyleVotes,
+    StyleWishes,
     CollectibleCardTemplates,
     CollectibleCards,
     CollectibleCardEvents,
     DailyHoroscopes,
+    // ⑥ 內容與頁面
+    Media,
+    BlogPosts,
+    Pages,
     SiteThemes,
+    // ⑦ 系統與安全
+    LoginAttempts,
   ],
-  globals: [GlobalSettings, LoyaltySettings, ReferralSettings, PointRedemptionSettings, RecommendationSettings, CRMSettings, SegmentationSettings, MarketingAutomationSettings, InvoiceSettings, TaxSettings, GameSettings, HomepageSettings, AboutPageSettings, FAQPageSettings, PolicyPagesSettings, NavigationSettings, CheckoutSettings, OrderSettings],
+  // Globals registration order controls the sub-order of globals within each
+  // group section in the sidebar. Grouped & sequenced to match collections above.
+  globals: [
+    // ① 訂單與物流
+    CheckoutSettings,
+    OrderSettings,
+    InvoiceSettings,
+    TaxSettings,
+    // ③ 會員與 CRM
+    LoyaltySettings,
+    ReferralSettings,
+    PointRedemptionSettings,
+    CRMSettings,
+    SegmentationSettings,
+    // ④ 行銷推廣
+    MarketingAutomationSettings,
+    RecommendationSettings,
+    // ⑤ 互動體驗
+    GameSettings,
+    // ⑥ 內容與頁面
+    HomepageSettings,
+    AboutPageSettings,
+    FAQPageSettings,
+    PolicyPagesSettings,
+    NavigationSettings,
+    // ⑦ 系統與安全
+    GlobalSettings,
+  ],
   editor: lexicalEditor({
     features: ({ defaultFeatures }) => [
       ...defaultFeatures,
