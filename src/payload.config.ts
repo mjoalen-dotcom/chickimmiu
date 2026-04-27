@@ -161,10 +161,13 @@ export default buildConfig({
   //   - browseByFolder:false → 不在最上方 nav（會與「使用說明 / 會員分群分析 …」並排錯位）；
   //     入口改成「媒體資料夾」這條 collection link，跟 Media 同 group。
   //   - collectionOverrides → 把 auto-generated 的 payload-folders collection
-  //     從 admin.hidden 改成 visible、放進「媒體資源」group、改成中文標籤；
-  //     清單 default columns = 名稱 + 更新時間。父資料夾（folder）+ 適用 collection
-  //     （folderType）原生用內部 select/relationship UI 即可。
+  //     從 admin.hidden 改成 visible、放進「媒體資源」group、改成中文標籤。
+  //     `views.list.Component` server-redirect 到 `/admin/collections/media/payload-folders`
+  //     視覺化樹狀瀏覽器（縮圖 + drag-drop），取代 Payload 預設的純文字表格列表，
+  //     讓「媒體資料夾」nav link 一鍵直達直覺版資料夾管理介面。
+  //     編輯個別資料夾走 views.edit（/admin/collections/payload-folders/<id>）不受影響。
   //   - 對應 Media.ts `folders: true` + migration `enable_payload_folders`
+  //     + components/admin/PayloadFoldersListRedirect.tsx
   folders: {
     browseByFolder: false,
     collectionOverrides: [
@@ -178,6 +181,15 @@ export default buildConfig({
           useAsTitle: 'name',
           defaultColumns: ['name', 'folder', 'updatedAt'],
           description: '管理 Media 用的資料夾樹（巢狀、可拖拉）。也可從 Media → By Folder tab 直接拖圖。',
+          components: {
+            ...collection.admin?.components,
+            views: {
+              ...collection.admin?.components?.views,
+              list: {
+                Component: '@/components/admin/PayloadFoldersListRedirect',
+              },
+            },
+          },
         },
       }),
     ],
