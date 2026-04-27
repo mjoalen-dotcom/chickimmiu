@@ -158,9 +158,12 @@ export default buildConfig({
   //     admin 列表多一個 grid / list toggle + drag-drop 移動圖片到資料夾
   //   - collectionSpecific:true（預設）= 每個資料夾用 folderType[] 鎖定可放的 collection；
   //     將來開放更多 collection 用 folder 時不需設定每個資料夾
-  //   - browseByFolder:true（預設）= dashboard 多一個「依資料夾瀏覽」入口
+  //   - browseByFolder:false → 不在最上方 nav（會與「使用說明 / 會員分群分析 …」並排錯位）
+  //     插一個 cross-collection 入口；只有 Media 有開 folders，所以那個按鈕本來就只是
+  //     `/admin/collections/media` 「By Folder」tab 的重複入口。關掉後 admin 從
+  //     媒體資源 → Media → By Folder tab 進入即可，nav 整潔且分組正確
   //   - 對應 Media.ts `folders: true` + migration `enable_payload_folders`
-  folders: {},
+  folders: { browseByFolder: false },
   admin: {
     user: Users.slug,
     importMap: {
