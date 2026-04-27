@@ -209,7 +209,14 @@ export const Pages: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: ['title', 'slug', 'status', 'updatedAt'],
     group: '頁面管理',
-    description: '活動一頁式網頁（模組化 Section Builder）',
+    description: '活動一頁式網頁（模組化 Section Builder）— 五種快速樣板可一鍵建立',
+    components: {
+      beforeListTable: [
+        {
+          path: '@/components/admin/PageTemplatePicker',
+        },
+      ],
+    },
   },
   access: {
     read: ({ req: { user } }) => {
