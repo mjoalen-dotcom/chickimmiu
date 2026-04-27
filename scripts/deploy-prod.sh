@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 # Atomic-ish prod deploy for pre.chickimmiu.com.
 #
+# Canonical source: this file (scripts/deploy-prod.sh in the chickimmiu repo).
+# On the prod host (5.223.85.14) `/root/deploy-ckmu.sh` is a symlink to
+# `/var/www/chickimmiu/scripts/deploy-prod.sh`, so every `git pull` updates
+# the deploy script in lockstep with the code it deploys. To change the
+# deploy logic: edit this file, open a PR, merge — next deploy runs the
+# new version (the in-flight bash process keeps the old content because the
+# git reset happens AFTER bash has already opened+read this file).
+#
+# If the symlink is missing on a fresh box / disaster recovery:
+#   ln -sf /var/www/chickimmiu/scripts/deploy-prod.sh /root/deploy-ckmu.sh
+#
 # Problem it solves:
 #   The ad-hoc command `cd /var/www/chickimmiu && rm -rf .next && pnpm build
 #   && pm2 restart chickimmiu-nextjs` has a 1–2 minute window where the entire
@@ -92,8 +103,13 @@ MIGRATE_STATUSES=("${PIPESTATUS[@]}")
 set -e
 [[ "${MIGRATE_STATUSES[1]:-1}" -eq 0 ]] || fail "payload migrate failed (pnpm exit ${MIGRATE_STATUSES[1]:-?})" 3
 
-# 4. Build — NO `rm -rf .next`. Content-hashed chunks coexist.
-log "step 4/6: pnpm build (no rm -rf, old chunks preserved)"
+# 4. Build — NO `rm -rf .next` (live chunks). But .next/cache (webpack
+#    incremental) is build-only and CAN be cleared safely. Stale chunk-ID
+#    table in .next/cache caused Cannot find module ./chunks/NNNN.js on
+#    2026-04-27 (after 6 PRs accumulated without deploy). Clearing only
+#    cache costs ~10-20s build time and leaves runtime chunks intact.
+log "step 4/6: pnpm build (clearing .next/cache, runtime .next/server intact)"
+rm -rf .next/cache
 pnpm build || fail "pnpm build failed" 2
 
 # 5. Restart pm2
