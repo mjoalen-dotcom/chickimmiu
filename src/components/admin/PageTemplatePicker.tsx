@@ -28,7 +28,7 @@ const templates: TemplateMeta[] = [
     description: '編輯精選 × 主題策展',
     accent: '#1A1F36',
     emoji: '📖',
-    taglines: ['編輯體文案', 'Hero + 圖牆 + 編輯後記', '訂閱新刊 CTA'],
+    taglines: ['雜誌封面 + Pull Quote', '三位風格人物 Editorial', '訂閱新刊 CTA'],
   },
   {
     id: 'vogue',
@@ -36,7 +36,7 @@ const templates: TemplateMeta[] = [
     description: '大膽宣言 × 標誌性視覺',
     accent: '#000000',
     emoji: '🖤',
-    taglines: ['Manifesto 開場', 'Masonry + Campaign 影片', 'Dark CTA · ICON 會員'],
+    taglines: ['Dark Cover + Manifesto', 'Lookbook 三位主角', 'Editorial 獨白 + ICON CTA'],
   },
   {
     id: 'luxury',
@@ -44,7 +44,7 @@ const templates: TemplateMeta[] = [
     description: '限量 × 邀請制 × 工坊敘事',
     accent: '#C19A5B',
     emoji: '✦',
-    taglines: ['工坊敘事', 'Countdown + FAQ', 'By Invitation Only'],
+    taglines: ['Gold Cover · 邀請制', '工坊七年敘事 (3-row Editorial)', 'Countdown + FAQ + Invitation'],
   },
   {
     id: 'kol-personal',
@@ -52,7 +52,7 @@ const templates: TemplateMeta[] = [
     description: '第一人稱 × 私房分享',
     accent: '#E8B4B8',
     emoji: '✿',
-    taglines: ['第一人稱衣櫃', 'Lookbook + 影片', '粉絲回饋 + 訂閱'],
+    taglines: ['KOL 大頭照 + 社群連結', '衣櫃故事 Editorial', '粉絲回饋 + 訂閱'],
   },
   {
     id: 'cosmopolitan',
@@ -60,7 +60,7 @@ const templates: TemplateMeta[] = [
     description: '城市女孩 × Lifestyle Mix',
     accent: '#E84A6E',
     emoji: '🌆',
-    taglines: ['CITY GUIDE 主題', 'Mix & Match 商品', '聚會倒數 + 報名'],
+    taglines: ['City Guide Cover · 左對齊', '5 大態度單品 Listicle', '聚會倒數 + 報名'],
   },
 ]
 

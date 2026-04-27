@@ -144,12 +144,28 @@ const fashionMagazine: PageTemplate = {
   },
   layout: [
     {
-      blockType: 'hero-banner',
+      blockType: 'magazine-cover',
+      issueLabel: 'ISSUE 04 · APR 2026',
       heading: '本季時尚特刊',
-      subheading: 'Editor’s Pick · 主編精選 · 本月封面故事',
+      subheading: 'EDITOR’S PICK · 主編精選 · 本月封面故事',
+      cornerLabels: [{ text: '特刊' }, { text: '主編精選' }],
+      layout: 'center',
+      theme: 'light',
+    },
+    {
+      blockType: 'hero-banner',
+      heading: '春夏絮語 · SS26',
+      subheading: '從清晨第一道光到深夜最後一杯茶 · 質感是一種選擇',
       ctaText: '閱讀本期內容',
       ctaLink: '#editorial',
-      overlay: 40,
+      overlay: 30,
+    },
+    {
+      blockType: 'pull-quote',
+      quote: '優雅是一種選擇，而非天賦 — 而選擇的本質，就是花時間認識自己。',
+      source: '主編 LIN · 本期卷頭語',
+      font: 'serif',
+      alignment: 'center',
     },
     {
       blockType: 'divider',
@@ -163,6 +179,39 @@ const fashionMagazine: PageTemplate = {
         '本期封面，我們邀請了三位風格人物分享她們的衣櫃、書架與餐桌。從她們的日常你會發現，所謂的時尚從來不只是穿在身上的東西，而是一種對自己的承諾 — 你願意花多少時間，去認識當下的自己。',
         '希望這本特刊能陪你度過接下來這一個月，無論是穿搭靈感、生活儀式，或單純翻閱時的片刻安靜。— 編輯部敬上',
       ]),
+    },
+    {
+      blockType: 'editorial-spread',
+      heading: '三位風格人物 · 她們的日常',
+      rows: [
+        {
+          heading: '01 · 建築師 · Chloé',
+          body: richText([
+            '清晨六點半，Chloé 的第一個動作是煮一壺手沖咖啡。她說她需要這 15 分鐘的安靜，才能進入一整天的線條與秩序。',
+            '她的衣櫃只有黑、灰、米三色，但每一件單品的剪裁都極其講究 — 對她而言，「少」不是極簡，而是讓選擇變得輕盈。',
+          ]),
+          imagePosition: 'left',
+          background: 'cream',
+        },
+        {
+          heading: '02 · 影像導演 · Sayaka',
+          body: richText([
+            'Sayaka 的衣櫃像是一座工具箱 — 她不追求風格一致性，每一件衣服都是為了某種情境而存在。',
+            '「如果這件衣服讓我說不出話來，那我就不買。」這是她跟自己的協議。',
+          ]),
+          imagePosition: 'right',
+          background: 'white',
+        },
+        {
+          heading: '03 · 雕塑家 · Mira',
+          body: richText([
+            'Mira 把自己的衣櫃稱為「素材庫」。她相信穿衣是一種雕塑 — 每天從同一批素材中，重新組合出一個新的自己。',
+            '她最常被問的問題是：「為什麼妳的搭配每次都看起來不一樣？」她回答：「因為我每天都不一樣。」',
+          ]),
+          imagePosition: 'left',
+          background: 'blush',
+        },
+      ],
     },
     {
       blockType: 'image-gallery',
@@ -271,18 +320,25 @@ const vogue: PageTemplate = {
   },
   layout: [
     {
-      blockType: 'hero-banner',
+      blockType: 'magazine-cover',
+      issueLabel: 'CAMPAIGN · SS26',
       heading: 'DEFINE YOUR ERA',
-      subheading: '不追隨趨勢 · 定義時代 · BY YOU, FOR YOU',
-      ctaText: '進入本季 Campaign',
-      ctaLink: '#manifesto',
-      overlay: 50,
+      subheading: 'BY YOU, FOR YOU · 不追隨趨勢，定義時代',
+      cornerLabels: [{ text: 'COVER STORY' }],
+      layout: 'bottom',
+      theme: 'dark',
+    },
+    {
+      blockType: 'pull-quote',
+      quote: '風格從來不是規則。它是一種拒絕 — 拒絕被定義、拒絕在他人的時間軸上長大。',
+      source: 'MANIFESTO · SS26',
+      font: 'sans',
+      alignment: 'left',
     },
     {
       blockType: 'rich-content',
       content: richText([
-        'MANIFESTO ／ 風格從來不是規則。它是一種拒絕 — 拒絕被定義、拒絕被歸類、拒絕在他人的時間軸上長大。',
-        '本季，我們把鏡頭對準三位拒絕「應該是這樣」的女人。她們的職業、年齡、城市都不同，但她們有一個共同點 — 她們不為了誰穿衣服，她們穿給自己看。',
+        'MANIFESTO ／ 本季，我們把鏡頭對準三位拒絕「應該是這樣」的女人。她們的職業、年齡、城市都不同，但她們有一個共同點 — 她們不為了誰穿衣服，她們穿給自己看。',
         '這不是趨勢，這是宣言。歡迎你，加入這個沒有規則的時代。',
       ]),
     },
@@ -292,15 +348,49 @@ const vogue: PageTemplate = {
       height: 56,
     },
     {
+      blockType: 'lookbook-grid',
+      heading: 'THE WOMEN · CAMPAIGN SS26',
+      columns: '3',
+      items: [
+        { name: '01 · The Architect', tags: [{ text: 'CHLOÉ' }, { text: '35' }, { text: 'PARIS' }] },
+        { name: '02 · The Director', tags: [{ text: 'SAYAKA' }, { text: '41' }, { text: 'TOKYO' }] },
+        { name: '03 · The Sculptor', tags: [{ text: 'MIRA' }, { text: '29' }, { text: 'BERLIN' }] },
+      ],
+    },
+    {
       blockType: 'image-gallery',
       layout: 'masonry',
       images: [
-        { caption: 'CAMPAIGN 01 · The Architect' },
-        { caption: 'CAMPAIGN 02 · The Maker' },
-        { caption: 'CAMPAIGN 03 · The Director' },
-        { caption: 'BEHIND THE SCENES · 拍攝現場' },
-        { caption: 'CAMPAIGN 04 · Studio Light' },
-        { caption: 'CAMPAIGN 05 · After Hours' },
+        { caption: 'CAMPAIGN 01 · STUDIO LIGHT' },
+        { caption: 'CAMPAIGN 02 · ATELIER 7AM' },
+        { caption: 'CAMPAIGN 03 · ROOFTOP' },
+        { caption: 'BEHIND THE SCENES' },
+        { caption: 'CAMPAIGN 04 · NIGHT SHIFT' },
+        { caption: 'CAMPAIGN 05 · AFTER HOURS' },
+      ],
+    },
+    {
+      blockType: 'editorial-spread',
+      heading: 'IN HER OWN WORDS · 三段獨白',
+      rows: [
+        {
+          heading: 'Chloé · 35 · 建築師',
+          body: richText([
+            '「我穿這件外套去工地，也穿去開會。它讓我兩個身份都能被認真看待。我不需要為別人證明什麼，但我需要知道我自己在哪裡。」',
+            '— 訪談於巴黎第六區一間正在改建的書店中',
+          ]),
+          imagePosition: 'left',
+          background: 'dark',
+        },
+        {
+          heading: 'Sayaka · 41 · 影像導演',
+          body: richText([
+            '「不需要聲音的設計才是最大聲的設計。我喜歡這個季度的剪裁 — 它沒有在追逐任何潮流，它只是在做它該做的事。」',
+            '— 攝於東京涉谷的一棟老公寓改建工作室',
+          ]),
+          imagePosition: 'right',
+          background: 'white',
+        },
       ],
     },
     {
@@ -371,12 +461,28 @@ const luxury: PageTemplate = {
   },
   layout: [
     {
-      blockType: 'hero-banner',
+      blockType: 'magazine-cover',
+      issueLabel: 'PRIVATE · SS26',
       heading: 'PRIVATE COLLECTION',
-      subheading: '限量典藏 · By Invitation Only · 全球僅 30 席',
+      subheading: 'By Invitation Only · 全球僅 30 席',
+      cornerLabels: [{ text: 'NO. 01 / 30' }, { text: 'ATELIER KYOTO' }],
+      layout: 'center',
+      theme: 'gold',
+    },
+    {
+      blockType: 'hero-banner',
+      heading: '限量典藏 · 邀請制',
+      subheading: '不在通路販售，也不打折 — 我們相信美學是一種承諾',
       ctaText: '申請邀請函',
       ctaLink: '#invitation',
-      overlay: 35,
+      overlay: 25,
+    },
+    {
+      blockType: 'pull-quote',
+      quote: '極致的工藝不是來自速度，而是來自對時間的敬意。',
+      source: '工坊主匠 · 京都',
+      font: 'serif',
+      alignment: 'center',
     },
     {
       blockType: 'divider',
@@ -390,6 +496,39 @@ const luxury: PageTemplate = {
         '這個系列僅生產 30 件。每一件皆有獨立編號、配置工坊主人手寫卡片，並附上完整的養護指南。',
         '我們不在通路販售，也不打折。如果這份美學對您有所觸動，請接受我們的邀請。',
       ]),
+    },
+    {
+      blockType: 'editorial-spread',
+      heading: '從一塊布到一件作品 · 七年的距離',
+      rows: [
+        {
+          heading: '01 · 選材 · 三年',
+          body: richText([
+            '工坊主匠每年只接受 30 件訂製，理由很簡單 — 一塊好的布料，從原料到適合裁切的狀態，需要等候三年。',
+            '他堅持只用日本國內三座工房的織品。每一塊布都附有原料履歷，包括羊毛來自哪一群羊、剪毛的那一天天氣如何。',
+          ]),
+          imagePosition: 'left',
+          background: 'cream',
+        },
+        {
+          heading: '02 · 裁切 · 七天',
+          body: richText([
+            '一件外套需要七天完成裁切。為什麼？因為手工裁切的每一刀，都需要靜置一夜讓布料記憶這個彎度。',
+            '工坊裡有一張用了 40 年的木製裁切桌。主匠說，這張桌子比他的兒子還要老。',
+          ]),
+          imagePosition: 'right',
+          background: 'white',
+        },
+        {
+          heading: '03 · 縫製 · 38 小時',
+          body: richText([
+            '所有縫線都是純手縫。一件作品平均需要 38 個小時，分四天完成，因為手指需要休息，呼吸需要調整。',
+            '主匠的妻子會在縫製期間每天送一壺茶到工坊。「這也是製作的一部分。」她說。',
+          ]),
+          imagePosition: 'left',
+          background: 'blush',
+        },
+      ],
     },
     {
       blockType: 'countdown',
@@ -514,12 +653,67 @@ const kolPersonal: PageTemplate = {
       overlay: 25,
     },
     {
+      blockType: 'kol-persona',
+      name: '[請替換為您的名字]',
+      title: '本月策展人 · @your_handle',
+      signatureQuote: '我的衣櫃不大，但每一件都要打很多份工。',
+      bio: richText([
+        '一個總是被問「這件哪裡買的？」的台北女孩。從廣告 AE 轉行做風格分享至今 4 年，相信穿搭的本質是「能不能成為自己想成為的那個人」。',
+        '從不買為了拍照的衣服。每一件推薦都是真的穿過、真的喜歡、真的會回購的。',
+      ]),
+      socialLinks: [
+        { platform: 'instagram', url: 'https://instagram.com/your_handle' },
+        { platform: 'youtube', url: 'https://youtube.com/@your_channel' },
+        { platform: 'threads', url: 'https://threads.net/@your_handle' },
+      ],
+    },
+    {
+      blockType: 'pull-quote',
+      quote: '從不買為了拍照的衣服。每一件推薦都是真的會回購的。',
+      source: '本月策展人',
+      font: 'sans',
+      alignment: 'center',
+    },
+    {
       blockType: 'rich-content',
       content: richText([
         '哈囉～我是 [請替換為您的名字]！這是我第二次跟 chickimmiu 合作策展，這次我把過去 30 天「真的穿到走出家門」的單品整理出來，沒挑沒選 — 你們看到的就是我衣櫃的真實樣子 ☕️',
         '這次特別想跟大家分享的是「複合穿法」 — 同一件外套我可以怎麼穿出三種感覺？同一條褲子白天上班、晚上聚會怎麼一鍵切換？我都拍下來放在下面的 Lookbook 裡，希望可以給你們一些靈感。',
         '如果你跟我一樣是「衣服不多但每件都要打很多份工」的女生，這次的私藏清單會很適合你。看完記得告訴我你最想入手哪一件！',
       ]),
+    },
+    {
+      blockType: 'editorial-spread',
+      heading: '我的衣櫃故事 · 三件最常被問的單品',
+      rows: [
+        {
+          heading: '那件不會起毛球的針織',
+          body: richText([
+            '被問了大概 200 次的針織開襟。我每年冬天會穿到磨損為止，今年第三件了。',
+            '為什麼會推？因為它真的可以洗衣機洗、可以丟乾衣機、可以一週穿三天還像新的。對我這種懶人來說，這就是「值得」。',
+          ]),
+          imagePosition: 'right',
+          background: 'cream',
+        },
+        {
+          heading: '一條牛仔褲，三種人格',
+          body: richText([
+            '這條我已經拍了三次穿搭。版型是介於 mom jean 和 straight cut 之間的那種「不挑人但有腰」的剪裁，白天上班配 oxford shirt，晚上聚會配絲質背心，週末配 oversized tee。',
+            '沒有試穿前我絕對不相信「一條解決」這種話 — 但這條真的可以。',
+          ]),
+          imagePosition: 'left',
+          background: 'blush',
+        },
+        {
+          heading: '被低估的那件白 T',
+          body: richText([
+            '別人說白 T 都長得差不多，但這件不一樣。布料挺、領口不會穿三次就鬆、洗五次後還是白的。',
+            '我把它當作「all-day uniform」— 早上瑜珈、中午外帶、下午採訪、晚上聚會，一件搞定。',
+          ]),
+          imagePosition: 'right',
+          background: 'white',
+        },
+      ],
     },
     {
       blockType: 'video',
@@ -628,6 +822,15 @@ const cosmopolitan: PageTemplate = {
   },
   layout: [
     {
+      blockType: 'magazine-cover',
+      issueLabel: 'CITY GUIDE · APR 2026',
+      heading: 'BE YOURSELF',
+      subheading: '本月 CITY GUIDE · 妳的城市，妳定義',
+      cornerLabels: [{ text: '本月特刊' }, { text: 'TAIPEI' }],
+      layout: 'left',
+      theme: 'light',
+    },
+    {
       blockType: 'hero-banner',
       heading: '本月 CITY GUIDE',
       subheading: '穿搭、地點、靈感一次到位 · 跟著女孩們玩遍城市',
@@ -636,12 +839,70 @@ const cosmopolitan: PageTemplate = {
       overlay: 30,
     },
     {
+      blockType: 'pull-quote',
+      quote: '妳的風格，妳定義。週中的星期三，可以變成最期待的那一天。',
+      source: 'COSMO 編輯部',
+      font: 'sans',
+      alignment: 'left',
+    },
+    {
       blockType: 'rich-content',
       content: richText([
         '《本月主題：星期三的解法》週中總是最難 — 工作累、聚會懶、又不想浪費這一天。本月企劃我們找了 12 個女孩，問她們「最理想的星期三晚上長什麼樣子」？',
         '結果超乎預期 — 有人選擇戴上耳機去陶藝教室，有人去電影院看一部冷門紀錄片，有人在天台辦只有三個朋友的 wine night。我們把所有提案整理成「星期三的 12 種解法」，搭配適合的穿搭與地點清單，全部放在下面。',
         '這個月，讓我們一起讓星期三變成最期待的那一天 ✦',
       ]),
+    },
+    {
+      blockType: 'editorial-spread',
+      heading: '本月 5 大態度單品 · LISTICLE',
+      rows: [
+        {
+          heading: '#1 · 一件可以穿去陶藝教室的針織',
+          body: richText([
+            '不怕被陶土沾到（沾到也不心疼），但又不能太隨便 — 因為下課還可能順路去吃個拉麵。',
+            '推薦版型：oversized 但收腰、袖口可以反折、最好有一個小口袋裝手機的那種。',
+          ]),
+          imagePosition: 'left',
+          background: 'blush',
+        },
+        {
+          heading: '#2 · 適合一個人的電影院 outfit',
+          body: richText([
+            '坐三個小時不會皺、走出去還能去吃宵夜、整體不會太正式也不會太鬆懈。',
+            '關鍵字：絲質、彈性、有點層次。',
+          ]),
+          imagePosition: 'right',
+          background: 'white',
+        },
+        {
+          heading: '#3 · 天台 wine night 三人組',
+          body: richText([
+            '風會吹但不能冷。輕薄外套加裡面有設計的單品 — 脫了還是好看，穿上不顯臃腫。',
+            '加分項：可以盤腿坐、可以搶最後一塊起司不會卡到。',
+          ]),
+          imagePosition: 'left',
+          background: 'cream',
+        },
+        {
+          heading: '#4 · 中山站書店窩到關門',
+          body: richText([
+            '舒服第一、有型第二。寬鬆但有剪裁的那種「不像睡衣的居家服」。',
+            '加分：書包要好搭，最好是亞麻或棉麻 tote。',
+          ]),
+          imagePosition: 'right',
+          background: 'blush',
+        },
+        {
+          heading: '#5 · 河堤夜跑 + 便利商店冰拿鐵',
+          body: richText([
+            '不需要 lululemon，但也不能是高中體育服。透氣、吸汗、收腰、可以順路去全家不被認為是去報名的那種。',
+            '小提醒：頭巾真的可以救命。',
+          ]),
+          imagePosition: 'left',
+          background: 'white',
+        },
+      ],
     },
     {
       blockType: 'divider',
@@ -733,6 +994,9 @@ export const getTemplateById = (id: string): PageTemplate | undefined =>
  * 目前處理：
  *   - __TEMPLATE_END_DATE_30D__ → 建立日 + 30 天 ISO
  *   - __TEMPLATE_END_DATE_14D__ → 建立日 + 14 天 ISO
+ *   - image-gallery / lookbook-grid（required image）：無 placeholder → 整段略過
+ *   - magazine-cover / editorial-spread.rows[].image / kol-persona.avatar
+ *     （optional image）：有 placeholder 就補上，無就保留 undefined（renderer 有 fallback）
  */
 export function hydrateTemplateLayout(
   layout: LayoutBlock[],
@@ -745,15 +1009,55 @@ export function hydrateTemplateLayout(
 
   const result: LayoutBlock[] = []
   for (const block of layout) {
-    // image-gallery: 若沒有 placeholder image 可填，整段移除
+    // image-gallery: images[].image required → 無 placeholder 整段略過
     if (block.blockType === 'image-gallery') {
       const images = (block.images as Array<Record<string, unknown>>) || []
       if (!placeholder) {
-        // 沒任何 Media 可補位 → 略過此區塊
         continue
       }
       const hydratedImages = images.map((img) => ({ ...img, image: placeholder }))
       result.push({ ...block, images: hydratedImages })
+      continue
+    }
+
+    // lookbook-grid: items[].image required → 同上
+    if (block.blockType === 'lookbook-grid') {
+      const items = (block.items as Array<Record<string, unknown>>) || []
+      if (!placeholder) {
+        continue
+      }
+      const hydratedItems = items.map((item) => ({ ...item, image: placeholder }))
+      result.push({ ...block, items: hydratedItems })
+      continue
+    }
+
+    // magazine-cover: image 是 optional，有 placeholder 就補一張當底圖（無則 renderer 走 fallback）
+    if (block.blockType === 'magazine-cover') {
+      if (placeholder) {
+        result.push({ ...block, image: placeholder })
+      } else {
+        result.push(block)
+      }
+      continue
+    }
+
+    // kol-persona: avatar 是 optional
+    if (block.blockType === 'kol-persona') {
+      if (placeholder) {
+        result.push({ ...block, avatar: placeholder })
+      } else {
+        result.push(block)
+      }
+      continue
+    }
+
+    // editorial-spread: rows[].image 是 optional
+    if (block.blockType === 'editorial-spread') {
+      const rows = (block.rows as Array<Record<string, unknown>>) || []
+      const hydratedRows = placeholder
+        ? rows.map((row) => ({ ...row, image: placeholder }))
+        : rows
+      result.push({ ...block, rows: hydratedRows })
       continue
     }
 

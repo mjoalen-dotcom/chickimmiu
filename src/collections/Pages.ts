@@ -199,6 +199,209 @@ const Divider: Block = {
   ],
 }
 
+/* ────────────────────────────────────────────────────────────────
+   Magazine 類 blocks（PR #136 新增 — 真實雜誌風視覺差異化）
+   對應 migration 20260427_220000_add_pages_magazine_blocks.ts
+   ──────────────────────────────────────────────────────────────── */
+
+const MagazineCover: Block = {
+  slug: 'magazine-cover',
+  labels: { singular: '雜誌封面', plural: '雜誌封面' },
+  fields: [
+    {
+      name: 'issueLabel',
+      label: '期號標籤',
+      type: 'text',
+      admin: { description: '例：ISSUE 04 · APR 2026' },
+    },
+    { name: 'heading', label: '主標題（大字）', type: 'text', required: true },
+    { name: 'subheading', label: '副標題', type: 'text' },
+    { name: 'image', label: '封面主圖', type: 'upload', relationTo: 'media' },
+    {
+      name: 'cornerLabels',
+      label: '邊角小字（如「特刊」「主編精選」）',
+      type: 'array',
+      fields: [{ name: 'text', type: 'text', required: true }],
+    },
+    {
+      name: 'layout',
+      label: '排版風格',
+      type: 'select',
+      defaultValue: 'center',
+      options: [
+        { label: '左對齊（雜誌風）', value: 'left' },
+        { label: '置中（典雅）', value: 'center' },
+        { label: '底部對齊（Vogue 式）', value: 'bottom' },
+      ],
+    },
+    {
+      name: 'theme',
+      label: '色調',
+      type: 'select',
+      defaultValue: 'light',
+      options: [
+        { label: '淺色（米白）', value: 'light' },
+        { label: '深色（黑底）', value: 'dark' },
+        { label: '金色點綴', value: 'gold' },
+      ],
+    },
+  ],
+}
+
+const PullQuote: Block = {
+  slug: 'pull-quote',
+  labels: { singular: '大引言', plural: '大引言' },
+  fields: [
+    { name: 'quote', label: '引言文字', type: 'textarea', required: true },
+    { name: 'source', label: '出處 / 作者', type: 'text' },
+    {
+      name: 'font',
+      label: '字體',
+      type: 'select',
+      defaultValue: 'serif',
+      options: [
+        { label: '襯線（典雅）', value: 'serif' },
+        { label: '無襯線（俐落）', value: 'sans' },
+      ],
+    },
+    {
+      name: 'alignment',
+      label: '對齊',
+      type: 'select',
+      defaultValue: 'center',
+      options: [
+        { label: '左對齊', value: 'left' },
+        { label: '置中', value: 'center' },
+        { label: '右對齊', value: 'right' },
+      ],
+    },
+  ],
+}
+
+const EditorialSpread: Block = {
+  slug: 'editorial-spread',
+  labels: { singular: '圖文交錯', plural: '圖文交錯' },
+  fields: [
+    { name: 'heading', label: '區塊標題（可選）', type: 'text' },
+    {
+      name: 'rows',
+      label: '段落',
+      type: 'array',
+      minRows: 1,
+      fields: [
+        { name: 'image', label: '圖片', type: 'upload', relationTo: 'media' },
+        { name: 'heading', label: '小標題', type: 'text' },
+        { name: 'body', label: '內容', type: 'richText' },
+        {
+          name: 'imagePosition',
+          label: '圖片位置',
+          type: 'select',
+          defaultValue: 'left',
+          options: [
+            { label: '左圖 / 右文', value: 'left' },
+            { label: '右圖 / 左文', value: 'right' },
+            { label: '上圖 / 下文', value: 'top' },
+            { label: '全寬背景', value: 'full' },
+          ],
+        },
+        {
+          name: 'background',
+          label: '背景色',
+          type: 'select',
+          defaultValue: 'cream',
+          options: [
+            { label: '米白', value: 'cream' },
+            { label: '純白', value: 'white' },
+            { label: '深色', value: 'dark' },
+            { label: '粉紅', value: 'blush' },
+          ],
+        },
+      ],
+    },
+  ],
+}
+
+const LookbookGrid: Block = {
+  slug: 'lookbook-grid',
+  labels: { singular: 'Lookbook 網格', plural: 'Lookbook 網格' },
+  fields: [
+    { name: 'heading', label: '區塊標題', type: 'text' },
+    {
+      name: 'columns',
+      label: '欄數',
+      type: 'select',
+      defaultValue: '3',
+      options: [
+        { label: '2 欄', value: '2' },
+        { label: '3 欄', value: '3' },
+        { label: '4 欄', value: '4' },
+      ],
+    },
+    {
+      name: 'items',
+      label: '單品',
+      type: 'array',
+      minRows: 1,
+      fields: [
+        { name: 'image', label: '主圖', type: 'upload', relationTo: 'media', required: true },
+        { name: 'name', label: '名稱', type: 'text' },
+        {
+          name: 'tags',
+          label: '標籤',
+          type: 'array',
+          fields: [{ name: 'text', type: 'text', required: true }],
+        },
+        {
+          name: 'linkedProduct',
+          label: '對應商品（可選）',
+          type: 'relationship',
+          relationTo: 'products',
+        },
+      ],
+    },
+  ],
+}
+
+const KOLPersona: Block = {
+  slug: 'kol-persona',
+  labels: { singular: 'KOL 個人介紹', plural: 'KOL 個人介紹' },
+  fields: [
+    { name: 'avatar', label: '頭像', type: 'upload', relationTo: 'media' },
+    { name: 'name', label: '名稱', type: 'text', required: true },
+    {
+      name: 'title',
+      label: '稱號',
+      type: 'text',
+      admin: { description: '如：時尚編輯 / 風格達人 / @ig_handle' },
+    },
+    { name: 'bio', label: 'Bio 介紹', type: 'richText' },
+    { name: 'signatureQuote', label: '招牌引言', type: 'textarea' },
+    {
+      name: 'socialLinks',
+      label: '社群連結',
+      type: 'array',
+      fields: [
+        {
+          name: 'platform',
+          label: '平台',
+          type: 'select',
+          required: true,
+          options: [
+            { label: 'Instagram', value: 'instagram' },
+            { label: 'YouTube', value: 'youtube' },
+            { label: 'Facebook', value: 'facebook' },
+            { label: 'Threads', value: 'threads' },
+            { label: 'TikTok', value: 'tiktok' },
+            { label: 'LINE', value: 'line' },
+            { label: '個人網站', value: 'website' },
+          ],
+        },
+        { name: 'url', label: '網址', type: 'text', required: true },
+      ],
+    },
+  ],
+}
+
 /* ================================================================
    Pages Collection
    ================================================================ */
@@ -276,6 +479,11 @@ export const Pages: CollectionConfig = {
       type: 'blocks',
       blocks: [
         HeroBanner,
+        MagazineCover,
+        PullQuote,
+        EditorialSpread,
+        LookbookGrid,
+        KOLPersona,
         RichContent,
         ImageGallery,
         ProductShowcase,
