@@ -72,6 +72,7 @@ const orderFieldMappings: FieldMapping[] = [
 
 export const Orders: CollectionConfig = {
   slug: 'orders',
+  labels: { singular: '訂單', plural: '訂單' },
   admin: {
     useAsTitle: 'orderNumber',
     defaultColumns: ['orderNumber', 'customer', 'total', 'quickProcess', 'paymentMethod', 'paymentStatus', 'createdAt'],

@@ -4,6 +4,7 @@ import { isAdmin } from '../access/isAdmin'
 
 export const CustomerServiceTickets: CollectionConfig = {
   slug: 'customer-service-tickets',
+  labels: { singular: '客服工單', plural: '客服工單' },
   admin: {
     group: '⑤ 互動體驗',
     useAsTitle: 'ticketNumber',

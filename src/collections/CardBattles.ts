@@ -21,6 +21,7 @@ const readOwnBattles: Access = ({ req: { user } }) => {
 
 export const CardBattles: CollectionConfig = {
   slug: 'card-battles',
+  labels: { singular: '卡牌對戰', plural: '卡牌對戰' },
   admin: {
     group: '⑤ 互動體驗',
     useAsTitle: 'roomCode',

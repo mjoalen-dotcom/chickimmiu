@@ -25,6 +25,7 @@ import { isAdmin } from '../access/isAdmin'
  */
 export const CollectibleCardTemplates: CollectionConfig = {
   slug: 'collectible-card-templates',
+  labels: { singular: '卡牌模板', plural: '卡牌模板' },
   admin: {
     group: '⑤ 互動體驗',
     useAsTitle: 'adminTitle',

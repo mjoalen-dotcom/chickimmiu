@@ -24,6 +24,7 @@ function revalidateBlog(slug?: string | null) {
 
 export const BlogPosts: CollectionConfig = {
   slug: 'blog-posts',
+  labels: { singular: '部落格文章', plural: '部落格文章' },
   admin: {
     useAsTitle: 'title',
     defaultColumns: ['title', 'author', 'status', 'publishedAt'],

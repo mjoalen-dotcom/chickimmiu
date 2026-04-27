@@ -36,6 +36,7 @@ const userFieldMappings: FieldMapping[] = [
  */
 export const Users: CollectionConfig = {
   slug: 'users',
+  labels: { singular: '會員', plural: '會員' },
   admin: {
     useAsTitle: 'email',
     defaultColumns: ['name', 'email', 'role', 'memberTier', 'points', 'totalSpent', 'creditStatus', 'createdAt'],

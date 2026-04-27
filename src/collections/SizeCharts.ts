@@ -22,6 +22,7 @@ import { safeRevalidate } from '../lib/revalidate'
  */
 export const SizeCharts: CollectionConfig = {
   slug: 'size-charts',
+  labels: { singular: '尺寸表', plural: '尺寸表' },
   admin: {
     useAsTitle: 'name',
     defaultColumns: ['name', 'slug', 'category', 'unit', 'updatedAt'],

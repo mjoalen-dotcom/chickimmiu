@@ -4,6 +4,7 @@ import { isAdmin } from '../access/isAdmin'
 
 export const GameLeaderboard: CollectionConfig = {
   slug: 'game-leaderboard',
+  labels: { singular: '遊戲排行榜', plural: '遊戲排行榜' },
   admin: {
     group: '⑤ 互動體驗',
     useAsTitle: 'periodKey',

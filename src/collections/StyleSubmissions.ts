@@ -33,6 +33,7 @@ const isAdminOrAuthor: Access = ({ req: { user } }) => {
 
 export const StyleSubmissions: CollectionConfig = {
   slug: 'style-submissions',
+  labels: { singular: '穿搭投稿', plural: '穿搭投稿' },
   admin: {
     group: '⑤ 互動體驗',
     useAsTitle: 'caption',

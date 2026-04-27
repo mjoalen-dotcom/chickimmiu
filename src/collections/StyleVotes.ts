@@ -25,6 +25,7 @@ const readOwnVotes: Access = ({ req: { user } }) => {
 
 export const StyleVotes: CollectionConfig = {
   slug: 'style-votes',
+  labels: { singular: '穿搭投票', plural: '穿搭投票' },
   admin: {
     group: '⑤ 互動體驗',
     useAsTitle: 'voteType',
