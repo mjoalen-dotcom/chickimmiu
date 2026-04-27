@@ -45,6 +45,7 @@ import { FixedToolbarFeatureClient as FixedToolbarFeatureClient_e70f5e05f09f93e0
 import { default as default_35c860dac7cd35087c887518997aff75 } from '@/components/admin/PageTemplatePicker'
 import { default as default_2d3b6dcbebce75fc2ef5ac094f4218f0 } from '@/components/admin/ColorField'
 import { FolderTypeField as FolderTypeField_2b8867833a34864a02ddf429b0728a40 } from '@payloadcms/next/client'
+import { default as default_79570dded1e1ffe27a78eeea47302dcc } from '@/components/admin/PayloadFoldersListRedirect'
 import { default as default_6f27c4d8c2613c9dc60f5fcd3b7e600a } from '@/components/admin/SiteBrandPreview'
 import { default as default_d500ae2ad98a0a33d640ae0ac1a3417c } from '@/components/admin/AdminIcon'
 import { default as default_b80a86fce1072afc84cd6a430a965697 } from '@/components/admin/AdminLogo'
@@ -109,6 +110,7 @@ export const importMap = {
   "@/components/admin/PageTemplatePicker#default": default_35c860dac7cd35087c887518997aff75,
   "@/components/admin/ColorField#default": default_2d3b6dcbebce75fc2ef5ac094f4218f0,
   "@payloadcms/next/client#FolderTypeField": FolderTypeField_2b8867833a34864a02ddf429b0728a40,
+  "@/components/admin/PayloadFoldersListRedirect#default": default_79570dded1e1ffe27a78eeea47302dcc,
   "@/components/admin/SiteBrandPreview#default": default_6f27c4d8c2613c9dc60f5fcd3b7e600a,
   "@/components/admin/AdminIcon#default": default_d500ae2ad98a0a33d640ae0ac1a3417c,
   "@/components/admin/AdminLogo#default": default_b80a86fce1072afc84cd6a430a965697,
