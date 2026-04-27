@@ -13,7 +13,7 @@ export const TaxSettings: GlobalConfig = {
   slug: 'tax-settings',
   label: '稅務設定',
   admin: {
-    group: '訂單與物流',
+    group: '① 訂單與物流',
     description: '台灣營業稅、免稅類別、發票稅額 breakdown 規則',
   },
   access: {

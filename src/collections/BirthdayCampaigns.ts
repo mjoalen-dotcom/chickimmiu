@@ -37,7 +37,7 @@ export const BirthdayCampaigns: CollectionConfig = {
   slug: 'birthday-campaigns',
   labels: { singular: '生日行銷活動', plural: '生日行銷活動' },
   admin: {
-    group: '行銷推廣',
+    group: '④ 行銷推廣',
     description: '會員生日月 5 階段自動化行銷管理',
     defaultColumns: ['targetUser', 'targetTier', 'birthdayMonth', 'status', 'createdAt'],
     useAsTitle: 'campaignTitle',

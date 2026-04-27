@@ -12,7 +12,7 @@ export const AboutPageSettings: GlobalConfig = {
   slug: 'about-page-settings',
   label: '關於我們',
   admin: {
-    group: '內容與頁面',
+    group: '⑥ 內容與頁面',
     description: '管理「關於我們 / 商店介紹」頁面的所有區塊內容',
   },
   access: {

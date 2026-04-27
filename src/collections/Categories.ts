@@ -14,7 +14,7 @@ export const Categories: CollectionConfig = {
   admin: {
     useAsTitle: 'name',
     defaultColumns: ['name', 'slug', 'parent', 'level', 'sortOrder', 'productCount', 'updatedAt'],
-    group: '商品管理',
+    group: '② 商品管理',
     description: '商品分類管理（支援多層次分類：主分類 > 子分類 > 細分類）',
     listSearchableFields: ['name', 'slug'],
     components: {

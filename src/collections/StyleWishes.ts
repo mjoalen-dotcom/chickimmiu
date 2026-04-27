@@ -47,7 +47,7 @@ const canUpdateOwnOpen: Access = ({ req: { user } }) => {
 export const StyleWishes: CollectionConfig = {
   slug: 'style-wishes',
   admin: {
-    group: '互動體驗',
+    group: '⑤ 互動體驗',
     useAsTitle: 'title',
     defaultColumns: ['seeker', 'title', 'status', 'bountyPoints', 'expiresAt', 'createdAt'],
     description: '穿搭許願池（wish_pool 遊戲）',

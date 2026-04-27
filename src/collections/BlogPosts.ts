@@ -27,7 +27,7 @@ export const BlogPosts: CollectionConfig = {
   admin: {
     useAsTitle: 'title',
     defaultColumns: ['title', 'author', 'status', 'publishedAt'],
-    group: '內容與頁面',
+    group: '⑥ 內容與頁面',
     description: '部落格文章管理',
   },
   access: {

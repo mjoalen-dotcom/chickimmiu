@@ -12,7 +12,7 @@ export const MessageTemplates: CollectionConfig = {
   slug: 'message-templates',
   labels: { singular: '訊息模板', plural: '訊息模板' },
   admin: {
-    group: '行銷推廣',
+    group: '④ 行銷推廣',
     useAsTitle: 'templateName',
     description: '多管道訊息模板管理',
   },

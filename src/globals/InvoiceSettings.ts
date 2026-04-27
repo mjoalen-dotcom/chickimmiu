@@ -10,7 +10,7 @@ export const InvoiceSettings: GlobalConfig = {
   slug: 'invoice-settings',
   label: '綠界電子發票設定',
   admin: {
-    group: '訂單與物流',
+    group: '① 訂單與物流',
     description: 'ECPay 電子發票 API 連線設定、賣方資訊、自動化規則',
   },
   access: {

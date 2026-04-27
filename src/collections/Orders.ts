@@ -76,7 +76,7 @@ export const Orders: CollectionConfig = {
     useAsTitle: 'orderNumber',
     defaultColumns: ['orderNumber', 'customer', 'total', 'quickProcess', 'paymentMethod', 'paymentStatus', 'createdAt'],
     listSearchableFields: ['orderNumber', 'customerEmail', 'customerName'],
-    group: '訂單與物流',
+    group: '① 訂單與物流',
     description: '訂單紀錄與管理（含出貨單列印、取貨總報表）',
     components: {
       beforeListTable: [

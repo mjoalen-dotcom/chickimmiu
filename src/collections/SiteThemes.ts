@@ -46,7 +46,7 @@ export const SiteThemes: CollectionConfig = {
     plural: '網站主題',
   },
   admin: {
-    group: '內容與頁面',
+    group: '⑥ 內容與頁面',
     description: '一鍵切換春夏秋冬主題色 + 首頁輪播版型',
     useAsTitle: 'name',
     defaultColumns: ['name', 'season', 'heroLayout', 'isActive', 'updatedAt'],

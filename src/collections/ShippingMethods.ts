@@ -10,7 +10,7 @@ export const ShippingMethods: CollectionConfig = {
   slug: 'shipping-methods',
   labels: { singular: '物流方式', plural: '物流方式' },
   admin: {
-    group: '訂單與物流',
+    group: '① 訂單與物流',
     useAsTitle: 'name',
     description: '管理物流商與運費規則',
     defaultColumns: ['name', 'carrier', 'baseFee', 'isActive'],

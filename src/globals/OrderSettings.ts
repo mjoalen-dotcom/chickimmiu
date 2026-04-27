@@ -19,7 +19,7 @@ export const OrderSettings: GlobalConfig = {
   slug: 'order-settings',
   label: '訂單設定',
   admin: {
-    group: '訂單與物流',
+    group: '① 訂單與物流',
     description: '訂單編號規則、自動取消 / 完成、通知信、狀態流',
   },
   access: {

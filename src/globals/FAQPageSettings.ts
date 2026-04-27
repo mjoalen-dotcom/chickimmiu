@@ -12,7 +12,7 @@ export const FAQPageSettings: GlobalConfig = {
   slug: 'faq-page-settings',
   label: '常見問題 FAQ',
   admin: {
-    group: '內容與頁面',
+    group: '⑥ 內容與頁面',
     description: '管理常見問題頁面的分類與問答內容',
   },
   access: {

@@ -29,7 +29,7 @@ export const Media: CollectionConfig = {
   slug: 'media',
   folders: true,
   admin: {
-    group: '內容與頁面',
+    group: '⑥ 內容與頁面',
     useAsTitle: 'filename',
     defaultColumns: ['filename', 'alt', 'folder', 'folderName', 'mimeType', 'filesize', 'updatedAt'],
     listSearchableFields: ['filename', 'alt', 'folderName'],

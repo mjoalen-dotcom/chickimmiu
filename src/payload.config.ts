@@ -176,7 +176,7 @@ export default buildConfig({
         labels: { singular: '媒體資料夾', plural: '媒體資料夾' },
         admin: {
           ...collection.admin,
-          group: '內容與頁面',
+          group: '⑥ 內容與頁面',
           hidden: false,
           useAsTitle: 'name',
           defaultColumns: ['name', 'folder', 'updatedAt'],

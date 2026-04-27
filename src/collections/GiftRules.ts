@@ -20,7 +20,7 @@ export const GiftRules: CollectionConfig = {
   slug: 'gift-rules',
   labels: { singular: '贈品規則', plural: '贈品規則' },
   admin: {
-    group: '行銷推廣',
+    group: '④ 行銷推廣',
     useAsTitle: 'name',
     description: '滿額 / 指定商品自動贈送（結帳時自動加入 cart，price=0）',
     defaultColumns: ['name', 'triggerType', 'giftProduct', 'isActive', 'priority'],

@@ -17,7 +17,7 @@ export const Invoices: CollectionConfig = {
   slug: 'invoices',
   labels: { singular: '電子發票', plural: '電子發票' },
   admin: {
-    group: '訂單與物流',
+    group: '① 訂單與物流',
     useAsTitle: 'invoiceNumber',
     description: '綠界電子發票管理（開立、查詢、作廢、折讓）',
     defaultColumns: ['invoiceNumber', 'order', 'invoiceType', 'status', 'totalAmount', 'createdAt'],

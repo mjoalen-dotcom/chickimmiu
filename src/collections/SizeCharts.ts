@@ -25,7 +25,7 @@ export const SizeCharts: CollectionConfig = {
   admin: {
     useAsTitle: 'name',
     defaultColumns: ['name', 'slug', 'category', 'unit', 'updatedAt'],
-    group: '商品管理',
+    group: '② 商品管理',
     description: '尺寸表範本（可跨商品復用），例如洋裝尺寸表、上衣尺寸表',
     listSearchableFields: ['name', 'slug'],
   },

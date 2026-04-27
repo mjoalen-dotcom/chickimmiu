@@ -5,7 +5,7 @@ import { isAdmin } from '../access/isAdmin'
 export const CustomerServiceTickets: CollectionConfig = {
   slug: 'customer-service-tickets',
   admin: {
-    group: '互動體驗',
+    group: '⑤ 互動體驗',
     useAsTitle: 'ticketNumber',
     defaultColumns: ['ticketNumber', 'user', 'channel', 'status', 'priority', 'category', 'createdAt'],
     description: 'AI + 真人客服工單',
