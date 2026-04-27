@@ -158,12 +158,30 @@ export default buildConfig({
   //     admin 列表多一個 grid / list toggle + drag-drop 移動圖片到資料夾
   //   - collectionSpecific:true（預設）= 每個資料夾用 folderType[] 鎖定可放的 collection；
   //     將來開放更多 collection 用 folder 時不需設定每個資料夾
-  //   - browseByFolder:false → 不在最上方 nav（會與「使用說明 / 會員分群分析 …」並排錯位）
-  //     插一個 cross-collection 入口；只有 Media 有開 folders，所以那個按鈕本來就只是
-  //     `/admin/collections/media` 「By Folder」tab 的重複入口。關掉後 admin 從
-  //     媒體資源 → Media → By Folder tab 進入即可，nav 整潔且分組正確
+  //   - browseByFolder:false → 不在最上方 nav（會與「使用說明 / 會員分群分析 …」並排錯位）；
+  //     入口改成「媒體資料夾」這條 collection link，跟 Media 同 group。
+  //   - collectionOverrides → 把 auto-generated 的 payload-folders collection
+  //     從 admin.hidden 改成 visible、放進「媒體資源」group、改成中文標籤；
+  //     清單 default columns = 名稱 + 更新時間。父資料夾（folder）+ 適用 collection
+  //     （folderType）原生用內部 select/relationship UI 即可。
   //   - 對應 Media.ts `folders: true` + migration `enable_payload_folders`
-  folders: { browseByFolder: false },
+  folders: {
+    browseByFolder: false,
+    collectionOverrides: [
+      ({ collection }) => ({
+        ...collection,
+        labels: { singular: '媒體資料夾', plural: '媒體資料夾' },
+        admin: {
+          ...collection.admin,
+          group: '媒體資源',
+          hidden: false,
+          useAsTitle: 'name',
+          defaultColumns: ['name', 'folder', 'updatedAt'],
+          description: '管理 Media 用的資料夾樹（巢狀、可拖拉）。也可從 Media → By Folder tab 直接拖圖。',
+        },
+      }),
+    ],
+  },
   admin: {
     user: Users.slug,
     importMap: {
