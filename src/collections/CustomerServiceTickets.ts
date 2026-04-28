@@ -4,12 +4,13 @@ import { isAdmin } from '../access/isAdmin'
 
 export const CustomerServiceTickets: CollectionConfig = {
   slug: 'customer-service-tickets',
-  labels: { singular: '客服工單', plural: '客服工單' },
+  labels: { singular: '客服工單 (v0 已停用)', plural: '客服工單 (v0 已停用)' },
   admin: {
     group: '⑤ 互動體驗',
     useAsTitle: 'ticketNumber',
+    hidden: true, // v2 由 Conversations + Messages 取代（客服中心 Phase 1A，2026-04-28）
     defaultColumns: ['ticketNumber', 'user', 'channel', 'status', 'priority', 'category', 'createdAt'],
-    description: 'AI + 真人客服工單',
+    description: 'v0 已停用，由 Conversations + Messages 取代。資料保留供未來 backfill；不要在此新增資料',
   },
   timestamps: true,
   fields: [

@@ -29,6 +29,7 @@ import * as migration_20260426_140000_add_points_mall_shipping from './20260426_
 import * as migration_20260427_100000_add_site_themes from './20260427_100000_add_site_themes';
 import * as migration_20260427_180000_enable_payload_folders from './20260427_180000_enable_payload_folders';
 import * as migration_20260427_220000_add_pages_magazine_blocks from './20260427_220000_add_pages_magazine_blocks';
+import * as migration_20260428_074640_add_customer_service_v1 from './20260428_074640_add_customer_service_v1';
 
 export const migrations = [
   {
@@ -174,7 +175,7 @@ export const migrations = [
   {
     up: migration_20260427_100000_add_site_themes.up,
     down: migration_20260427_100000_add_site_themes.down,
-    name: '20260427_100000_add_site_themes'
+    name: '20260427_100000_add_site_themes',
   },
   {
     up: migration_20260427_180000_enable_payload_folders.up,
@@ -185,5 +186,10 @@ export const migrations = [
     up: migration_20260427_220000_add_pages_magazine_blocks.up,
     down: migration_20260427_220000_add_pages_magazine_blocks.down,
     name: '20260427_220000_add_pages_magazine_blocks',
+  },
+  {
+    up: migration_20260428_074640_add_customer_service_v1.up,
+    down: migration_20260428_074640_add_customer_service_v1.down,
+    name: '20260428_074640_add_customer_service_v1'
   },
 ];
