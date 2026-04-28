@@ -77,6 +77,12 @@ import { LoginAttempts } from './collections/LoginAttempts'
 import { Coupons } from './collections/Coupons'
 import { CouponRedemptions } from './collections/CouponRedemptions'
 import { DailyHoroscopes } from './collections/DailyHoroscopes'
+// 客服中心 v1 Phase 1A
+import { Conversations } from './collections/Conversations'
+import { Messages } from './collections/Messages'
+import { MessageTags } from './collections/MessageTags'
+import { ConversationActivities } from './collections/ConversationActivities'
+import { CustomerServiceSettings } from './globals/CustomerServiceSettings'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -258,6 +264,11 @@ export default buildConfig({
     PointsTransactions,
     MemberSegments,
     UserRewards,
+    // 客服中心 v1 Phase 1A — Conversations + Messages 是 ③ 會員 CRM 的延伸
+    Conversations,
+    Messages,
+    MessageTags,
+    ConversationActivities,
     // ④ 行銷推廣
     AutomationJourneys,
     AutomationLogs,
@@ -310,6 +321,7 @@ export default buildConfig({
     PointRedemptionSettings,
     CRMSettings,
     SegmentationSettings,
+    CustomerServiceSettings, // 客服中心 v1 Phase 1A
     // ④ 行銷推廣
     MarketingAutomationSettings,
     RecommendationSettings,

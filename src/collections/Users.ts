@@ -1087,6 +1087,99 @@ export const Users: CollectionConfig = {
             },
           ],
         },
+
+        // ── TAB 9: 客服通知偏好（僅 admin role 顯示）──────────────
+        // 客服中心 v1 Phase 1A：staff 收新訊息通知偏好設定
+        // 邏輯接通在 Phase 1D（SSE bell）+ Phase 5D（email digest）
+        {
+          label: '客服通知',
+          description: '僅 staff（admin role）有效；新對話 / 未讀訊息的通知偏好',
+          fields: [
+            {
+              name: 'notificationPreferences',
+              label: '客服通知偏好',
+              type: 'group',
+              admin: {
+                description: '只在 role=admin 時生效；customer / partner 此區設定無作用',
+                condition: (data) => data?.role === 'admin',
+              },
+              fields: [
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'bellInAdmin',
+                      label: '後台鈴鐺通知',
+                      type: 'checkbox',
+                      defaultValue: true,
+                      admin: { width: '50%' },
+                    },
+                    {
+                      name: 'emailDigest',
+                      label: '每日 email digest',
+                      type: 'checkbox',
+                      defaultValue: false,
+                      admin: { width: '50%' },
+                    },
+                  ],
+                },
+                {
+                  name: 'emailDigestTime',
+                  label: 'Email digest 寄出時間（HH:mm）',
+                  type: 'text',
+                  defaultValue: '09:00',
+                  admin: {
+                    description: 'businessHours.timezone 為基準（預設 Asia/Taipei）',
+                  },
+                },
+                {
+                  name: 'channels',
+                  label: '訂閱 channel 通知',
+                  type: 'select',
+                  hasMany: true,
+                  defaultValue: ['web', 'line', 'fb', 'ig', 'email'],
+                  options: [
+                    { label: '站內 Web Chat', value: 'web' },
+                    { label: 'LINE OA', value: 'line' },
+                    { label: 'FB Messenger', value: 'fb' },
+                    { label: 'IG DM', value: 'ig' },
+                    { label: 'Email', value: 'email' },
+                    { label: '電話', value: 'phone' },
+                    { label: '網頁表單', value: 'web_form' },
+                  ],
+                },
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'quietHoursStart',
+                      label: '靜音時段開始',
+                      type: 'text',
+                      admin: {
+                        width: '50%',
+                        description: 'HH:mm；勿擾期間不發 push、bell 不亮，但 email digest 仍寄',
+                      },
+                    },
+                    {
+                      name: 'quietHoursEnd',
+                      label: '靜音時段結束',
+                      type: 'text',
+                      admin: { width: '50%' },
+                    },
+                  ],
+                },
+                {
+                  name: 'mobilePushToken',
+                  label: '手機 push token',
+                  type: 'text',
+                  admin: {
+                    description: '為將來 PWA push 預留欄位；Phase 1A 暫不實作',
+                  },
+                },
+              ],
+            },
+          ],
+        },
       ],
     },
   ],
