@@ -59,10 +59,14 @@ export const Products: CollectionConfig = {
       'updatedAt',
     ],
     group: '② 商品管理',
-    description: '商品資料管理（含變體、庫存、分類、CSV/Excel 匯入匯出）',
+    description:
+      '商品總管 — 變體 / 庫存 / 分類，6 種上方工具：批次操作、SHOPLINE BulkUpdateForm、Sinsang Market、Shopline 商品匯入、商品圖片遷移、CSV·Excel 匯入匯出。完整教學見 /admin/help。',
     listSearchableFields: ['name', 'slug', 'productSku'],
     components: {
       beforeListTable: [
+        {
+          path: '@/components/admin/ProductsUsageNotice',
+        },
         {
           path: '@/components/admin/ProductBulkActions',
         },
