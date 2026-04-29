@@ -37,6 +37,16 @@ export const customerRegisterEndpoint: Endpoint = {
             birthTime?: string
             referralCode?: string
             acceptTerms?: boolean
+            firstTouchAttribution?: {
+              utmSource?: string
+              utmMedium?: string
+              utmCampaign?: string
+              utmTerm?: string
+              utmContent?: string
+              referrer?: string
+              landingPath?: string
+              capturedAt?: string
+            }
           }
         | undefined
       const email = (raw?.email || '').trim().toLowerCase()
@@ -44,6 +54,24 @@ export const customerRegisterEndpoint: Endpoint = {
       const name = (raw?.name || '').trim()
       const referralCodeInput = (raw?.referralCode || '').trim()
       const acceptTerms = Boolean(raw?.acceptTerms)
+
+      // PR-B: first-touch UTM（client 從 90 天 cookie 抓的）
+      // 不檢驗來源真實性 — 攻擊者頂多灌假 UTM 影響行銷報表，無安全風險
+      const clipUtm = (v: unknown) =>
+        typeof v === 'string' && v.trim() ? v.trim().slice(0, 500) : undefined
+      const ftIn = raw?.firstTouchAttribution
+      const firstTouchAttribution = ftIn
+        ? {
+            utmSource: clipUtm(ftIn.utmSource),
+            utmMedium: clipUtm(ftIn.utmMedium),
+            utmCampaign: clipUtm(ftIn.utmCampaign),
+            utmTerm: clipUtm(ftIn.utmTerm),
+            utmContent: clipUtm(ftIn.utmContent),
+            referrer: clipUtm(ftIn.referrer),
+            landingPath: clipUtm(ftIn.landingPath),
+            capturedAt: clipUtm(ftIn.capturedAt),
+          }
+        : undefined
 
       // 生日（選填）— 接受 ISO 字串 / yyyy-mm-dd；不合法或未來日期就略過（不擋註冊）
       let birthdayISO: string | undefined
@@ -130,6 +158,7 @@ export const customerRegisterEndpoint: Endpoint = {
         ...(birthdayISO ? { birthday: birthdayISO } : {}),
         ...(birthTime ? { birthTime } : {}),
         ...(referredById !== undefined ? { referredBy: referredById } : {}),
+        ...(firstTouchAttribution ? { firstTouchAttribution } : {}),
       } as Record<string, unknown>
 
       const createData = requireVerification

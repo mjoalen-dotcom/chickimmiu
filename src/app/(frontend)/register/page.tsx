@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 
+import { getCurrentAttribution } from '@/lib/tracking'
+
 /**
  * 客戶自助註冊頁
  * -------------
@@ -39,6 +41,8 @@ export default function RegisterPage() {
     setError(null)
     setSubmitting(true)
     try {
+      // PR-B：把 first-touch UTM 帶上，後端 customerRegister 會寫入 firstTouchAttribution
+      const attrib = getCurrentAttribution()
       const res = await fetch('/api/users/register', {
         method: 'POST',
         credentials: 'include',
@@ -53,6 +57,7 @@ export default function RegisterPage() {
           birthTime: form.birthTime || undefined,
           referralCode: form.referralCode.trim() || undefined,
           acceptTerms: form.acceptTerms,
+          firstTouchAttribution: attrib.firstTouch || attrib.lastTouch || undefined,
         }),
       })
       const data = (await res.json().catch(() => ({}))) as {

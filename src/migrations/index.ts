@@ -31,6 +31,7 @@ import * as migration_20260427_180000_enable_payload_folders from './20260427_18
 import * as migration_20260427_220000_add_pages_magazine_blocks from './20260427_220000_add_pages_magazine_blocks';
 import * as migration_20260428_074640_add_customer_service_v1 from './20260428_074640_add_customer_service_v1';
 import * as migration_20260429_120000_add_ads_catalog from './20260429_120000_add_ads_catalog';
+import * as migration_20260429_180000_add_utm_attribution from './20260429_180000_add_utm_attribution';
 import * as migration_20260504_100000_add_total_sold_and_korean_celebrity from './20260504_100000_add_total_sold_and_korean_celebrity';
 import * as migration_20260504_120000_add_mbti_quiz from './20260504_120000_add_mbti_quiz';
 import * as migration_20260504_140000_add_redemption_max_discount from './20260504_140000_add_redemption_max_discount';
@@ -201,6 +202,11 @@ export const migrations = [
     up: migration_20260429_120000_add_ads_catalog.up,
     down: migration_20260429_120000_add_ads_catalog.down,
     name: '20260429_120000_add_ads_catalog',
+  },
+  {
+    up: migration_20260429_180000_add_utm_attribution.up,
+    down: migration_20260429_180000_add_utm_attribution.down,
+    name: '20260429_180000_add_utm_attribution',
   },
   {
     up: migration_20260504_100000_add_total_sold_and_korean_celebrity.up,
