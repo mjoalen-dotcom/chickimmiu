@@ -31,7 +31,7 @@ import {
 import { useCartStore } from '@/stores/cartStore'
 import { CheckoutLastChance } from '@/components/recommendation/CheckoutLastChance'
 import { PromoUpsellSection } from '@/components/cart/PromoUpsellSection'
-import { trackBeginCheckout, trackPurchase, getStoredUTM } from '@/lib/tracking'
+import { trackBeginCheckout, trackPurchase, getStoredUTM, getCurrentAttribution } from '@/lib/tracking'
 
 /* ── 付款方式 ──
  * cash_cod 只在所選物流支援貨到付款（cashOnDelivery=true）時顯示，
@@ -663,6 +663,22 @@ export default function CheckoutPage() {
             : undefined,
         estimatedDays: shippingOption?.estimatedDays,
       },
+      // PR-B：UTM 歸因（first-touch 90 天 cookie + last-touch session）
+      // Orders.ts attribution group 不存 landingPath（只 Users.firstTouchAttribution 存），
+      // 所以這裡 strip 掉 landingPath 欄位。
+      attribution: (() => {
+        const a = getCurrentAttribution()
+        const stripLanding = (t: typeof a.firstTouch) => {
+          if (!t) return undefined
+          const { landingPath: _drop, ...rest } = t
+          void _drop
+          return rest
+        }
+        return {
+          firstTouch: stripLanding(a.firstTouch),
+          lastTouch: stripLanding(a.lastTouch),
+        }
+      })(),
       customerNote: form.customerNote || undefined,
     }
 

@@ -953,6 +953,28 @@ export const Users: CollectionConfig = {
                 readOnly: true,
               },
             },
+            // ── UTM 首次接觸歸因（會員註冊時記錄一次，永久不變）──
+            {
+              name: 'firstTouchAttribution',
+              label: 'UTM 首次接觸歸因',
+              type: 'group',
+              admin: {
+                description:
+                  '會員首次進站（90 天 cookie）的 UTM 來源，註冊時自動寫入。' +
+                  '報表頁可看「哪個來源帶來最多註冊」、各來源的會員 LTV 比較。',
+                readOnly: true,
+              },
+              fields: [
+                { name: 'utmSource', label: 'UTM Source', type: 'text' },
+                { name: 'utmMedium', label: 'UTM Medium', type: 'text' },
+                { name: 'utmCampaign', label: 'UTM Campaign', type: 'text' },
+                { name: 'utmTerm', label: 'UTM Term', type: 'text' },
+                { name: 'utmContent', label: 'UTM Content', type: 'text' },
+                { name: 'referrer', label: 'Referrer', type: 'text' },
+                { name: 'landingPath', label: '首次進站頁', type: 'text' },
+                { name: 'capturedAt', label: '捕獲時間', type: 'date' },
+              ],
+            },
           ],
         },
 

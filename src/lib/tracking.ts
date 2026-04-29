@@ -89,8 +89,92 @@ export interface UTMParams {
   ref?: string
 }
 
+export interface AttributionTouch {
+  utmSource?: string
+  utmMedium?: string
+  utmCampaign?: string
+  utmTerm?: string
+  utmContent?: string
+  referrer?: string
+  landingPath?: string
+  capturedAt: string // ISO 8601
+}
+
+export interface CurrentAttribution {
+  firstTouch: AttributionTouch | null
+  lastTouch: AttributionTouch | null
+  sessionId: string
+  deviceType: 'mobile' | 'tablet' | 'desktop' | 'other'
+}
+
+/* ─── Cookie helpers (no external dep) ─── */
+function setCookie(name: string, value: string, days: number) {
+  if (typeof document === 'undefined') return
+  const expires = new Date(Date.now() + days * 86400000).toUTCString()
+  // Lax = sent on top-level navigation (so external clicks bring UTM in)
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`
+}
+
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie
+    .split('; ')
+    .find((c) => c.startsWith(`${name}=`))
+  if (!match) return null
+  try {
+    return decodeURIComponent(match.split('=').slice(1).join('='))
+  } catch {
+    return null
+  }
+}
+
+/* ─── Session ID（30 min sessionStorage TTL）─── */
+function getOrCreateSessionId(): string {
+  if (typeof window === 'undefined') return 'ssr'
+  try {
+    const KEY = 'ckm-session-id'
+    const TS_KEY = 'ckm-session-ts'
+    const TTL = 30 * 60 * 1000 // 30 minutes
+    const now = Date.now()
+    const lastTs = parseInt(sessionStorage.getItem(TS_KEY) || '0', 10)
+    let sid = sessionStorage.getItem(KEY)
+    if (!sid || now - lastTs > TTL) {
+      sid =
+        'sess-' +
+        now.toString(36) +
+        '-' +
+        Math.random().toString(36).slice(2, 10)
+      sessionStorage.setItem(KEY, sid)
+    }
+    sessionStorage.setItem(TS_KEY, String(now))
+    return sid
+  } catch {
+    return 'sess-fallback'
+  }
+}
+
+function detectDeviceType(): 'mobile' | 'tablet' | 'desktop' | 'other' {
+  if (typeof navigator === 'undefined') return 'other'
+  const ua = navigator.userAgent.toLowerCase()
+  if (/(ipad|tablet|playbook|silk)|(android(?!.*mobi))/.test(ua)) return 'tablet'
+  if (/mobile|iphone|ipod|android.*mobi|blackberry|iemobile|opera mini/.test(ua))
+    return 'mobile'
+  if (typeof window !== 'undefined' && window.innerWidth >= 768) return 'desktop'
+  return 'other'
+}
+
 /**
- * 從目前 URL 解析 UTM 參數並儲存到 sessionStorage
+ * 從目前 URL 解析 UTM 參數並儲存：
+ *   - lastTouch → sessionStorage (per-session)
+ *   - firstTouch → cookie 90 天（只首次設定，後續不覆寫）
+ *
+ * 設計重點：
+ *   - 首次接觸：第一次帶 UTM 進站時鎖定，永久不變（除非 90 天後 cookie 過期）
+ *   - 最後接觸：每次帶新 UTM 進站都更新（attribution 報表的 last-touch 模型）
+ *   - 訪客直接打 / 沒帶 UTM 進站時不寫，保留前一次值
+ *
+ * Cookie consent：本函式不檢查 consent。若 cookie banner 還沒同意，
+ * caller (layout.tsx) 應在 grantTrackingConsent() 之後才呼叫此函式。
  */
 export function parseAndStoreUTM(): UTMParams {
   if (typeof window === 'undefined') return {}
@@ -105,25 +189,58 @@ export function parseAndStoreUTM(): UTMParams {
     'utm_content',
     'ref',
   ]
-
   keys.forEach((key) => {
     const value = url.searchParams.get(key)
     if (value) params[key] = value
   })
 
-  if (Object.keys(params).length > 0) {
+  // 即使 URL 沒帶 UTM，仍要記 referrer（外站連入）
+  const referrer = typeof document !== 'undefined' ? document.referrer || '' : ''
+  const landingPath = url.pathname + url.search
+
+  // 只在 URL 有 UTM 或有外部 referrer 時才寫入 — 避免內部跳轉覆蓋 last-touch
+  const hasSignal =
+    Object.keys(params).length > 0 ||
+    (referrer && !referrer.startsWith(window.location.origin))
+
+  if (hasSignal) {
+    const touch: AttributionTouch = {
+      utmSource: params.utm_source,
+      utmMedium: params.utm_medium,
+      utmCampaign: params.utm_campaign,
+      utmTerm: params.utm_term,
+      utmContent: params.utm_content,
+      referrer: referrer || undefined,
+      landingPath,
+      capturedAt: new Date().toISOString(),
+    }
+
+    // sessionStorage = last-touch（每次有 signal 都覆寫）
     try {
       sessionStorage.setItem('ckm-utm', JSON.stringify(params))
+      sessionStorage.setItem('ckm-last-touch', JSON.stringify(touch))
     } catch {
-      // sessionStorage blocked
+      // blocked
+    }
+
+    // cookie = first-touch（只首次設定）
+    if (!getCookie('ckm-first-touch')) {
+      try {
+        setCookie('ckm-first-touch', JSON.stringify(touch), 90)
+      } catch {
+        // blocked
+      }
     }
   }
+
+  // 永遠 ensure session ID 存在
+  getOrCreateSessionId()
 
   return params
 }
 
 /**
- * 從 sessionStorage 取得已儲存的 UTM 參數
+ * 從 sessionStorage 取得 last-touch 的 UTM 參數（向後相容版）
  */
 export function getStoredUTM(): UTMParams {
   if (typeof window === 'undefined') return {}
@@ -133,6 +250,90 @@ export function getStoredUTM(): UTMParams {
   } catch {
     return {}
   }
+}
+
+/**
+ * 取得當下的完整歸因資料（first + last + session + device）
+ * 用於 checkout / register 時隨表單送 server 落庫。
+ */
+export function getCurrentAttribution(): CurrentAttribution {
+  if (typeof window === 'undefined') {
+    return { firstTouch: null, lastTouch: null, sessionId: 'ssr', deviceType: 'other' }
+  }
+
+  let firstTouch: AttributionTouch | null = null
+  let lastTouch: AttributionTouch | null = null
+
+  const ftCookie = getCookie('ckm-first-touch')
+  if (ftCookie) {
+    try {
+      firstTouch = JSON.parse(ftCookie) as AttributionTouch
+    } catch {
+      firstTouch = null
+    }
+  }
+
+  try {
+    const lt = sessionStorage.getItem('ckm-last-touch')
+    if (lt) lastTouch = JSON.parse(lt) as AttributionTouch
+  } catch {
+    lastTouch = null
+  }
+
+  return {
+    firstTouch,
+    lastTouch,
+    sessionId: getOrCreateSessionId(),
+    deviceType: detectDeviceType(),
+  }
+}
+
+/**
+ * 觸發 ProductView 事件 → fire-and-forget POST 到 /api/utm/track
+ * 在 PDP useEffect mount 時呼叫一次。失敗不擋使用者。
+ */
+export function trackProductView(productId: string | number, productName?: string) {
+  if (typeof window === 'undefined') return
+  const attribution = getCurrentAttribution()
+
+  pushDataLayer('view_item', {
+    currency: 'TWD',
+    items: [{ item_id: String(productId), item_name: productName }],
+  })
+
+  // sendBeacon 在 unload 時更可靠；fetch fallback
+  const body = JSON.stringify({
+    productId,
+    sessionId: attribution.sessionId,
+    deviceType: attribution.deviceType,
+    utmSource: attribution.lastTouch?.utmSource,
+    utmMedium: attribution.lastTouch?.utmMedium,
+    utmCampaign: attribution.lastTouch?.utmCampaign,
+    utmTerm: attribution.lastTouch?.utmTerm,
+    utmContent: attribution.lastTouch?.utmContent,
+    referrer: attribution.lastTouch?.referrer,
+    landingPath: attribution.lastTouch?.landingPath,
+  })
+
+  try {
+    if (typeof navigator.sendBeacon === 'function') {
+      const blob = new Blob([body], { type: 'application/json' })
+      navigator.sendBeacon('/api/utm/track', blob)
+      return
+    }
+  } catch {
+    // fall through to fetch
+  }
+
+  fetch('/api/utm/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+    keepalive: true,
+    credentials: 'include',
+  }).catch(() => {
+    // silent fail — 追蹤事件失敗不影響 UX
+  })
 }
 
 /* ─── 標準電商事件 ─── */

@@ -408,6 +408,47 @@ export const Orders: CollectionConfig = {
         },
       ],
     },
+    // ── UTM 歸因 ──
+    {
+      name: 'attribution',
+      label: 'UTM 歸因',
+      type: 'group',
+      admin: {
+        description:
+          '訂單的 UTM 來源歸因。firstTouch = 該會員首次進站時的 UTM（90 天 cookie）；' +
+          'lastTouch = 結帳當下 session 的 UTM。報表頁 /admin/reports/utm-attribution 用此資料聚合。',
+      },
+      fields: [
+        {
+          name: 'firstTouch',
+          label: '首次接觸（First-touch）',
+          type: 'group',
+          fields: [
+            { name: 'utmSource', label: 'UTM Source', type: 'text' },
+            { name: 'utmMedium', label: 'UTM Medium', type: 'text' },
+            { name: 'utmCampaign', label: 'UTM Campaign', type: 'text' },
+            { name: 'utmTerm', label: 'UTM Term', type: 'text' },
+            { name: 'utmContent', label: 'UTM Content', type: 'text' },
+            { name: 'referrer', label: 'Referrer', type: 'text' },
+            { name: 'capturedAt', label: '首次捕獲時間', type: 'date' },
+          ],
+        },
+        {
+          name: 'lastTouch',
+          label: '最後接觸（Last-touch）',
+          type: 'group',
+          fields: [
+            { name: 'utmSource', label: 'UTM Source', type: 'text' },
+            { name: 'utmMedium', label: 'UTM Medium', type: 'text' },
+            { name: 'utmCampaign', label: 'UTM Campaign', type: 'text' },
+            { name: 'utmTerm', label: 'UTM Term', type: 'text' },
+            { name: 'utmContent', label: 'UTM Content', type: 'text' },
+            { name: 'referrer', label: 'Referrer', type: 'text' },
+            { name: 'capturedAt', label: '最後捕獲時間', type: 'date' },
+          ],
+        },
+      ],
+    },
     // ── 備註 ──
     {
       name: 'customerNote',
