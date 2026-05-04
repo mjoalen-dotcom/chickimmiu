@@ -286,3 +286,67 @@ export const MBTI_QUESTIONS: MBTIQuestion[] = [
 ]
 
 export const TOTAL_QUESTIONS = MBTI_QUESTIONS.length // 28
+
+/**
+ * MBTI64 場合擴充題（PR-Y）
+ * ─────────────────────────────────
+ * 4 題 × 4 選項 = 4 個場合維度（urban / vacation / party / cozy）
+ *   - 4 題答完 → 統計 4 個 occasion 的票數
+ *   - 票數最高 → 推算為 user 的 primaryOccasion
+ *
+ * 與 MBTI_QUESTIONS 互不影響：MBTI 28 題決定 16 型基本型；本 4 題僅在 MBTI 結果之上
+ * 疊加場合維度，產生 16 × 4 = 64 sub-personalities
+ */
+export type LifestyleOccasion = 'urban' | 'vacation' | 'party' | 'cozy'
+
+export interface LifestyleQuestion {
+  id: string
+  text: string
+  options: Array<{ label: string; occasion: LifestyleOccasion }>
+}
+
+export const MBTI_LIFESTYLE_QUESTIONS: LifestyleQuestion[] = [
+  {
+    id: 'l1',
+    text: '一個放假的下午，你最想做的是：',
+    options: [
+      { label: '去新開的咖啡廳工作 / 進修，打理自己', occasion: 'urban' },
+      { label: '說走就走，開車 / 搭車去看海或山', occasion: 'vacation' },
+      { label: '邀好友吃飯 + 喝點酒，聊到深夜', occasion: 'party' },
+      { label: '在家烤甜點 + 看劇 + 玩寵物，零打擾', occasion: 'cozy' },
+    ],
+  },
+  {
+    id: 'l2',
+    text: '上傳穿搭照時，你最常配的 hashtag：',
+    options: [
+      { label: '#OOTD #citystyle #commute', occasion: 'urban' },
+      { label: '#travel #vacation #escape', occasion: 'vacation' },
+      { label: '#partyvibes #nightout #glam', occasion: 'party' },
+      { label: '#cozy #homewear #weekendmood', occasion: 'cozy' },
+    ],
+  },
+  {
+    id: 'l3',
+    text: '對自己最棒的形容是：',
+    options: [
+      { label: '我是城市裡懂得衣著得體的女子', occasion: 'urban' },
+      { label: '我會主動探索新景點 / 新體驗', occasion: 'vacation' },
+      { label: '我能讓任何聚會的氣氛變熱鬧', occasion: 'party' },
+      { label: '我把日常生活過得最溫暖最舒服', occasion: 'cozy' },
+    ],
+  },
+  {
+    id: 'l4',
+    text: '一週 7 天，你最常出現的場景：',
+    options: [
+      { label: '辦公室、商業大樓、客戶會議、商務午餐', occasion: 'urban' },
+      { label: '機場、戶外景點、旅行咖啡廳、海邊', occasion: 'vacation' },
+      { label: '酒吧、餐酒館、生日趴、慶功宴、紅毯', occasion: 'party' },
+      { label: '自家、社區公園、寵物醫院、買菜路上', occasion: 'cozy' },
+    ],
+  },
+]
+
+export const TOTAL_LIFESTYLE_QUESTIONS = MBTI_LIFESTYLE_QUESTIONS.length // 4
+export const TOTAL_QUIZ_QUESTIONS = TOTAL_QUESTIONS + TOTAL_LIFESTYLE_QUESTIONS // 32

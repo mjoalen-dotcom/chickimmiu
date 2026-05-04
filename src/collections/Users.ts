@@ -1003,6 +1003,32 @@ export const Users: CollectionConfig = {
                   type: 'json',
                   admin: { readOnly: true, description: '4 維度淨分（E-I / S-N / T-F / J-P），系統自動記錄' },
                 },
+                // MBTI64（PR-Y）：基本 MBTI 16 型 × 4 場合 = 64 sub-personalities
+                {
+                  name: 'primaryOccasion',
+                  label: '主要場合（MBTI64）',
+                  type: 'select',
+                  options: [
+                    { label: '都會 都會 / 通勤 / 商務', value: 'urban' },
+                    { label: '度假 旅行 / 戶外 / 放鬆', value: 'vacation' },
+                    { label: '派對 夜晚 / 慶典 / 紅毯', value: 'party' },
+                    { label: '居家 在家 / 散步 / 日常', value: 'cozy' },
+                  ],
+                  admin: {
+                    description:
+                      '由測驗最後 4 題 lifestyle 場合題自動推算；與 mbtiType 組合 → 64 sub-personality 推薦',
+                  },
+                },
+                {
+                  name: 'occasionScores',
+                  label: '場合分數（JSON）',
+                  type: 'json',
+                  admin: {
+                    readOnly: true,
+                    description:
+                      '4 場合票數（urban/vacation/party/cozy），系統自動記錄；用於分群與重新推薦',
+                  },
+                },
               ],
             },
             {

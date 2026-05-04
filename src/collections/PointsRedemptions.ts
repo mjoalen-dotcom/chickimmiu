@@ -135,40 +135,120 @@ export const PointsRedemptions: CollectionConfig = {
       ],
     },
 
-    // ── 優惠券/折扣碼設定 ──
+    // ── 優惠券/折扣碼/購物金/加購設定 ──
+    // 此 group 在 coupon / discount_code / free_shipping / addon_deal / store_credit 五型顯示
+    // - coupon / discount_code / addon_deal 兌換 → 自動產生個人化 Coupons row + 寶物箱
+    // - free_shipping → 同上但 discountType 強制 free_shipping
+    // - store_credit → 兌換時把 discountValue 當「贈送購物金面額」加進 user.shoppingCredit
     {
       name: 'couponConfig',
-      label: '優惠券設定',
+      label: '優惠券 / 購物金設定',
       type: 'group',
-      admin: { condition: (_, siblingData) => ['coupon', 'discount_code', 'free_shipping'].includes(siblingData?.type || '') },
+      admin: {
+        condition: (_, siblingData) =>
+          ['coupon', 'discount_code', 'free_shipping', 'addon_deal', 'store_credit'].includes(
+            siblingData?.type || '',
+          ),
+        description:
+          '兌換後會自動產生個人化優惠券（Coupons collection）+ 寶物箱記錄；store_credit 類型則把 discountValue 直接加進會員購物金餘額',
+      },
       fields: [
-        { name: 'discountType', label: '折扣類型', type: 'select', options: [
-          { label: '固定金額', value: 'fixed' },
-          { label: '百分比', value: 'percentage' },
-        ]},
-        { name: 'discountValue', label: '折扣值', type: 'number', admin: { description: '固定金額=NT$, 百分比=%, 免運券不需填' } },
+        {
+          name: 'discountType',
+          label: '折扣類型',
+          type: 'select',
+          options: [
+            { label: '固定金額', value: 'fixed' },
+            { label: '百分比', value: 'percentage' },
+            { label: '免運費', value: 'free_shipping' },
+          ],
+          admin: {
+            description:
+              'free_shipping 類型自動套用免運；store_credit 不需填，會直接以 discountValue 為購物金面額',
+          },
+        },
+        {
+          name: 'discountValue',
+          label: '折扣值 / 購物金面額',
+          type: 'number',
+          admin: {
+            description:
+              '固定金額=NT$, 百分比=1-100, 免運券不需填, store_credit=贈送購物金面額（NT$）',
+          },
+        },
+        {
+          name: 'maxDiscountAmount',
+          label: '百分比折抵上限（NT$）',
+          type: 'number',
+          admin: {
+            description:
+              '百分比類型限制最高折抵；如 8 折最高折 500 元 → 此處填 500。0 = 不限',
+          },
+        },
         { name: 'minOrderAmount', label: '最低消費門檻', type: 'number', defaultValue: 0 },
-        { name: 'validDays', label: '優惠券有效天數', type: 'number', defaultValue: 30 },
+        {
+          name: 'validDays',
+          label: '優惠券有效天數',
+          type: 'number',
+          defaultValue: 30,
+          admin: { description: '兌換後 N 天內可用；store_credit 不適用（永不過期）' },
+        },
       ],
     },
 
-    // ── 抽獎設定 ──
+    // ── 抽獎 / 神秘禮物設定 ──
+    // lottery：使用者花點數抽，winRate% 決定是否中；中 → 從 prizes[] 加權抽 1
+    // mystery：使用者花點數一定中（內部 winRate=100），直接從 prizes[] 加權抽 1
     {
       name: 'lotteryConfig',
-      label: '抽獎設定',
+      label: '抽獎 / 神秘禮物設定',
       type: 'group',
-      admin: { condition: (_, siblingData) => siblingData?.type === 'lottery' },
+      admin: {
+        condition: (_, siblingData) => ['lottery', 'mystery'].includes(siblingData?.type || ''),
+        description:
+          '抽中後寫入會員寶物箱（rewardType=voucher），客服 3 個工作天內聯繫履行（出貨 / 安排活動 / 兌換實體獎品）',
+      },
       fields: [
-        { name: 'winRate', label: '中獎機率（%）', type: 'number', min: 0, max: 100, defaultValue: 10 },
+        {
+          name: 'winRate',
+          label: '中獎機率（%）',
+          type: 'number',
+          min: 0,
+          max: 100,
+          defaultValue: 10,
+          admin: {
+            description:
+              'lottery 類型 1-100；mystery 類型實際以 100% 處理（神秘禮物必中），此值忽略',
+          },
+        },
         {
           name: 'prizes',
           label: '獎品池',
           type: 'array',
           fields: [
             { name: 'prizeName', label: '獎品名稱', type: 'text', required: true },
-            { name: 'prizeValue', label: '獎品價值', type: 'number' },
-            { name: 'weight', label: '權重', type: 'number', defaultValue: 1, admin: { description: '數字越大中獎機率越高' } },
-            { name: 'stock', label: '數量', type: 'number', defaultValue: 0, admin: { description: '0 = 無限' } },
+            {
+              name: 'prizeValue',
+              label: '獎品價值（NT$）',
+              type: 'number',
+              admin: { description: '顯示給會員看的標稱價值；不影響扣點' },
+            },
+            {
+              name: 'weight',
+              label: '權重',
+              type: 'number',
+              defaultValue: 1,
+              admin: { description: '數字越大中獎機率越高（在中獎那刻才生效）' },
+            },
+            {
+              name: 'stock',
+              label: '剩餘數量',
+              type: 'number',
+              admin: {
+                description:
+                  '空值 / 留空 = 無限量；填數字 = 該獎抽中時自動 -1，扣到 0 後此獎從加權池排除',
+              },
+            },
           ],
         },
       ],

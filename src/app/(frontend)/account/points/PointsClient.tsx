@@ -96,12 +96,26 @@ export default function PointsClient({
   const currentTierColor = TIER_HEX_COLORS[user.currentTierSlug] ?? TIER_HEX_COLORS.ordinary
 
   // 兌換流程：點按鈕 → 開 confirm modal → 送 API → 顯示 toast → router.refresh()
-  // 兌換規則跟使用者說明：扣點不可退、隨下一張訂單寄出、不能單獨退貨
+  // 12 type 全支援；不同 type 在 confirm modal / toast 顯示對應說明文字
   const SHIPPABLE_TYPES = new Set(['physical', 'movie_ticket', 'gift_physical'])
+  const COUPON_TYPES = new Set(['coupon', 'discount_code', 'addon_deal', 'free_shipping'])
+  const VOUCHER_TYPES = new Set(['experience', 'styling', 'charity'])
+
+  function describeRedemption(type: string): string {
+    if (SHIPPABLE_TYPES.has(type)) return '兌換後不可退；獎品將自動隨您的下一張訂單寄出'
+    if (COUPON_TYPES.has(type)) return '兌換後產生個人優惠券（30 天有效），可於結帳時輸入代碼套用'
+    if (type === 'store_credit') return '兌換成功後直接加入您的購物金餘額（永不過期）'
+    if (type === 'lottery') return '抽獎類獎品扣點不退；中獎後客服 3 個工作天內聯繫您'
+    if (type === 'mystery') return '神秘禮物必中；客服 3 個工作天內聯繫您安排'
+    if (VOUCHER_TYPES.has(type)) return '兌換後客服將於 3 個工作天內聯繫您安排細節'
+    return '兌換成功後不可退；請確認後送出'
+  }
+
+  type LotteryFeedback = { won: boolean; prizeName?: string; prizeValue?: number | null }
   const [confirmItem, setConfirmItem] = useState<ShopItemLite | null>(null)
   const [redeeming, setRedeeming] = useState(false)
   const [toast, setToast] = useState<
-    { kind: 'success' | 'error'; text: string } | null
+    { kind: 'success' | 'error' | 'lose'; text: string } | null
   >(null)
 
   async function handleConfirmRedeem() {
@@ -118,11 +132,13 @@ export default function PointsClient({
         success?: boolean
         error?: string
         message?: string
+        data?: { lottery?: LotteryFeedback }
       }
       if (res.ok && json.success) {
+        const lottery = json.data?.lottery
         setToast({
-          kind: 'success',
-          text: json.message ?? '兌換成功！獎品將隨您的下一張訂單寄出',
+          kind: lottery ? (lottery.won ? 'success' : 'lose') : 'success',
+          text: json.message ?? '兌換成功！',
         })
         setConfirmItem(null)
         router.refresh()
@@ -133,7 +149,7 @@ export default function PointsClient({
       setToast({ kind: 'error', text: '網路錯誤，請稍後再試' })
     } finally {
       setRedeeming(false)
-      setTimeout(() => setToast(null), 4000)
+      setTimeout(() => setToast(null), 5000)
     }
   }
 
@@ -348,28 +364,20 @@ export default function PointsClient({
 
                       {/* CTA */}
                       <button
-                        disabled={!canAfford || !SHIPPABLE_TYPES.has(item.type)}
-                        onClick={() => {
-                          if (!SHIPPABLE_TYPES.has(item.type)) {
-                            setToast({
-                              kind: 'error',
-                              text: '此類型獎品需於指定活動或洽客服兌換',
-                            })
-                            setTimeout(() => setToast(null), 4000)
-                            return
-                          }
-                          setConfirmItem(item)
-                        }}
+                        disabled={!canAfford}
+                        onClick={() => setConfirmItem(item)}
                         className={`w-full mt-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                          canAfford && SHIPPABLE_TYPES.has(item.type)
+                          canAfford
                             ? 'bg-gold-500 text-white hover:bg-gold-600'
                             : 'bg-cream-100 text-muted-foreground cursor-not-allowed'
                         }`}
                       >
-                        {!SHIPPABLE_TYPES.has(item.type)
-                          ? '活動兌換'
-                          : canAfford
-                          ? '立即兌換'
+                        {canAfford
+                          ? item.type === 'lottery'
+                            ? '抽抽看'
+                            : item.type === 'mystery'
+                              ? '拆驚喜'
+                              : '立即兌換'
                           : '點數不足'}
                       </button>
                     </div>
@@ -504,11 +512,15 @@ export default function PointsClient({
             className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm ${
               toast.kind === 'success'
                 ? 'bg-green-500 text-white'
-                : 'bg-red-500 text-white'
+                : toast.kind === 'lose'
+                  ? 'bg-slate-700 text-white'
+                  : 'bg-red-500 text-white'
             }`}
           >
             {toast.kind === 'success' ? (
               <CheckCircle2 size={16} />
+            ) : toast.kind === 'lose' ? (
+              <Dice6 size={16} />
             ) : (
               <AlertTriangle size={16} />
             )}
@@ -571,20 +583,21 @@ export default function PointsClient({
 
               <ul className="space-y-2 mb-5 text-xs text-muted-foreground">
                 <li className="flex gap-2">
-                  <Package size={14} className="text-gold-500 shrink-0 mt-0.5" />
-                  <span>
-                    獎品將進入您的「<strong className="text-foreground">寶物箱</strong>
-                    」，於下一張<strong className="text-foreground">付款訂單</strong>
-                    產生時自動隨單寄出。
-                  </span>
+                  <Sparkles size={14} className="text-gold-500 shrink-0 mt-0.5" />
+                  <span>{describeRedemption(confirmItem.type)}</span>
                 </li>
                 <li className="flex gap-2">
                   <AlertTriangle size={14} className="text-red-400 shrink-0 mt-0.5" />
                   <span>
                     兌換後點數立即扣除，
                     <strong className="text-foreground">無法取消或退回</strong>
-                    ；隨單寄出之獎品
-                    <strong className="text-foreground">不接受單獨退貨</strong>。
+                    {SHIPPABLE_TYPES.has(confirmItem.type) ? (
+                      <>
+                        ；隨單寄出之獎品
+                        <strong className="text-foreground">不接受單獨退貨</strong>
+                      </>
+                    ) : null}
+                    。
                   </span>
                 </li>
               </ul>
