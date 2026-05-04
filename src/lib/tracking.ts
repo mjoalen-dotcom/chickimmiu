@@ -69,13 +69,61 @@ function pushDataLayer(event: string, data: Record<string, unknown> = {}) {
 
 /**
  * Meta Pixel (fbq) 推送
+ *
+ * eventID — 給 server-side CAPI 對齊用，Meta 會用 (event_name, event_id) 雙鍵去重。
+ * 客戶端 Pixel + 伺服器 CAPI 帶同一個 eventID 才不會被算兩次 conversion。
  */
-function fbqTrack(event: string, data: Record<string, unknown> = {}) {
+function fbqTrack(
+  event: string,
+  data: Record<string, unknown> = {},
+  eventID?: string,
+) {
   if (typeof window === 'undefined') return
   if (typeof window.fbq === 'function') {
-    window.fbq('track', event, data)
+    if (eventID) {
+      window.fbq('track', event, data, { eventID })
+    } else {
+      window.fbq('track', event, data)
+    }
   }
-  debugLog(`fbq:${event}`, data)
+  debugLog(`fbq:${event}${eventID ? `(eid=${eventID})` : ''}`, data)
+}
+
+/* ─── eventID + Meta cookies (CAPI 雙線去重) ─── */
+
+/**
+ * 用訂單編號組去重 ID — 跟 server CAPI 對齊。
+ * 同一張訂單若客戶端不慎重複觸發 fbq Purchase（雙擊「完成下單」、SPA 路由 race），
+ * Meta 會以 (Purchase, purchase_<orderNumber>) 識別為同一事件。
+ */
+export function purchaseEventId(orderNumber: string): string {
+  return `purchase_${orderNumber}`
+}
+
+/**
+ * 讀 Meta `_fbp` cookie（Pixel 寫入，per-browser unique）。
+ */
+export function getFbp(): string | undefined {
+  if (typeof document === 'undefined') return undefined
+  const m = document.cookie.match(/(?:^|;\s*)_fbp=([^;]+)/)
+  return m ? decodeURIComponent(m[1]) : undefined
+}
+
+/**
+ * 讀 Meta `_fbc` cookie。若 cookie 不存在但 URL 有 `fbclid`，依 Meta 規則合成。
+ * 格式：fb.<subdomain_index>.<creation_time_ms>.<fbclid>
+ *   subdomain_index 對 chickimmiu.com 取 1
+ */
+export function getFbc(): string | undefined {
+  if (typeof document === 'undefined') return undefined
+  const cookieMatch = document.cookie.match(/(?:^|;\s*)_fbc=([^;]+)/)
+  if (cookieMatch) return decodeURIComponent(cookieMatch[1])
+
+  if (typeof window !== 'undefined') {
+    const fbclid = new URL(window.location.href).searchParams.get('fbclid')
+    if (fbclid) return `fb.1.${Date.now()}.${fbclid}`
+  }
+  return undefined
 }
 
 /* ─── UTM 參數解析 ─── */
@@ -223,8 +271,11 @@ export function trackBeginCheckout(
 
 /**
  * Purchase — 結帳成功
+ *
+ * eventID — 客戶端 fbq + 伺服器 CAPI 對齊去重用，建議用 purchaseEventId(orderNumber)。
+ * 不傳會降級成單線（只有客戶端 Pixel，無 CAPI dedup）。
  */
-export function trackPurchase(data: PurchaseData) {
+export function trackPurchase(data: PurchaseData, eventID?: string) {
   pushDataLayer('purchase', {
     transaction_id: data.transaction_id,
     value: data.value,
@@ -234,13 +285,17 @@ export function trackPurchase(data: PurchaseData) {
     membership_tier: data.membership_tier,
   })
 
-  fbqTrack('Purchase', {
-    content_ids: data.items.map((i) => i.item_id),
-    content_type: 'product',
-    num_items: data.items.reduce((sum, i) => sum + i.quantity, 0),
-    value: data.value,
-    currency: data.currency,
-  })
+  fbqTrack(
+    'Purchase',
+    {
+      content_ids: data.items.map((i) => i.item_id),
+      content_type: 'product',
+      num_items: data.items.reduce((sum, i) => sum + i.quantity, 0),
+      value: data.value,
+      currency: data.currency,
+    },
+    eventID,
+  )
 
   // Google Ads conversion (透過 GTM 觸發)
   pushDataLayer('conversion', {
@@ -326,11 +381,18 @@ export function setDefaultConsent() {
 export interface CAPIEventData {
   event_name: string
   event_time: number
+  /**
+   * 跟客戶端 fbq 的 `eventID` 對齊（同名雙線去重的關鍵）。
+   * Meta 用 (event_name, event_id) 去重，不傳 = 雙倍計算。
+   */
+  event_id?: string
   user_data: {
     client_ip_address?: string
     client_user_agent?: string
-    em?: string[] // hashed emails
-    ph?: string[] // hashed phones
+    em?: string[] // SHA-256 hashed emails (lowercased trimmed)
+    ph?: string[] // SHA-256 hashed phones (digits only, +國碼)
+    fbp?: string // _fbp cookie
+    fbc?: string // _fbc cookie 或 fb.<sub>.<ts>.<fbclid>
   }
   custom_data?: Record<string, unknown>
   event_source_url?: string
@@ -339,28 +401,43 @@ export interface CAPIEventData {
 
 /**
  * 發送 Meta CAPI 事件（Server-side，從 Server Action 或 API Route 呼叫）
+ *
+ * @param testEventCode  Meta 後台 Events Manager → 測試事件 工具的 code，
+ *                       設了會把事件 routed 到測試介面而不影響正式 conversion。
+ *                       prod 啟用前用這個驗 payload 結構正確 + dedup 真有對到。
  */
 export async function sendMetaCAPI(
   pixelId: string,
   accessToken: string,
   events: CAPIEventData[],
+  testEventCode?: string,
 ) {
   if (!pixelId || !accessToken) return
 
   const url = `https://graph.facebook.com/v19.0/${pixelId}/events`
 
+  const body: Record<string, unknown> = {
+    data: events,
+    access_token: accessToken,
+  }
+  if (testEventCode) body.test_event_code = testEventCode
+
   try {
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: events,
-        access_token: accessToken,
-      }),
+      body: JSON.stringify(body),
     })
 
     if (!response.ok) {
       console.error('[CAPI] Error:', await response.text())
+    } else if (process.env.NODE_ENV === 'development') {
+      console.log(
+        '[CAPI] sent',
+        events.length,
+        'events',
+        testEventCode ? `(test_event_code=${testEventCode})` : '',
+      )
     }
   } catch (error) {
     console.error('[CAPI] Fetch error:', error)

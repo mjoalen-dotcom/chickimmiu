@@ -66,6 +66,7 @@ import { PolicyPagesSettings } from './globals/PolicyPagesSettings'
 import { NavigationSettings } from './globals/NavigationSettings'
 import { CheckoutSettings } from './globals/CheckoutSettings'
 import { OrderSettings } from './globals/OrderSettings'
+import { AdsCatalogSettings } from './globals/AdsCatalogSettings'
 
 import { CreditScoreHistory } from './collections/CreditScoreHistory'
 import { PointsTransactions } from './collections/PointsTransactions'
@@ -325,6 +326,7 @@ export default buildConfig({
     // ④ 行銷推廣
     MarketingAutomationSettings,
     RecommendationSettings,
+    AdsCatalogSettings,
     // ⑤ 互動體驗
     GameSettings,
     // ⑥ 內容與頁面
