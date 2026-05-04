@@ -26,6 +26,8 @@ const TAG_OPTIONS = [
   { value: 'new', label: '新品上市' },
   { value: 'hot', label: '熱銷推薦' },
   { value: 'sale', label: '限時優惠' },
+  { value: 'korean-celebrity', label: '★ 韓星同款' },
+  { value: 'jin-style', label: '✿ 金老佛爺已穿' },
 ]
 
 const SORT_OPTIONS = [
@@ -121,6 +123,16 @@ export function ProductListClient({
       list = list.filter((p) => {
         const sp = p.salePrice as number | undefined
         return sp && sp > 0
+      })
+    if (activeTag === 'korean-celebrity')
+      list = list.filter((p) => {
+        const tags = (p.collectionTags as string[] | undefined) || []
+        return tags.includes('korean-celebrity') || tags.includes('celebrity-style')
+      })
+    if (activeTag === 'jin-style')
+      list = list.filter((p) => {
+        const tags = (p.collectionTags as string[] | undefined) || []
+        return tags.includes('jin-style') || tags.includes('jin-live')
       })
 
     // Category filter (includes children of parent categories)
