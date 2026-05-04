@@ -672,7 +672,7 @@ export async function playMBTIQuiz(
     data: {
       user: userId,
       amount: -pointsCost,
-      type: 'spend',
+      type: 'redeem',
       source: 'game',
       description: '[mbti-style] MBTI 個性穿搭測驗',
       balance: newBalance,
