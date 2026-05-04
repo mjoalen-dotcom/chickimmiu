@@ -71,6 +71,8 @@ import { AdsCatalogSettings } from './globals/AdsCatalogSettings'
 
 import { CreditScoreHistory } from './collections/CreditScoreHistory'
 import { PointsTransactions } from './collections/PointsTransactions'
+import { ProductViewEvents } from './collections/ProductViewEvents'
+import { UTMCampaigns } from './collections/UTMCampaigns'
 import { AutomationJourneys } from './collections/AutomationJourneys'
 import { AutomationLogs } from './collections/AutomationLogs'
 import { CustomerServiceTickets } from './collections/CustomerServiceTickets'
@@ -236,6 +238,15 @@ export default buildConfig({
           Component: '@/components/admin/RepeatPurchaseView',
           path: '/repeat-purchase',
         },
+        // PR-B：UTM 商品歸因
+        utmAttribution: {
+          Component: '@/components/admin/UTMAttributionView',
+          path: '/reports/utm-attribution',
+        },
+        utmBuilder: {
+          Component: '@/components/admin/UTMBuilderView',
+          path: '/tools/utm-builder',
+        },
       },
     },
   },
@@ -271,6 +282,7 @@ export default buildConfig({
     Messages,
     MessageTags,
     ConversationActivities,
+    ProductViewEvents, // PR-B：UTM 商品瀏覽事件流
     // ④ 行銷推廣
     AutomationJourneys,
     AutomationLogs,
@@ -285,6 +297,7 @@ export default buildConfig({
     Bundles,
     Coupons,
     CouponRedemptions,
+    UTMCampaigns, // PR-B：集中管理 UTM 活動 slug
     // ⑤ 互動體驗
     Affiliates,
     UGCPosts,

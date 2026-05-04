@@ -31,7 +31,7 @@ import { ProductCard } from '@/components/product/ProductCard'
 import { AISizeRecommender } from '@/components/product/AISizeRecommender'
 import { AlsoBoughtSection } from '@/components/product/AlsoBoughtSection'
 import { ProductPageUpsell } from '@/components/recommendation/ProductPageUpsell'
-import { trackViewContent } from '@/lib/tracking'
+import { trackViewContent, trackProductView } from '@/lib/tracking'
 
 /* ─────────────────────────────────── types ── */
 interface Props {
@@ -231,7 +231,7 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
     return () => observer.disconnect()
   }, [])
 
-  // ViewContent tracking
+  // ViewContent tracking + UTM 商品瀏覽事件落庫
   useEffect(() => {
     trackViewContent({
       content_id: product.id as unknown as string,
@@ -240,6 +240,12 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
       value: (product.salePrice as number) ?? (product.price as number),
       currency: 'TWD',
     })
+    // PR-B：把這次 PDP 瀏覽寫到 product-view-events，附帶當下 UTM
+    // 使用 fire-and-forget；後端有 30s/SKU dedup 防 reload 灌爆
+    trackProductView(
+      product.id as unknown as string | number,
+      product.name as string | undefined,
+    )
   }, [product.id, product.name, product.category, product.salePrice, product.price])
 
   const sizes = [...new Set(
