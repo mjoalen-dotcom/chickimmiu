@@ -216,7 +216,7 @@ async function redeemPhysical(ctx: RedemptionContext): Promise<RedemptionOutcome
       redemptionRef: redemption.id,
       pointsCostSnapshot: cost,
       ...(redemptionInstructions ? { redemptionInstructions } : {}),
-    } as LooseRecord,
+    } as never,
     overrideAccess: true,
   })
 
@@ -263,7 +263,7 @@ async function redeemCoupon(ctx: RedemptionContext): Promise<RedemptionOutcome> 
       usageLimitPerUser: 1,
       expiresAt: expiresAtIso(validDays),
       isActive: true,
-    } as LooseRecord,
+    } as never,
     overrideAccess: true,
   })
 
@@ -291,7 +291,7 @@ async function redeemCoupon(ctx: RedemptionContext): Promise<RedemptionOutcome> 
       redemptionRef: redemption.id,
       pointsCostSnapshot: cost,
       redemptionInstructions: instructions,
-    } as LooseRecord,
+    } as never,
     overrideAccess: true,
   })
 
@@ -316,7 +316,7 @@ async function redeemStoreCredit(ctx: RedemptionContext): Promise<RedemptionOutc
   await payload.update({
     collection: 'users',
     id: userId,
-    data: { shoppingCredit: currentCredit + creditAmount } as LooseRecord,
+    data: { shoppingCredit: currentCredit + creditAmount } as never,
     overrideAccess: true,
   })
 
@@ -338,7 +338,7 @@ async function redeemStoreCredit(ctx: RedemptionContext): Promise<RedemptionOutc
         redemptionRef: redemption.id,
         pointsCostSnapshot: ctx.cost,
         redemptionInstructions: `已存入您的購物金餘額（NT$ ${creditAmount.toLocaleString()}）。\n結帳時可直接抵扣訂單金額；購物金永不過期。`,
-      } as LooseRecord,
+      } as never,
       overrideAccess: true,
     })
     rewardId = pickId(reward)
@@ -405,7 +405,7 @@ async function redeemLotteryOrMystery(
         await payload.update({
           collection: 'points-redemptions',
           id: redemption.id as string | number,
-          data: { lotteryConfig: { ...lotteryConfig, prizes: newPrizes } } as LooseRecord,
+          data: { lotteryConfig: { ...lotteryConfig, prizes: newPrizes } } as never,
           overrideAccess: true,
         })
       } catch {
@@ -429,7 +429,7 @@ async function redeemLotteryOrMystery(
       redemptionRef: redemption.id,
       pointsCostSnapshot: cost,
       redemptionInstructions: `恭喜抽中：${prizeName}${prizeValue > 0 ? `（價值 NT$ ${prizeValue.toLocaleString()}）` : ''}\n客服將於 3 個工作天內主動聯繫您安排兌換 / 出貨。\n如有問題請於 ${validityDays} 天內聯絡客服。`,
-    } as LooseRecord,
+    } as never,
     overrideAccess: true,
   })
 
@@ -467,7 +467,7 @@ async function redeemVoucher(ctx: RedemptionContext): Promise<RedemptionOutcome>
       redemptionRef: redemption.id,
       pointsCostSnapshot: cost,
       redemptionInstructions: `兌換成功！${description}\n客服將於 3 個工作天內主動聯繫您確認時間 / 安排細節。\n${validityDays} 天內未聯繫請主動聯絡客服。`,
-    } as LooseRecord,
+    } as never,
     overrideAccess: true,
   })
 

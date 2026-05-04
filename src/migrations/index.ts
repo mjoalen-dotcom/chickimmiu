@@ -34,6 +34,7 @@ import * as migration_20260429_120000_add_ads_catalog from './20260429_120000_ad
 import * as migration_20260504_100000_add_total_sold_and_korean_celebrity from './20260504_100000_add_total_sold_and_korean_celebrity';
 import * as migration_20260504_120000_add_mbti_quiz from './20260504_120000_add_mbti_quiz';
 import * as migration_20260504_140000_add_redemption_max_discount from './20260504_140000_add_redemption_max_discount';
+import * as migration_20260504_150000_add_mbti64_occasion from './20260504_150000_add_mbti64_occasion';
 
 export const migrations = [
   {
@@ -215,5 +216,10 @@ export const migrations = [
     up: migration_20260504_140000_add_redemption_max_discount.up,
     down: migration_20260504_140000_add_redemption_max_discount.down,
     name: '20260504_140000_add_redemption_max_discount',
+  },
+  {
+    up: migration_20260504_150000_add_mbti64_occasion.up,
+    down: migration_20260504_150000_add_mbti64_occasion.down,
+    name: '20260504_150000_add_mbti64_occasion',
   },
 ];

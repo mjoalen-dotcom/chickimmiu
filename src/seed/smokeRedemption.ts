@@ -106,11 +106,11 @@ async function ensureRedemption(
     }
   }
 
-  return await payload.create({
+  return (await payload.create({
     collection: 'points-redemptions',
-    data: baseData,
+    data: baseData as never,
     overrideAccess: true,
-  })
+  })) as unknown as LooseRecord
 }
 
 async function main() {

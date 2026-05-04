@@ -356,10 +356,10 @@ export default async function AccountPage() {
           </div>
           {mbtiType && (
             <Link
-              href={`/products?personalityType=${mbtiType}`}
+              href="/account/personality"
               className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
             >
-              看推薦商品 <ArrowRight size={12} />
+              個性分析頁 <ArrowRight size={12} />
             </Link>
           )}
         </div>
@@ -395,10 +395,19 @@ export default async function AccountPage() {
             </div>
 
             {mbtiTakenAtRaw && (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground mb-3">
                 測驗時間：{formatDate(mbtiTakenAtRaw)}（每位會員終身限 1 次）
               </p>
             )}
+
+            <Link
+              href="/account/personality"
+              className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-purple-500/10 text-purple-700 hover:bg-purple-500/20 transition-colors"
+            >
+              <Sparkles size={12} />
+              打開 MBTI64 個性分析頁（4 場合 + 3 模式推薦）
+              <ArrowRight size={12} />
+            </Link>
           </div>
         ) : (
           <div>

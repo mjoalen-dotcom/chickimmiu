@@ -3,7 +3,15 @@
 import { getPayload } from 'payload'
 import config from '../../payload.config'
 import type { Where } from 'payload'
-import { computeMBTIType, getResult, isAnswersComplete, type MBTIAnswers } from './mbtiQuizEngine'
+import {
+  computeMBTI64,
+  computeMBTIType,
+  getResult,
+  isAnswersComplete,
+  type LifestyleAnswers,
+  type MBTIAnswers,
+} from './mbtiQuizEngine'
+import { OCCASION_META } from './mbtiOccasions'
 import { suggestPersonalityTypes, type ProductLikeForRecommend } from './mbtiAutoRecommend'
 
 // ──────────────────────────────────────
@@ -589,7 +597,11 @@ export async function recordGamePlay(
 //   • 結果寫到 users.mbtiProfile（給商品推薦/廣告/AI DM 用）
 //   • mini-game-records.metadata 記錄答題與分數（後台/分析用）
 
-export async function playMBTIQuiz(userId: number, answers: MBTIAnswers) {
+export async function playMBTIQuiz(
+  userId: number,
+  answers: MBTIAnswers,
+  lifestyleAnswers: LifestyleAnswers = {},
+) {
   const payload = await getPayload({ config })
 
   // 1. 取設定
@@ -667,11 +679,19 @@ export async function playMBTIQuiz(userId: number, answers: MBTIAnswers) {
     } as unknown as Record<string, unknown>,
   })
 
-  // 7. 計算 MBTI 結果
-  const { type, scores, dimensionScores } = computeMBTIType(answers)
+  // 7. 計算 MBTI 結果（PR-Y：MBTI64 同時計算 primaryOccasion + sub-personality）
+  const has32 = lifestyleAnswers && Object.keys(lifestyleAnswers).length > 0
+  const compute = has32
+    ? computeMBTI64(answers, lifestyleAnswers)
+    : { ...computeMBTIType(answers), primaryOccasion: null, occasionScores: null, subResult: null }
+
+  const { type, scores, dimensionScores } = compute
+  const primaryOccasion = (compute as { primaryOccasion: 'urban' | 'vacation' | 'party' | 'cozy' | null }).primaryOccasion
+  const occasionScores = (compute as { occasionScores: Record<string, number> | null }).occasionScores
+  const subResult = (compute as { subResult: { subTagline: string; outfitTips: string[]; keyItems: string[]; paletteHint: string; collectionTags: string[] } | null }).subResult
   const resultDef = getResult(type)
 
-  // 8. 更新 users（扣點數 + 寫 mbtiProfile）
+  // 8. 更新 users（扣點數 + 寫 mbtiProfile + occasion）
   await (payload.update as Function)({
     collection: 'users',
     id: userId,
@@ -681,6 +701,8 @@ export async function playMBTIQuiz(userId: number, answers: MBTIAnswers) {
         mbtiType: type,
         mbtiTakenAt: new Date().toISOString(),
         mbtiScores: dimensionScores,
+        ...(primaryOccasion ? { primaryOccasion } : {}),
+        ...(occasionScores ? { occasionScores } : {}),
       },
     } as unknown as Record<string, unknown>,
   })
@@ -695,10 +717,18 @@ export async function playMBTIQuiz(userId: number, answers: MBTIAnswers) {
         outcome: 'completed',
         prizeType: 'none',
         prizeAmount: 0,
-        prizeDescription: `${type} ${resultDef.nickname}`,
+        prizeDescription: `${type} ${resultDef.nickname}${primaryOccasion ? ` · ${OCCASION_META[primaryOccasion].label}` : ''}`,
       },
       pointsSpent: pointsCost,
-      metadata: { answers, mbtiType: type, scores, dimensionScores },
+      metadata: {
+        answers,
+        lifestyleAnswers,
+        mbtiType: type,
+        scores,
+        dimensionScores,
+        primaryOccasion,
+        occasionScores,
+      },
       status: 'completed',
     } as unknown as Record<string, unknown>,
   })
@@ -735,6 +765,18 @@ export async function playMBTIQuiz(userId: number, answers: MBTIAnswers) {
     accentColor: resultDef.accentColor,
     scores,
     dimensionScores,
+    // MBTI64 sub-personality 欄位
+    ...(primaryOccasion
+      ? {
+          primaryOccasion,
+          occasionLabel: OCCASION_META[primaryOccasion].label,
+          occasionIcon: OCCASION_META[primaryOccasion].icon,
+          subTagline: subResult?.subTagline,
+          outfitTips: subResult?.outfitTips,
+          paletteHint: subResult?.paletteHint,
+          occasionScores,
+        }
+      : {}),
     recommendedProducts,
     pointsRemaining: newBalance,
     pointsSpent: pointsCost,
