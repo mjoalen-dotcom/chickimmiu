@@ -59,6 +59,8 @@ import { default as default_c4734b417dd2f37db2adf0e6ec330b48 } from '@/component
 import { default as default_b49611ccd828469519fd79e264a9eb51 } from '@/components/admin/HelpView'
 import { default as default_b3d544e796f2e72482a7e1ca06c557a3 } from '@/components/admin/MemberAnalyticsView'
 import { default as default_ff00d70a4277286e7d2a45db4d136e59 } from '@/components/admin/RepeatPurchaseView'
+import { default as default_beee283113db1e6274b4a3261d86c622 } from '@/components/admin/UTMAttributionView'
+import { default as default_b49617f71656f29a998f7c5995ee1da4 } from '@/components/admin/UTMBuilderView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -124,5 +126,7 @@ export const importMap = {
   "@/components/admin/HelpView#default": default_b49611ccd828469519fd79e264a9eb51,
   "@/components/admin/MemberAnalyticsView#default": default_b3d544e796f2e72482a7e1ca06c557a3,
   "@/components/admin/RepeatPurchaseView#default": default_ff00d70a4277286e7d2a45db4d136e59,
+  "@/components/admin/UTMAttributionView#default": default_beee283113db1e6274b4a3261d86c622,
+  "@/components/admin/UTMBuilderView#default": default_b49617f71656f29a998f7c5995ee1da4,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }
