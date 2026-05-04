@@ -31,7 +31,8 @@ import {
 import { useCartStore } from '@/stores/cartStore'
 import { CheckoutLastChance } from '@/components/recommendation/CheckoutLastChance'
 import { PromoUpsellSection } from '@/components/cart/PromoUpsellSection'
-import { trackBeginCheckout, trackPurchase, getStoredUTM } from '@/lib/tracking'
+import { trackBeginCheckout, trackPurchase, getStoredUTM, purchaseEventId } from '@/lib/tracking'
+import { sendServerPurchaseEvent } from '@/app/actions/tracking'
 
 /* ── 付款方式 ──
  * cash_cod 只在所選物流支援貨到付款（cashOnDelivery=true）時顯示，
@@ -746,20 +747,47 @@ export default function CheckoutPage() {
       }
     }
 
-    trackPurchase({
-      transaction_id: createdOrderNumber,
+    // ── Pixel + CAPI 雙線（Meta 用 (event_name, event_id) 去重）──
+    // eventID 用訂單編號衍生，雙擊「完成下單」也只算一次 conversion。
+    const eventID = purchaseEventId(createdOrderNumber)
+
+    trackPurchase(
+      {
+        transaction_id: createdOrderNumber,
+        value: total,
+        currency: 'TWD',
+        shipping: shippingFee,
+        items: items.map((i) => ({
+          item_id: i.productId,
+          item_name: i.name,
+          price: i.salePrice ?? i.price,
+          quantity: i.quantity,
+          item_variant: i.variant
+            ? `${i.variant.colorName} / ${i.variant.size}`
+            : undefined,
+        })),
+      },
+      eventID,
+    )
+
+    // Server-side CAPI — 缺 META_CAPI_ACCESS_TOKEN env (或 GlobalSettings.tracking
+    // .metaCapiToken) 時自動 no-op。失敗永遠不擋 checkout 後續導頁。
+    sendServerPurchaseEvent({
+      transactionId: createdOrderNumber,
       value: total,
       currency: 'TWD',
-      shipping: shippingFee,
+      eventID,
+      sourceUrl: typeof window !== 'undefined' ? window.location.href : undefined,
+      userEmail: user?.email,
+      userPhone: form.phone,
       items: items.map((i) => ({
-        item_id: i.productId,
-        item_name: i.name,
-        price: i.salePrice ?? i.price,
+        id: i.productId,
+        name: i.name,
         quantity: i.quantity,
-        item_variant: i.variant
-          ? `${i.variant.colorName} / ${i.variant.size}`
-          : undefined,
+        price: i.salePrice ?? i.price,
       })),
+    }).catch((err) => {
+      console.warn('[Checkout] CAPI fire-and-forget failed (non-fatal):', err)
     })
 
     clearCart()
