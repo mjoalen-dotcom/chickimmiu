@@ -37,6 +37,7 @@ import * as migration_20260504_120000_add_mbti_quiz from './20260504_120000_add_
 import * as migration_20260504_140000_add_redemption_max_discount from './20260504_140000_add_redemption_max_discount';
 import * as migration_20260504_150000_add_mbti64_occasion from './20260504_150000_add_mbti64_occasion';
 import * as migration_20260504_163000_add_podcasts from './20260504_163000_add_podcasts';
+import * as migration_20260505_160000_add_utm_lock_rels from './20260505_160000_add_utm_lock_rels';
 
 export const migrations = [
   {
@@ -233,5 +234,10 @@ export const migrations = [
     up: migration_20260504_163000_add_podcasts.up,
     down: migration_20260504_163000_add_podcasts.down,
     name: '20260504_163000_add_podcasts',
+  },
+  {
+    up: migration_20260505_160000_add_utm_lock_rels.up,
+    down: migration_20260505_160000_add_utm_lock_rels.down,
+    name: '20260505_160000_add_utm_lock_rels',
   },
 ];
