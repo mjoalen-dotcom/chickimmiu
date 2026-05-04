@@ -636,6 +636,15 @@ export const Products: CollectionConfig = {
                     },
                   ],
                 },
+                {
+                  name: 'gtin',
+                  label: 'GTIN / 條碼',
+                  type: 'text',
+                  admin: {
+                    description:
+                      '此變體（SKU）的 GTIN / EAN / UPC / ISBN。Meta / Google Shopping 動態廣告匹配商品時使用，沒有可留空但會降低廣告投放精準度。',
+                  },
+                },
               ],
             },
             {
@@ -768,7 +777,136 @@ export const Products: CollectionConfig = {
           ],
         },
 
-        /* ── Tab 5：SEO ── */
+        /* ── Tab 5：廣告目錄 ── */
+        {
+          label: '廣告目錄',
+          description:
+            'Meta / Google Shopping 動態廣告所需的目錄欄位。留空欄位會 fallback 到「廣告目錄設定」global 的預設值。',
+          fields: [
+            {
+              name: 'excludeFromAdsCatalog',
+              label: '排除在廣告目錄外',
+              type: 'checkbox',
+              defaultValue: false,
+              admin: {
+                description:
+                  '勾選後此商品不會出現在 /feeds/meta.xml 與 /feeds/google.xml，動態廣告抓不到此商品。',
+              },
+            },
+            {
+              type: 'row',
+              fields: [
+                {
+                  name: 'adsGender',
+                  label: '性別',
+                  type: 'select',
+                  defaultValue: 'female',
+                  options: [
+                    { label: '女性', value: 'female' },
+                    { label: '男性', value: 'male' },
+                    { label: '中性 / 不分性別', value: 'unisex' },
+                  ],
+                  admin: {
+                    width: '33%',
+                    description: 'Meta / Google 用來投放正確性別受眾',
+                  },
+                },
+                {
+                  name: 'adsAgeGroup',
+                  label: '年齡層',
+                  type: 'select',
+                  defaultValue: 'adult',
+                  options: [
+                    { label: '成人 Adult', value: 'adult' },
+                    { label: '青少年 Teen', value: 'teen' },
+                    { label: '兒童 Kids', value: 'kids' },
+                    { label: '幼兒 Toddler', value: 'toddler' },
+                    { label: '嬰兒 Infant', value: 'infant' },
+                    { label: '新生兒 Newborn', value: 'newborn' },
+                  ],
+                  admin: { width: '33%' },
+                },
+                {
+                  name: 'adsCondition',
+                  label: '商品狀況',
+                  type: 'select',
+                  defaultValue: 'new',
+                  options: [
+                    { label: '全新 New', value: 'new' },
+                    { label: '整新品 Refurbished', value: 'refurbished' },
+                    { label: '二手 Used', value: 'used' },
+                  ],
+                  admin: { width: '34%' },
+                },
+              ],
+            },
+            {
+              name: 'googleProductCategory',
+              label: 'Google 商品分類',
+              type: 'text',
+              admin: {
+                description:
+                  '依 Google Product Taxonomy 填寫，例如「Apparel & Accessories > Clothing > Dresses」' +
+                  '或數字 ID「2271」。留空時用「廣告目錄設定」的全站預設值。' +
+                  '完整列表：https://support.google.com/merchants/answer/6324436',
+              },
+            },
+            {
+              name: 'productType',
+              label: '商品類型（自家分類）',
+              type: 'text',
+              admin: {
+                description:
+                  '品牌自訂的分類路徑，例如「女裝 > 洋裝 > 韓系小洋裝」。留空 = 用 category collection 名稱。',
+              },
+            },
+            {
+              type: 'row',
+              fields: [
+                {
+                  name: 'gtin',
+                  label: 'GTIN / 條碼（商品層級）',
+                  type: 'text',
+                  admin: {
+                    width: '50%',
+                    description: '商品共用 GTIN（每個 SKU 變體可在「變體與庫存」分別覆寫）',
+                  },
+                },
+                {
+                  name: 'mpn',
+                  label: 'MPN 製造商料號',
+                  type: 'text',
+                  admin: {
+                    width: '50%',
+                    description: '無 GTIN 時 Google 要求 brand + mpn 組合替代',
+                  },
+                },
+              ],
+            },
+            {
+              name: 'adsTitleOverride',
+              label: '廣告標題（覆寫）',
+              type: 'text',
+              admin: {
+                description:
+                  '留空 = 用商品名稱。Meta/Google 廣告標題建議塞入主要關鍵字（如「韓系小洋裝 V領 米杏色」），與前台商品名不同調性可在此覆寫。最多 150 字元。',
+              },
+              maxLength: 150,
+            },
+            {
+              name: 'adsDescriptionOverride',
+              label: '廣告描述（覆寫）',
+              type: 'textarea',
+              admin: {
+                description:
+                  '留空 = 用「簡短描述」或商品描述純文字。建議 200-500 字，含材質、版型、適合場合等關鍵字。',
+              },
+              maxLength: 5000,
+            },
+          ],
+        },
+
+        /* ── Tab 6：SEO ── */
         {
           label: 'SEO',
           description: '搜尋引擎顯示標題、描述、Open Graph 分享圖',
