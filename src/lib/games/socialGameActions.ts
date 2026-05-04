@@ -565,7 +565,7 @@ export async function createStyleWish(
         data: {
           user: userId,
           amount: -bountyPoints,
-          type: 'spend',
+          type: 'redeem',
           source: 'game',
           description: `[wish_pool] 許願預扣 ${bountyPoints} 點`,
           balance: currentPoints - bountyPoints,
