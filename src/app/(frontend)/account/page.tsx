@@ -4,10 +4,11 @@ import { headers as nextHeaders } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { Crown, Coins, Wallet, TrendingUp, Gamepad2, ArrowRight, Package, Ticket, Truck, Gift, Sparkles, Award, Gem, Layers, Receipt } from 'lucide-react'
+import { Crown, Coins, Wallet, TrendingUp, Gamepad2, ArrowRight, Package, Ticket, Truck, Gift, Sparkles, Award, Gem, Layers, Receipt, Brain } from 'lucide-react'
 import { CreditScoreCard } from '@/components/account/CreditScoreCard'
 import AccountAvatarUpload from '@/components/account/AccountAvatarUpload'
 import { HoroscopeBlock } from '@/components/account/HoroscopeBlock'
+import { MBTI_RESULTS, type MBTIType } from '@/lib/games/mbtiResults'
 
 export const metadata: Metadata = {
   title: '會員總覽',
@@ -191,6 +192,12 @@ export default async function AccountPage() {
     ? `再消費 NT$ ${remainingToNext.toLocaleString()} 即可升級為「${nextTierName}」`
     : '已達最高等級，感謝您的支持'
 
+  // MBTI 個性測驗結果（每位會員終身限 1 次，存在 users.mbtiProfile）
+  const mbtiProfile = (user.mbtiProfile as LooseRecord | null | undefined) ?? null
+  const mbtiType = (mbtiProfile?.mbtiType as MBTIType | null | undefined) ?? null
+  const mbtiTakenAtRaw = (mbtiProfile?.mbtiTakenAt as string | null | undefined) ?? null
+  const mbtiResultDef = mbtiType && MBTI_RESULTS[mbtiType] ? MBTI_RESULTS[mbtiType] : null
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* 大頭貼 */}
@@ -338,6 +345,76 @@ export default async function AccountPage() {
             <ArrowRight size={14} className="text-cream-300 group-hover:text-gold-500 group-hover:translate-x-0.5 transition-all" />
           </div>
         </Link>
+      </div>
+
+      {/* MBTI 個性穿搭 */}
+      <div className="bg-gradient-to-br from-indigo-500/5 to-purple-500/10 rounded-2xl p-6 border border-purple-500/20">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Brain size={20} className="text-purple-500" />
+            <h3 className="font-medium">MBTI 個性穿搭</h3>
+          </div>
+          {mbtiType && (
+            <Link
+              href={`/products?personalityType=${mbtiType}`}
+              className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
+            >
+              看推薦商品 <ArrowRight size={12} />
+            </Link>
+          )}
+        </div>
+
+        {mbtiType && mbtiResultDef ? (
+          <div>
+            <div className="flex items-start gap-4 mb-4">
+              <div className="text-4xl md:text-5xl font-serif tracking-wider text-purple-700 leading-none">
+                {mbtiType}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-medium leading-tight">{mbtiResultDef.nickname}</p>
+                <p className="text-xs text-purple-600/80 italic mt-1">{mbtiResultDef.tagline}</p>
+              </div>
+            </div>
+
+            <div className="bg-white/60 rounded-xl p-4 mb-3">
+              <p className="text-xs tracking-widest text-purple-600 mb-1.5">你的穿搭風格</p>
+              <p className="text-xs text-foreground/80 leading-relaxed">
+                {mbtiResultDef.styleAnalysis}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {mbtiResultDef.styleKeywords.map((kw) => (
+                <span
+                  key={kw}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-700"
+                >
+                  #{kw}
+                </span>
+              ))}
+            </div>
+
+            {mbtiTakenAtRaw && (
+              <p className="text-[11px] text-muted-foreground">
+                測驗時間：{formatDate(mbtiTakenAtRaw)}（每位會員終身限 1 次）
+              </p>
+            )}
+          </div>
+        ) : (
+          <div>
+            <p className="text-sm text-foreground/80 mb-2 leading-relaxed">
+              28 題專業 MBTI 測驗，找出你的個性穿搭風格，獲得 16 型專屬商品推薦。
+            </p>
+            <p className="text-xs text-amber-700 mb-4">⚠️ 每位會員終身限測 1 次，請慎選作答時機</p>
+            <Link
+              href="/games/mbti-style"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-sm hover:opacity-90 transition-opacity"
+            >
+              <Sparkles size={14} />
+              前往測驗
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* 信用分數 */}

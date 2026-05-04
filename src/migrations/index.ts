@@ -30,6 +30,7 @@ import * as migration_20260427_100000_add_site_themes from './20260427_100000_ad
 import * as migration_20260427_180000_enable_payload_folders from './20260427_180000_enable_payload_folders';
 import * as migration_20260427_220000_add_pages_magazine_blocks from './20260427_220000_add_pages_magazine_blocks';
 import * as migration_20260428_074640_add_customer_service_v1 from './20260428_074640_add_customer_service_v1';
+import * as migration_20260504_120000_add_mbti_quiz from './20260504_120000_add_mbti_quiz';
 
 export const migrations = [
   {
@@ -191,5 +192,10 @@ export const migrations = [
     up: migration_20260428_074640_add_customer_service_v1.up,
     down: migration_20260428_074640_add_customer_service_v1.down,
     name: '20260428_074640_add_customer_service_v1'
+  },
+  {
+    up: migration_20260504_120000_add_mbti_quiz.up,
+    down: migration_20260504_120000_add_mbti_quiz.down,
+    name: '20260504_120000_add_mbti_quiz',
   },
 ];

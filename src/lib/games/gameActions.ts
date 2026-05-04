@@ -3,6 +3,8 @@
 import { getPayload } from 'payload'
 import config from '../../payload.config'
 import type { Where } from 'payload'
+import { computeMBTIType, getResult, isAnswersComplete, type MBTIAnswers } from './mbtiQuizEngine'
+import { suggestPersonalityTypes, type ProductLikeForRecommend } from './mbtiAutoRecommend'
 
 // ──────────────────────────────────────
 // 點數相關操作
@@ -576,4 +578,173 @@ export async function recordGamePlay(
   }
 
   return { success: true, points }
+}
+
+// ──────────────────────────────────────
+// MBTI 個性穿搭測驗 (15)
+// ──────────────────────────────────────
+//
+// 使用點數買「專業 28 題測驗 + 個性穿搭分析 + 推薦商品」。
+//   • 不發點數獎勵（玩家是消費點數換結果）
+//   • 結果寫到 users.mbtiProfile（給商品推薦/廣告/AI DM 用）
+//   • mini-game-records.metadata 記錄答題與分數（後台/分析用）
+
+export async function playMBTIQuiz(userId: number, answers: MBTIAnswers) {
+  const payload = await getPayload({ config })
+
+  // 1. 取設定
+  const gameSettings = await payload.findGlobal({ slug: 'game-settings' }) as unknown as Record<string, unknown>
+  if (!gameSettings.enabled) {
+    return { success: false as const, message: '遊戲系統暫時關閉' }
+  }
+  const gameList = (gameSettings.gameList || {}) as Record<string, boolean>
+  if (!gameList.mbtiStyleEnabled) {
+    return { success: false as const, message: 'MBTI 測驗目前未開放' }
+  }
+  const mbtiSettings = (gameSettings.mbtiStyle || {}) as Record<string, unknown>
+  const pointsCost = (mbtiSettings.pointsCostPerPlay as number) ?? 50
+  const dailyLimit = (mbtiSettings.dailyLimit as number) ?? 1
+
+  // 2. 校驗答案完整性
+  if (!isAnswersComplete(answers)) {
+    return { success: false as const, message: '答案不完整，請完成所有題目' }
+  }
+
+  // 3. 終身限制（最重要）：除非 allowRetake，否則 user.mbtiProfile.mbtiType
+  //    一旦寫入就拒絕重測（個性是穩定特質，重複測無意義）
+  const user = await payload.findByID({ collection: 'users', id: userId }) as unknown as Record<string, unknown>
+  const allowRetake = Boolean(mbtiSettings.allowRetake)
+  const existingProfile = user.mbtiProfile as Record<string, unknown> | null | undefined
+  const existingType = existingProfile?.mbtiType as string | null | undefined
+  if (existingType && !allowRetake) {
+    return {
+      success: false as const,
+      message: `你已測過 MBTI（${existingType}），個性測驗每位會員終身限 1 次。可至會員中心查看你的結果與推薦商品 ✨`,
+    }
+  }
+
+  // 4. 每日上限（次要 — 即使 allowRetake 也擋日刷）
+  if (dailyLimit > 0) {
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    const todayPlays = await payload.find({
+      collection: 'mini-game-records',
+      where: {
+        and: [
+          { player: { equals: userId } },
+          { gameType: { equals: 'mbti_quiz' } },
+          { createdAt: { greater_than_equal: start.toISOString() } },
+        ],
+      } as Where,
+      limit: 0,
+      depth: 0,
+    })
+    if (todayPlays.totalDocs >= dailyLimit) {
+      return { success: false as const, message: '今天已測過 MBTI 了，明天再來看看新的自己 ✨' }
+    }
+  }
+
+  // 5. 檢查點數餘額
+  const currentPoints = (user.points as number) ?? 0
+  if (currentPoints < pointsCost) {
+    return {
+      success: false as const,
+      message: `點數不足！需要 ${pointsCost} 點才能測驗（目前 ${currentPoints} 點）`,
+    }
+  }
+
+  // 6. 扣點數 + 寫 points-transactions
+  const newBalance = currentPoints - pointsCost
+  await (payload.create as Function)({
+    collection: 'points-transactions',
+    data: {
+      user: userId,
+      amount: -pointsCost,
+      type: 'spend',
+      source: 'game',
+      description: '[mbti-style] MBTI 個性穿搭測驗',
+      balance: newBalance,
+    } as unknown as Record<string, unknown>,
+  })
+
+  // 7. 計算 MBTI 結果
+  const { type, scores, dimensionScores } = computeMBTIType(answers)
+  const resultDef = getResult(type)
+
+  // 8. 更新 users（扣點數 + 寫 mbtiProfile）
+  await (payload.update as Function)({
+    collection: 'users',
+    id: userId,
+    data: {
+      points: newBalance,
+      mbtiProfile: {
+        mbtiType: type,
+        mbtiTakenAt: new Date().toISOString(),
+        mbtiScores: dimensionScores,
+      },
+    } as unknown as Record<string, unknown>,
+  })
+
+  // 9. 寫 mini-game-records
+  await (payload.create as Function)({
+    collection: 'mini-game-records',
+    data: {
+      player: userId,
+      gameType: 'mbti_quiz',
+      result: {
+        outcome: 'completed',
+        prizeType: 'none',
+        prizeAmount: 0,
+        prizeDescription: `${type} ${resultDef.nickname}`,
+      },
+      pointsSpent: pointsCost,
+      metadata: { answers, mbtiType: type, scores, dimensionScores },
+      status: 'completed',
+    } as unknown as Record<string, unknown>,
+  })
+
+  // 10. 撈推薦商品 (personalityTypes 包含此 type 的已上架商品)
+  let recommendedProducts: unknown[] = []
+  try {
+    const recRes = await payload.find({
+      collection: 'products',
+      where: {
+        and: [
+          { personalityTypes: { contains: type } },
+          { status: { equals: 'published' } },
+        ],
+      } as Where,
+      limit: 8,
+      sort: '-createdAt',
+      depth: 1,
+    })
+    recommendedProducts = recRes.docs
+  } catch {
+    // 推薦商品撈失敗不影響主流程
+    recommendedProducts = []
+  }
+
+  return {
+    success: true as const,
+    mbtiType: type,
+    nickname: resultDef.nickname,
+    tagline: resultDef.tagline,
+    personality: resultDef.personality,
+    styleAnalysis: resultDef.styleAnalysis,
+    styleKeywords: resultDef.styleKeywords,
+    accentColor: resultDef.accentColor,
+    scores,
+    dimensionScores,
+    recommendedProducts,
+    pointsRemaining: newBalance,
+    pointsSpent: pointsCost,
+  }
+}
+
+/**
+ * 後台「自動推薦個性類型」按鈕 server action wrapper。
+ * 給 admin custom Field 用，回傳建議的 MBTI 類型陣列。
+ */
+export async function suggestProductPersonalityTypes(productData: ProductLikeForRecommend) {
+  return { success: true as const, suggested: suggestPersonalityTypes(productData) }
 }
