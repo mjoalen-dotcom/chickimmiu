@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>韓國女裝市場 Data Table | chickimmiu 2026-05-04</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Noto Sans TC', sans-serif; background: #FAF7F2; }
+    .font-serif-tc { font-family: 'Noto Serif TC', serif; }
+    [x-cloak] { display: none !important; }
+    th button { width: 100%; text-align: left; }
+    th button:hover { color: #B45309; }
+  </style>
+</head>
+<body class="text-stone-800 min-h-screen" x-data="dataTable()" x-cloak>
+
+  <header class="bg-gradient-to-br from-amber-50 to-orange-100 border-b border-amber-200">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+      <p class="text-xs tracking-[0.4em] text-amber-700 mb-2">CHICKIMMIU MARKET RESEARCH · 2026-05-04</p>
+      <h1 class="font-serif-tc text-3xl md:text-4xl font-bold mb-2">Data Table</h1>
+      <p class="text-stone-600 text-sm">
+        80+ 對象 · 可排序 · 可篩選 · 可搜尋 · 可匯出 CSV
+      </p>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-2 md:px-4 py-6">
+
+    <!-- Filter Bar -->
+    <div class="bg-white rounded-2xl border border-stone-200 p-4 mb-4 sticky top-2 z-20 shadow-sm">
+      <div class="flex flex-col md:flex-row gap-3 items-stretch md:items-center mb-2">
+        <div class="flex gap-1.5 flex-wrap">
+          <template x-for="t in types" :key="t.value">
+            <button
+              @click="typeFilter = t.value"
+              :class="typeFilter === t.value ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'"
+              class="px-3 py-1.5 text-xs rounded-full transition-colors"
+              x-text="`${t.label} (${t.value === 'all' ? data.length : data.filter(d => d.type === t.value).length})`"
+            ></button>
+          </template>
+        </div>
+        <input
+          type="text"
+          x-model="search"
+          placeholder="搜尋..."
+          class="flex-1 px-3 py-1.5 text-sm border border-stone-200 rounded-full focus:outline-none focus:border-amber-500"
+        />
+        <button @click="exportCSV()" class="px-3 py-1.5 text-xs bg-amber-100 text-amber-800 rounded-full hover:bg-amber-200">📥 匯出 CSV</button>
+      </div>
+      <div class="flex justify-between text-xs text-stone-500">
+        <span>顯示 <span class="font-bold text-amber-600" x-text="filtered.length"></span> / <span x-text="data.length"></span> 筆</span>
+        <span x-show="sortBy" class="text-amber-700">排序：<span x-text="sortBy"></span> <span x-text="sortDir === 'asc' ? '↑' : '↓'"></span></span>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white rounded-2xl border border-stone-200 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-stone-50 border-b border-stone-200">
+            <tr>
+              <th class="px-3 py-3 text-left text-xs font-bold text-stone-600 whitespace-nowrap"><button @click="sort('name')">名稱 ⇅</button></th>
+              <th class="px-3 py-3 text-left text-xs font-bold text-stone-600 whitespace-nowrap"><button @click="sort('type')">類別 ⇅</button></th>
+              <th class="px-3 py-3 text-left text-xs font-bold text-stone-600 whitespace-nowrap"><button @click="sort('subType')">子類 ⇅</button></th>
+              <th class="px-3 py-3 text-left text-xs font-bold text-stone-600 whitespace-nowrap"><button @click="sort('scale')">規模 ⇅</button></th>
+              <th class="px-3 py-3 text-left text-xs font-bold text-stone-600 whitespace-nowrap"><button @click="sort('priceTW')">價位 ⇅</button></th>
+              <th class="px-3 py-3 text-left text-xs font-bold text-stone-600 whitespace-nowrap"><button @click="sort('tw')">在台 ⇅</button></th>
+              <th class="px-3 py-3 text-left text-xs font-bold text-stone-600 whitespace-nowrap min-w-[300px]">對 chickimmiu 重點</th>
+              <th class="px-3 py-3 text-left text-xs font-bold text-stone-600 whitespace-nowrap">URL</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="(item, idx) in filtered" :key="item.name + idx">
+              <tr class="border-b border-stone-100 hover:bg-amber-50/30">
+                <td class="px-3 py-2.5 align-top">
+                  <p class="font-bold whitespace-nowrap" x-text="item.name"></p>
+                  <p class="text-[11px] text-stone-400 whitespace-nowrap" x-text="item.nameAlt || ''"></p>
+                </td>
+                <td class="px-3 py-2.5 align-top">
+                  <span class="px-2 py-0.5 text-[10px] bg-stone-100 rounded-full whitespace-nowrap" x-text="typeLabel(item.type)"></span>
+                </td>
+                <td class="px-3 py-2.5 align-top text-xs text-stone-600 whitespace-nowrap" x-text="item.subType || '—'"></td>
+                <td class="px-3 py-2.5 align-top text-xs text-stone-600 whitespace-nowrap" x-text="item.scale || '—'"></td>
+                <td class="px-3 py-2.5 align-top text-xs text-stone-600 whitespace-nowrap" x-text="item.priceTW || '—'"></td>
+                <td class="px-3 py-2.5 align-top text-xs whitespace-nowrap">
+                  <span :class="item.tw === '有' ? 'text-green-600 font-bold' : item.tw === '無' ? 'text-stone-400' : 'text-amber-600'" x-text="item.tw === '有' ? '✓ 有' : item.tw === '無' ? '✗ 無' : item.tw"></span>
+                </td>
+                <td class="px-3 py-2.5 align-top text-xs text-stone-700 leading-relaxed" x-text="item.takeaway"></td>
+                <td class="px-3 py-2.5 align-top text-xs">
+                  <a x-show="item.url" :href="item.url" target="_blank" rel="noopener" class="text-amber-600 hover:underline whitespace-nowrap">↗</a>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+      <div x-show="filtered.length === 0" class="text-center py-12 text-stone-400 text-sm">沒有符合條件的對象。</div>
+    </div>
+  </main>
+
+  <footer class="border-t border-stone-200 bg-white py-6 mt-8">
+    <p class="text-center text-xs text-stone-500">完整研究見 <code class="bg-stone-100 px-1.5 py-0.5 rounded text-amber-700">docs/marketing/2026-05-04-korean-fashion-market-research.md</code></p>
+  </footer>
+
+  <script>
+    function dataTable() {
+      return {
+        search: '',
+        typeFilter: 'all',
+        sortBy: '',
+        sortDir: 'asc',
+        types: [
+          { value: 'all', label: '全部' },
+          { value: 'platform', label: '🏬 韓國平台' },
+          { value: 'brand', label: '👗 韓國品牌' },
+          { value: 'tw', label: '🇹🇼 台灣競品' },
+          { value: 'sns', label: '📸 SNS / KOL' }
+        ],
+        typeLabel(t) {
+          const m = { platform: '韓國平台', brand: '韓國品牌', tw: '台灣競品', sns: 'SNS / KOL' };
+          return m[t] || t;
+        },
+        sort(field) {
+          if (this.sortBy === field) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+          else { this.sortBy = field; this.sortDir = 'asc'; }
+        },
+        get filtered() {
+          let list = this.data;
+          if (this.typeFilter !== 'all') list = list.filter(d => d.type === this.typeFilter);
+          if (this.search.trim()) {
+            const s = this.search.toLowerCase().trim();
+            list = list.filter(d =>
+              (d.name + ' ' + (d.nameAlt || '') + ' ' + (d.subType || '') + ' ' + (d.takeaway || '') + ' ' + (d.scale || '')).toLowerCase().includes(s)
+            );
+          }
+          if (this.sortBy) {
+            const dir = this.sortDir === 'asc' ? 1 : -1;
+            list = [...list].sort((a, b) => {
+              const av = (a[this.sortBy] || '').toString();
+              const bv = (b[this.sortBy] || '').toString();
+              return av.localeCompare(bv) * dir;
+            });
+          }
+          return list;
+        },
+        exportCSV() {
+          const headers = ['名稱', '韓文/Alt', '類別', '子類', '規模', '價位', '在台', '對chickimmiu重點', 'URL'];
+          const rows = this.filtered.map(d => [d.name, d.nameAlt || '', this.typeLabel(d.type), d.subType || '', d.scale || '', d.priceTW || '', d.tw || '', d.takeaway || '', d.url || '']);
+          const csv = [headers, ...rows].map(r => r.map(c => `"${(c+'').replace(/"/g, '""')}"`).join(',')).join('\n');
+          const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = `chickimmiu-research-${new Date().toISOString().slice(0,10)}.csv`;
+          a.click();
+        },
+        data: [
+          // 韓國平台 (12)
+          { type: 'platform', subType: '潮流綜合', name: 'Musinsa', nameAlt: '무신사', scale: '2025 GMV 5 兆韓元', priceTW: '—', tw: '無', takeaway: 'SNAP 街拍 + PB 30.8% + IPO 估值 10 兆。學「內容即商品」', url: 'https://musinsa.com' },
+          { type: 'platform', subType: '女性 AI 個人化', name: 'Ably', nameAlt: '에이블리', scale: 'MAU 8.33M / 估值 USD 21 億', priceTW: '—', tw: '無', takeaway: 'AI 個人化 + 統一購物車 + 跨品類擴張。Alibaba 投資', url: 'https://a-bly.com' },
+          { type: 'platform', subType: '女性聚合', name: 'Zigzag', nameAlt: '지그재그', scale: '累積下載 35M / GMV >2 兆', priceTW: '—', tw: '無', takeaway: 'Jikjin 直送 + 圖像搜尋 + 冷啟動 onboarding', url: 'https://zigzag.kr' },
+          { type: 'platform', subType: 'premium lifestyle', name: '29CM', nameAlt: '29CM', scale: 'AOV 23 萬韓元 (最高)', priceTW: '—', tw: '無', takeaway: '雜誌風 PDP 範本。chickimmiu 精品線可學', url: 'https://29cm.co.kr' },
+          { type: 'platform', subType: '設計師買手', name: 'W Concept', nameAlt: 'W컨셉', scale: '3,000+ 品牌 / 44 國跨境', priceTW: '—', tw: '無', takeaway: 'Shinsegae 旗下 / lookbook + 設計師故事頁版型', url: 'https://wconcept.co.kr' },
+          { type: 'platform', subType: '精品奢華', name: 'Shinsegae V', nameAlt: '신세계V', scale: '2025 月銷新高', priceTW: '—', tw: '無', takeaway: '正品保證 + 集團點數疊加', url: 'https://sivillage.com' },
+          { type: 'platform', subType: '集團多品牌', name: 'SSF Shop', nameAlt: 'SSF샵', scale: '未公開', priceTW: '—', tw: '無', takeaway: '三星物產旗下 (Beanpole / Kuho / 8Seconds)', url: 'https://ssfshop.com' },
+          { type: 'platform', subType: '男裝 AI', name: '4910', nameAlt: '4910', scale: 'MAU 1.21M (YoY 7.5×)', priceTW: '—', tw: '無', takeaway: 'Ably 集團複用 AI 模式進攻男裝', url: 'https://4910.kr' },
+          { type: 'platform', subType: '東大門當日配', name: 'Brandi', nameAlt: '브랜디', scale: '2025/9 申請企業重整', priceTW: '—', tw: '無', takeaway: '⚠️ 警示：純 marketplace 不做 PB 會死', url: 'https://brandi.co.kr' },
+          { type: 'platform', subType: 'D2C 自有品牌', name: 'Stylenanda', nameAlt: '스타일난다', scale: 'L\'Oréal 2018 收購', priceTW: 'NT 800-3500', tw: '部分', takeaway: 'Pink Hotel 體驗門市 + 3CE 美妝跨品類', url: 'https://stylenandaen.com' },
+          { type: 'platform', subType: '搜尋驅動入口', name: 'Naver Shopping', nameAlt: '네이버쇼핑', scale: '與 Coupang 17% 差距', priceTW: '—', tw: '無', takeaway: 'Naver Pay + AI 推薦 + Naver Live (73.6% 行動購物)', url: 'https://shopping.naver.com' },
+          { type: 'platform', subType: '物流驅動', name: 'Coupang', nameAlt: '쿠팡', scale: '全國電商龍頭', priceTW: '—', tw: '無', takeaway: '火箭配送 (次日達) + AOV 較高', url: 'https://coupang.com' },
+
+          // 韓國品牌 (23)
+          { type: 'brand', subType: '大眾少女 / Y2K', name: 'Stylenanda', nameAlt: '스타일난다', scale: 'L\'Oréal 旗下', priceTW: 'NT 800-3500', tw: '部分', takeaway: '店景即內容 (Pink Hotel)；台灣靠 3CE 帶 fashion 流量', url: 'https://en.stylenanda.com' },
+          { type: 'brand', subType: '大眾少女 / 甜美', name: 'Chuu', nameAlt: '츄', scale: '台灣海外拓店首站', priceTW: 'NT 800-2500', tw: '有', takeaway: '「-5kg jeans」綽號式行銷範本；台北三越專櫃', url: 'https://chuumade.com' },
+          { type: 'brand', subType: '大眾少女 / 學院', name: 'Kirsh', nameAlt: '키르시', scale: 'IG 210K', priceTW: 'NT 1200-3500', tw: '部分', takeaway: '櫻桃 logo 強記憶 motif；IVE 張員瑛代言', url: 'https://kirsh.co.kr' },
+          { type: 'brand', subType: '大眾少女 / 英式', name: 'OIOI Collection', nameAlt: '오아이오아이 컬렉션', scale: 'IG 246K', priceTW: 'NT 1200-4000', tw: '部分', takeaway: 'O!Oi 街頭男系 + OIC 女裝雙線操作範本', url: 'https://en.oioicollection.com' },
+          { type: 'brand', subType: '街頭設計師 ★', name: 'Mardi Mercredi', nameAlt: '마르디 메크르디', scale: '2018 起 Musinsa 種子投資三位數成長', priceTW: 'NT 1800-5500', tw: '有', takeaway: 'FLOWER MARDI 一支 T 撐起品牌；台北東區旗艦 + 多家百貨', url: 'https://mardimercredi.com.tw' },
+          { type: 'brand', subType: '街頭設計師 ★★★', name: 'Marithé F. Girbaud KR', nameAlt: '마리떼 프랑소와 저버', scale: '5 年 500× (30 億 → 1.5 兆韓圜)', priceTW: 'NT 1500-4500', tw: '無', takeaway: '★ 台灣零佈局 = chickimmiu 應主動爭取代理', url: 'https://en.marithe-official.com' },
+          { type: 'brand', subType: '街頭設計師', name: 'Matin Kim', nameAlt: '마뗑킴', scale: '380K IG+TikTok / 海外 +121%', priceTW: 'NT 2000-8000', tw: '無', takeaway: 'fan-driven loop 範本；2025 廣藏市場店為話題', url: 'https://matinkim.shop' },
+          { type: 'brand', subType: '街頭設計師', name: 'thisisneverthat', nameAlt: '디스이즈네버댓', scale: 'Club21 部分海外', priceTW: 'NT 2500-9000', tw: '無', takeaway: '「韓國版 Supreme」街頭核心客群', url: 'https://thisisneverthat.com' },
+          { type: 'brand', subType: '街頭高訂', name: 'Ader Error', nameAlt: '아더에러', scale: 'Paris Fashion Week 級', priceTW: 'NT 4000-25000', tw: '無', takeaway: '「beautiful errors」/ 完全 unisex 排列', url: 'https://adererror.com' },
+          { type: 'brand', subType: '街頭設計師', name: 'Romantic Crown', nameAlt: '로맨틱크라운', scale: 'BTS V 帶貨', priceTW: 'NT 1500-4000', tw: '部分', takeaway: '90s 復古運動 / 浪漫', url: 'https://romanticcrown.com' },
+          { type: 'brand', subType: '運動機能', name: 'Andar', nameAlt: '안다르', scale: '2024 Q2 韓 616 億韓圜', priceTW: 'NT 1500-4500', tw: '有', takeaway: '亞洲版型 athleisure；office wear 延伸 = 2025 最大成長軌', url: 'https://andar-global.com' },
+          { type: 'brand', subType: '運動機能', name: 'XEXYMIX', nameAlt: '젝시믹스', scale: '2023 全年 2335 億韓圜', priceTW: 'NT 1500-4500', tw: '無', takeaway: '機能 leggings / 上班通勤', url: 'https://xexymix.com' },
+          { type: 'brand', subType: '設計師高單', name: 'Andersson Bell', nameAlt: '앤더슨벨', scale: 'SSENSE / Farfetch', priceTW: 'NT 4000-20000', tw: '無', takeaway: '韓 + 北歐 / patchwork', url: 'https://adsb.co.kr' },
+          { type: 'brand', subType: '設計師高單', name: 'Low Classic', nameAlt: '로우 클래식', scale: 'IG 17 萬', priceTW: 'NT 5000-25000', tw: '無', takeaway: '★ 「elevated basics」台灣缺位 = 差異化機會', url: 'https://lowclassic.com' },
+          { type: 'brand', subType: '設計師高單', name: 'Wnderkammer', nameAlt: '분더캄머', scale: 'W Concept 跨境', priceTW: 'NT 4000-18000', tw: '無', takeaway: '中性極簡 / 質感', url: 'https://wnderkammer.com' },
+          { type: 'brand', subType: '設計師頂級', name: 'Minju Kim', nameAlt: '민주킴', scale: 'Net-a-Porter 高端', priceTW: 'NT 8000-30000', tw: '無', takeaway: 'Netflix《Next in Fashion》冠軍背書', url: 'https://minjukim.shop' },
+          { type: 'brand', subType: 'SPA 基礎款', name: '8 Seconds', nameAlt: '에잇세컨즈', scale: 'Samsung C&T', priceTW: 'NT 600-2500', tw: '無', takeaway: '1-2 週生產循環最快', url: 'https://8seconds.co.kr' },
+          { type: 'brand', subType: 'SPA 基礎款', name: 'SPAO', nameAlt: '스파오', scale: 'E-Land 旗下', priceTW: 'NT 500-2500', tw: '無', takeaway: '親民卡通聯名 + 睡衣起家', url: 'https://spao.com' },
+          { type: 'brand', subType: '配件 IT-bag', name: 'Stand Oil', nameAlt: '스탠드오일', scale: 'IG 30.2 萬 / 50% 訪客海外', priceTW: 'NT 2000-6000', tw: '無', takeaway: 'Chubby Bag = 配件帶服裝範本；明星 NewJeans Yunjin 帶', url: 'https://en.standoil.kr' },
+          { type: 'brand', subType: '配件 IT-bag', name: 'Marge Sherwood', nameAlt: '마지셔우드', scale: 'IG 25.5 萬', priceTW: 'NT 4000-12000', tw: '無', takeaway: 'Hailey Bieber 揹；retro-tinged polish', url: 'https://margesherwood.com' },
+          { type: 'brand', subType: '配件 IT-bag', name: 'OSOI', nameAlt: '오소이', scale: 'IG 26.5 萬', priceTW: 'NT 4000-10000', tw: '無', takeaway: '建築背景設計師；IT-bag 三劍客之一', url: 'https://osoi.kr' },
+          { type: 'brand', subType: '街頭老牌', name: 'Covernat', nameAlt: '커버낫', scale: '台北敦化南路 + 信義 2 旗艦', priceTW: 'NT 1500-4500', tw: '有', takeaway: '已正式落地台灣', url: 'https://covernat.co.kr' },
+          { type: 'brand', subType: '街頭高訂', name: 'Hyein Seo', nameAlt: '혜인서', scale: 'IG 26.9 萬 / Rihanna 穿', priceTW: 'NT 8000-30000', tw: '無', takeaway: '解構街頭高訂 / Antwerp 派', url: 'https://hyeinseo.com' },
+
+          // 台灣競品 (23)
+          { type: 'tw', subType: '集團大型 ⚠ 不對抗', name: 'PAZZO', nameAlt: 'pazzo.com.tw', scale: 'IG 305K / 集團 32.6 億 NT', priceTW: 'NT 580-1500', tw: '有', takeaway: '集團上市 + 楊丞琳代言 + 9+ 實體店；走編輯選品差異化', url: 'https://pazzo.com.tw' },
+          { type: 'tw', subType: '實體連鎖 ⚠ 不對抗', name: 'Queen Shop', nameAlt: 'queenshop.com.tw', scale: 'IG 301K / 27 實體店', priceTW: 'NT 290-790', tw: '有', takeaway: '價最親民 + 男女童全線；不會搶 1500+ 韓選市場', url: 'https://queenshop.com.tw' },
+          { type: 'tw', subType: '同集團子品牌', name: 'MEIER.Q', nameAlt: 'meierq.com', scale: 'IG 234K / UR LIVING 設櫃', priceTW: 'NT 490-990', tw: '有', takeaway: '★ 風格交集最大；差異點是時效感「韓國第一手」', url: 'https://meierq.com' },
+          { type: 'tw', subType: '同象限對手 ★★★', name: 'LULU\'s 露露絲', nameAlt: 'lulus.tw', scale: 'IG 141K / 22 年老字號', priceTW: 'NT 500-1500', tw: '有', takeaway: '★★★ 最直接對手；要在個人 IP 強度與單品故事性勝出', url: 'https://lulus.tw' },
+          { type: 'tw', subType: '同象限對手 ★★★', name: 'W.Korea 正韓', nameAlt: 'wkorea.com.tw', scale: 'IG 126K / 神褲 16 萬件', priceTW: 'NT 800-2000', tw: '有', takeaway: '★★★ 神褲 = 單一 hero SKU 範本；chickimmiu 螞蟻腰褲對標', url: 'https://wkorea.com.tw' },
+          { type: 'tw', subType: 'KOL 品牌設櫃', name: 'LOVFEE', nameAlt: 'lovfee.com', scale: '本人 IG 80 萬+ / 8 個百貨櫃', priceTW: 'NT 500-1200', tw: '有', takeaway: '雙胞胎 KOL + 設櫃鐵三角；參考多品牌不要重複疊加', url: 'https://lovfee.com' },
+          { type: 'tw', subType: '同象限對手 ★★★', name: 'Healer 衣服是解藥', nameAlt: 'healer.com.tw', scale: 'IG 106K', priceTW: 'NT 800-1880', tw: '有', takeaway: '★★★ 品牌敘事典範；學中文 slogan 行銷力', url: 'https://healer.com.tw' },
+          { type: 'tw', subType: '利基全尺碼', name: 'OB 嚴選', nameAlt: 'obdesign.com.tw', scale: 'IG 43K', priceTW: 'NT 390-1200', tw: '有', takeaway: 'XS-3XL 全尺碼領導者；學尺寸表細緻度', url: 'https://obdesign.com.tw' },
+          { type: 'tw', subType: '蝦皮百元 ⚠ 紅海', name: 'MIUSTAR', nameAlt: 'miu-star.com.tw', scale: '蝦皮多款銷量過萬', priceTW: 'NT 200-600', tw: '有', takeaway: '⚠️ 紅海避開；學「3 模特直播」細節', url: 'https://miu-star.com.tw' },
+          { type: 'tw', subType: 'SEO 韓系', name: 'JUSTONE', nameAlt: 'justonemall.tw', scale: '—', priceTW: 'NT 310-1300', tw: '有', takeaway: '韓妞風 SEO 強；學 PDP 韓系關鍵字密度', url: 'https://justonemall.tw' },
+          { type: 'tw', subType: '機能美胸', name: 'AIR SPACE', nameAlt: 'airspace.com.tw', scale: '2020 營收 8 億', priceTW: 'NT 299-1880', tw: '有', takeaway: '機能美胸定位差異化', url: 'https://airspace.com.tw' },
+          { type: 'tw', subType: '同集團 IP 拉動', name: 'Mercci22', nameAlt: 'mercci22.com', scale: '單日萬件', priceTW: 'NT 600-2000', tw: '有', takeaway: 'Bobby & Bella IP 拉動', url: 'https://mercci22.com' },
+          { type: 'tw', subType: '同集團藝人創辦', name: 'GENQUO', nameAlt: 'genquo.com', scale: '51 萬會員', priceTW: 'NT 400-1000', tw: '有', takeaway: '范瑋琪創辦 / 簡約路線', url: 'https://genquo.com' },
+          { type: 'tw', subType: '韓系 + 全尺碼', name: 'niceioi', nameAlt: 'niceioi.com.tw', scale: '北中南實體', priceTW: 'NT 500-1200', tw: '有', takeaway: '全尺碼現貨直送', url: 'https://niceioi.com.tw' },
+          { type: 'tw', subType: '蝦皮韓系 ⚠ 紅海', name: 'FW美衣訂製', nameAlt: 'shopee.tw/FW', scale: '蝦皮 207K', priceTW: 'NT 200-800', tw: '有', takeaway: '⚠️ 7 年老店 / 直播強；紅海避開', url: '' },
+          { type: 'tw', subType: '蝦皮韓系 ⚠ 紅海', name: 'GRASS ROOM', nameAlt: 'shopee.tw', scale: '蝦皮 30 萬', priceTW: 'NT 200-600', tw: '有', takeaway: '⚠️ 5 星評價 / 出貨快；紅海避開', url: '' },
+          { type: 'tw', subType: 'IG 代購', name: 'Korea_laura', nameAlt: 'shopee + IG', scale: 'IG 108K', priceTW: 'NT 1000-3000', tw: '有', takeaway: '潮牌代購 (FRNM / MUAHMUAH)', url: 'https://www.instagram.com/korea_laura/' },
+          { type: 'tw', subType: 'IG 代購', name: 'Sul 代購', nameAlt: 'shopee + IG', scale: '蝦皮 11 萬', priceTW: 'NT 800-2500', tw: '有', takeaway: '五星評價 / 服飾包包配件', url: '' },
+          { type: 'tw', subType: 'IG 代購', name: '96LINE 代購', nameAlt: 'IG + shopee', scale: 'IG 86K', priceTW: 'NT 800-2000', tw: '有', takeaway: '潮牌時尚代購', url: '' },
+          { type: 'tw', subType: 'IG 代購', name: 'Yeogi.kr', nameAlt: 'IG', scale: 'IG 28K', priceTW: 'NT 600-1800', tw: '有', takeaway: '韓妞風選品', url: '' },
+          { type: 'tw', subType: '正韓直送', name: 'Bonne Chance', nameAlt: 'bonnechancetw.com', scale: 'IG 1.7K', priceTW: 'NT 600-1500', tw: '有', takeaway: '100% 東大門進貨', url: 'https://bonnechancetw.com' },
+          { type: 'tw', subType: '官方代理', name: 'Lemon Park', nameAlt: 'lemonpark.com.tw', scale: '—', priceTW: 'NT 800-2000', tw: '有', takeaway: 'CHERRYKOKO 台灣官方代理', url: 'https://lemonpark.com.tw' },
+          { type: 'tw', subType: '★ 你自己', name: 'CHIC KIM & MIU', nameAlt: 'chickimmiu.com', scale: '金老佛爺 22 年', priceTW: 'NT 500-2000', tw: '有', takeaway: '★ 死守左上象限；金老佛爺 22 年 IP = 不可複製護城河', url: 'https://chickimmiu.com' },
+
+          // SNS / KOL (15)
+          { type: 'sns', subType: '設計師小品牌', name: 'depound', nameAlt: '@depound', scale: 'IG 22 萬', priceTW: '—', tw: '無', takeaway: 'Cozy Beige 視覺範本；商品→情境→生活方式 carousel', url: 'https://www.instagram.com/depound' },
+          { type: 'sns', subType: '設計師小品牌', name: 'AMOMENTO', nameAlt: '@amomento_official', scale: '19 國 120+ 通路', priceTW: '—', tw: '無', takeaway: '★ 設計師個人 IG = 品牌情緒板 (chickimmiu 直接可學)', url: 'https://amomento.com' },
+          { type: 'sns', subType: '設計師小品牌', name: 'Open YY', nameAlt: 'TheOpen Product', scale: '海外 4% → 31% (2021-23)', priceTW: '—', tw: '無', takeaway: '★ 「人帶品牌」/ 姊妹個人 IG 比品牌帳號早', url: 'https://en.openyy.com' },
+          { type: 'sns', subType: '設計師小品牌', name: 'LE17SEPTEMBRE', nameAlt: '르딕셉텀브레', scale: '中型', priceTW: '—', tw: '無', takeaway: 'lookbook 系列化範本 (每季 2-3 主題 / 9-12 frame)', url: 'https://le17septembre.com' },
+          { type: 'sns', subType: '設計師小品牌', name: 'After Pray', nameAlt: '@afterpray_official', scale: 'IG 5 萬 / SSENSE 上架', priceTW: '—', tw: '無', takeaway: '5 萬粉就 SSENSE = 粉絲數不是品牌力唯一指標', url: 'https://afterpray.com' },
+          { type: 'sns', subType: 'OOTD 街拍 ★', name: '@musinsa_snap', nameAlt: 'Musinsa 官方', scale: 'IG 11.8 萬 / 3,400+ 貼文', priceTW: '—', tw: '無', takeaway: '★ UGC 街拍系統化範本；chickimmiu 立刻開副帳', url: 'https://www.instagram.com/musinsa_snap' },
+          { type: 'sns', subType: 'OOTD 街拍', name: '@musinsa.snap', nameAlt: 'Musinsa 旗下品牌官方', scale: 'IG 3.4 萬', priceTW: '—', tw: '無', takeaway: '雙帳號分工 (UGC + 官方提案)', url: 'https://www.instagram.com/musinsa.snap' },
+          { type: 'sns', subType: 'OOTD 教學', name: '@haein_e_e', nameAlt: '해인이', scale: 'IG 12.9 萬', priceTW: '—', tw: '無', takeaway: '教學型 reels (style hack / rate my fit)；中文市場可學', url: 'https://www.instagram.com/haein_e_e' },
+          { type: 'sns', subType: '雜誌官方', name: '@voguekorea', nameAlt: 'Vogue Korea', scale: 'IG 367 萬', priceTW: '—', tw: '無', takeaway: '「品牌雜誌化」範本 (一個 IG 帳號 = 一本動態雜誌)', url: 'https://www.instagram.com/voguekorea' },
+          { type: 'sns', subType: 'KOL 自創', name: 'Mejiwoo (鄭多媛)', nameAlt: '@mejiwoo103', scale: 'IG 1000 萬', priceTW: '—', tw: '無', takeaway: '日常感 vlog 式拍法；BTS J-Hope 姊；MEJIWOO 自創', url: 'https://www.instagram.com/mejiwoo103' },
+          { type: 'sns', subType: 'KOL 自創', name: 'Irene Kim', nameAlt: '@ireneisgood', scale: 'IG 290 萬', priceTW: '—', tw: '無', takeaway: 'IRENEISGOOD LABEL；不走 quiet luxury 走撞色童趣', url: 'https://www.instagram.com/ireneisgood' },
+          { type: 'sns', subType: 'KOL 自創', name: 'Mulbada', nameAlt: '@mulbada', scale: 'IG 38 萬', priceTW: '—', tw: '無', takeaway: '★ Unbutton；micro KOL 自創 capsule 範本', url: 'https://www.instagram.com/mulbada' },
+          { type: 'sns', subType: '設計師 LVMH 級', name: 'Hyein Seo', nameAlt: '@hyeinantwerp', scale: 'IG 26.9 萬', priceTW: '—', tw: '無', takeaway: 'Rihanna / NewJeans 都穿；2025 與 Nike 合作', url: 'https://www.instagram.com/hyeinantwerp' },
+          { type: 'sns', subType: '設計師 LVMH 級', name: 'KANGHYUK', nameAlt: '@_kanghyuk', scale: 'IG 5.6 萬', priceTW: '—', tw: '無', takeaway: '★ 5.6 萬粉 LVMH Prize 入圍 = 敘事比粉絲數重要', url: 'https://www.instagram.com/_kanghyuk' },
+          { type: 'sns', subType: '設計師海外', name: 'Bonbom', nameAlt: '@bonbom_official', scale: '95% 批發營收海外', priceTW: '—', tw: '無', takeaway: 'IG + K-pop styling 直接打開海外市場', url: 'https://bonbom.com' }
+        ]
+      };
+    }
+  </script>
+</body>
+</html>
