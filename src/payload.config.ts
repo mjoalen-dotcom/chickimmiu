@@ -15,6 +15,7 @@ import { SizeCharts } from './collections/SizeCharts'
 import { Orders } from './collections/Orders'
 import { Affiliates } from './collections/Affiliates'
 import { BlogPosts } from './collections/BlogPosts'
+import { Podcasts } from './collections/Podcasts'
 import { Pages } from './collections/Pages'
 import { SubscriptionPlans } from './collections/SubscriptionPlans'
 import { ProductReviews } from './collections/ProductReviews'
@@ -303,6 +304,7 @@ export default buildConfig({
     // ⑥ 內容與頁面
     Media,
     BlogPosts,
+    Podcasts,
     Pages,
     SiteThemes,
     // ⑦ 系統與安全

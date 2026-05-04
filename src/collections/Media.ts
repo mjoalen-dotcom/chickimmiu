@@ -35,8 +35,8 @@ export const Media: CollectionConfig = {
     defaultColumns: ['filename', 'alt', 'folder', 'folderName', 'mimeType', 'filesize', 'updatedAt'],
     listSearchableFields: ['filename', 'alt', 'folderName'],
     description:
-      '圖片 / 影片 / PDF 上傳。檔案大小上限：圖片 8 MB、影片 50 MB、PDF 10 MB。' +
-      '支援格式：jpeg / png / webp / gif / mp4 / pdf。' +
+      '圖片 / 影片 / 音訊 / PDF 上傳。檔案大小上限：圖片 8 MB、影片 50 MB、音訊 50 MB、PDF 10 MB。' +
+      '支援格式：jpeg / png / webp / gif / mp4 / m4a / mp3 / pdf。' +
       '相簿可在列表頁左側資料夾樹建立 / 拖拉整理；舊版「相簿名稱」純文字標籤仍可選填供搜尋。',
   },
   access: {
@@ -92,12 +92,15 @@ export const Media: CollectionConfig = {
         const mt = String(f.mimetype || '')
         const MAX_IMAGE = 8 * 1024 * 1024
         const MAX_VIDEO = 50 * 1024 * 1024
+        const MAX_AUDIO = 50 * 1024 * 1024
         const MAX_PDF = 10 * 1024 * 1024
         const max = mt.startsWith('video/')
           ? MAX_VIDEO
-          : mt === 'application/pdf'
-            ? MAX_PDF
-            : MAX_IMAGE
+          : mt.startsWith('audio/')
+            ? MAX_AUDIO
+            : mt === 'application/pdf'
+              ? MAX_PDF
+              : MAX_IMAGE
         if (typeof f.size === 'number' && f.size > max) {
           throw new Error(`檔案過大（上限 ${Math.round(max / 1024 / 1024)}MB）`)
         }
@@ -107,7 +110,8 @@ export const Media: CollectionConfig = {
           throw new Error('非法檔名（禁止路徑字元）')
         }
         // MIME 白名單二次把關（image/* 已在 upload.mimeTypes 收緊，這裡再確認）
-        const allow = /^(image\/(jpeg|png|webp|gif)|video\/mp4|application\/pdf)$/
+        // audio/mp4 = m4a, audio/mpeg = mp3
+        const allow = /^(image\/(jpeg|png|webp|gif)|video\/mp4|audio\/(mp4|mpeg)|application\/pdf)$/
         if (!allow.test(mt)) {
           throw new Error('不支援的檔案格式')
         }
@@ -122,7 +126,16 @@ export const Media: CollectionConfig = {
     adminThumbnail: 'thumbnail',
     // 去掉 image/* 萬用字元（image/svg+xml 是 XSS 向量）
     // 若未來要加 avif/heic 請顯式列出
-    mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'application/pdf'],
+    mimeTypes: [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'video/mp4',
+      'audio/mp4', // m4a
+      'audio/mpeg', // mp3
+      'application/pdf',
+    ],
     imageSizes: [
       {
         name: 'thumbnail',
