@@ -33,6 +33,7 @@ import * as migration_20260428_074640_add_customer_service_v1 from './20260428_0
 import * as migration_20260429_120000_add_ads_catalog from './20260429_120000_add_ads_catalog';
 import * as migration_20260504_100000_add_total_sold_and_korean_celebrity from './20260504_100000_add_total_sold_and_korean_celebrity';
 import * as migration_20260504_120000_add_mbti_quiz from './20260504_120000_add_mbti_quiz';
+import * as migration_20260504_140000_add_redemption_max_discount from './20260504_140000_add_redemption_max_discount';
 
 export const migrations = [
   {
@@ -209,5 +210,10 @@ export const migrations = [
     up: migration_20260504_120000_add_mbti_quiz.up,
     down: migration_20260504_120000_add_mbti_quiz.down,
     name: '20260504_120000_add_mbti_quiz',
+  },
+  {
+    up: migration_20260504_140000_add_redemption_max_discount.up,
+    down: migration_20260504_140000_add_redemption_max_discount.down,
+    name: '20260504_140000_add_redemption_max_discount',
   },
 ];

@@ -79,10 +79,11 @@ const COUPON_LIKE_TYPES = new Set<RedemptionType>([
 ])
 const VOUCHER_TYPES = new Set<RedemptionType>(['experience', 'styling', 'charity'])
 
+// 對應 PointsRedemptions.type select 列舉（gift_physical 不是合法 redemption type，
+// 而是 UserRewards.rewardType 的選項，由 physicalConfig.rewardTypeOverride 寫入）。
 export const ALL_REDEMPTION_TYPES: RedemptionType[] = [
   'physical',
   'movie_ticket',
-  'gift_physical',
   'coupon',
   'discount_code',
   'addon_deal',
