@@ -86,6 +86,9 @@ export const UserRewards: CollectionConfig = {
         { label: '優惠券', value: 'coupon' },
         { label: '贈品（實體）', value: 'gift_physical' },
         { label: '徽章', value: 'badge' },
+        // 抽獎獎品 / 體驗活動 / VIP 造型諮詢 / 公益捐贈 / 購物金 audit 用；
+        // 多由客服 / admin 手動聯絡履行
+        { label: '客服履行兌換券', value: 'voucher' },
       ],
     },
     {
