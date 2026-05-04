@@ -206,6 +206,19 @@ export const GAME_DEFS: GameDef[] = [
     categoryLabel: '好友互動',
     implementationStatus: 'stub',
   },
+  {
+    id: 'mbti-style',
+    slug: 'mbti-style',
+    enabledKey: 'mbtiStyleEnabled',
+    settingsKey: 'mbtiStyle',
+    name: 'MBTI 個性穿搭測驗',
+    icon: '🧠',
+    color: 'from-indigo-400 to-purple-600',
+    description: '28 題專業測驗，終身限 1 次！',
+    category: 'creative',
+    categoryLabel: '個性測驗',
+    implementationStatus: 'ready',
+  },
 ]
 
 export const GAME_CATEGORIES = [

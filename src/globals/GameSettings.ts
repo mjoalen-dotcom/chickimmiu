@@ -98,6 +98,7 @@ export const GameSettings: GlobalConfig = {
                 { name: 'blindBoxEnabled', label: '12. 穿搭盲盒互贈', type: 'checkbox', defaultValue: false, admin: { description: '📅 可配合聖誕節、交換禮物等節慶活動開啟' } },
                 { name: 'queenVoteEnabled', label: '13. 女王投票大賽', type: 'checkbox', defaultValue: false, admin: { description: '📅 可配合婦女節、品牌週年慶等大型活動開啟' } },
                 { name: 'teamStyleEnabled', label: '14. 團體穿搭房', type: 'checkbox', defaultValue: false, admin: { description: '📅 需要足夠活躍會員，建議搭配直播活動開啟' } },
+                { name: 'mbtiStyleEnabled', label: '15. MBTI 個性穿搭測驗', type: 'checkbox', defaultValue: true, admin: { description: '✅ 預設開啟 — 28 題專業測驗，消耗點數，結果頁推薦適合個性的商品' } },
               ],
             },
           ],
@@ -445,7 +446,30 @@ export const GameSettings: GlobalConfig = {
         },
 
         // ══════════════════════════════════════
-        // Tab 16: 排行榜與徽章
+        // Tab 16: MBTI 個性測驗
+        // ══════════════════════════════════════
+        {
+          label: 'MBTI 個性測驗',
+          fields: [
+            {
+              name: 'mbtiStyle',
+              type: 'group',
+              label: 'MBTI 個性穿搭測驗設定',
+              fields: [
+                { name: 'pointsCostPerPlay', label: '每次消耗點數', type: 'number', defaultValue: 50, admin: { description: '玩家用點數換取一次完整測驗 + 個性穿搭推薦' } },
+                { name: 'dailyLimit', label: '每日次數上限', type: 'number', defaultValue: 1, admin: { description: '0 = 不限制；當 allowRetake = false 時此欄無作用（終身限 1 次優先）' } },
+                { name: 'allowRetake', label: '允許重複測驗', type: 'checkbox', defaultValue: false, admin: { description: '預設關閉 — 每位會員終身限測 1 次（個性測驗是穩定特質，重複測無意義）。若特殊行銷需要可手動開啟' } },
+                { name: 'shareBonusPoints', label: '分享結果獎勵點數', type: 'number', defaultValue: 0, admin: { description: '玩家分享結果到社群可獲得的點數（0 = 不獎勵）' } },
+                { name: 'displayName', label: '顯示名稱', type: 'text', defaultValue: 'MBTI 個性穿搭測驗' },
+                { name: 'description', label: '遊戲說明', type: 'textarea', defaultValue: '28 題專業 MBTI 測驗，找出你的個性穿搭風格 — 每位會員終身限測 1 次！' },
+                { name: 'icon', label: '圖示 Emoji', type: 'text', defaultValue: '🧠' },
+              ],
+            },
+          ],
+        },
+
+        // ══════════════════════════════════════
+        // Tab 17: 排行榜與徽章
         // ══════════════════════════════════════
         {
           label: '排行榜與徽章',

@@ -959,8 +959,52 @@ export const Users: CollectionConfig = {
         // ── TAB 7: Game Activity & AI DM ──────────────────────────
         {
           label: '遊戲 & AI',
-          description: '遊樂場活動記錄、AI 推薦 DM',
+          description: '遊樂場活動記錄、MBTI 個性、AI 推薦 DM',
           fields: [
+            {
+              name: 'mbtiProfile',
+              label: 'MBTI 個性測驗結果',
+              type: 'group',
+              admin: { description: '會員在 MBTI 個性穿搭測驗中的最近一次結果（用於商品推薦）' },
+              fields: [
+                {
+                  name: 'mbtiType',
+                  label: 'MBTI 類型',
+                  type: 'select',
+                  options: [
+                    { label: 'INTJ 建築師', value: 'INTJ' },
+                    { label: 'INTP 邏輯學家', value: 'INTP' },
+                    { label: 'ENTJ 指揮官', value: 'ENTJ' },
+                    { label: 'ENTP 辯論家', value: 'ENTP' },
+                    { label: 'INFJ 提倡者', value: 'INFJ' },
+                    { label: 'INFP 調停者', value: 'INFP' },
+                    { label: 'ENFJ 主人公', value: 'ENFJ' },
+                    { label: 'ENFP 競選者', value: 'ENFP' },
+                    { label: 'ISTJ 物流師', value: 'ISTJ' },
+                    { label: 'ISFJ 守衛者', value: 'ISFJ' },
+                    { label: 'ESTJ 總經理', value: 'ESTJ' },
+                    { label: 'ESFJ 執政官', value: 'ESFJ' },
+                    { label: 'ISTP 鑑賞家', value: 'ISTP' },
+                    { label: 'ISFP 探險家', value: 'ISFP' },
+                    { label: 'ESTP 企業家', value: 'ESTP' },
+                    { label: 'ESFP 表演者', value: 'ESFP' },
+                  ],
+                  admin: { description: '由 MBTI 個性穿搭測驗自動寫入；商品推薦會以此為依據' },
+                },
+                {
+                  name: 'mbtiTakenAt',
+                  label: '上次測驗時間',
+                  type: 'date',
+                  admin: { readOnly: true, description: '系統自動記錄' },
+                },
+                {
+                  name: 'mbtiScores',
+                  label: '測驗分數（JSON）',
+                  type: 'json',
+                  admin: { readOnly: true, description: '4 維度淨分（E-I / S-N / T-F / J-P），系統自動記錄' },
+                },
+              ],
+            },
             {
               name: 'gameActivity',
               label: '遊樂場活動記錄',

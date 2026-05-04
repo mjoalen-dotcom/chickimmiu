@@ -6,6 +6,7 @@ import { createExportEndpoint, createImportEndpoint, type FieldMapping } from '.
 import { revalidateAllEndpoint } from '../endpoints/revalidateAll'
 import { shoplineXlsxImportEndpoint } from '../endpoints/shoplineXlsxImport'
 import { revalidateProduct } from '../lib/revalidate'
+import { suggestPersonalityTypes } from '../lib/games/mbtiAutoRecommend'
 
 const productFieldMappings: FieldMapping[] = [
   { key: 'name', label: '商品名稱' },
@@ -177,6 +178,25 @@ export const Products: CollectionConfig = {
           data.stock = totalStock
         } else {
           data.isLowStock = (data.stock ?? 0) <= threshold
+        }
+
+        // 個性類型自動推薦：personalityTypes 為空時，依 tag/collection/分類/名稱
+        // keyword 比對 16 型 keyword map，自動填入 top 3。Admin 已勾選則尊重不覆蓋。
+        const existingPersonality = data.personalityTypes as unknown
+        const isEmpty =
+          existingPersonality == null ||
+          (Array.isArray(existingPersonality) && existingPersonality.length === 0)
+        if (isEmpty) {
+          const suggested = suggestPersonalityTypes({
+            name: data.name as string | undefined,
+            description: data.description,
+            tags: data.tags as Array<{ tag?: string | null }> | undefined,
+            collectionTags: data.collectionTags as string[] | undefined,
+            category: data.category as { title?: string | null } | string | number | null,
+          })
+          if (suggested.length > 0) {
+            data.personalityTypes = suggested
+          }
         }
 
         return data
@@ -772,6 +792,36 @@ export const Products: CollectionConfig = {
               admin: {
                 description:
                   '品牌建議的搭配方式，例如：搭配高跟鞋變身優雅通勤，搭配球鞋更顯甜美',
+              },
+            },
+            {
+              name: 'personalityTypes',
+              label: '適合的個性類型 (MBTI)',
+              type: 'select',
+              hasMany: true,
+              options: [
+                { label: 'INTJ 建築師', value: 'INTJ' },
+                { label: 'INTP 邏輯學家', value: 'INTP' },
+                { label: 'ENTJ 指揮官', value: 'ENTJ' },
+                { label: 'ENTP 辯論家', value: 'ENTP' },
+                { label: 'INFJ 提倡者', value: 'INFJ' },
+                { label: 'INFP 調停者', value: 'INFP' },
+                { label: 'ENFJ 主人公', value: 'ENFJ' },
+                { label: 'ENFP 競選者', value: 'ENFP' },
+                { label: 'ISTJ 物流師', value: 'ISTJ' },
+                { label: 'ISFJ 守衛者', value: 'ISFJ' },
+                { label: 'ESTJ 總經理', value: 'ESTJ' },
+                { label: 'ESFJ 執政官', value: 'ESFJ' },
+                { label: 'ISTP 鑑賞家', value: 'ISTP' },
+                { label: 'ISFP 探險家', value: 'ISFP' },
+                { label: 'ESTP 企業家', value: 'ESTP' },
+                { label: 'ESFP 表演者', value: 'ESFP' },
+              ],
+              admin: {
+                description: '建議勾選 1-4 個此商品最適合的 MBTI 類型；新建商品儲存時會依 tag/分類自動推薦（已勾選則尊重不覆蓋）',
+                components: {
+                  Field: '@/components/admin/MBTIAutoRecommendField',
+                },
               },
             },
           ],

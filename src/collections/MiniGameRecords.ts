@@ -62,6 +62,8 @@ export const MiniGameRecords: CollectionConfig = {
         { label: '女王投票', value: 'queen_vote' },
         { label: '團體穿搭房', value: 'team_style' },
         { label: '穿搭許願池', value: 'wish_pool' },
+        // ── 個性測驗類遊戲 ──
+        { label: 'MBTI 個性測驗', value: 'mbti_quiz' },
         // ── 系統聚合列：排行榜（非真實遊戲紀錄，由 updateLeaderboard 寫入 4 個 period bucket）──
         // gameEngine.ts:568 updateLeaderboard 會建 `leaderboard_{daily|weekly|monthly|all_time}` 4 種 aggregate row，
         // 依 metadata.periodKey + metadata.totalPoints 統計各時段分數。PR-1 (c56ee07) 把 gameType 改成 strict enum
