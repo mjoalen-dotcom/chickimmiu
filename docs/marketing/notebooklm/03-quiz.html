@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>韓國女裝市場 互動測驗 | chickimmiu 2026-05-04</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Noto Sans TC', sans-serif; background: #FAF7F2; }
+    .font-serif-tc { font-family: 'Noto Serif TC', serif; }
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="text-stone-800 min-h-screen" x-data="quiz()" x-cloak>
+
+  <!-- Header -->
+  <header class="bg-gradient-to-br from-amber-50 to-orange-100 border-b border-amber-200">
+    <div class="max-w-3xl mx-auto px-4 py-10">
+      <p class="text-xs tracking-[0.4em] text-amber-700 mb-2">CHICKIMMIU MARKET RESEARCH · 2026-05-04</p>
+      <h1 class="font-serif-tc text-3xl md:text-4xl font-bold mb-3">韓國女裝市場 互動測驗</h1>
+      <p class="text-stone-600 text-sm">15 題 · 測你對研究的掌握度 · 每題附詳細解釋</p>
+    </div>
+  </header>
+
+  <!-- Quiz Body -->
+  <main class="max-w-3xl mx-auto px-4 py-8">
+    <!-- Progress -->
+    <div class="bg-white rounded-2xl border border-stone-200 p-4 mb-6 sticky top-4 z-10 shadow-sm">
+      <div class="flex justify-between items-center text-sm">
+        <span class="text-stone-500">進度：<span class="font-bold text-amber-600" x-text="answeredCount"></span>/<span x-text="questions.length"></span></span>
+        <span class="text-stone-500">分數：<span class="font-bold text-amber-600" x-text="score"></span>/<span x-text="answeredCount"></span></span>
+        <button @click="reset()" class="text-xs px-3 py-1 bg-stone-100 hover:bg-stone-200 rounded-full">重新開始</button>
+      </div>
+      <div class="mt-2 h-2 bg-stone-100 rounded-full overflow-hidden">
+        <div class="h-full bg-gradient-to-r from-amber-400 to-orange-400 transition-all" :style="`width: ${(answeredCount / questions.length * 100)}%`"></div>
+      </div>
+    </div>
+
+    <!-- Questions -->
+    <template x-for="(q, qi) in questions" :key="qi">
+      <article class="bg-white rounded-2xl border border-stone-200 p-6 mb-4">
+        <p class="text-xs tracking-widest text-amber-600 mb-2" x-text="`Q${qi+1} · ${q.category}`"></p>
+        <h3 class="font-serif-tc text-lg font-bold mb-4 leading-relaxed" x-text="q.question"></h3>
+        <div class="space-y-2">
+          <template x-for="(opt, oi) in q.options" :key="oi">
+            <button
+              @click="select(qi, oi)"
+              :disabled="answers[qi] !== null"
+              :class="optionClass(qi, oi)"
+              class="w-full text-left px-4 py-3 rounded-xl border-2 transition-all text-sm flex items-start gap-3"
+            >
+              <span class="font-bold shrink-0" x-text="['A', 'B', 'C', 'D'][oi]"></span>
+              <span x-text="opt"></span>
+            </button>
+          </template>
+        </div>
+        <div x-show="answers[qi] !== null" x-transition class="mt-4 p-4 rounded-xl" :class="answers[qi] === q.correct ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'">
+          <p class="text-sm font-bold" :class="answers[qi] === q.correct ? 'text-green-700' : 'text-red-700'">
+            <span x-text="answers[qi] === q.correct ? '✓ 答對！' : '✗ 答錯了'"></span>
+            <span class="ml-2 text-stone-600 font-normal">正確答案：<strong x-text="['A', 'B', 'C', 'D'][q.correct]"></strong></span>
+          </p>
+          <p class="text-sm text-stone-700 mt-2 leading-relaxed" x-text="q.explanation"></p>
+        </div>
+      </article>
+    </template>
+
+    <!-- Final Score -->
+    <div x-show="answeredCount === questions.length" x-transition class="bg-gradient-to-br from-amber-100 to-orange-200 rounded-3xl p-8 text-center mt-8">
+      <p class="text-xs tracking-[0.4em] text-amber-700 mb-2">FINAL SCORE</p>
+      <p class="font-serif-tc text-6xl font-bold text-stone-800">
+        <span x-text="score"></span><span class="text-3xl">/<span x-text="questions.length"></span></span>
+      </p>
+      <p class="font-serif-tc text-xl mt-3" x-text="resultMessage"></p>
+      <button @click="reset()" class="mt-6 px-6 py-2 bg-stone-800 text-white rounded-full text-sm hover:bg-stone-700">再做一次</button>
+    </div>
+  </main>
+
+  <footer class="border-t border-stone-200 bg-white py-6 mt-12">
+    <p class="text-center text-xs text-stone-500">完整研究見 <code class="bg-stone-100 px-1.5 py-0.5 rounded text-amber-700">docs/marketing/2026-05-04-korean-fashion-market-research.md</code></p>
+  </footer>
+
+  <script>
+    function quiz() {
+      return {
+        answers: [],
+        questions: [
+          {
+            category: '切角 1 · 韓國平台',
+            question: 'Musinsa 2025 年的 GMV 達多少韓元？',
+            options: ['1 兆韓元', '3 兆韓元', '5 兆韓元', '10 兆韓元'],
+            correct: 2,
+            explanation: 'Musinsa 2025 GMV 達 5 兆韓元（+15% YoY），營收 1.4679 兆韓元、營業利益 1,405 億韓元。準備 IPO 估值 10 兆韓元。'
+          },
+          {
+            category: '切角 1 · 韓國平台',
+            question: '哪個平台的 AOV（平均訂單金額）顯著高於同業，達 23 萬韓元？',
+            options: ['Musinsa', '29CM', 'Ably', 'Zigzag'],
+            correct: 1,
+            explanation: '29CM 是編輯式 premium 女性 lifestyle 平台，2024 GMV 突破 1 兆韓元、AOV 約 230,000 韓元（顯著高於同業）。對 chickimmiu 想做精品線最直接對標 — 雜誌風 PDP 是它拉高 AOV 的核心。'
+          },
+          {
+            category: '切角 1 · 韓國平台',
+            question: '哪個韓國平台 2025 年 9 月申請企業重整，是「純 marketplace 不做 PB」的警示案例？',
+            options: ['Brandi', 'Stylenanda', 'W Concept', 'SSF Shop'],
+            correct: 0,
+            explanation: 'Brandi（브랜디）東大門當日配先驅，2022 營收 1,190 億韓元，但 2025/9 由母公司 Newnex 申請企業重整。警示 chickimmiu：純 marketplace 不做 PB，碰到中國低價會直接死。'
+          },
+          {
+            category: '切角 2 · 韓國品牌',
+            question: '研究中認為「韓國爆量但台灣完全沒設櫃，是先發者紅利最大標的」的品牌是？',
+            options: ['Mardi Mercredi', 'Stylenanda', 'Marithé François Girbaud Korea', 'Kirsh'],
+            correct: 2,
+            explanation: 'Marithé KR 五年成長 500 倍（30 億 → 1.5 兆韓圜，2019-2024）但台灣完全沒設櫃。這是 chickimmiu 應主動爭取的代理品牌。研究已備好 D4 launch kit 含中英韓 email 草稿。'
+          },
+          {
+            category: '切角 2 · 韓國品牌',
+            question: 'Mardi Mercredi 的「FLOWER MARDI」現象告訴 chickimmiu 什麼策略？',
+            options: [
+              '低價優勢可以撐起整個品牌',
+              '單一花卉 logo + 強記憶 motif 可以撐起整個品牌',
+              '快速生產循環是 K-fashion 的核心',
+              '只做高客單價才能成功'
+            ],
+            correct: 1,
+            explanation: '「FLOWER MARDI」一支 T-shirt 撐起整個品牌。Mardi 小雛菊、Kirsh 櫻桃、Stand Oil Chubby Bag 都示範了相同模式：一個強記憶 motif/單品撐起整個品牌。chickimmiu 選品時應主動找「印花強烈、可辨識度高」的單品。'
+          },
+          {
+            category: '切角 2 · 韓國品牌',
+            question: 'Matin Kim 的「fan-driven design loop」具體怎麼操作？',
+            options: [
+              '請知名設計師每季操刀',
+              '從 Musinsa 銷售榜看熱賣品再仿製',
+              '每天看 IG/TikTok 留言、即時應用到下一季風格',
+              '與 K-pop 偶像共創 capsule line'
+            ],
+            correct: 2,
+            explanation: 'Matin Kim 高層在 Korea Times 受訪明說「每天收到上千條留言、即時應用到風格上」。這已寫入 chickimmiu 的 D3 quick win — 每月發 carousel poll「下季想看什麼?」收 100-300 留言、挑 3-5 個方向公開回覆，把粉絲變成 co-designer。'
+          },
+          {
+            category: '切角 2 · 韓國品牌',
+            question: '研究指出 2025 年韓國運動服飾最大成長軌是什麼？',
+            options: ['瑜珈專業裝', 'office athleisure（上班可穿的運動感）', '高機能登山', '街頭潮流運動'],
+            correct: 1,
+            explanation: 'Andar、XEXYMIX 都正在做 office wear 延伸（根據 Seoul Economic Daily 2025/12 報導）。台灣電商若想做運動類，單純 yoga 不夠，要做「上班可穿的運動感」。'
+          },
+          {
+            category: '切角 3 · 台灣競品 ★',
+            question: '研究認為 chickimmiu 真正的 4 家「同象限」對手是？',
+            options: [
+              'PAZZO / Queen Shop / MEIER.Q / GENQUO',
+              "LULU's / W.Korea / Healer / MEIER.Q",
+              'MIUSTAR / FW美衣 / GRASS ROOM / Korea_laura',
+              'OB 嚴選 / AIR SPACE / Mercci22 / niceioi'
+            ],
+            correct: 1,
+            explanation: "Lulu's（22 年老字號）、W.Korea（神褲 16 萬件）、Healer（品牌敘事）、MEIER.Q（美而快子品牌）— 這 4 家是真正的同象限「左上：純韓代購 × 中高單價」對手。PAZZO / Queen Shop 量級太大、不應浪費資源正面剛。"
+          },
+          {
+            category: '切角 3 · 台灣競品 ★',
+            question: 'chickimmiu 在競爭格局矩陣中的「甜蜜點」是哪個象限？',
+            options: [
+              '右下：自有設計 + 低單價',
+              '左下：純代購 + 低單價',
+              '左上：純代購 + 中高單價（KOL × 韓代）',
+              '右上：自有設計 + 高單價'
+            ],
+            correct: 2,
+            explanation: '「左上：純韓代購 × 高單價」象限只有 Lulu\'s / W.Korea / Healer 三家，但無一家具備 chickimmiu 級別的個人 KOL IP（金老佛爺 22 年部落客資產）。這是不可複製的護城河。'
+          },
+          {
+            category: '切角 3 · 台灣競品 ★',
+            question: 'W.Korea 的「神褲」現象告訴 chickimmiu 什麼戰術？',
+            options: [
+              '正韓代購一定要每天直播',
+              '台中實體店是必要條件',
+              '單一 hero product（單品故事化）可以打開正韓代購市場',
+              '價位策略要走親民路線'
+            ],
+            correct: 2,
+            explanation: 'W.Korea 神褲累計銷售 16 萬件，證明「單一 hero product」可以打開正韓代購市場。chickimmiu 已有「螞蟻腰褲」作為類似 hero SKU，要強化它的辨識度與直播露出頻率。建議 PDP 顯眼處加「累積售出 X 件」徽章（D2 程式已 commit）。'
+          },
+          {
+            category: '切角 3 · 台灣競品 ★',
+            question: 'chickimmiu 應該規避的「絕不要做」5 件事中，下列哪個是錯的？',
+            options: [
+              '不跟 PAZZO / Queen Shop 比量',
+              '不跟 MIUSTAR / GRASS ROOM 比百元蝦皮直播',
+              '不要做純 marketplace（無 PB / 無自有設計）',
+              '不開 IG 副帳號做 UGC 街拍'
+            ],
+            correct: 3,
+            explanation: '「開 @chickimmiu_snap UGC 副帳」恰恰是研究強烈推薦的 quick win 之一（D1）— 複製 Musinsa Snap 模式（11.8 萬粉）。其他 3 個都是研究明確列出的「規避清單」。'
+          },
+          {
+            category: '切角 3 · 台灣競品 ★',
+            question: '研究建議 chickimmiu 的價位策略大致是？',
+            options: [
+              '上衣 NT 200-500 / 洋裝 NT 400-800（蝦皮路線）',
+              '上衣 NT 600-1000 / 洋裝 NT 1000-1800 / 外套 NT 1500-3000',
+              '上衣 NT 1000-2000 / 洋裝 NT 2000-4000（百貨路線）',
+              '統一單價 NT 1500（簡化策略）'
+            ],
+            correct: 1,
+            explanation: '比 Lulu\'s 略高、與 W.Korea 持平、低於百貨櫃 LOVFEE，避開 PAZZO 主線。中高單價但仍親民。'
+          },
+          {
+            category: '切角 4 · 韓國 SNS',
+            question: 'Musinsa Snap @musinsa_snap 11.8 萬粉的成功核心是什麼？',
+            options: [
+              '購買 IG 廣告大量曝光',
+              '把客戶實穿照系統化成內容（UGC 街拍）',
+              '雇 100 位 KOL 每天發 OOTD',
+              'AI 自動生成穿搭圖片'
+            ],
+            correct: 1,
+            explanation: '「想知道最新韓國時尚 — 看 Musinsa 街拍」是業界共識。Musinsa 從 2001 年就把街拍做成核心內容。chickimmiu 立刻可開 @chickimmiu_snap 副帳號，設「投稿 = 享 5% 折扣 / 獲贈」機制（D1 launch kit 已備好）。'
+          },
+          {
+            category: '切角 4 · 韓國 SNS',
+            question: '研究指出韓國品牌「IG-first 成長」最具代表性的，是哪一組設計師品牌？',
+            options: [
+              'Stylenanda / Chuu / Kirsh',
+              '8 Seconds / SPAO / 8 Seconds Plus',
+              'Open YY / Stand Oil / Marge Sherwood / OSOI',
+              'Andar / XEXYMIX / Mulawear'
+            ],
+            correct: 2,
+            explanation: 'Open YY、Stand Oil、Marge Sherwood、OSOI 都是先在 IG 累積美學共鳴與粉絲群，再延伸進 Musinsa、SSENSE、海外百貨。Open YY 兩姊妹個人 IG 比品牌帳號更早就有粉絲，是「人帶品牌」的經典 IG 模式。'
+          },
+          {
+            category: '切角 4 · 韓國 SNS',
+            question: '「Korean Cozy Beige」色調包含哪幾種典型色？',
+            options: [
+              '霓虹粉 / 螢光黃 / 電光藍',
+              'ivory / 米褐 / 奶白 / 原木 / 淺灰 / 淡粉',
+              '純黑 / 純白 / 大紅',
+              '草綠 / 海藍 / 橘紅'
+            ],
+            correct: 1,
+            explanation: '韓系最辨識度高的色票：ivory、米褐、奶白、原木、淺灰、淡粉。修圖思路是 hue 偏暖、飽和度降 10-20%、陰影提亮 + 高光柔和。可作為 chickimmiu 主視覺 LUT（參考 depound、AMOMENTO、LE17SEPTEMBRE）。'
+          }
+        ],
+        get answeredCount() { return this.answers.filter(a => a !== null).length; },
+        get score() { return this.answers.filter((a, i) => a === this.questions[i].correct).length; },
+        get resultMessage() {
+          const r = this.score / this.questions.length;
+          if (r >= 0.9) return '✦ 大師級 — 你已掌握整份研究！';
+          if (r >= 0.7) return '✿ 優異 — 對市場有清晰理解';
+          if (r >= 0.5) return '⓵ 及格 — 建議重看 Study Guide';
+          return '⚠ 建議從 Executive Summary 開始重讀';
+        },
+        init() {
+          this.answers = new Array(this.questions.length).fill(null);
+        },
+        select(qi, oi) {
+          if (this.answers[qi] !== null) return;
+          this.answers[qi] = oi;
+        },
+        reset() {
+          this.answers = new Array(this.questions.length).fill(null);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+        optionClass(qi, oi) {
+          if (this.answers[qi] === null) return 'border-stone-200 hover:border-amber-300 hover:bg-amber-50 cursor-pointer';
+          const correct = this.questions[qi].correct;
+          if (oi === correct) return 'border-green-500 bg-green-50 text-green-700';
+          if (oi === this.answers[qi]) return 'border-red-500 bg-red-50 text-red-700';
+          return 'border-stone-200 opacity-50';
+        }
+      };
+    }
+  </script>
+</body>
+</html>

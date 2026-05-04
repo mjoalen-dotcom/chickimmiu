@@ -50,6 +50,13 @@ export default async function ProductsPage({
       if (tag === 'new') where.isNew = { equals: true }
       if (tag === 'hot') where.isHot = { equals: true }
       if (tag === 'sale') where.salePrice = { greater_than: 0 }
+      if (tag === 'korean-celebrity') {
+        // 同時 match collectionTags 含 'korean-celebrity' 或 'celebrity-style'
+        where.collectionTags = { in: ['korean-celebrity', 'celebrity-style'] }
+      }
+      if (tag === 'jin-style') {
+        where.collectionTags = { in: ['jin-style', 'jin-live'] }
+      }
       if (category) where.category = { equals: category }
 
       const result = await payload.find({

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>韓國女裝市場 翻牌記憶卡 | chickimmiu 2026-05-04</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Noto Sans TC', sans-serif; background: #FAF7F2; }
+    .font-serif-tc { font-family: 'Noto Serif TC', serif; }
+    .card-3d { perspective: 1000px; }
+    .card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
+    .card-inner.flipped { transform: rotateY(180deg); }
+    .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+    .card-back { transform: rotateY(180deg); }
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="text-stone-800 min-h-screen" x-data="flashcards()" x-cloak>
+
+  <header class="bg-gradient-to-br from-amber-50 to-orange-100 border-b border-amber-200">
+    <div class="max-w-4xl mx-auto px-4 py-8">
+      <p class="text-xs tracking-[0.4em] text-amber-700 mb-2">CHICKIMMIU MARKET RESEARCH · 2026-05-04</p>
+      <h1 class="font-serif-tc text-3xl md:text-4xl font-bold mb-2">翻牌記憶卡</h1>
+      <p class="text-stone-600 text-sm">40 張卡 · 點擊翻面看答案 · 5 大類別可篩選</p>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-8">
+
+    <!-- Filter -->
+    <div class="bg-white rounded-2xl border border-stone-200 p-4 mb-6 sticky top-2 z-10 shadow-sm">
+      <div class="flex flex-wrap gap-2 mb-2">
+        <template x-for="cat in categories" :key="cat.value">
+          <button
+            @click="filterCat = cat.value"
+            :class="filterCat === cat.value ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'"
+            class="px-3 py-1.5 text-xs rounded-full transition-colors"
+            x-text="`${cat.label} (${cat.value === 'all' ? cards.length : cards.filter(c => c.cat === cat.value).length})`"
+          ></button>
+        </template>
+      </div>
+      <div class="flex gap-2 items-center text-xs text-stone-500">
+        <button @click="flipAll(false)" class="px-3 py-1 bg-stone-50 rounded">全部蓋上</button>
+        <button @click="flipAll(true)" class="px-3 py-1 bg-stone-50 rounded">全部翻開</button>
+        <span class="ml-auto">已翻：<span class="font-bold" x-text="flipped.filter(Boolean).length"></span> / <span x-text="visible.length"></span></span>
+      </div>
+    </div>
+
+    <!-- Cards Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      <template x-for="(card, idx) in visible" :key="idx">
+        <div class="card-3d aspect-[3/4]">
+          <div class="card-inner" :class="{ 'flipped': flipped[card._idx] }" @click="toggle(card._idx)">
+            <!-- Front -->
+            <div class="card-face bg-white rounded-2xl border border-stone-200 p-5 flex flex-col justify-between cursor-pointer hover:border-amber-300 hover:shadow-md transition-all">
+              <div>
+                <p class="text-[10px] tracking-widest text-amber-600 mb-2" x-text="card.catLabel"></p>
+                <p class="font-serif-tc text-base font-bold leading-snug" x-text="card.q"></p>
+              </div>
+              <div class="text-right text-[11px] text-stone-400">點擊翻面 →</div>
+            </div>
+            <!-- Back -->
+            <div class="card-face card-back rounded-2xl p-5 flex flex-col justify-between cursor-pointer text-white" :style="`background: linear-gradient(135deg, ${card.color || '#D4A574'}, #B45309)`">
+              <div>
+                <p class="text-[10px] tracking-widest opacity-80 mb-2">ANSWER</p>
+                <p class="text-sm leading-relaxed" x-text="card.a"></p>
+              </div>
+              <div class="text-right text-[11px] opacity-70">← 點擊翻回</div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+  </main>
+
+  <footer class="border-t border-stone-200 bg-white py-6 mt-12">
+    <p class="text-center text-xs text-stone-500">完整研究見 <code class="bg-stone-100 px-1.5 py-0.5 rounded text-amber-700">docs/marketing/2026-05-04-korean-fashion-market-research.md</code></p>
+  </footer>
+
+  <script>
+    function flashcards() {
+      return {
+        filterCat: 'all',
+        categories: [
+          { value: 'all', label: '全部' },
+          { value: 'platform', label: '韓國平台' },
+          { value: 'brand', label: '韓國品牌' },
+          { value: 'tw', label: '台灣競品' },
+          { value: 'sns', label: 'SNS / 視覺' },
+          { value: 'strategy', label: 'chickimmiu 策略' }
+        ],
+        cards: [
+          // 韓國平台 (8)
+          { cat: 'platform', catLabel: '韓國平台', q: 'Musinsa 2025 GMV 多少？', a: '5 兆韓元（+15% YoY）；營收 1.4679 兆韓元、營業利益 1,405 億韓元；準備 IPO 估值 10 兆韓元。', color: '#1A1A1A' },
+          { cat: 'platform', catLabel: '韓國平台', q: 'Ably 是什麼類型平台？', a: '20 代女性親民 K-fashion AI 個人化超級 App。MAU 8.33M，估值 USD 21 億（Alibaba 2024 投資 USD 7,140 萬）。', color: '#FF6B9D' },
+          { cat: 'platform', catLabel: '韓國平台', q: 'Zigzag 的 Jikjin 直送是什麼？', a: 'Zigzag 自有的快配服務（직진배송），佔 GMV 比重 YoY +22pp。對標日本 ZOZOTOWN ARIGATO。', color: '#FF4A8C' },
+          { cat: 'platform', catLabel: '韓國平台', q: '29CM 的 AOV 多高？為什麼？', a: '約 230,000 韓元，顯著高於同業。靠雜誌風 PDP（Brand Philosophy / Brand Commentary / Igu Home Interview）拉高停留時間與 AOV。', color: '#000000' },
+          { cat: 'platform', catLabel: '韓國平台', q: 'Brandi 為什麼倒？', a: '純 marketplace 不做 PB（無自有品牌），無精品策展，碰到中國低價戰直接死。2025/9 由母公司 Newnex 申請企業重整。', color: '#9D9D9D' },
+          { cat: 'platform', catLabel: '韓國平台', q: '為什麼 W Concept 對 chickimmiu 重要？', a: '韓國設計師品牌精選平台，3,000+ 品牌、44 國跨境、AI 尺寸推薦。lookbook + 設計師故事頁的版型可直接借鏡。', color: '#2B2B2B' },
+          { cat: 'platform', catLabel: '韓國平台', q: '冷啟動 onboarding 是哪個平台教的？', a: 'Ably / Zigzag / 4910 都做：註冊後填年齡 + 風格偏好 → 首頁立刻客製化。chickimmiu 可在註冊或首次登入做 3-5 題快問卷。', color: '#FF4A8C' },
+          { cat: 'platform', catLabel: '韓國平台', q: '韓國女裝平台市場集中度多高？', a: '前三大佔 67.4% 市佔（2023）。27% 小型服飾電商三年內倒閉。市場高度整併中。' },
+
+          // 韓國品牌 (10)
+          { cat: 'brand', catLabel: '韓國品牌 ★', q: 'Marithé KR 的成長數字是什麼？', a: '5 年成長 500 倍：30 億韓圜（2019）→ 1.5 兆韓圜（2024）。台灣完全沒設櫃 — 是 chickimmiu 應主動爭取代理的最大機會。', color: '#D4A574' },
+          { cat: 'brand', catLabel: '韓國品牌', q: 'Mardi Mercredi 的招牌單品是什麼？', a: '「FLOWER MARDI」T-shirt — 一件 T 撐起整個品牌。台北東區旗艦店 + 新光三越南西/台中/新竹遠百多家設櫃。', color: '#FFB5A7' },
+          { cat: 'brand', catLabel: '韓國品牌', q: 'Matin Kim 的 fan-driven loop 是什麼？', a: '每天看 IG/TikTok 留言、即時應用到下一季風格。380K IG+TikTok 粉，2025 三月到六月跟全球 400 個 KOL 合作、海外營收 +121%。', color: '#000000' },
+          { cat: 'brand', catLabel: '韓國品牌', q: 'Andar 主打什麼差異化？', a: '「亞洲版型」athleisure。被定位為「親民版 Lululemon」。2024 Q2 韓國營收 616 億韓圜。台灣已正式進駐（andar_tw IG + Yogaland 代理）。', color: '#000000' },
+          { cat: 'brand', catLabel: '韓國品牌', q: 'Stand Oil 的 hero product 是？', a: 'Chubby Bag — Bella Hadid、Jennie、Olivia Rodrigo 都揹過。聖水洞旗艦 50% 訪客來自海外。「配件帶服裝」範本。', color: '#F5DEB3' },
+          { cat: 'brand', catLabel: '韓國品牌', q: '韓國女裝最大成長軌（2025）是什麼？', a: 'office athleisure（上班可穿的運動感）。Andar、XEXYMIX 都在做運動風 → 上班通勤延伸。台灣電商做運動類，單純 yoga 不夠。', color: '#000000' },
+          { cat: 'brand', catLabel: '韓國品牌', q: '韓國 IT-bag 三劍客是哪三個？', a: 'Stand Oil（Chubby Bag）、Marge Sherwood（Soft Baguette/Hailey Bieber 揹）、OSOI（建築背景設計師）。SCMP 與 WWD 並列。', color: '#A0826D' },
+          { cat: 'brand', catLabel: '韓國品牌', q: 'Stylenanda 被誰收購？', a: 'L\'Oréal 2018 年以約 USD 3.6 億收購。3CE 彩妝佔營收 70%，服飾線退居二線。', color: '#FF69B4' },
+          { cat: 'brand', catLabel: '韓國品牌', q: 'Chuu 的招牌單品「-5kg jeans」教 chickimmiu 什麼？', a: '單品起一個有承諾的綽號比平鋪直敘描述好賣 10 倍。「-5kg jeans」這名字本身就是行銷。', color: '#FFB6C1' },
+          { cat: 'brand', catLabel: '韓國品牌', q: '台灣可借鑑的「elevated basics」段位品牌是？', a: 'Low Classic / Wnderkammer 等。Mardi 雖紅但偏 casual，Low Classic 是辦公室通勤的高質感選項，台灣電商缺位 — 是差異化機會。', color: '#444444' },
+
+          // 台灣競品 (10)
+          { cat: 'tw', catLabel: '台灣競品 ★', q: 'chickimmiu 真正的 4 家對手是誰？', a: "Lulu's 露露絲 / W.Korea 正韓服飾 / Healer 衣服是解藥 / MEIER.Q。這 4 家是「左上：純韓代購 × 中高單價」同象限。", color: '#FFB5A7' },
+          { cat: 'tw', catLabel: '台灣競品 ★', q: 'chickimmiu 不該對抗的是誰？為什麼？', a: 'PAZZO（IG 305K + 集團 32.6 億）、Queen Shop（27 間實體）量級太大、走自有設計大量產路線，chickimmiu 不應浪費資源正面剛。', color: '#000000' },
+          { cat: 'tw', catLabel: '台灣競品 ★', q: 'W.Korea 的「神褲」現象啟示？', a: '神褲累計銷售 16 萬件，證明「單一 hero product」可打開正韓代購市場。chickimmiu 的「螞蟻腰褲」是類似 hero SKU。', color: '#1A1A1A' },
+          { cat: 'tw', catLabel: '台灣競品 ★', q: "Lulu's 為什麼是 chickimmiu 最直接對手？", a: "22 年老字號 KOL 起家、IG 141K、台中實體、Yahoo + 蝦皮多通路、會員逾萬。同樣的「KOL 韓國代購」模式，chickimmiu 要在個人 IP 強度與單品故事性勝出。", color: '#FFB5A7' },
+          { cat: 'tw', catLabel: '台灣競品 ★', q: 'chickimmiu 的不可複製護城河是什麼？', a: '金老佛爺 22 年韓國部落客資產 + 月飛韓國親選 + 強 KOL 個人 IP。Lulu\'s / W.Korea / Healer 都沒有這個級別的個人品牌力。' },
+          { cat: 'tw', catLabel: '台灣競品 ★', q: 'chickimmiu 應該死守哪個象限？', a: '「左上」：純韓代購 × 中高單價 × 強 KOL 個人 IP。不要被 PAZZO/Queen Shop 量級擾亂，也不要往蝦皮百元紅海走。' },
+          { cat: 'tw', catLabel: '台灣競品 ★', q: '建議價位策略是？', a: '上衣 NT 600-1000、洋裝 NT 1000-1800、外套 NT 1500-3000。比 Lulu\'s 略高、與 W.Korea 持平、低於百貨櫃 LOVFEE。' },
+          { cat: 'tw', catLabel: '台灣競品 ★', q: '研究列出的 5 個「絕不要做」是？', a: '①不跟 PAZZO 比量 ②不入百元蝦皮紅海 ③不跟 SHEIN/Temu 比低價 ④不做純 marketplace ⑤不忽視 30+ 女性。' },
+          { cat: 'tw', catLabel: '台灣競品 ★', q: 'LOVFEE 雙胞胎模式可學什麼？', a: 'KOL 個人 IP（大饅大力 80 萬+）+ 百貨設櫃（新光三越 8 個）+ 韓系平價的鐵三角。但避免重複疊加多品牌（後又建 mouggan）。', color: '#FFB6C1' },
+          { cat: 'tw', catLabel: '台灣競品 ★', q: '台灣韓系女裝市場 4 大層次是？', a: '①品牌電商集團（PAZZO 系）②設櫃連鎖（Queen Shop 27 間）③蝦皮 KOL 賣場（FW美衣 / GRASS ROOM）④IG 個體代購（朴小姐 / 96LINE）。' },
+
+          // SNS / 視覺 (8)
+          { cat: 'sns', catLabel: 'SNS / 視覺', q: '@musinsa_snap 11.8 萬粉的成功核心？', a: '把客戶實穿照系統化成內容（UGC 街拍）。「想知道最新韓國時尚 — 看 Musinsa 街拍」是業界共識。chickimmiu 立刻可開 @chickimmiu_snap 副帳。', color: '#1A1A1A' },
+          { cat: 'sns', catLabel: 'SNS / 視覺', q: 'Korean Cozy Beige 包含哪些色？', a: 'ivory、米褐、奶白、原木、淺灰、淡粉。修圖：hue 偏暖、飽和度降 10-20%、陰影提亮 + 高光柔和。可作為 chickimmiu 主視覺 LUT。', color: '#D2B48C' },
+          { cat: 'sns', catLabel: 'SNS / 視覺', q: '「人帶品牌」的 IG 經典模式範例？', a: 'Open YY 兩姊妹 + AMOMENTO 創意總監。個人 IG 養 6-12 個月再導向品牌，效果比直接做品牌帳號好。粉絲先愛上人，再愛上品牌。', color: '#FF6B9D' },
+          { cat: 'sns', catLabel: 'SNS / 視覺', q: 'depound 的 IG 拍法核心？', a: '「商品 → 情境 → 生活方式」串成一條：不是單拍包，是拍一個有包出鏡的早晨咖啡桌。6-9 張同色調照片連成 carousel 視覺敘事。', color: '#D2B48C' },
+          { cat: 'sns', catLabel: 'SNS / 視覺', q: 'Mejiwoo 1000 萬粉的拍法特色？', a: '「日常感 vlog 式」拍法 — 在咖啡廳、機場、家裡，自然光多、構圖隨意。最接近韓國年輕女生實際拍照習慣。BTS J-Hope 姊。', color: '#9370DB' },
+          { cat: 'sns', catLabel: 'SNS / 視覺', q: 'Mulbada × Unbutton 的啟示？', a: '38 萬粉的 micro KOL 也能跑出小品牌。IG 上她本人穿搭就是品牌 lookbook。對台灣中型品牌啟發極大 — micro KOL + 自創 capsule line 比花錢請大 KOL 高效。', color: '#FFB5A7' },
+          { cat: 'sns', catLabel: 'SNS / 視覺', q: '韓國女性購物前先做什麼？', a: '86% 韓國女性購物前會先在 SNS 瀏覽品牌。這個比例倒推回來決定了韓國品牌的 IG 投入強度。' },
+          { cat: 'sns', catLabel: 'SNS / 視覺', q: 'Naver Live 在韓國行動購物的占比？', a: '73.6% 行動購物者選用 Naver Shopping Live。台灣可考慮 IG Live + Shopline 即時帶貨，每週固定 30 分鐘新品介紹 + 限時折扣。' },
+
+          // chickimmiu 策略 (4)
+          { cat: 'strategy', catLabel: 'chickimmiu 策略', q: '4 個 quick win 的執行優先順序？', a: '①本週 D1 開 @chickimmiu_snap ②本週 D3 發 IG poll ③下週 D2 跑 migrate + deploy ④本月 D4 寄 Marithé email。' },
+          { cat: 'strategy', catLabel: 'chickimmiu 策略', q: 'D2 程式變更包含哪 4 種徽章？', a: '✦ 累計售出 50+/100+/300+/500+/1000+ 階梯 / ★ 韓星同款（hover 顯示韓星 + 劇）/ ✿ 金老佛爺已穿 / 既有 NEW/HOT/折扣 %。' },
+          { cat: 'strategy', catLabel: 'chickimmiu 策略', q: 'fan-driven capsule 怎麼操作？', a: '①IG carousel poll 收集粉絲想要的 3 個顏色 / 3 種版型 ②IG live 公開揭曉投票結果 ③開放預售 ④收 100-200 件再生產。粉絲變成 co-designer。' },
+          { cat: 'strategy', catLabel: 'chickimmiu 策略', q: 'Marithé KR 第一封 email 三大資料準備？', a: '①22 年韓國部落客背景 ②台灣同類品牌已驗證消費力（Mardi 在台北、Matin Kim 蝦皮熱）③chickimmiu 規模 + 客單價 + 通路。' },
+        ],
+        flipped: [],
+        get visible() {
+          const list = this.filterCat === 'all'
+            ? this.cards
+            : this.cards.filter(c => c.cat === this.filterCat);
+          return list.map((c, i) => ({ ...c, _idx: this.cards.indexOf(c) }));
+        },
+        init() {
+          this.flipped = new Array(this.cards.length).fill(false);
+        },
+        toggle(idx) {
+          this.flipped[idx] = !this.flipped[idx];
+        },
+        flipAll(state) {
+          this.visible.forEach(c => this.flipped[c._idx] = state);
+        }
+      };
+    }
+  </script>
+</body>
+</html>

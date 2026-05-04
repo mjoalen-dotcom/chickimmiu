@@ -281,6 +281,18 @@ export const Products: CollectionConfig = {
       },
     },
     {
+      name: 'totalSold',
+      label: '累計售出件數',
+      type: 'number',
+      min: 0,
+      defaultValue: 0,
+      admin: {
+        position: 'sidebar',
+        description:
+          '前台 PDP 顯示「累計售出 X+ 件」徽章（≥ 50 件才會顯示）。可手動填入或未來由訂單統計自動更新。',
+      },
+    },
+    {
       name: 'sourcing',
       label: '採購來源資訊',
       type: 'group',
@@ -499,10 +511,51 @@ export const Products: CollectionConfig = {
                 { label: '婚禮洋裝/正式洋裝', value: 'formal-dresses' },
                 { label: '現貨速到 Rush', value: 'rush' },
                 { label: '藝人穿搭', value: 'celebrity-style' },
+                { label: '韓星同款', value: 'korean-celebrity' },
               ],
               admin: {
-                description: '選擇此商品所屬的主題專區（可多選）',
+                description:
+                  '選擇此商品所屬的主題專區（可多選）。「韓星同款」會在前台 PDP 顯示專屬徽章 + 出現在 /products?tag=korean-celebrity 篩選結果。',
               },
+            },
+            {
+              name: 'koreanCelebrityRef',
+              label: '韓星 / 韓劇參考（如為韓星同款）',
+              type: 'group',
+              admin: {
+                description:
+                  '若有勾選「韓星同款」，建議填入細節以強化單品故事性。前台 PDP 會在徽章 hover 顯示。',
+                condition: (_data, siblingData) =>
+                  Array.isArray(siblingData?.collectionTags) &&
+                  siblingData.collectionTags.includes('korean-celebrity'),
+              },
+              fields: [
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'celebrityName',
+                      label: '韓星名稱',
+                      type: 'text',
+                      admin: { width: '50%', description: '例如 IU、Jennie、宋慧喬' },
+                    },
+                    {
+                      name: 'dramaOrShow',
+                      label: '出現的劇 / 節目',
+                      type: 'text',
+                      admin: { width: '50%', description: '例如 我的出走日記 第 5 集' },
+                    },
+                  ],
+                },
+                {
+                  name: 'sourceBrand',
+                  label: '原韓國品牌',
+                  type: 'text',
+                  admin: {
+                    description: '例如 Mardi Mercredi / Stand Oil。便於 SEO 與信任感建立',
+                  },
+                },
+              ],
             },
             /* 重量 */
             {
