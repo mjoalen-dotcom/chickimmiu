@@ -73,6 +73,7 @@ import { CreditScoreHistory } from './collections/CreditScoreHistory'
 import { PointsTransactions } from './collections/PointsTransactions'
 import { ProductViewEvents } from './collections/ProductViewEvents'
 import { UTMCampaigns } from './collections/UTMCampaigns'
+import { AdAudiences } from './collections/AdAudiences'
 import { AutomationJourneys } from './collections/AutomationJourneys'
 import { AutomationLogs } from './collections/AutomationLogs'
 import { CustomerServiceTickets } from './collections/CustomerServiceTickets'
@@ -298,6 +299,7 @@ export default buildConfig({
     Coupons,
     CouponRedemptions,
     UTMCampaigns, // PR-B：集中管理 UTM 活動 slug
+    AdAudiences, // PR-E1：Meta Custom Audience 動態受眾（schema only，未接 API）
     // ⑤ 互動體驗
     Affiliates,
     UGCPosts,
