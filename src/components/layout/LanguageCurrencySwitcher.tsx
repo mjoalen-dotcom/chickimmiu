@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Globe, DollarSign, ChevronDown } from 'lucide-react'
 import { useLocaleStore, type LocaleCode } from '@/stores/localeStore'
 
@@ -16,6 +17,7 @@ const LANGUAGES: { code: LocaleCode; label: string; flag: string }[] = [
 export function LanguageSwitcher() {
   const [isOpen, setIsOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const router = useRouter()
   const currentLocale = useLocaleStore((s) => s.currentLocale)
   const setLocale = useLocaleStore((s) => s.setLocale)
 
@@ -30,12 +32,19 @@ export function LanguageSwitcher() {
   const lang = LANGUAGES.find((l) => l.code === currentLocale)
 
   /**
-   * PR 1：先 wire 到 store + cookie；UI 文字實際翻譯在 PR 2（next-intl）落地。
-   * 切了會持久化到 localStorage + cookie ckm_locale，等 PR 2 上線就直接生效。
+   * 切換語系：
+   *   1. setLocale → zustand store + 寫 cookie ckm_locale
+   *   2. router.refresh() → 觸發 RSC 重新跑（next-intl 會讀新 cookie 換 dictionary）
+   * Refresh 是軟更新，client state（cart / 表單）不丟。
    */
   const handleChange = (code: LocaleCode) => {
+    if (code === currentLocale) {
+      setIsOpen(false)
+      return
+    }
     setLocale(code)
     setIsOpen(false)
+    router.refresh()
   }
 
   return (
