@@ -223,7 +223,7 @@ export default function UTMBuilderClient({ campaigns, defaultBaseUrl }: Props) {
             type="text"
             value={campaign}
             onChange={(e) => setCampaign(e.target.value)}
-            placeholder="例：spring-2026-launch"
+            placeholder="例：chickimmiu_purchase_lookalike_2026q2"
             list="utm-campaign-list"
             required
           />
@@ -232,6 +232,14 @@ export default function UTMBuilderClient({ campaigns, defaultBaseUrl }: Props) {
               <option key={c.slug} value={c.slug} />
             ))}
           </datalist>
+          <div style={{ marginTop: 6, fontSize: 12, color: 'var(--theme-elevation-500, #888)' }}>
+            命名規範：<code>{'{brand}_{objective}_{audience}_{period}'}</code>
+            （全小寫、底線分段、連字號分詞）。
+            <strong>必須跟 FB Ads Manager 的 campaign name 完全一致</strong>，
+            ROAS 報表才能對得上。範例：
+            <code style={{ marginLeft: 4 }}>chickimmiu_traffic_broad_2026-05</code>、
+            <code style={{ marginLeft: 4 }}>chickimmiu_retarget_cart-abandoners_2026q2</code>
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
