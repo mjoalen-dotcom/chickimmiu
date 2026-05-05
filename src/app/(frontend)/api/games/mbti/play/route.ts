@@ -2,8 +2,35 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers as nextHeaders } from 'next/headers'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { playMBTIQuiz } from '@/lib/games/gameActions'
+import { playMBTIQuiz, getMBTIPlayStatus } from '@/lib/games/gameActions'
 import type { MBTIAnswers, LifestyleAnswers } from '@/lib/games/mbtiQuizEngine'
+
+/**
+ * GET /api/games/mbti/play
+ * Pre-flight 檢查：開始測驗前 client 先 fetch 一次拿到動態 cost / 餘額 / 已測次數
+ * 不扣點。回傳 status: getMBTIPlayStatus 結果
+ */
+export async function GET() {
+  try {
+    const payload = await getPayload({ config })
+    const headers = await nextHeaders()
+    const { user } = await payload.auth({ headers })
+    if (!user) {
+      return NextResponse.json(
+        { canPlay: false, reason: 'unauthenticated', message: '請先登入後再進行測驗' },
+        { status: 401 },
+      )
+    }
+    const status = await getMBTIPlayStatus(user.id as number)
+    return NextResponse.json(status, { status: 200 })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown error'
+    return NextResponse.json(
+      { canPlay: false, reason: 'server_error', message: `無法取得測驗狀態：${message}` },
+      { status: 500 },
+    )
+  }
+}
 
 /**
  * POST /api/games/mbti/play

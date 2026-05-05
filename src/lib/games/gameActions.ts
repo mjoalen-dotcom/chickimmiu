@@ -596,6 +596,139 @@ export async function recordGamePlay(
 //   • 不發點數獎勵（玩家是消費點數換結果）
 //   • 結果寫到 users.mbtiProfile（給商品推薦/廣告/AI DM 用）
 //   • mini-game-records.metadata 記錄答題與分數（後台/分析用）
+//   • 重測費用：cost = ceil(基礎 × multiplier^已測次數)
+//     ├─ multiplier=1.5（admin 可調，預設 1.5；<=0 視為 1）
+//     ├─ 已測次數 = mini-game-records.gameType='mbti_quiz' status='completed' 的 count
+//     └─ 新結果以 payload.update 整個 overwrite users.mbtiProfile
+
+/**
+ * 計算單次 MBTI 測驗應扣的點數（基礎 × multiplier^已測次數）
+ * @param baseCost 後台 pointsCostPerPlay
+ * @param multiplier 後台 retakeMultiplier
+ * @param takenCount 該會員已完成的 MBTI 測驗次數（從 mini-game-records 撈）
+ */
+export function computeMBTICost(baseCost: number, multiplier: number, takenCount: number): number {
+  const safeBase = Math.max(0, Math.floor(Number(baseCost) || 0))
+  const safeMult = !isFinite(multiplier) || multiplier <= 0 ? 1 : Number(multiplier)
+  const safeCount = Math.max(0, Math.floor(Number(takenCount) || 0))
+  return Math.ceil(safeBase * Math.pow(safeMult, safeCount))
+}
+
+/**
+ * 取得 MBTI 測驗 pre-flight 狀態（不扣點，給 client 開測前 fetch 用）
+ * 回 { canPlay, currentPoints, requiredPoints, takenCount, dailyRemaining, reason }
+ */
+export async function getMBTIPlayStatus(userId: number) {
+  const payload = await getPayload({ config })
+
+  const gameSettings = (await payload.findGlobal({ slug: 'game-settings' })) as unknown as Record<string, unknown>
+  const enabled = Boolean(gameSettings.enabled)
+  const gameList = (gameSettings.gameList || {}) as Record<string, boolean>
+  const mbtiSettings = (gameSettings.mbtiStyle || {}) as Record<string, unknown>
+  const baseCost = (mbtiSettings.pointsCostPerPlay as number) ?? 50
+  const multiplier = (mbtiSettings.retakeMultiplier as number) ?? 1.5
+  const dailyLimit = (mbtiSettings.dailyLimit as number) ?? 1
+  const allowRetake = mbtiSettings.allowRetake !== false
+
+  if (!enabled || !gameList.mbtiStyleEnabled) {
+    return {
+      canPlay: false as const,
+      reason: 'disabled' as const,
+      message: 'MBTI 測驗目前未開放',
+      currentPoints: 0,
+      requiredPoints: 0,
+      takenCount: 0,
+      dailyRemaining: 0,
+    }
+  }
+
+  // 撈會員已完成測驗次數
+  const completedRes = await payload.find({
+    collection: 'mini-game-records',
+    where: {
+      and: [
+        { player: { equals: userId } },
+        { gameType: { equals: 'mbti_quiz' } },
+        { status: { equals: 'completed' } },
+      ],
+    } as Where,
+    limit: 0,
+    depth: 0,
+  })
+  const takenCount = completedRes.totalDocs
+
+  // allowRetake 關閉 + 已測過 → 直接擋
+  if (!allowRetake && takenCount >= 1) {
+    return {
+      canPlay: false as const,
+      reason: 'lifetime_limit' as const,
+      message: '個性測驗每位會員限測 1 次（後台已關閉重測）',
+      currentPoints: 0,
+      requiredPoints: 0,
+      takenCount,
+      dailyRemaining: 0,
+    }
+  }
+
+  // 每日上限
+  let dailyRemaining = dailyLimit > 0 ? dailyLimit : Number.POSITIVE_INFINITY
+  if (dailyLimit > 0) {
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    const todayPlays = await payload.find({
+      collection: 'mini-game-records',
+      where: {
+        and: [
+          { player: { equals: userId } },
+          { gameType: { equals: 'mbti_quiz' } },
+          { createdAt: { greater_than_equal: start.toISOString() } },
+        ],
+      } as Where,
+      limit: 0,
+      depth: 0,
+    })
+    dailyRemaining = Math.max(0, dailyLimit - todayPlays.totalDocs)
+    if (dailyRemaining <= 0) {
+      return {
+        canPlay: false as const,
+        reason: 'daily_limit' as const,
+        message: '今天已測過 MBTI 了，明天再來看看新的自己 ✨',
+        currentPoints: 0,
+        requiredPoints: 0,
+        takenCount,
+        dailyRemaining: 0,
+      }
+    }
+  }
+
+  const user = (await payload.findByID({ collection: 'users', id: userId })) as unknown as Record<string, unknown>
+  const currentPoints = (user.points as number) ?? 0
+  const requiredPoints = computeMBTICost(baseCost, multiplier, takenCount)
+
+  if (currentPoints < requiredPoints) {
+    return {
+      canPlay: false as const,
+      reason: 'insufficient_points' as const,
+      message: `點數不足！本次測驗需 ${requiredPoints} 點（您目前 ${currentPoints} 點，還差 ${requiredPoints - currentPoints} 點）`,
+      currentPoints,
+      requiredPoints,
+      takenCount,
+      dailyRemaining: dailyRemaining === Number.POSITIVE_INFINITY ? -1 : dailyRemaining,
+    }
+  }
+
+  return {
+    canPlay: true as const,
+    reason: takenCount > 0 ? ('retake' as const) : ('first_time' as const),
+    message: takenCount > 0
+      ? `這是您第 ${takenCount + 1} 次測驗，本次需 ${requiredPoints} 點（首次 ${baseCost} 點 × ${multiplier}^${takenCount}）。新結果將覆蓋上次紀錄。`
+      : `這是您第 1 次測驗，需 ${requiredPoints} 點。`,
+    currentPoints,
+    requiredPoints,
+    takenCount,
+    dailyRemaining: dailyRemaining === Number.POSITIVE_INFINITY ? -1 : dailyRemaining,
+  }
+}
 
 export async function playMBTIQuiz(
   userId: number,
@@ -614,28 +747,44 @@ export async function playMBTIQuiz(
     return { success: false as const, message: 'MBTI 測驗目前未開放' }
   }
   const mbtiSettings = (gameSettings.mbtiStyle || {}) as Record<string, unknown>
-  const pointsCost = (mbtiSettings.pointsCostPerPlay as number) ?? 50
+  const baseCost = (mbtiSettings.pointsCostPerPlay as number) ?? 50
+  const multiplier = (mbtiSettings.retakeMultiplier as number) ?? 1.5
   const dailyLimit = (mbtiSettings.dailyLimit as number) ?? 1
+  const allowRetake = mbtiSettings.allowRetake !== false
 
   // 2. 校驗答案完整性
   if (!isAnswersComplete(answers)) {
     return { success: false as const, message: '答案不完整，請完成所有題目' }
   }
 
-  // 3. 終身限制（最重要）：除非 allowRetake，否則 user.mbtiProfile.mbtiType
-  //    一旦寫入就拒絕重測（個性是穩定特質，重複測無意義）
-  const user = await payload.findByID({ collection: 'users', id: userId }) as unknown as Record<string, unknown>
-  const allowRetake = Boolean(mbtiSettings.allowRetake)
-  const existingProfile = user.mbtiProfile as Record<string, unknown> | null | undefined
-  const existingType = existingProfile?.mbtiType as string | null | undefined
-  if (existingType && !allowRetake) {
+  // 3. 算已測次數（completed only，不算 abandoned）
+  const completedRes = await payload.find({
+    collection: 'mini-game-records',
+    where: {
+      and: [
+        { player: { equals: userId } },
+        { gameType: { equals: 'mbti_quiz' } },
+        { status: { equals: 'completed' } },
+      ],
+    } as Where,
+    limit: 0,
+    depth: 0,
+  })
+  const takenCount = completedRes.totalDocs
+
+  // 4. allowRetake 關閉 → 終身限 1 次
+  if (!allowRetake && takenCount >= 1) {
+    const user = (await payload.findByID({ collection: 'users', id: userId })) as unknown as Record<string, unknown>
+    const existingType = (user.mbtiProfile as { mbtiType?: string } | null)?.mbtiType
     return {
       success: false as const,
-      message: `你已測過 MBTI（${existingType}），個性測驗每位會員終身限 1 次。可至會員中心查看你的結果與推薦商品 ✨`,
+      message: existingType
+        ? `你已測過 MBTI（${existingType}），重測功能後台已關閉。可至會員中心查看你的結果 ✨`
+        : '個性測驗每位會員限測 1 次（後台已關閉重測）',
     }
   }
 
-  // 4. 每日上限（次要 — 即使 allowRetake 也擋日刷）
+  // 5. 每日上限
   if (dailyLimit > 0) {
     const start = new Date()
     start.setHours(0, 0, 0, 0)
@@ -656,16 +805,18 @@ export async function playMBTIQuiz(
     }
   }
 
-  // 5. 檢查點數餘額
+  // 6. 檢查點數餘額（動態 cost = base × multiplier^takenCount）
+  const user = await payload.findByID({ collection: 'users', id: userId }) as unknown as Record<string, unknown>
+  const pointsCost = computeMBTICost(baseCost, multiplier, takenCount)
   const currentPoints = (user.points as number) ?? 0
   if (currentPoints < pointsCost) {
     return {
       success: false as const,
-      message: `點數不足！需要 ${pointsCost} 點才能測驗（目前 ${currentPoints} 點）`,
+      message: `點數不足！本次測驗需 ${pointsCost} 點（您目前 ${currentPoints} 點，還差 ${pointsCost - currentPoints} 點）`,
     }
   }
 
-  // 6. 扣點數 + 寫 points-transactions
+  // 7. 扣點數 + 寫 points-transactions
   const newBalance = currentPoints - pointsCost
   await (payload.create as Function)({
     collection: 'points-transactions',

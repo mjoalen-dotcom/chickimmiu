@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowLeft, ArrowRight, Sparkles, Share2, RotateCw, ShoppingBag, User } from 'lucide-react'
+import { AlertCircle, ArrowLeft, ArrowRight, Coins, Sparkles, Share2, RotateCw, ShoppingBag, User } from 'lucide-react'
 import {
   MBTI_QUESTIONS,
   MBTI_LIFESTYLE_QUESTIONS,
@@ -58,6 +58,7 @@ interface PlayResult {
 
 interface Settings {
   pointsCostPerPlay?: number
+  retakeMultiplier?: number
   dailyLimit?: number
   allowRetake?: boolean
   displayName?: string
@@ -65,9 +66,20 @@ interface Settings {
   icon?: string
 }
 
+interface PreflightStatus {
+  canPlay: boolean
+  reason: 'first_time' | 'retake' | 'insufficient_points' | 'daily_limit' | 'lifetime_limit' | 'disabled' | 'unauthenticated' | 'server_error'
+  message?: string
+  currentPoints: number
+  requiredPoints: number
+  takenCount: number
+  dailyRemaining: number
+}
+
 export function MBTIStyleGame({ settings }: { settings: Record<string, unknown> }) {
   const s = settings as Settings
-  const pointsCost = s.pointsCostPerPlay ?? 50
+  const baseCost = s.pointsCostPerPlay ?? 50
+  const retakeMultiplier = s.retakeMultiplier ?? 1.5
   const dailyLimit = s.dailyLimit ?? 1
   const allowRetake = s.allowRetake !== false
 
@@ -77,6 +89,33 @@ export function MBTIStyleGame({ settings }: { settings: Record<string, unknown> 
   const [lifestyleAnswers, setLifestyleAnswers] = useState<Record<string, LifestyleOccasion>>({})
   const [result, setResult] = useState<PlayResult | null>(null)
   const [errorMsg, setErrorMsg] = useState<string>('')
+
+  // Pre-flight：開始測驗前 fetch 動態 cost / 餘額 / 已測次數
+  const [preflight, setPreflight] = useState<PreflightStatus | null>(null)
+  const [preflightLoading, setPreflightLoading] = useState(true)
+
+  const fetchPreflight = useCallback(async () => {
+    setPreflightLoading(true)
+    try {
+      const res = await fetch('/api/games/mbti/play', { credentials: 'include' })
+      const data = (await res.json().catch(() => null)) as PreflightStatus | null
+      if (data) setPreflight(data)
+    } catch {
+      /* ignore — UI 用 fallback */
+    } finally {
+      setPreflightLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void fetchPreflight()
+  }, [fetchPreflight])
+
+  // 推導下次顯示的 cost：以 preflight 為主，沒拿到時 fallback 到 base × multiplier^0
+  const requiredPoints = preflight?.requiredPoints ?? baseCost
+  const currentPoints = preflight?.currentPoints ?? 0
+  const takenCount = preflight?.takenCount ?? 0
+  const canStart = preflight?.canPlay === true
 
   // 28 題 MBTI + 4 題 lifestyle = 32 題；idx 28..31 走 lifestyle
   const totalQuestions = TOTAL_QUIZ_QUESTIONS
@@ -91,6 +130,7 @@ export function MBTIStyleGame({ settings }: { settings: Record<string, unknown> 
   )
 
   const handleStart = () => {
+    if (!canStart) return // 點數不足 / 每日上限 / 終身限 → 擋下
     setPhase('quiz')
     setQuestionIdx(0)
     setMbtiAnswers({})
@@ -190,6 +230,7 @@ export function MBTIStyleGame({ settings }: { settings: Record<string, unknown> 
     setLifestyleAnswers({})
     setResult(null)
     setErrorMsg('')
+    void fetchPreflight() // 重撈：takenCount + 1 → cost × multiplier
   }
 
   // ════════════════════════════════════════
@@ -401,7 +442,7 @@ export function MBTIStyleGame({ settings }: { settings: Record<string, unknown> 
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-foreground text-cream-50 rounded-xl text-sm hover:bg-foreground/90 transition-colors"
             >
               <RotateCw size={16} />
-              再測一次（消耗 {pointsCost} 點）
+              再測一次（下次需 {Math.ceil(requiredPoints * (retakeMultiplier > 0 ? retakeMultiplier : 1))} 點）
             </button>
           )}
         </div>
@@ -541,10 +582,28 @@ export function MBTIStyleGame({ settings }: { settings: Record<string, unknown> 
           <p className="text-sm font-medium text-purple-600 mt-0.5">約 6 分鐘</p>
         </div>
         <div className="bg-white/70 rounded-xl p-3 border border-cream-200">
-          <p className="text-xs text-muted-foreground">點數</p>
-          <p className="text-sm font-medium text-purple-600 mt-0.5">{pointsCost} 點</p>
+          <p className="text-xs text-muted-foreground">本次點數</p>
+          <p className="text-sm font-medium text-purple-600 mt-0.5">
+            {preflightLoading ? '...' : `${requiredPoints} 點`}
+          </p>
         </div>
       </div>
+
+      {/* 餘額 + 動態 cost 說明 */}
+      {!preflightLoading && preflight && (
+        <div className="flex items-center justify-between bg-white/80 rounded-xl border border-cream-200 px-4 py-3 mb-4 text-left">
+          <div className="flex items-center gap-2 text-sm">
+            <Coins size={16} className="text-gold-500" />
+            <span className="text-muted-foreground">您目前</span>
+            <span className="font-medium">{currentPoints.toLocaleString()} 點</span>
+          </div>
+          {takenCount > 0 && allowRetake && (
+            <span className="text-[11px] text-purple-600">
+              第 {takenCount + 1} 次 · ×{retakeMultiplier}
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="bg-gradient-to-br from-indigo-500/5 to-purple-500/10 rounded-2xl border border-purple-500/20 p-5 mb-4 text-left">
         <p className="text-xs tracking-widest text-purple-600 mb-2">測驗會幫你找出</p>
@@ -555,6 +614,22 @@ export function MBTIStyleGame({ settings }: { settings: Record<string, unknown> 
           <li>· 個人專屬分析頁面（平日好運 / 突破自己 / 按個性切換推薦）</li>
         </ul>
       </div>
+
+      {/* 重測倍數提示（已測過 + 開放重測） */}
+      {takenCount > 0 && allowRetake && (
+        <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 mb-4 text-left flex items-start gap-2">
+          <RotateCw size={14} className="text-purple-600 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-xs font-medium text-purple-800">
+              這是您第 {takenCount + 1} 次測驗
+            </p>
+            <p className="text-[11px] text-purple-700/80 leading-relaxed mt-0.5">
+              重測費用以 ×{retakeMultiplier} 倍成長（首次 {baseCost} 點）。
+              <strong className="text-purple-900">新結果會覆蓋上次紀錄</strong>，自動更新會員資料中的個性穿搭分析。
+            </p>
+          </div>
+        </div>
+      )}
 
       {!allowRetake && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-6 text-left flex items-start gap-2">
@@ -568,16 +643,72 @@ export function MBTIStyleGame({ settings }: { settings: Record<string, unknown> 
         </div>
       )}
 
+      {/* 點數不足擋下 */}
+      {!preflightLoading && preflight && !canStart && preflight.reason === 'insufficient_points' && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-left">
+          <div className="flex items-start gap-2 mb-3">
+            <AlertCircle size={16} className="text-red-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-red-800">點數不足，無法開始測驗</p>
+              <p className="text-[11px] text-red-700/80 leading-relaxed mt-0.5">
+                本次需 <strong>{requiredPoints}</strong> 點，您目前 <strong>{currentPoints}</strong> 點，還差 <strong>{requiredPoints - currentPoints}</strong> 點。
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/account/points"
+            className="block w-full py-2 bg-red-600 text-white rounded-lg text-xs text-center hover:bg-red-700 transition-colors"
+          >
+            前往點數中心 →
+          </Link>
+        </div>
+      )}
+
+      {/* 每日上限擋下 */}
+      {!preflightLoading && preflight && !canStart && preflight.reason === 'daily_limit' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-left">
+          <p className="text-sm font-medium text-amber-800">{preflight.message}</p>
+        </div>
+      )}
+
+      {/* 終身限制擋下 */}
+      {!preflightLoading && preflight && !canStart && preflight.reason === 'lifetime_limit' && (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 text-left">
+          <p className="text-sm font-medium text-slate-700 mb-2">{preflight.message}</p>
+          <Link
+            href="/account/personality"
+            className="text-xs text-purple-600 hover:underline"
+          >
+            查看您的個性分析 →
+          </Link>
+        </div>
+      )}
+
       <button
         onClick={handleStart}
-        className="w-full py-3.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-sm tracking-wide hover:opacity-90 transition-opacity shadow-md"
+        disabled={preflightLoading || !canStart}
+        className={`w-full py-3.5 rounded-xl text-sm tracking-wide transition-opacity shadow-md ${
+          canStart && !preflightLoading
+            ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:opacity-90'
+            : 'bg-cream-200 text-muted-foreground cursor-not-allowed'
+        }`}
       >
-        開始測驗（消耗 {pointsCost} 點）
+        {preflightLoading
+          ? '檢查點數中…'
+          : canStart
+            ? `開始測驗（消耗 ${requiredPoints} 點）`
+            : preflight?.reason === 'insufficient_points'
+              ? `點數不足（需 ${requiredPoints} 點）`
+              : preflight?.reason === 'daily_limit'
+                ? '今日已達上限'
+                : preflight?.reason === 'lifetime_limit'
+                  ? '已測過'
+                  : '無法開始測驗'}
       </button>
 
       <p className="text-xs text-muted-foreground mt-3">
         {allowRetake
-          ? (dailyLimit > 0 ? `每日限 ${dailyLimit} 次 · 可重複測驗` : '無次數限制 · 可重複測驗')
+          ? (dailyLimit > 0 ? `每日限 ${dailyLimit} 次 · 重測費用 ×${retakeMultiplier} 成長` : `無次數限制 · 重測費用 ×${retakeMultiplier} 成長`)
           : '每位會員終身限 1 次'}
       </p>
     </div>
