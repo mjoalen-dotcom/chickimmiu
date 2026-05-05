@@ -39,6 +39,7 @@ import {
   getCurrentAttribution,
 } from '@/lib/tracking'
 import { sendServerPurchaseEvent } from '@/app/actions/tracking'
+import { Price } from '@/components/common/Price'
 
 /* ── 付款方式 ──
  * cash_cod 只在所選物流支援貨到付款（cashOnDelivery=true）時顯示，
@@ -1576,9 +1577,10 @@ export default function CheckoutPage() {
                             x {item.quantity}
                           </p>
                         </div>
-                        <p className="text-xs font-medium whitespace-nowrap">
-                          NT$ {(unitPrice * item.quantity).toLocaleString()}
-                        </p>
+                        <Price
+                          twd={unitPrice * item.quantity}
+                          className="text-xs font-medium whitespace-nowrap"
+                        />
                       </div>
                     )
                   })}
@@ -1587,7 +1589,7 @@ export default function CheckoutPage() {
                 <div className="border-t border-cream-200 pt-4 space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">商品小計</span>
-                    <span>NT$ {subtotal.toLocaleString()}</span>
+                    <Price twd={subtotal} />
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
@@ -1597,7 +1599,7 @@ export default function CheckoutPage() {
                       {shippingFee === 0 ? (
                         <span className="text-green-600">免運費</span>
                       ) : (
-                        `NT$ ${shippingFee}`
+                        <Price twd={shippingFee} />
                       )}
                     </span>
                   </div>
@@ -1610,7 +1612,7 @@ export default function CheckoutPage() {
                   {codFee > 0 && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">貨到付款手續費</span>
-                      <span>NT$ {codFee}</span>
+                      <Price twd={codFee} />
                     </div>
                   )}
                   {appliedCoupon && (couponDiscount > 0 || appliedCoupon.freeShipping) && (
@@ -1620,9 +1622,13 @@ export default function CheckoutPage() {
                         優惠券（{appliedCoupon.couponCode}）
                       </span>
                       <span>
-                        {appliedCoupon.freeShipping
-                          ? '免運'
-                          : `− NT$ ${couponDiscount.toLocaleString()}`}
+                        {appliedCoupon.freeShipping ? (
+                          '免運'
+                        ) : (
+                          <>
+                            − <Price twd={couponDiscount} />
+                          </>
+                        )}
                       </span>
                     </div>
                   )}
@@ -1642,7 +1648,7 @@ export default function CheckoutPage() {
                         <span>
                           {taxSettings.defaultTaxIncluded ? '含' : '加收'} {rate}% 營業稅
                         </span>
-                        <span>NT$ {tax.toLocaleString()}</span>
+                        <Price twd={tax} />
                       </div>
                     )
                   })()}
@@ -1650,10 +1656,11 @@ export default function CheckoutPage() {
 
                 <div className="border-t border-cream-200 pt-4 flex justify-between items-baseline">
                   <span className="font-medium">合計</span>
-                  <span className="text-xl font-medium text-gold-600">
-                    NT$ {total.toLocaleString()}
-                  </span>
+                  <Price twd={total} className="text-xl font-medium text-gold-600" />
                 </div>
+                <p className="text-[10px] text-muted-foreground text-right -mt-2">
+                  本站交易實際以新台幣（TWD）結算，其他幣別僅供顯示參考。
+                </p>
 
                 {checkoutCfg.minOrderAmount > 0 && subtotal < checkoutCfg.minOrderAmount && (
                   <p className="text-xs text-rose-600 bg-rose-50 px-3 py-2 rounded-lg">

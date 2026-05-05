@@ -32,6 +32,7 @@ import { AISizeRecommender } from '@/components/product/AISizeRecommender'
 import { AlsoBoughtSection } from '@/components/product/AlsoBoughtSection'
 import { ProductPageUpsell } from '@/components/recommendation/ProductPageUpsell'
 import { trackViewContent, trackProductView } from '@/lib/tracking'
+import { Price } from '@/components/common/Price'
 
 /* ─────────────────────────────────── types ── */
 interface Props {
@@ -489,13 +490,15 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
             <div>
               <h1 className="text-2xl md:text-3xl font-serif mb-3">{product.name as string}</h1>
               <div className="flex items-baseline gap-3">
-                <span className="text-2xl font-medium text-gold-600">
-                  NT$ {currentPrice.toLocaleString()}
-                </span>
+                <Price
+                  twd={currentPrice}
+                  className="text-2xl font-medium text-gold-600"
+                />
                 {currentPrice < originalPrice && (
-                  <span className="text-base text-muted-foreground line-through">
-                    NT$ {originalPrice.toLocaleString()}
-                  </span>
+                  <Price
+                    twd={originalPrice}
+                    className="text-base text-muted-foreground line-through"
+                  />
                 )}
                 {discountPercent && (
                   <span className="text-sm text-red-500 font-medium">-{discountPercent}%</span>
@@ -1032,7 +1035,7 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
           >
             <div className="flex-shrink-0">
               <p className="text-xs text-foreground/50 leading-none">價格</p>
-              <p className="text-lg font-medium text-gold-600 leading-tight">NT$ {currentPrice.toLocaleString()}</p>
+              <Price twd={currentPrice} className="text-lg font-medium text-gold-600 leading-tight block" />
             </div>
             <button
               onClick={handleAddToCart}

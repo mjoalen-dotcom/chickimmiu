@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { X, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useCartStore } from '@/stores/cartStore'
+import { Price } from '@/components/common/Price'
 
 export function CartDrawer() {
   const { items, isDrawerOpen, closeDrawer, updateQuantity, removeItem } =
@@ -112,9 +113,7 @@ export function CartDrawer() {
                             {item.variant.colorName} / {item.variant.size}
                           </p>
                         )}
-                        <p className="text-sm text-gold-600 mt-1">
-                          NT$ {unitPrice.toLocaleString()}
-                        </p>
+                        <Price twd={unitPrice} className="text-sm text-gold-600 mt-1 block" />
 
                         <div className="flex items-center justify-between mt-auto pt-2">
                           <div className="inline-flex items-center border border-cream-200 rounded-md">
@@ -168,9 +167,7 @@ export function CartDrawer() {
               <div className="border-t border-cream-200 px-6 py-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">小計</span>
-                  <span className="text-lg font-medium">
-                    NT$ {subtotal.toLocaleString()}
-                  </span>
+                  <Price twd={subtotal} className="text-lg font-medium" />
                 </div>
                 <p className="text-[10px] text-muted-foreground">
                   運費及折扣將於結帳時計算

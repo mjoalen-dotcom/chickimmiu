@@ -88,6 +88,7 @@ import { Messages } from './collections/Messages'
 import { MessageTags } from './collections/MessageTags'
 import { ConversationActivities } from './collections/ConversationActivities'
 import { CustomerServiceSettings } from './globals/CustomerServiceSettings'
+import { Currencies } from './collections/Currencies'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -298,6 +299,7 @@ export default buildConfig({
     Bundles,
     Coupons,
     CouponRedemptions,
+    Currencies,
     UTMCampaigns, // PR-B：集中管理 UTM 活動 slug
     AdAudiences, // PR-E：DPA Retargeting Custom Audience 定義
     // ⑤ 互動體驗
