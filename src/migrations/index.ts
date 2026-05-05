@@ -38,6 +38,9 @@ import * as migration_20260504_140000_add_redemption_max_discount from './202605
 import * as migration_20260504_150000_add_mbti64_occasion from './20260504_150000_add_mbti64_occasion';
 import * as migration_20260504_163000_add_podcasts from './20260504_163000_add_podcasts';
 import * as migration_20260505_160000_add_utm_lock_rels from './20260505_160000_add_utm_lock_rels';
+import * as migration_20260505_200000_add_ad_audiences from './20260505_200000_add_ad_audiences';
+import * as migration_20260505_220000_add_shopline_customer_fields from './20260505_220000_add_shopline_customer_fields';
+import * as migration_20260506_000000_add_ad_audiences_lock_rels from './20260506_000000_add_ad_audiences_lock_rels';
 
 export const migrations = [
   {
@@ -239,5 +242,20 @@ export const migrations = [
     up: migration_20260505_160000_add_utm_lock_rels.up,
     down: migration_20260505_160000_add_utm_lock_rels.down,
     name: '20260505_160000_add_utm_lock_rels',
+  },
+  {
+    up: migration_20260505_200000_add_ad_audiences.up,
+    down: migration_20260505_200000_add_ad_audiences.down,
+    name: '20260505_200000_add_ad_audiences',
+  },
+  {
+    up: migration_20260505_220000_add_shopline_customer_fields.up,
+    down: migration_20260505_220000_add_shopline_customer_fields.down,
+    name: '20260505_220000_add_shopline_customer_fields',
+  },
+  {
+    up: migration_20260506_000000_add_ad_audiences_lock_rels.up,
+    down: migration_20260506_000000_add_ad_audiences_lock_rels.down,
+    name: '20260506_000000_add_ad_audiences_lock_rels',
   },
 ];
