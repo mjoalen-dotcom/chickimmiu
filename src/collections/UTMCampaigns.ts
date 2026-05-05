@@ -82,7 +82,6 @@ export const UTMCampaigns: CollectionConfig = {
           label: 'UTM Source',
           type: 'select',
           required: true,
-          dbName: 'utm_camp_source',
           defaultValue: 'facebook',
           options: [
             { label: 'Facebook', value: 'facebook' },
@@ -104,7 +103,6 @@ export const UTMCampaigns: CollectionConfig = {
           label: 'UTM Medium',
           type: 'select',
           required: true,
-          dbName: 'utm_camp_medium',
           defaultValue: 'cpc',
           options: [
             { label: 'CPC（付費點擊）', value: 'cpc' },
@@ -175,7 +173,6 @@ export const UTMCampaigns: CollectionConfig = {
       label: '狀態',
       type: 'select',
       defaultValue: 'planning',
-      dbName: 'utm_camp_status',
       options: [
         { label: '規劃中', value: 'planning' },
         { label: '進行中', value: 'active' },

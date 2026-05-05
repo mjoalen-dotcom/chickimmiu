@@ -41,6 +41,7 @@ import * as migration_20260505_160000_add_utm_lock_rels from './20260505_160000_
 import * as migration_20260505_200000_add_ad_audiences from './20260505_200000_add_ad_audiences';
 import * as migration_20260505_220000_add_shopline_customer_fields from './20260505_220000_add_shopline_customer_fields';
 import * as migration_20260506_000000_add_ad_audiences_lock_rels from './20260506_000000_add_ad_audiences_lock_rels';
+import * as migration_20260506_120000_rename_utm_campaign_columns from './20260506_120000_rename_utm_campaign_columns';
 
 export const migrations = [
   {
@@ -257,5 +258,10 @@ export const migrations = [
     up: migration_20260506_000000_add_ad_audiences_lock_rels.up,
     down: migration_20260506_000000_add_ad_audiences_lock_rels.down,
     name: '20260506_000000_add_ad_audiences_lock_rels',
+  },
+  {
+    up: migration_20260506_120000_rename_utm_campaign_columns.up,
+    down: migration_20260506_120000_rename_utm_campaign_columns.down,
+    name: '20260506_120000_rename_utm_campaign_columns',
   },
 ];
