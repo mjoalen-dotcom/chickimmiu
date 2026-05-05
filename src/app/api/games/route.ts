@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getPayload } from 'payload'
-import config from '@payload-config'
 import type { Where } from 'payload'
+import { resolveApiUser } from '@/lib/auth/resolveApiUser'
 import {
   GAME_CONFIGS,
   checkDailyPlays,
@@ -23,8 +22,7 @@ import { startChallenge, submitChallenge } from '@/lib/games/fashionChallengeEng
  */
 export async function GET(req: NextRequest) {
   try {
-    const payload = await getPayload({ config })
-    const { user } = await payload.auth({ headers: req.headers })
+    const { payload, user } = await resolveApiUser(req.headers)
 
     if (!user) {
       return NextResponse.json(
@@ -139,8 +137,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const payload = await getPayload({ config })
-    const { user } = await payload.auth({ headers: req.headers })
+    const { payload, user } = await resolveApiUser(req.headers)
 
     if (!user) {
       return NextResponse.json(
