@@ -7,6 +7,7 @@ import { Heart, ShoppingBag, Eye } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useCartStore } from '@/stores/cartStore'
 import { useWishlistStore } from '@/stores/wishlistStore'
+import { Price } from '@/components/common/Price'
 
 export interface ProductCardProps {
   id: string
@@ -197,20 +198,16 @@ export function ProductCard({
 
         {/* Price */}
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-medium text-gold-600">
-            NT$ {(salePrice ?? price).toLocaleString()}
-          </span>
+          <Price twd={salePrice ?? price} className="text-sm font-medium text-gold-600" />
           {salePrice && salePrice < price && (
-            <span className="text-xs text-muted-foreground line-through">
-              NT$ {price.toLocaleString()}
-            </span>
+            <Price twd={price} className="text-xs text-muted-foreground line-through" />
           )}
         </div>
 
         {/* Member price */}
         {memberPrice && memberPrice < (salePrice ?? price) && (
           <p className="text-[10px] text-purple-600 tracking-wide">
-            VIP NT$ {memberPrice.toLocaleString()}
+            VIP <Price twd={memberPrice} />
           </p>
         )}
       </div>

@@ -23,6 +23,7 @@ import * as migration_20260421_200000_add_checkout_order_settings from './202604
 import * as migration_20260422_000000_add_promo_trio from './20260422_000000_add_promo_trio';
 import * as migration_20260422_100000_add_coupons from './20260422_100000_add_coupons';
 import * as migration_20260422_200000_fix_policy_returns_notice_title from './20260422_200000_fix_policy_returns_notice_title';
+import * as migration_20260423_000000_add_currencies from './20260423_000000_add_currencies';
 import * as migration_20260426_120000_add_daily_horoscopes from './20260426_120000_add_daily_horoscopes';
 import * as migration_20260426_130000_add_users_birth_time from './20260426_130000_add_users_birth_time';
 import * as migration_20260426_140000_add_points_mall_shipping from './20260426_140000_add_points_mall_shipping';
@@ -263,5 +264,10 @@ export const migrations = [
     up: migration_20260506_120000_rename_utm_campaign_columns.up,
     down: migration_20260506_120000_rename_utm_campaign_columns.down,
     name: '20260506_120000_rename_utm_campaign_columns',
+  },
+  {
+    up: migration_20260423_000000_add_currencies.up,
+    down: migration_20260423_000000_add_currencies.down,
+    name: '20260423_000000_add_currencies',
   },
 ];
