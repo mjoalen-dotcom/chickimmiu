@@ -1,4 +1,9 @@
 import { withPayload } from '@payloadcms/next/withPayload'
+import createNextIntlPlugin from 'next-intl/plugin'
+
+// next-intl plugin — 註冊伺服端 request config（src/i18n/request.ts）
+//   讀 ckm_locale cookie 決定當前語系，dynamic import 對應 dictionary。
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -103,4 +108,4 @@ const nextConfig = {
   },
 }
 
-export default withPayload(nextConfig)
+export default withNextIntl(withPayload(nextConfig))
