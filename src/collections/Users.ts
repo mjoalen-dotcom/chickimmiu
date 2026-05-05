@@ -7,6 +7,7 @@ import { customerRegisterEndpoint } from '../endpoints/customerRegister'
 import { customerLogoutEndpoint } from '../endpoints/customerLogout'
 import { memberAnalyticsEndpoint } from '../endpoints/memberAnalytics'
 import { repeatPurchaseEndpoint } from '../endpoints/repeatPurchaseAnalytics'
+import { shoplineCustomerImportEndpoint } from '../endpoints/shoplineCustomerImport'
 import { generateUniqueReferralCode } from '../lib/referralCode'
 
 const userFieldMappings: FieldMapping[] = [
@@ -126,6 +127,7 @@ export const Users: CollectionConfig = {
     customerLogoutEndpoint,
     memberAnalyticsEndpoint,
     repeatPurchaseEndpoint,
+    shoplineCustomerImportEndpoint,
   ],
   hooks: {
     // 新增使用者時（admin 建立、customer /register、OAuth 橋接皆適用）自動產生
@@ -411,6 +413,34 @@ export const Users: CollectionConfig = {
                   label: '備註',
                   type: 'text',
                   admin: { description: '例如「客戶帳款代墊」「2026 春夏季使用」' },
+                },
+              ],
+            },
+            // ── 來源追蹤 ──
+            {
+              type: 'row',
+              fields: [
+                {
+                  name: 'shoplineCustomerId',
+                  label: 'Shopline 顧客 ID',
+                  type: 'text',
+                  index: true,
+                  admin: { width: '50%', description: 'Shopline 匯出的 customer_id，用於資料對接' },
+                },
+                {
+                  name: 'signupSource',
+                  label: '註冊來源',
+                  type: 'select',
+                  options: [
+                    { label: 'Shopline 匯入', value: 'shopline' },
+                    { label: '官網自然註冊', value: 'organic' },
+                    { label: 'LINE 登入', value: 'line' },
+                    { label: 'Facebook 登入', value: 'facebook' },
+                    { label: 'Google 登入', value: 'google' },
+                    { label: '推薦', value: 'referral' },
+                    { label: '後台手動建立', value: 'admin' },
+                  ],
+                  admin: { width: '50%', description: '會員首次註冊的管道' },
                 },
               ],
             },
