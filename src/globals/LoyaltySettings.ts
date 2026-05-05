@@ -41,6 +41,20 @@ export const LoyaltySettings: GlobalConfig = {
       ],
     },
 
+    // ── 新會員註冊禮 ──
+    {
+      name: 'signupReward',
+      label: '新會員註冊禮',
+      type: 'group',
+      admin: { description: '會員首次註冊（含 OAuth bridge 首次建檔）自動贈送點數 / 購物金' },
+      fields: [
+        { name: 'enabled', label: '啟用註冊禮', type: 'checkbox', defaultValue: true },
+        { name: 'points', label: '註冊贈送點數', type: 'number', defaultValue: 100, admin: { description: '0 = 不贈送點數' } },
+        { name: 'shoppingCredit', label: '註冊贈送購物金', type: 'number', defaultValue: 0, admin: { description: 'NT$，0 = 不贈送購物金' } },
+        { name: 'description', label: '紀錄備註', type: 'text', defaultValue: '新會員註冊禮', admin: { description: '寫進 PointsTransactions.description 用' } },
+      ],
+    },
+
     // ── 各等級點數倍率 ──
     {
       name: 'tierMultipliers',
