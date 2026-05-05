@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getPayload } from 'payload'
-import config from '@payload-config'
 import {
   createBattleRoom,
   joinBattleRoom,
@@ -8,6 +6,7 @@ import {
   getBattleRoom,
   getShareableLink,
 } from '@/lib/games/cardBattleEngine'
+import { resolveApiUser } from '@/lib/auth/resolveApiUser'
 
 /**
  * Card Battle API
@@ -26,8 +25,7 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    const payload = await getPayload({ config })
-    const { user } = await payload.auth({ headers: req.headers })
+    const { user } = await resolveApiUser(req.headers)
 
     if (!user) {
       return NextResponse.json(
@@ -79,8 +77,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const payload = await getPayload({ config })
-    const { user } = await payload.auth({ headers: req.headers })
+    const { user } = await resolveApiUser(req.headers)
 
     if (!user) {
       return NextResponse.json(

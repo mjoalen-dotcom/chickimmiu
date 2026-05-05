@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { headers as nextHeaders } from 'next/headers'
-import { getPayload } from 'payload'
-import config from '@payload-config'
+import { resolveApiUser } from '@/lib/auth/resolveApiUser'
 import { playMBTIQuiz } from '@/lib/games/gameActions'
 import type { MBTIAnswers, LifestyleAnswers } from '@/lib/games/mbtiQuizEngine'
 
@@ -11,15 +9,13 @@ import type { MBTIAnswers, LifestyleAnswers } from '@/lib/games/mbtiQuizEngine'
  *   answers: { [questionId]: 'E'|'I'|'S'|'N'|'T'|'F'|'J'|'P' },         // 28 題
  *   lifestyleAnswers?: { [questionId]: 'urban'|'vacation'|'party'|'cozy' } // 4 題（PR-Y MBTI64）
  * }
- * Auth: 需登入（Payload session cookie）
+ * Auth: 需登入（Payload session cookie 或 NextAuth session）
  *
  * 回 playMBTIQuiz 結果（含 mbtiType、primaryOccasion、subPersonality、推薦商品、剩餘點數）
  */
 export async function POST(req: NextRequest) {
   try {
-    const payload = await getPayload({ config })
-    const headers = await nextHeaders()
-    const { user } = await payload.auth({ headers })
+    const { user } = await resolveApiUser()
 
     if (!user) {
       return NextResponse.json(

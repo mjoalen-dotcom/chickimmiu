@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getPayload } from 'payload'
-import config from '@payload-config'
 
 import { checkRateLimit } from '@/lib/rateLimit'
 import {
@@ -8,6 +6,7 @@ import {
   joinStyleRoom,
   isSocialGameType,
 } from '@/lib/games/socialGameActions'
+import { resolveApiUser } from '@/lib/auth/resolveApiUser'
 
 /**
  * POST /api/games/[slug]/room
@@ -35,8 +34,7 @@ export async function POST(
       )
     }
 
-    const payload = await getPayload({ config })
-    const { user } = await payload.auth({ headers: req.headers })
+    const { user } = await resolveApiUser(req.headers)
     if (!user) {
       return NextResponse.json({ success: false, error: '請先登入' }, { status: 401 })
     }
@@ -136,8 +134,7 @@ export async function GET(
       )
     }
 
-    const payload = await getPayload({ config })
-    const { user } = await payload.auth({ headers: req.headers })
+    const { payload, user } = await resolveApiUser(req.headers)
     if (!user) {
       return NextResponse.json({ success: false, error: '請先登入' }, { status: 401 })
     }

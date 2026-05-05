@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getPayload } from 'payload'
-import config from '@payload-config'
 import type { Where } from 'payload'
 
 import { isSocialGameType } from '@/lib/games/socialGameActions'
+import { resolveApiUser } from '@/lib/auth/resolveApiUser'
 
 /**
  * GET /api/games/[slug]/feed?limit=20&offset=0
@@ -73,8 +72,7 @@ export async function GET(
       )
     }
 
-    const payload = await getPayload({ config })
-    const { user } = await payload.auth({ headers: req.headers })
+    const { payload, user } = await resolveApiUser(req.headers)
     if (!user) {
       return NextResponse.json({ success: false, error: '請先登入' }, { status: 401 })
     }
