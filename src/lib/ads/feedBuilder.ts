@@ -32,7 +32,7 @@ interface BuildFeedOptions {
   siteUrl: string
 }
 
-interface FeedItem {
+export interface FeedItem {
   id: string
   itemGroupId: string | null
   title: string
@@ -100,7 +100,7 @@ function formatPrice(amount: number, currency: string): string {
 }
 
 /* ─── Build per-product items (1+ items per product if variants exist) ─── */
-function buildItemsForProduct(
+export function buildItemsForProduct(
   product: Product,
   category: Category | null,
   settings: AdsCatalogSetting,

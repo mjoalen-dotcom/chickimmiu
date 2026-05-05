@@ -203,7 +203,7 @@ export const Products: CollectionConfig = {
       },
     ],
 
-    /* ── 3. 存檔後：revalidate 前台 ── */
+    /* ── 3. 存檔後：revalidate 前台 + 推 Meta Catalog ── */
     afterChange: [
       ({ doc, previousDoc }) => {
         const slug = (doc as Record<string, unknown>)?.slug as string | undefined
@@ -216,13 +216,39 @@ export const Products: CollectionConfig = {
           revalidateProduct(prevSlug)
         }
       },
+      // Meta Commerce Catalog real-time push (PR-D)
+      // 動態 import 避開 Payload init 階段的 circular dep；fire-and-forget。
+      // 缺 token / catalog_id / feed disabled 自動 no-op，admin 存檔不受影響。
+      ({ doc }) => {
+        const id = (doc as Record<string, unknown>)?.id
+        if (id == null) return
+        void import('@/lib/ads/catalogBatchPusher')
+          .then(({ pushProductToCatalog }) =>
+            pushProductToCatalog(id as number | string, 'UPDATE'),
+          )
+          .catch((err) => {
+            console.warn('[Products.afterChange] catalog push failed (non-fatal):', err)
+          })
+      },
     ],
 
-    /* ── 4. 刪除後：revalidate 前台（讓舊頁變 404） ── */
+    /* ── 4. 刪除後：revalidate 前台 + 從 Meta Catalog 移除 ── */
     afterDelete: [
       ({ doc }) => {
         const slug = (doc as Record<string, unknown>)?.slug as string | undefined
         revalidateProduct(slug)
+      },
+      // Meta Commerce Catalog DELETE
+      ({ doc }) => {
+        const id = (doc as Record<string, unknown>)?.id
+        if (id == null) return
+        void import('@/lib/ads/catalogBatchPusher')
+          .then(({ pushProductToCatalog }) =>
+            pushProductToCatalog(id as number | string, 'DELETE'),
+          )
+          .catch((err) => {
+            console.warn('[Products.afterDelete] catalog delete failed (non-fatal):', err)
+          })
       },
     ],
   },
