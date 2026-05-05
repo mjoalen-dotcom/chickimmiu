@@ -20,8 +20,12 @@ import type { Endpoint, PayloadRequest, RequiredDataFromCollectionSlug } from 'p
  *             前端導去 /login?registered=1&verify=1 顯示「請到信箱點連結」
  *      - 關 → `_verified:true` + `disableVerificationEmail:true` → 立即 auto-login 下 cookie
  *             前端導去 /account
- *   6. 不觸發推薦獎勵 points-transaction —— 另案
- *   7. 不自動產生使用者本人的 referralCode —— 另案
+ *   6. 註冊成功後，若 LoyaltySettings.signupReward.enabled，發新會員禮：
+ *      points → 寫 users.points + PointsTransactions(source:'welcome',type:'earn')
+ *      shoppingCredit → 加進 users.shoppingCredit（無對應 audit table）
+ *      失敗不擋註冊（best-effort，記 console.error）
+ *   7. 不觸發推薦人 referrer 獎勵 points-transaction —— 另案
+ *   8. 不自動產生使用者本人的 referralCode —— 另案
  */
 export const customerRegisterEndpoint: Endpoint = {
   path: '/register',
@@ -165,12 +169,63 @@ export const customerRegisterEndpoint: Endpoint = {
         ? baseData
         : { ...baseData, _verified: true }
 
-      await req.payload.create({
+      const newUser = await req.payload.create({
         collection: 'users',
         data: createData as unknown as RequiredDataFromCollectionSlug<'users'>,
         overrideAccess: true,
         ...(requireVerification ? {} : { disableVerificationEmail: true }),
       })
+
+      // 新會員註冊禮（best-effort，失敗不擋註冊）
+      try {
+        const loyalty = (await req.payload.findGlobal({
+          slug: 'loyalty-settings',
+          depth: 0,
+        })) as
+          | {
+              signupReward?: {
+                enabled?: boolean
+                points?: number
+                shoppingCredit?: number
+                description?: string
+              }
+            }
+          | undefined
+        const reward = loyalty?.signupReward
+        const rewardPoints = Math.max(0, Math.floor(Number(reward?.points ?? 0)))
+        const rewardCredit = Math.max(0, Math.floor(Number(reward?.shoppingCredit ?? 0)))
+        if (reward?.enabled !== false && (rewardPoints > 0 || rewardCredit > 0)) {
+          const desc = (reward?.description || '新會員註冊禮').trim()
+          if (rewardPoints > 0 || rewardCredit > 0) {
+            await req.payload.update({
+              collection: 'users',
+              id: newUser.id,
+              data: {
+                ...(rewardPoints > 0 ? { points: rewardPoints } : {}),
+                ...(rewardCredit > 0 ? { shoppingCredit: rewardCredit } : {}),
+              } as unknown as RequiredDataFromCollectionSlug<'users'>,
+              overrideAccess: true,
+            })
+          }
+          if (rewardPoints > 0) {
+            await req.payload.create({
+              collection: 'points-transactions',
+              data: {
+                user: newUser.id,
+                type: 'earn',
+                amount: rewardPoints,
+                balance: rewardPoints,
+                source: 'welcome',
+                description: desc,
+              } as unknown as RequiredDataFromCollectionSlug<'points-transactions'>,
+              overrideAccess: true,
+            })
+          }
+        }
+      } catch (rewardErr) {
+        const msg = rewardErr instanceof Error ? rewardErr.message : String(rewardErr)
+        console.error('[customerRegister] signup reward failed:', msg)
+      }
 
       if (requireVerification) {
         // 不 auto-login（Payload 會因 _verified=false 擋 login）

@@ -526,16 +526,18 @@ export async function runDailySegmentation(): Promise<{
 
             changed++
           }
-        } catch {
+        } catch (err) {
           // 單一會員計算失敗不中斷整批
-          console.error(`[分群引擎] 會員 ${userId} 分群計算失敗`)
+          const msg = err instanceof Error ? err.message : String(err)
+          console.error(`[分群引擎] 會員 ${userId} 分群計算失敗:`, msg)
         }
       }
 
       hasMore = usersResult.hasNextPage ?? false
       page++
-    } catch {
-      console.error(`[分群引擎] 第 ${page} 頁查詢失敗，中止批次`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error(`[分群引擎] 第 ${page} 頁查詢失敗，中止批次:`, msg)
       hasMore = false
     }
   }
