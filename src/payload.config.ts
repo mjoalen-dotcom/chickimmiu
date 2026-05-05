@@ -68,6 +68,7 @@ import { NavigationSettings } from './globals/NavigationSettings'
 import { CheckoutSettings } from './globals/CheckoutSettings'
 import { OrderSettings } from './globals/OrderSettings'
 import { AdsCatalogSettings } from './globals/AdsCatalogSettings'
+import { AdAudiences } from './collections/AdAudiences'
 
 import { CreditScoreHistory } from './collections/CreditScoreHistory'
 import { PointsTransactions } from './collections/PointsTransactions'
@@ -298,6 +299,7 @@ export default buildConfig({
     Coupons,
     CouponRedemptions,
     UTMCampaigns, // PR-B：集中管理 UTM 活動 slug
+    AdAudiences, // PR-E：DPA Retargeting Custom Audience 定義
     // ⑤ 互動體驗
     Affiliates,
     UGCPosts,
