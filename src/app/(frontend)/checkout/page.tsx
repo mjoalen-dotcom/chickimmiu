@@ -40,6 +40,7 @@ import {
 } from '@/lib/tracking'
 import { sendServerPurchaseEvent } from '@/app/actions/tracking'
 import { Price } from '@/components/common/Price'
+import { useTranslations } from 'next-intl'
 
 /* ── 付款方式 ──
  * cash_cod 只在所選物流支援貨到付款（cashOnDelivery=true）時顯示，
@@ -241,6 +242,7 @@ const TAIWAN_CITIES = [
 ]
 
 export default function CheckoutPage() {
+  const tCheckout = useTranslations('checkout')
   // Unified auth check — Payload cookie (email/pw + OAuth-after-bridge) first,
   // NextAuth session as fallback for the brief OAuth-before-bridge window.
   // useSession() alone misses Payload-only sessions, which is why logged-in
@@ -1588,16 +1590,16 @@ export default function CheckoutPage() {
 
                 <div className="border-t border-cream-200 pt-4 space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">商品小計</span>
+                    <span className="text-muted-foreground">{tCheckout('summarySubtotal')}</span>
                     <Price twd={subtotal} />
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
-                      運費（{shippingOption?.name}）
+                      {tCheckout('summaryShipping', { name: shippingOption?.name ?? '' })}
                     </span>
                     <span>
                       {shippingFee === 0 ? (
-                        <span className="text-green-600">免運費</span>
+                        <span className="text-green-600">{tCheckout('summaryShippingFree')}</span>
                       ) : (
                         <Price twd={shippingFee} />
                       )}
@@ -1611,7 +1613,7 @@ export default function CheckoutPage() {
                   )}
                   {codFee > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">貨到付款手續費</span>
+                      <span className="text-muted-foreground">{tCheckout('summaryCodFee')}</span>
                       <Price twd={codFee} />
                     </div>
                   )}
@@ -1619,11 +1621,11 @@ export default function CheckoutPage() {
                     <div className="flex justify-between text-green-700">
                       <span className="flex items-center gap-1">
                         <Tag size={12} />
-                        優惠券（{appliedCoupon.couponCode}）
+                        {tCheckout('summaryCouponLabel', { code: appliedCoupon.couponCode })}
                       </span>
                       <span>
                         {appliedCoupon.freeShipping ? (
-                          '免運'
+                          tCheckout('summaryCouponFreeShipping')
                         ) : (
                           <>
                             − <Price twd={couponDiscount} />
@@ -1646,7 +1648,9 @@ export default function CheckoutPage() {
                     return (
                       <div className="flex justify-between text-[11px] text-muted-foreground">
                         <span>
-                          {taxSettings.defaultTaxIncluded ? '含' : '加收'} {rate}% 營業稅
+                          {taxSettings.defaultTaxIncluded
+                            ? tCheckout('summaryTaxIncluded', { rate })
+                            : tCheckout('summaryTaxAdded', { rate })}
                         </span>
                         <Price twd={tax} />
                       </div>
@@ -1655,11 +1659,11 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="border-t border-cream-200 pt-4 flex justify-between items-baseline">
-                  <span className="font-medium">合計</span>
+                  <span className="font-medium">{tCheckout('summaryTotal')}</span>
                   <Price twd={total} className="text-xl font-medium text-gold-600" />
                 </div>
                 <p className="text-[10px] text-muted-foreground text-right -mt-2">
-                  本站交易實際以新台幣（TWD）結算，其他幣別僅供顯示參考。
+                  {tCheckout('twdSettlementNote')}
                 </p>
 
                 {checkoutCfg.minOrderAmount > 0 && subtotal < checkoutCfg.minOrderAmount && (

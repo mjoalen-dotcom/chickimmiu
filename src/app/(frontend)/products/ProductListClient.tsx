@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { SlidersHorizontal, X, ChevronDown } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslations } from 'next-intl'
 import { ProductCard } from '@/components/product/ProductCard'
 import { ProductQuickView, type QuickViewProduct } from '@/components/product/ProductQuickView'
 import { normalizeMediaUrl } from '@/lib/media-url'
@@ -21,21 +22,29 @@ interface Props {
   initialCategory?: string
 }
 
-const TAG_OPTIONS = [
-  { value: '', label: '全部' },
-  { value: 'new', label: '新品上市' },
-  { value: 'hot', label: '熱銷推薦' },
-  { value: 'sale', label: '限時優惠' },
-  { value: 'korean-celebrity', label: '★ 韓星同款' },
-  { value: 'jin-style', label: '✿ 金老佛爺已穿' },
-]
+/**
+ * TAG_OPTIONS / SORT_OPTIONS 改成函式接 t()，因為 hooks 只能在 component 內呼叫。
+ * Translations 都從 products namespace 拿。
+ */
+function getTagOptions(t: (key: string) => string) {
+  return [
+    { value: '', label: t('tagAll') },
+    { value: 'new', label: t('tagNew') },
+    { value: 'hot', label: t('tagHot') },
+    { value: 'sale', label: t('tagSale') },
+    { value: 'korean-celebrity', label: t('tagKoreanCelebrity') },
+    { value: 'jin-style', label: t('tagJinStyle') },
+  ]
+}
 
-const SORT_OPTIONS = [
-  { value: 'newest', label: '最新上架' },
-  { value: 'price-asc', label: '價格：低到高' },
-  { value: 'price-desc', label: '價格：高到低' },
-  { value: 'popular', label: '人氣推薦' },
-]
+function getSortOptions(t: (key: string) => string) {
+  return [
+    { value: 'newest', label: t('sortNewest') },
+    { value: 'price-asc', label: t('sortPriceAsc') },
+    { value: 'price-desc', label: t('sortPriceDesc') },
+    { value: 'popular', label: t('sortPopular') },
+  ]
+}
 
 export function ProductListClient({
   initialProducts,
@@ -43,6 +52,9 @@ export function ProductListClient({
   initialTag,
   initialCategory,
 }: Props) {
+  const t = useTranslations('products')
+  const TAG_OPTIONS = getTagOptions(t)
+  const SORT_OPTIONS = getSortOptions(t)
   const [activeTag, setActiveTag] = useState(initialTag || '')
   const [activeCategory, setActiveCategory] = useState(initialCategory || '')
   const [sortBy, setSortBy] = useState('newest')
@@ -193,8 +205,8 @@ export function ProductListClient({
       {/* Header */}
       <div className="bg-gradient-to-b from-cream-100 to-cream-50 border-b border-cream-200">
         <div className="container py-8 md:py-12">
-          <p className="text-xs tracking-[0.3em] text-gold-500 mb-2">PRODUCTS</p>
-          <h1 className="text-2xl md:text-3xl font-serif">全部商品</h1>
+          <p className="text-xs tracking-[0.3em] text-gold-500 mb-2">{t('eyebrow')}</p>
+          <h1 className="text-2xl md:text-3xl font-serif">{t('title')}</h1>
         </div>
       </div>
 
@@ -218,7 +230,7 @@ export function ProductListClient({
 
         {/* ── Category Navigation (always visible) ── */}
         <div className="bg-white rounded-2xl border border-cream-200 p-4 md:p-5 mb-6">
-          <p className="text-xs font-medium text-muted-foreground mb-3 tracking-wider">商品分類</p>
+          <p className="text-xs font-medium text-muted-foreground mb-3 tracking-wider">{t('categoryHeading')}</p>
           {/* Top-level categories — horizontal scrollable */}
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-2">
             <button
@@ -229,7 +241,7 @@ export function ProductListClient({
                   : 'bg-cream-50 border-cream-200 text-foreground/70 hover:border-gold-400 hover:text-foreground'
               }`}
             >
-              全部分類
+              {t('categoryAll')}
             </button>
             {categoryTree.topLevel.map((parent) => {
               const children = categoryTree.childrenMap.get(String(parent.id)) || []
@@ -279,7 +291,7 @@ export function ProductListClient({
                       : 'bg-cream-50 border-cream-100 text-foreground/60 hover:text-foreground'
                   }`}
                 >
-                  全部{activeParentId.name}
+                  {t('categoryAllPrefix')}{activeParentId.name}
                 </button>
                 {children.map((child) => (
                   <button
@@ -307,7 +319,7 @@ export function ProductListClient({
               className="flex items-center gap-2 px-4 py-2.5 bg-white border border-cream-200 rounded-xl text-sm hover:border-gold-400 transition-colors"
             >
               <SlidersHorizontal size={16} />
-              更多篩選
+              {t('moreFilters')}
               {(selectedColors.length > 0 || priceRange[0] > 0 || priceRange[1] < 10000) && (
                 <span className="w-2 h-2 rounded-full bg-gold-500" />
               )}
@@ -318,14 +330,14 @@ export function ProductListClient({
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X size={12} />
-                清除篩選
+                {t('clearFilters')}
               </button>
             )}
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground hidden sm:inline">
-              {filtered.length} 件商品
+              {filtered.length} {t('itemsCountSuffix')}
             </span>
             <div className="relative">
               <select
@@ -362,7 +374,7 @@ export function ProductListClient({
                 {allColors.length > 0 && (
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-3 tracking-wider">
-                      顏色
+                      {t('filterColor')}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {allColors.map((c) => (
@@ -385,7 +397,7 @@ export function ProductListClient({
                 {/* Price range */}
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-3 tracking-wider">
-                    價格範圍
+                    {t('filterPriceRange')}
                   </p>
                   <div className="flex items-center gap-2">
                     <input
@@ -413,7 +425,7 @@ export function ProductListClient({
                 {/* Size placeholder */}
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-3 tracking-wider">
-                    尺寸
+                    {t('filterSize')}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((s) => (
@@ -487,12 +499,12 @@ export function ProductListClient({
           </div>
         ) : (
           <div className="text-center py-24">
-            <p className="text-muted-foreground mb-2">目前沒有符合條件的商品</p>
+            <p className="text-muted-foreground mb-2">{t('noResultsTitle')}</p>
             <button
               onClick={clearFilters}
               className="text-sm text-gold-600 hover:underline"
             >
-              清除篩選條件
+              {t('noResultsClear')}
             </button>
           </div>
         )}

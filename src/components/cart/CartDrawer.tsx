@@ -4,10 +4,12 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { X, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslations } from 'next-intl'
 import { useCartStore } from '@/stores/cartStore'
 import { Price } from '@/components/common/Price'
 
 export function CartDrawer() {
+  const t = useTranslations('cart')
   const { items, isDrawerOpen, closeDrawer, updateQuantity, removeItem } =
     useCartStore()
 
@@ -44,15 +46,15 @@ export function CartDrawer() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-cream-200">
               <div className="flex items-center gap-2">
                 <ShoppingBag size={20} className="text-gold-500" />
-                <h2 className="font-medium">購物車</h2>
+                <h2 className="font-medium">{t('title')}</h2>
                 <span className="text-xs text-muted-foreground">
-                  ({items.length} 件商品)
+                  {t('itemsCount', { count: items.length })}
                 </span>
               </div>
               <button
                 onClick={closeDrawer}
                 className="w-8 h-8 rounded-full hover:bg-cream-100 flex items-center justify-center transition-colors"
-                aria-label="關閉"
+                aria-label={t('close')}
               >
                 <X size={18} />
               </button>
@@ -64,14 +66,14 @@ export function CartDrawer() {
                 <div className="text-center py-16">
                   <ShoppingBag size={48} className="mx-auto text-cream-200 mb-4" />
                   <p className="text-sm text-muted-foreground mb-4">
-                    你的購物車是空的
+                    {t('drawerEmptyMessage')}
                   </p>
                   <Link
                     href="/products"
                     onClick={closeDrawer}
                     className="inline-block text-sm text-gold-600 hover:underline"
                   >
-                    去逛逛 →
+                    {t('drawerGoBrowse')}
                   </Link>
                 </div>
               ) : (
@@ -94,7 +96,7 @@ export function CartDrawer() {
                           />
                         ) : (
                           <div className="absolute inset-0 flex items-center justify-center text-[10px] text-muted-foreground">
-                            圖片
+                            {t('imageFallback')}
                           </div>
                         )}
                       </div>
@@ -150,7 +152,7 @@ export function CartDrawer() {
                               removeItem(item.productId, item.variant?.sku)
                             }
                             className="p-1.5 text-muted-foreground/50 hover:text-red-500 transition-colors"
-                            aria-label="刪除"
+                            aria-label={t('delete')}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -166,11 +168,11 @@ export function CartDrawer() {
             {items.length > 0 && (
               <div className="border-t border-cream-200 px-6 py-5 space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">小計</span>
+                  <span className="text-sm text-muted-foreground">{t('drawerSubtotal')}</span>
                   <Price twd={subtotal} className="text-lg font-medium" />
                 </div>
                 <p className="text-[10px] text-muted-foreground">
-                  運費及折扣將於結帳時計算
+                  {t('drawerShippingNote')}
                 </p>
                 <div className="flex gap-3">
                   <Link
@@ -178,14 +180,14 @@ export function CartDrawer() {
                     onClick={closeDrawer}
                     className="flex-1 py-3 text-center border border-foreground/20 rounded-xl text-sm tracking-wide hover:bg-cream-50 transition-colors"
                   >
-                    查看購物車
+                    {t('drawerViewCart')}
                   </Link>
                   <Link
                     href="/checkout"
                     onClick={closeDrawer}
                     className="flex-1 py-3 text-center bg-foreground text-cream-50 rounded-xl text-sm tracking-wide hover:bg-foreground/90 transition-colors"
                   >
-                    去結帳
+                    {t('drawerCheckout')}
                   </Link>
                 </div>
               </div>
