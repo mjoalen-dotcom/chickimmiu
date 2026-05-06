@@ -113,6 +113,19 @@ async function processFile(
       const categoryId = p.categorySlug ? catBySlug.get(p.categorySlug) || fallbackCatId : fallbackCatId
       const status = STATUS_OVERRIDE === 'keep' ? p.status : STATUS_OVERRIDE
 
+      // Build aliasSlugs: preserve existing entries + ensure Shopline slug is recorded
+      // so future canonical-slug changes still redirect old Shopline URLs via PR-δ
+      const existingDoc = existing.docs[0] as unknown as Record<string, unknown> | undefined
+      const existingAliasSlugs =
+        (existingDoc?.aliasSlugs as { slug: string; source: string }[] | undefined) ?? []
+      const hasShoplineAlias = existingAliasSlugs.some((a) => a.slug === p.slug)
+      const aliasSlugs = hasShoplineAlias
+        ? existingAliasSlugs.map(({ slug, source }) => ({ slug, source }))
+        : [
+            ...existingAliasSlugs.map(({ slug, source }) => ({ slug, source })),
+            { slug: p.slug, source: 'shopline' as const },
+          ]
+
       const data: Record<string, unknown> = {
         name: p.name,
         slug: existing.docs[0]
@@ -130,6 +143,7 @@ async function processFile(
         tags: p.tags.map((tag) => ({ tag })),
         allowPreOrder: p.allowPreOrder,
         preOrderNote: p.preOrderNote,
+        aliasSlugs,
         variants: p.variants.map((v) => ({
           colorName: v.colorName || '預設',
           colorCode: '',
