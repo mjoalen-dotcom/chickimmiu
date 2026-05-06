@@ -96,5 +96,66 @@
     "slide3Title": "订阅即享\n专属礼遇",
     "slide3Subtitle": "全站折扣、每月购物金、专属抽奖与更多惊喜好礼等你来！",
     "slide3Cta": "了解订阅方案"
+  },
+  "productList": {
+    "overline": "PRODUCTS",
+    "title": "全部商品",
+    "categoryNav": {
+      "label": "商品分类",
+      "all": "全部分类",
+      "allOf": "全部 {name}"
+    },
+    "tags": {
+      "all": "全部",
+      "new": "新品上市",
+      "hot": "热销推荐",
+      "sale": "限时优惠",
+      "koreanCelebrity": "★ 韩星同款",
+      "jinStyle": "✿ 金老佛爷已穿"
+    },
+    "sort": {
+      "newest": "最新上架",
+      "priceAsc": "价格：低到高",
+      "priceDesc": "价格：高到低",
+      "popular": "人气推荐"
+    },
+    "filters": {
+      "more": "更多筛选",
+      "clear": "清除筛选",
+      "color": "颜色",
+      "priceRange": "价格范围",
+      "size": "尺寸",
+      "minPlaceholder": "NT$ 0",
+      "maxPlaceholder": "NT$ 10,000"
+    },
+    "count": "{n} 件商品",
+    "empty": {
+      "title": "目前没有符合条件的商品",
+      "cta": "清除筛选条件"
+    },
+    "pagination": {
+      "previous": "上一页",
+      "next": "下一页",
+      "page": "第 {n} 页",
+      "of": "共 {total} 页"
+    }
+  },
+  "category": {
+    "overline": "CATEGORY",
+    "empty": "此分类目前没有商品",
+    "breadcrumb": {
+      "home": "首页",
+      "products": "全部商品"
+    }
+  },
+  "collections": {
+    "heroOverline": "Collection",
+    "heroTitle": "主题精选",
+    "heroDescription": "依风格、场合、主题浏览我们为您精心策划的系列",
+    "browse": "浏览系列 →",
+    "empty": {
+      "title": "此系列目前尚无商品，敬请期待",
+      "cta": "浏览全部商品"
+    }
   }
 }

@@ -96,5 +96,66 @@
     "slide3Title": "구독하고\n특별한 혜택을",
     "slide3Subtitle": "전 품목 할인, 매달 적립금, 회원 전용 추첨 등 다양한 혜택을 만나보세요.",
     "slide3Cta": "플랜 보기"
+  },
+  "productList": {
+    "overline": "PRODUCTS",
+    "title": "전체 상품",
+    "categoryNav": {
+      "label": "카테고리",
+      "all": "전체 카테고리",
+      "allOf": "전체 {name}"
+    },
+    "tags": {
+      "all": "전체",
+      "new": "신상품",
+      "hot": "베스트",
+      "sale": "세일",
+      "koreanCelebrity": "★ K-스타일",
+      "jinStyle": "✿ Jin's Pick"
+    },
+    "sort": {
+      "newest": "최신순",
+      "priceAsc": "가격: 낮은순",
+      "priceDesc": "가격: 높은순",
+      "popular": "인기순"
+    },
+    "filters": {
+      "more": "필터 더보기",
+      "clear": "필터 초기화",
+      "color": "색상",
+      "priceRange": "가격대",
+      "size": "사이즈",
+      "minPlaceholder": "NT$ 0",
+      "maxPlaceholder": "NT$ 10,000"
+    },
+    "count": "{n} 개 상품",
+    "empty": {
+      "title": "조건에 맞는 상품이 없습니다",
+      "cta": "필터 초기화"
+    },
+    "pagination": {
+      "previous": "이전",
+      "next": "다음",
+      "page": "{n} 페이지",
+      "of": "전체 {total} 페이지"
+    }
+  },
+  "category": {
+    "overline": "CATEGORY",
+    "empty": "이 카테고리에는 아직 상품이 없습니다",
+    "breadcrumb": {
+      "home": "홈",
+      "products": "전체 상품"
+    }
+  },
+  "collections": {
+    "heroOverline": "Collection",
+    "heroTitle": "테마 컬렉션",
+    "heroDescription": "스타일·상황·테마별로 큐레이션한 컬렉션을 만나보세요",
+    "browse": "컬렉션 보기 →",
+    "empty": {
+      "title": "이 컬렉션은 준비 중입니다. 곧 만나요",
+      "cta": "전체 상품 보기"
+    }
   }
 }

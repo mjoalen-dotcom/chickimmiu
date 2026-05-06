@@ -96,5 +96,66 @@
     "slide3Title": "Subscribe for\nexclusive perks",
     "slide3Subtitle": "Site-wide discounts, monthly credits, member-only giveaways and more.",
     "slide3Cta": "View plans"
+  },
+  "productList": {
+    "overline": "PRODUCTS",
+    "title": "All Products",
+    "categoryNav": {
+      "label": "Categories",
+      "all": "All Categories",
+      "allOf": "All {name}"
+    },
+    "tags": {
+      "all": "All",
+      "new": "New Arrivals",
+      "hot": "Bestsellers",
+      "sale": "On Sale",
+      "koreanCelebrity": "★ K-Celeb Style",
+      "jinStyle": "✿ Jin's Picks"
+    },
+    "sort": {
+      "newest": "Newest",
+      "priceAsc": "Price: Low to High",
+      "priceDesc": "Price: High to Low",
+      "popular": "Popular"
+    },
+    "filters": {
+      "more": "More Filters",
+      "clear": "Clear Filters",
+      "color": "Color",
+      "priceRange": "Price Range",
+      "size": "Size",
+      "minPlaceholder": "NT$ 0",
+      "maxPlaceholder": "NT$ 10,000"
+    },
+    "count": "{n} items",
+    "empty": {
+      "title": "No products match your filters",
+      "cta": "Clear filters"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {n}",
+      "of": "of {total}"
+    }
+  },
+  "category": {
+    "overline": "CATEGORY",
+    "empty": "No products in this category yet",
+    "breadcrumb": {
+      "home": "Home",
+      "products": "All Products"
+    }
+  },
+  "collections": {
+    "heroOverline": "Collection",
+    "heroTitle": "Curated Collections",
+    "heroDescription": "Browse our curated themes by style, occasion, and inspiration",
+    "browse": "Browse →",
+    "empty": {
+      "title": "This collection is empty for now — stay tuned",
+      "cta": "Browse All Products"
+    }
   }
 }
