@@ -1,7 +1,7 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { ProductDetailClient } from './ProductDetailClient'
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/seo/JsonLd'
 import { normalizeMediaUrl } from '@/lib/media-url'
@@ -52,10 +52,6 @@ async function findProductBySlug(slug: string): Promise<Record<string, unknown> 
         return docs[0] as unknown as Record<string, unknown>
       }
     }
-
-    // PR-δ placeholder — aliasSlugs fallback 會由 PR-δ 在 page component
-    // 內 notFound() 之前另外加（含 301 redirect 到 canonical slug），
-    // 不放這個 helper 內。
 
     console.log('[PDP] miss', { slug, decoded, candidates })
     return null
@@ -141,7 +137,27 @@ export default async function ProductDetailPage({ params }: Props) {
     }
   }
 
-  if (!product) notFound()
+  if (!product) {
+    // Alias fallback: 找 aliasSlugs[] 裡有沒有符合的，命中則 301 → canonical
+    if (process.env.DATABASE_URI) {
+      try {
+        const payload = await getPayload({ config })
+        const { docs } = await payload.find({
+          collection: 'products',
+          where: { 'aliasSlugs.slug': { equals: slug } },
+          limit: 1,
+          depth: 0,
+        })
+        const aliasMatch = docs[0] as Record<string, unknown> | undefined
+        if (aliasMatch?.slug && aliasMatch.slug !== slug) {
+          redirect(`/products/${aliasMatch.slug as string}`)
+        }
+      } catch {
+        // ignore — fallthrough to notFound
+      }
+    }
+    notFound()
+  }
 
   const images = product.images as { image?: { url?: string } }[] | undefined
   const firstImage = normalizeMediaUrl(images?.[0]?.image?.url)

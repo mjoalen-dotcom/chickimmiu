@@ -463,6 +463,52 @@ export const Products: CollectionConfig = {
               ],
             },
             {
+              name: 'aliasSlugs',
+              label: '舊 URL / 別名',
+              type: 'array',
+              admin: {
+                description:
+                  '從舊系統（如 Shopline）匯入的 URL slug。前台 PDP 找不到 slug 時會用這裡 fallback 並 301 redirect 到目前 slug。',
+                initCollapsed: true,
+              },
+              fields: [
+                {
+                  name: 'slug',
+                  type: 'text',
+                  required: true,
+                  admin: {
+                    description:
+                      '完整 slug 字串（不含 /products/），例如：現貨-率性反摺牛仔寬褲-藍色-free--ecbd15',
+                  },
+                },
+                {
+                  name: 'source',
+                  type: 'select',
+                  defaultValue: 'manual',
+                  options: [
+                    { label: '手動補', value: 'manual' },
+                    { label: 'Shopline 匯入', value: 'shopline' },
+                    { label: 'CSV 匯入', value: 'csv' },
+                    { label: '其他舊系統', value: 'other' },
+                  ],
+                },
+              ],
+              hooks: {
+                beforeValidate: [
+                  ({ value }) => {
+                    if (!Array.isArray(value)) return value
+                    const seen = new Set<string>()
+                    return value.filter((row: { slug?: string }) => {
+                      const s = (row?.slug || '').trim()
+                      if (!s || seen.has(s)) return false
+                      seen.add(s)
+                      return true
+                    })
+                  },
+                ],
+              },
+            },
+            {
               type: 'row',
               fields: [
                 {
