@@ -24,6 +24,19 @@
   ssh root@5.223.85.14 'ln -sf /var/www/chickimmiu/scripts/deploy-prod.sh /root/deploy-ckmu.sh'
   ```
 
+## Smoke Test
+
+- **`smoke-storefront.ts`** — 前台 storefront smoke，約 30 個 HTTP case（PLP / PDP / Category / Auth / 404）。
+
+  ```bash
+  pnpm smoke:storefront                              # 本機 dev server (port 3006)
+  BASE_URL=https://pre.chickimmiu.com pnpm smoke:storefront  # prod
+  FAIL_FAST=1 pnpm smoke:storefront                 # 第一個 fail 立刻退出
+  ```
+
+  回傳 exit code 0 = all pass / 1 = ≥1 fail / 2 = script crash。
+  `/category/*` 路徑在 PR-ε 未 merge 時自動 skip（不算 fail）。
+
 ## 一次性 / 維護
 
 - `apply-phase1-migration.mjs`、`backfill-payload-migrations.mjs`、`pack-image-downloader.mjs` — 一次性遷移工具
