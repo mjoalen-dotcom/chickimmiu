@@ -98,6 +98,21 @@ export default async function ProductDetailPage({ params }: Props) {
   if (product && process.env.DATABASE_URI) {
     try {
       const payload = await getPayload({ config })
+
+      // Read admin-configured related count from ProductListSettings
+      let relatedCount = 4
+      try {
+        const plSettings = (await payload.findGlobal({
+          slug: 'product-list-settings',
+          depth: 0,
+        })) as { defaultRelatedCount?: number } | null
+        if (typeof plSettings?.defaultRelatedCount === 'number' && plSettings.defaultRelatedCount > 0) {
+          relatedCount = plSettings.defaultRelatedCount
+        }
+      } catch {
+        // fallback to 4
+      }
+
       const cat = product.category as unknown as Record<string, unknown> | string | undefined
       const catId = typeof cat === 'string' ? cat : (cat?.id as unknown as string | undefined)
       if (catId) {
@@ -107,25 +122,23 @@ export default async function ProductDetailPage({ params }: Props) {
             category: { equals: catId },
             id: { not_equals: product.id },
           },
-          limit: 4,
+          limit: relatedCount,
           depth: 2,
         })
         relatedProducts = related.docs as unknown as Record<string, unknown>[]
       }
-      // Fallback: if same-category lookup didn't return enough, top up
-      // with the most-recent other products so 「同樣的人也買了」 is always
-      // populated instead of disappearing on small categories.
-      if (relatedProducts.length < 4) {
+      // Fallback: top up with most-recent products so the section is always populated
+      if (relatedProducts.length < relatedCount) {
         const fallback = await payload.find({
           collection: 'products',
           where: { id: { not_equals: product.id } },
           sort: '-createdAt',
-          limit: 4,
+          limit: relatedCount,
           depth: 2,
         })
         const seen = new Set(relatedProducts.map((p) => p.id))
         for (const doc of fallback.docs as unknown as Record<string, unknown>[]) {
-          if (relatedProducts.length >= 4) break
+          if (relatedProducts.length >= relatedCount) break
           if (!seen.has(doc.id)) {
             relatedProducts.push(doc)
             seen.add(doc.id)

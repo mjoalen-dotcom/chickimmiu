@@ -4,16 +4,29 @@ import config from '@payload-config'
 import type { Metadata } from 'next'
 import { ProductListClient } from './ProductListClient'
 
-/**
- * 強制每次 request 都重新 render，讓後台編輯可以立刻在前台看到。
- * 配合 Products collection 的 afterChange/afterDelete hooks，這頁會一直
- * 吃到最新資料。未來若改用 ISR + revalidateTag 快取，可改成 revalidate = 60。
- */
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: '全部商品',
   description: '探索 CHIC KIM & MIU 全系列商品，找到屬於你的優雅與可愛。',
+}
+
+const DEFAULT_PAGE_SIZE = 24
+const DEFAULT_SORT = 'newest'
+const DEFAULT_MAX_PRICE = 10000
+
+type PLSettings = {
+  pageSize?: number | null
+  defaultSort?: string | null
+  maxPriceCap?: number | null
+  hideOutOfStock?: boolean | null
+}
+
+const SORT_MAP: Record<string, string> = {
+  newest: '-createdAt',
+  'price-asc': 'price',
+  'price-desc': '-price',
+  popular: '-totalSold',
 }
 
 export default async function ProductsPage({
@@ -24,34 +37,54 @@ export default async function ProductsPage({
   const params = await searchParams
   let products: Record<string, unknown>[] = []
   let categories: Record<string, unknown>[] = []
+  let totalDocs = 0
+  let totalPages = 1
+  let pageSize = DEFAULT_PAGE_SIZE
+  let defaultSort = DEFAULT_SORT
+  let maxPriceCap = DEFAULT_MAX_PRICE
 
   if (process.env.DATABASE_URI) {
     try {
       const payload = await getPayload({ config })
 
-      // Fetch categories with parent populated. Hide categories with
-      // isActive=false (admin "停用"). not_equals:false also keeps legacy
-      // rows where the field is null/undefined.
+      // Read ProductListSettings global (Wave 2 PR-κ)
+      try {
+        const settings = (await payload.findGlobal({
+          slug: 'product-list-settings',
+          depth: 0,
+        })) as PLSettings | null
+        if (typeof settings?.pageSize === 'number' && settings.pageSize > 0) {
+          pageSize = settings.pageSize
+        }
+        if (settings?.defaultSort) defaultSort = settings.defaultSort
+        if (typeof settings?.maxPriceCap === 'number') maxPriceCap = settings.maxPriceCap
+      } catch {
+        // use defaults
+      }
+
+      // Query params
+      const tag = typeof params.tag === 'string' ? params.tag : undefined
+      const category = typeof params.category === 'string' ? params.category : undefined
+      const sortParam = typeof params.sort === 'string' ? params.sort : defaultSort
+      const page = Math.max(1, parseInt((params.page as string) || '1', 10) || 1)
+      const payloadSort = SORT_MAP[sortParam] || SORT_MAP[defaultSort]
+
+      // Categories (sorted by sortOrder from DB — replaces hardcoded displayOrder)
       const catResult = await payload.find({
         collection: 'categories',
         where: { isActive: { not_equals: false } },
         limit: 100,
-        sort: 'name',
+        sort: 'sortOrder',
         depth: 1,
       })
       categories = catResult.docs as unknown as Record<string, unknown>[]
 
       // Build where clause
-      const where: Where = {}
-
-      const tag = typeof params.tag === 'string' ? params.tag : undefined
-      const category = typeof params.category === 'string' ? params.category : undefined
-
+      const where: Where = { status: { equals: 'published' } }
       if (tag === 'new') where.isNew = { equals: true }
       if (tag === 'hot') where.isHot = { equals: true }
       if (tag === 'sale') where.salePrice = { greater_than: 0 }
       if (tag === 'korean-celebrity') {
-        // 同時 match collectionTags 含 'korean-celebrity' 或 'celebrity-style'
         where.collectionTags = { in: ['korean-celebrity', 'celebrity-style'] }
       }
       if (tag === 'jin-style') {
@@ -62,15 +95,21 @@ export default async function ProductsPage({
       const result = await payload.find({
         collection: 'products',
         where,
-        limit: 200,
-        sort: '-createdAt',
+        limit: pageSize,
+        page,
+        sort: payloadSort,
         depth: 2,
       })
       products = result.docs as unknown as Record<string, unknown>[]
+      totalDocs = result.totalDocs
+      totalPages = result.totalPages
     } catch {
       // DB not ready
     }
   }
+
+  const sortParam = typeof params.sort === 'string' ? params.sort : defaultSort
+  const currentPage = Math.max(1, parseInt((params.page as string) || '1', 10) || 1)
 
   return (
     <ProductListClient
@@ -78,6 +117,12 @@ export default async function ProductsPage({
       categories={categories}
       initialTag={typeof params.tag === 'string' ? params.tag : undefined}
       initialCategory={typeof params.category === 'string' ? params.category : undefined}
+      totalDocs={totalDocs}
+      totalPages={totalPages}
+      currentPage={currentPage}
+      pageSize={pageSize}
+      maxPriceCap={maxPriceCap}
+      initialSort={sortParam}
     />
   )
 }

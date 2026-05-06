@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { SlidersHorizontal, X, ChevronDown } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ProductCard } from '@/components/product/ProductCard'
@@ -19,6 +21,12 @@ interface Props {
   categories: Record<string, unknown>[]
   initialTag?: string
   initialCategory?: string
+  totalDocs: number
+  totalPages: number
+  currentPage: number
+  pageSize: number
+  maxPriceCap: number
+  initialSort: string
 }
 
 const TAG_OPTIONS = [
@@ -37,29 +45,53 @@ const SORT_OPTIONS = [
   { value: 'popular', label: '人氣推薦' },
 ]
 
+function buildUrl(updates: Record<string, string | undefined>) {
+  if (typeof window === 'undefined') return ''
+  const url = new URL(window.location.href)
+  for (const [k, v] of Object.entries(updates)) {
+    if (v === undefined || v === '') {
+      url.searchParams.delete(k)
+    } else {
+      url.searchParams.set(k, v)
+    }
+  }
+  // reset page when any filter changes
+  if (!('page' in updates)) url.searchParams.delete('page')
+  return url.toString()
+}
+
 export function ProductListClient({
   initialProducts,
   categories,
   initialTag,
   initialCategory,
+  totalDocs,
+  totalPages,
+  currentPage,
+  maxPriceCap,
+  initialSort,
 }: Props) {
-  const [activeTag, setActiveTag] = useState(initialTag || '')
-  const [activeCategory, setActiveCategory] = useState(initialCategory || '')
-  const [sortBy, setSortBy] = useState('newest')
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000])
+  const router = useRouter()
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, maxPriceCap])
   const [showFilters, setShowFilters] = useState(false)
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null)
+  const [selectedColors, setSelectedColors] = useState<string[]>([])
 
-  // Build hierarchical category tree
+  const activeTag = initialTag || ''
+  const activeCategory = initialCategory || ''
+  const sortBy = initialSort || 'newest'
+
+  // Build hierarchical category tree — sorted by DB sortOrder (no hardcoded displayOrder)
   const categoryTree = useMemo(() => {
     const cats = categories as unknown as CategoryItem[]
-    // Separate top-level vs children
     const topLevel: CategoryItem[] = []
     const childrenMap = new Map<string | number, CategoryItem[]>()
 
     for (const cat of cats) {
       const parentId = cat.parent
-        ? typeof cat.parent === 'object' ? cat.parent.id : cat.parent
+        ? typeof cat.parent === 'object'
+          ? cat.parent.id
+          : cat.parent
         : null
       if (!parentId) {
         topLevel.push(cat)
@@ -69,36 +101,18 @@ export function ProductListClient({
         childrenMap.get(key)!.push(cat)
       }
     }
-
-    // Sort: put categories with products first, then alphabetically
-    // Define display order for top-level categories
-    const displayOrder = [
-      'new-arrival', 'all-products', 'theme-picks', 'dresses', 'bottoms',
-      'sets', 'outer', 'accessories', 'jewelry', 'formal-dresses',
-      'rush-delivery', 'swimwear', 'brand-custom', 'k-drama',
-    ]
-
-    topLevel.sort((a, b) => {
-      const ai = displayOrder.indexOf(a.slug)
-      const bi = displayOrder.indexOf(b.slug)
-      if (ai !== -1 && bi !== -1) return ai - bi
-      if (ai !== -1) return -1
-      if (bi !== -1) return 1
-      return String(a.name).localeCompare(String(b.name))
-    })
-
+    // topLevel already sorted by sortOrder from server
     return { topLevel, childrenMap }
   }, [categories])
 
-  // Get all child category IDs for a parent (for filtering)
   const getCategoryFamily = useMemo(() => {
     return (catId: string) => {
       const children = categoryTree.childrenMap.get(catId) || []
-      return [catId, ...children.map(c => String(c.id))]
+      return [catId, ...children.map((c) => String(c.id))]
     }
   }, [categoryTree])
 
-  // Extract unique colors from all products
+  // Extract unique colors from current page products
   const allColors = useMemo(() => {
     const colorMap = new Map<string, string>()
     initialProducts.forEach((p) => {
@@ -110,49 +124,17 @@ export function ProductListClient({
     return [...colorMap.entries()].map(([name, code]) => ({ name, code }))
   }, [initialProducts])
 
-  const [selectedColors, setSelectedColors] = useState<string[]>([])
-
-  // Filter and sort products
+  // Client-side price + color filter on current page results
   const filtered = useMemo(() => {
     let list = [...initialProducts]
 
-    // Tag filter
-    if (activeTag === 'new') list = list.filter((p) => p.isNew)
-    if (activeTag === 'hot') list = list.filter((p) => p.isHot)
-    if (activeTag === 'sale')
+    if (priceRange[0] > 0 || priceRange[1] < maxPriceCap) {
       list = list.filter((p) => {
-        const sp = p.salePrice as number | undefined
-        return sp && sp > 0
-      })
-    if (activeTag === 'korean-celebrity')
-      list = list.filter((p) => {
-        const tags = (p.collectionTags as string[] | undefined) || []
-        return tags.includes('korean-celebrity') || tags.includes('celebrity-style')
-      })
-    if (activeTag === 'jin-style')
-      list = list.filter((p) => {
-        const tags = (p.collectionTags as string[] | undefined) || []
-        return tags.includes('jin-style') || tags.includes('jin-live')
-      })
-
-    // Category filter (includes children of parent categories)
-    if (activeCategory) {
-      const familyIds = getCategoryFamily(activeCategory)
-      list = list.filter((p) => {
-        const cat = p.category as unknown as Record<string, unknown> | string | number | undefined
-        if (!cat) return false
-        const catId = typeof cat === 'object' ? String(cat.id) : String(cat)
-        return familyIds.includes(catId)
+        const price = ((p.salePrice as number) || (p.price as number)) ?? 0
+        return price >= priceRange[0] && price <= priceRange[1]
       })
     }
 
-    // Price range
-    list = list.filter((p) => {
-      const price = ((p.salePrice as number) || (p.price as number)) ?? 0
-      return price >= priceRange[0] && price <= priceRange[1]
-    })
-
-    // Color filter
     if (selectedColors.length > 0) {
       list = list.filter((p) => {
         const variants = p.variants as { colorName: string }[] | undefined
@@ -160,17 +142,8 @@ export function ProductListClient({
       })
     }
 
-    // Sort
-    list.sort((a, b) => {
-      const priceA = ((a.salePrice as number) || (a.price as number)) ?? 0
-      const priceB = ((b.salePrice as number) || (b.price as number)) ?? 0
-      if (sortBy === 'price-asc') return priceA - priceB
-      if (sortBy === 'price-desc') return priceB - priceA
-      return 0 // newest is default from server
-    })
-
     return list
-  }, [initialProducts, activeTag, activeCategory, priceRange, selectedColors, sortBy])
+  }, [initialProducts, priceRange, selectedColors, maxPriceCap])
 
   const toggleColor = (name: string) => {
     setSelectedColors((prev) =>
@@ -179,14 +152,17 @@ export function ProductListClient({
   }
 
   const clearFilters = () => {
-    setActiveTag('')
-    setActiveCategory('')
-    setPriceRange([0, 10000])
+    setPriceRange([0, maxPriceCap])
     setSelectedColors([])
+    router.push(buildUrl({ tag: undefined, category: undefined, sort: undefined, page: undefined }))
   }
 
   const hasActiveFilters =
-    activeTag || activeCategory || selectedColors.length > 0 || priceRange[0] > 0 || priceRange[1] < 10000
+    activeTag ||
+    activeCategory ||
+    selectedColors.length > 0 ||
+    priceRange[0] > 0 ||
+    priceRange[1] < maxPriceCap
 
   return (
     <main className="bg-cream-50 min-h-screen">
@@ -204,7 +180,7 @@ export function ProductListClient({
           {TAG_OPTIONS.map((opt) => (
             <button
               key={opt.value}
-              onClick={() => setActiveTag(opt.value)}
+              onClick={() => router.push(buildUrl({ tag: opt.value || undefined }))}
               className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${
                 activeTag === opt.value
                   ? 'bg-foreground text-cream-50'
@@ -216,13 +192,12 @@ export function ProductListClient({
           ))}
         </div>
 
-        {/* ── Category Navigation (always visible) ── */}
+        {/* Category Navigation */}
         <div className="bg-white rounded-2xl border border-cream-200 p-4 md:p-5 mb-6">
           <p className="text-xs font-medium text-muted-foreground mb-3 tracking-wider">商品分類</p>
-          {/* Top-level categories — horizontal scrollable */}
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-2">
             <button
-              onClick={() => setActiveCategory('')}
+              onClick={() => router.push(buildUrl({ category: undefined }))}
               className={`px-3.5 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors border ${
                 !activeCategory
                   ? 'bg-gold-500 text-white border-gold-500'
@@ -234,31 +209,30 @@ export function ProductListClient({
             {categoryTree.topLevel.map((parent) => {
               const children = categoryTree.childrenMap.get(String(parent.id)) || []
               const isParentActive = activeCategory === String(parent.id)
-              const isChildActive = children.some(c => String(c.id) === activeCategory)
+              const isChildActive = children.some((c) => String(c.id) === activeCategory)
 
               return (
                 <button
                   key={String(parent.id)}
-                  onClick={() => setActiveCategory(String(parent.id))}
+                  onClick={() => router.push(buildUrl({ category: String(parent.id) }))}
                   className={`px-3.5 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors border ${
                     isParentActive || isChildActive
                       ? 'bg-gold-500 text-white border-gold-500'
                       : 'bg-cream-50 border-cream-200 text-foreground/70 hover:border-gold-400 hover:text-foreground'
                   }`}
                 >
-                  {parent.name}
+                  {parent.name as string}
                 </button>
               )
             })}
           </div>
 
-          {/* Subcategories — show when a parent with children is active */}
+          {/* Subcategories */}
           {(() => {
-            // Find which parent is active (or which parent owns the active child)
-            const activeParentId = categoryTree.topLevel.find(p => {
+            const activeParentId = categoryTree.topLevel.find((p) => {
               if (String(p.id) === activeCategory) return true
               const kids = categoryTree.childrenMap.get(String(p.id)) || []
-              return kids.some(c => String(c.id) === activeCategory)
+              return kids.some((c) => String(c.id) === activeCategory)
             })
             if (!activeParentId) return null
             const children = categoryTree.childrenMap.get(String(activeParentId.id)) || []
@@ -272,26 +246,26 @@ export function ProductListClient({
                 className="flex items-center gap-2 mt-3 pt-3 border-t border-cream-100 overflow-x-auto scrollbar-hide"
               >
                 <button
-                  onClick={() => setActiveCategory(String(activeParentId.id))}
+                  onClick={() => router.push(buildUrl({ category: String(activeParentId.id) }))}
                   className={`px-3 py-1 rounded-full text-xs whitespace-nowrap transition-colors border ${
                     activeCategory === String(activeParentId.id)
                       ? 'bg-foreground/10 border-foreground/20 text-foreground font-medium'
                       : 'bg-cream-50 border-cream-100 text-foreground/60 hover:text-foreground'
                   }`}
                 >
-                  全部{activeParentId.name}
+                  全部{activeParentId.name as string}
                 </button>
                 {children.map((child) => (
                   <button
                     key={String(child.id)}
-                    onClick={() => setActiveCategory(String(child.id))}
+                    onClick={() => router.push(buildUrl({ category: String(child.id) }))}
                     className={`px-3 py-1 rounded-full text-xs whitespace-nowrap transition-colors border ${
                       activeCategory === String(child.id)
                         ? 'bg-foreground/10 border-foreground/20 text-foreground font-medium'
                         : 'bg-cream-50 border-cream-100 text-foreground/60 hover:text-foreground'
                     }`}
                   >
-                    {child.name}
+                    {child.name as string}
                   </button>
                 ))}
               </motion.div>
@@ -308,7 +282,7 @@ export function ProductListClient({
             >
               <SlidersHorizontal size={16} />
               更多篩選
-              {(selectedColors.length > 0 || priceRange[0] > 0 || priceRange[1] < 10000) && (
+              {(selectedColors.length > 0 || priceRange[0] > 0 || priceRange[1] < maxPriceCap) && (
                 <span className="w-2 h-2 rounded-full bg-gold-500" />
               )}
             </button>
@@ -325,12 +299,12 @@ export function ProductListClient({
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground hidden sm:inline">
-              {filtered.length} 件商品
+              {totalDocs} 件商品
             </span>
             <div className="relative">
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => router.push(buildUrl({ sort: e.target.value }))}
                 className="appearance-none pl-3 pr-8 py-2 bg-white border border-cream-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40 cursor-pointer"
               >
                 {SORT_OPTIONS.map((opt) => (
@@ -347,7 +321,7 @@ export function ProductListClient({
           </div>
         </div>
 
-        {/* Additional filters panel (colors, price, size) */}
+        {/* Additional filters panel */}
         <AnimatePresence>
           {showFilters && (
             <motion.div
@@ -358,74 +332,67 @@ export function ProductListClient({
             >
               <div className="bg-white rounded-2xl border border-cream-200 p-6">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                {/* Colors */}
-                {allColors.length > 0 && (
+                  {allColors.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-3 tracking-wider">
+                        顏色
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {allColors.map((c) => (
+                          <button
+                            key={c.name}
+                            onClick={() => toggleColor(c.name)}
+                            className={`w-7 h-7 rounded-full border-2 transition-all ${
+                              selectedColors.includes(c.name)
+                                ? 'border-gold-500 ring-2 ring-gold-500/30 scale-110'
+                                : 'border-cream-200'
+                            }`}
+                            style={{ backgroundColor: c.code }}
+                            title={c.name}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-3 tracking-wider">
-                      顏色
+                      價格範圍
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={priceRange[0]}
+                        onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
+                        placeholder="NT$ 0"
+                        className="w-full px-3 py-2 border border-cream-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
+                      />
+                      <span className="text-muted-foreground text-xs">—</span>
+                      <input
+                        type="number"
+                        value={priceRange[1]}
+                        onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+                        placeholder={`NT$ ${maxPriceCap.toLocaleString()}`}
+                        className="w-full px-3 py-2 border border-cream-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-3 tracking-wider">
+                      尺寸
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {allColors.map((c) => (
-                        <button
-                          key={c.name}
-                          onClick={() => toggleColor(c.name)}
-                          className={`w-7 h-7 rounded-full border-2 transition-all ${
-                            selectedColors.includes(c.name)
-                              ? 'border-gold-500 ring-2 ring-gold-500/30 scale-110'
-                              : 'border-cream-200'
-                          }`}
-                          style={{ backgroundColor: c.code }}
-                          title={c.name}
-                        />
+                      {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((s) => (
+                        <span
+                          key={s}
+                          className="px-3 py-1.5 text-xs border border-cream-200 rounded-lg text-foreground/70 hover:border-gold-400 cursor-pointer transition-colors"
+                        >
+                          {s}
+                        </span>
                       ))}
                     </div>
                   </div>
-                )}
-
-                {/* Price range */}
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-3 tracking-wider">
-                    價格範圍
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      value={priceRange[0]}
-                      onChange={(e) =>
-                        setPriceRange([Number(e.target.value), priceRange[1]])
-                      }
-                      placeholder="NT$ 0"
-                      className="w-full px-3 py-2 border border-cream-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
-                    />
-                    <span className="text-muted-foreground text-xs">—</span>
-                    <input
-                      type="number"
-                      value={priceRange[1]}
-                      onChange={(e) =>
-                        setPriceRange([priceRange[0], Number(e.target.value)])
-                      }
-                      placeholder="NT$ 10,000"
-                      className="w-full px-3 py-2 border border-cream-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
-                    />
-                  </div>
-                </div>
-
-                {/* Size placeholder */}
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-3 tracking-wider">
-                    尺寸
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((s) => (
-                      <span
-                        key={s}
-                        className="px-3 py-1.5 text-xs border border-cream-200 rounded-lg text-foreground/70 hover:border-gold-400 cursor-pointer transition-colors"
-                      >
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                </div>
                 </div>
               </div>
             </motion.div>
@@ -438,18 +405,23 @@ export function ProductListClient({
             {filtered.map((p) => {
               const images = p.images as { image?: { url?: string; alt?: string } }[] | undefined
               const firstImage = images?.[0]?.image
-              const variants = p.variants as {
-                colorName: string
-                colorCode?: string
-                size: string
-                sku: string
-                stock: number
-                priceOverride?: number
-              }[] | undefined
+              const variants = p.variants as
+                | {
+                    colorName: string
+                    colorCode?: string
+                    size: string
+                    sku: string
+                    stock: number
+                    priceOverride?: number
+                  }[]
+                | undefined
               const colors = variants
                 ? [
                     ...new Map(
-                      variants.map((v) => [v.colorName, { name: v.colorName, code: v.colorCode || '#ccc' }]),
+                      variants.map((v) => [
+                        v.colorName,
+                        { name: v.colorName, code: v.colorCode || '#ccc' },
+                      ]),
                     ).values(),
                   ]
                 : undefined
@@ -462,7 +434,11 @@ export function ProductListClient({
                   name={p.name as string}
                   price={p.price as number}
                   salePrice={p.salePrice as number | undefined}
-                  image={firstImage ? { url: normalizeMediaUrl(firstImage.url) || '', alt: firstImage.alt } : null}
+                  image={
+                    firstImage
+                      ? { url: normalizeMediaUrl(firstImage.url) || '', alt: firstImage.alt }
+                      : null
+                  }
                   colors={colors}
                   isNew={p.isNew as boolean | undefined}
                   isHot={p.isHot as boolean | undefined}
@@ -475,7 +451,9 @@ export function ProductListClient({
                       salePrice: p.salePrice as number | undefined,
                       images: images
                         ?.map((img) =>
-                          img.image?.url ? { url: normalizeMediaUrl(img.image.url) || '', alt: img.image.alt } : null,
+                          img.image?.url
+                            ? { url: normalizeMediaUrl(img.image.url) || '', alt: img.image.alt }
+                            : null,
                         )
                         .filter(Boolean) as { url: string; alt?: string }[],
                       variants,
@@ -488,12 +466,44 @@ export function ProductListClient({
         ) : (
           <div className="text-center py-24">
             <p className="text-muted-foreground mb-2">目前沒有符合條件的商品</p>
-            <button
-              onClick={clearFilters}
-              className="text-sm text-gold-600 hover:underline"
-            >
+            <button onClick={clearFilters} className="text-sm text-gold-600 hover:underline">
               清除篩選條件
             </button>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-12 flex items-center justify-center gap-2 flex-wrap">
+            {currentPage > 1 && (
+              <Link
+                href={buildUrl({ page: String(currentPage - 1) })}
+                className="px-4 py-2 text-sm bg-white border border-cream-200 rounded-xl hover:border-gold-400 transition-colors"
+              >
+                ← 上一頁
+              </Link>
+            )}
+            {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => i + 1).map((n) => (
+              <Link
+                key={n}
+                href={buildUrl({ page: String(n) })}
+                className={`w-10 h-10 flex items-center justify-center rounded-full text-sm ${
+                  n === currentPage
+                    ? 'bg-foreground text-cream-50'
+                    : 'bg-white border border-cream-200 hover:border-gold-400'
+                }`}
+              >
+                {n}
+              </Link>
+            ))}
+            {currentPage < totalPages && (
+              <Link
+                href={buildUrl({ page: String(currentPage + 1) })}
+                className="px-4 py-2 text-sm bg-white border border-cream-200 rounded-xl hover:border-gold-400 transition-colors"
+              >
+                下一頁 →
+              </Link>
+            )}
           </div>
         )}
       </div>
