@@ -4,6 +4,7 @@ import { isAdmin } from '../access/isAdmin'
 import { revalidateCategory } from '../lib/revalidate'
 import { seedShoplineCategoriesEndpoint } from '../endpoints/seedShoplineCategories'
 import { categoryReorderEndpoint } from '../endpoints/categoryTreeReorder'
+import { recountCategoriesEndpoint } from '../endpoints/recountCategories'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
@@ -18,6 +19,7 @@ export const Categories: CollectionConfig = {
     description: '商品分類管理（支援多層次分類：主分類 > 子分類 > 細分類）',
     listSearchableFields: ['name', 'slug'],
     components: {
+      beforeListTable: ['@/components/admin/CategoryRecountButton'],
       views: {
         list: {
           Component: '@/components/admin/CategoryTreeView',
@@ -31,7 +33,7 @@ export const Categories: CollectionConfig = {
     update: isAdmin,
     delete: isAdmin,
   },
-  endpoints: [seedShoplineCategoriesEndpoint, categoryReorderEndpoint],
+  endpoints: [seedShoplineCategoriesEndpoint, categoryReorderEndpoint, recountCategoriesEndpoint],
   hooks: {
     afterChange: [
       ({ doc, previousDoc }) => {
