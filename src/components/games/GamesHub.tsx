@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, Trophy, Medal, TrendingUp, Crown, Lock, LogIn } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { GAME_CATEGORIES, GAME_DEFS } from '@/lib/games/gameConfig'
 import type { EnabledGame } from '@/lib/games/getEnabledGames'
 
@@ -33,8 +34,8 @@ interface Props {
   isLoggedIn: boolean
 }
 
-const PERIOD_OPTIONS = ['今日', '本週', '本月', '全部'] as const
-type Period = typeof PERIOD_OPTIONS[number]
+const PERIOD_KEYS = ['today', 'week', 'month', 'all'] as const
+type PeriodKey = typeof PERIOD_KEYS[number]
 
 export function GamesHub({
   enabledGames,
@@ -44,9 +45,10 @@ export function GamesHub({
   userBadges,
   isLoggedIn,
 }: Props) {
+  const t = useTranslations('games')
   const [activeTab, setActiveTab] = useState<'games' | 'leaderboard' | 'badges'>('games')
   const [activeCat, setActiveCat] = useState<string>('all')
-  const [selectedPeriod, setSelectedPeriod] = useState<Period>('全部')
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>('all')
 
   const enabledIds = new Set(enabledGames.map((g) => g.id))
 
@@ -61,13 +63,11 @@ export function GamesHub({
         <div className="container py-12 md:py-16 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold-500/10 text-gold-600 text-xs tracking-widest mb-4">
             <Sparkles size={14} />
-            REWARDS & GAMES
+            {t('headerTag')}
           </div>
-          <h1 className="text-3xl md:text-4xl font-serif mb-3">會員遊樂園</h1>
-          <p className="text-sm text-muted-foreground max-w-lg mx-auto">
-            玩遊戲贏取點數與購物金，邀請好友對戰更有趣！
-            <br />
-            會員等級越高，免費次數越多、獲獎機率越大。
+          <h1 className="text-3xl md:text-4xl font-serif mb-3">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground max-w-lg mx-auto whitespace-pre-line">
+            {t('subtitle')}
           </p>
 
           <div className="flex items-center justify-center gap-6 mt-6">
@@ -75,19 +75,19 @@ export function GamesHub({
               <p className="text-lg font-serif text-gold-600">
                 {todayGamePoints === null ? '—' : todayGamePoints.toLocaleString()}
               </p>
-              <p className="text-[10px] text-muted-foreground">今日已獲點數</p>
+              <p className="text-[10px] text-muted-foreground">{t('todayPoints')}</p>
             </div>
             <div className="w-px h-8 bg-cream-200" />
             <div className="text-center">
               <p className="text-lg font-serif text-gold-600">{enabledGames.length}</p>
-              <p className="text-[10px] text-muted-foreground">已開放遊戲</p>
+              <p className="text-[10px] text-muted-foreground">{t('openGames')}</p>
             </div>
             <div className="w-px h-8 bg-cream-200" />
             <div className="text-center">
               <p className="text-lg font-serif text-gold-600">
                 {badgeCount === null ? '—' : badgeCount}
               </p>
-              <p className="text-[10px] text-muted-foreground">已獲得徽章</p>
+              <p className="text-[10px] text-muted-foreground">{t('myBadges')}</p>
             </div>
           </div>
         </div>
@@ -97,9 +97,9 @@ export function GamesHub({
         {/* ── Tab Navigation ── */}
         <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
           {[
-            { key: 'games' as const, label: '所有遊戲', icon: Sparkles },
-            { key: 'leaderboard' as const, label: '排行榜', icon: Trophy },
-            { key: 'badges' as const, label: '我的徽章', icon: Medal },
+            { key: 'games' as const, label: t('tabs.games'), icon: Sparkles },
+            { key: 'leaderboard' as const, label: t('tabs.leaderboard'), icon: Trophy },
+            { key: 'badges' as const, label: t('tabs.badges'), icon: Medal },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -129,7 +129,7 @@ export function GamesHub({
                     : 'bg-white border border-cream-200 hover:border-gold-400'
                 }`}
               >
-                全部遊戲
+                {t('allGames')}
               </button>
               {GAME_CATEGORIES.map((cat) => (
                 <button
@@ -170,8 +170,8 @@ export function GamesHub({
             {enabledGames.length === 0 && (
               <div className="text-center py-20">
                 <p className="text-4xl mb-4">🎮</p>
-                <p className="text-lg font-serif mb-2">遊戲即將上線</p>
-                <p className="text-sm text-muted-foreground">我們正在準備精彩的遊戲，敬請期待！</p>
+                <p className="text-lg font-serif mb-2">{t('gamesEmpty')}</p>
+                <p className="text-sm text-muted-foreground">{t('gamesEmptyDesc')}</p>
               </div>
             )}
 
@@ -179,18 +179,18 @@ export function GamesHub({
             <div className="bg-white rounded-2xl border border-cream-200 p-6 md:p-8">
               <div className="flex items-center gap-2 mb-6">
                 <Crown size={20} className="text-gold-500" />
-                <h3 className="font-serif text-lg">等級越高、福利越多</h3>
+                <h3 className="font-serif text-lg">{t('tierBenefits.title')}</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-cream-200">
-                      <th className="text-left py-2 pr-4 text-muted-foreground font-medium">會員等級</th>
-                      <th className="text-center py-2 px-3 text-muted-foreground font-medium">每月轉盤</th>
-                      <th className="text-center py-2 px-3 text-muted-foreground font-medium">每日刮刮樂</th>
-                      <th className="text-center py-2 px-3 text-muted-foreground font-medium">每日對戰</th>
-                      <th className="text-center py-2 px-3 text-muted-foreground font-medium">穿搭挑戰</th>
-                      <th className="text-center py-2 px-3 text-muted-foreground font-medium">獎勵倍率</th>
+                      <th className="text-left py-2 pr-4 text-muted-foreground font-medium">{t('tierBenefits.tier')}</th>
+                      <th className="text-center py-2 px-3 text-muted-foreground font-medium">{t('tierBenefits.monthlySpins')}</th>
+                      <th className="text-center py-2 px-3 text-muted-foreground font-medium">{t('tierBenefits.dailyScratches')}</th>
+                      <th className="text-center py-2 px-3 text-muted-foreground font-medium">{t('tierBenefits.dailyBattles')}</th>
+                      <th className="text-center py-2 px-3 text-muted-foreground font-medium">{t('tierBenefits.fashionChallenge')}</th>
+                      <th className="text-center py-2 px-3 text-muted-foreground font-medium">{t('tierBenefits.rewardMultiplier')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -222,27 +222,27 @@ export function GamesHub({
         {activeTab === 'leaderboard' && (
           <div className="space-y-6 animate-fade-in">
             <div className="flex items-center gap-2">
-              {PERIOD_OPTIONS.map((period) => (
+              {PERIOD_KEYS.map((key) => (
                 <button
-                  key={period}
-                  onClick={() => setSelectedPeriod(period)}
+                  key={key}
+                  onClick={() => setSelectedPeriod(key)}
                   className={`px-4 py-1.5 rounded-full text-xs border transition-colors ${
-                    selectedPeriod === period
+                    selectedPeriod === key
                       ? 'bg-foreground text-cream-50 border-foreground'
                       : 'border-cream-200 hover:border-gold-400'
                   }`}
                 >
-                  {period}
+                  {t(`period.${key}` as never)}
                 </button>
               ))}
-              <span className="text-[10px] text-muted-foreground ml-1">（累計積分排行）</span>
+              <span className="text-[10px] text-muted-foreground ml-1">{t('leaderboard.accumulatedNote')}</span>
             </div>
 
             {leaderboard.length === 0 ? (
               <div className="text-center py-20">
                 <Trophy size={40} className="mx-auto text-cream-300 mb-4" />
-                <p className="text-lg font-serif mb-2">排行榜開放中</p>
-                <p className="text-sm text-muted-foreground">快去玩遊戲累積點數，搶佔榜首！</p>
+                <p className="text-lg font-serif mb-2">{t('leaderboard.empty')}</p>
+                <p className="text-sm text-muted-foreground">{t('leaderboard.emptyDesc')}</p>
               </div>
             ) : (
               <>
@@ -276,7 +276,7 @@ export function GamesHub({
                       <div className="text-right">
                         <p className="text-sm font-medium text-gold-600">{entry.points.toLocaleString()}</p>
                         <p className="text-[10px] text-muted-foreground">
-                          {entry.gamesPlayed > 0 ? `${entry.gamesPlayed} 場` : '點數'}
+                          {entry.gamesPlayed > 0 ? `${entry.gamesPlayed} ${t('leaderboard.games')}` : t('leaderboard.points')}
                         </p>
                       </div>
                       <TrendingUp size={14} className="text-green-500" />
@@ -294,27 +294,27 @@ export function GamesHub({
             {!isLoggedIn ? (
               <div className="text-center py-20">
                 <Medal size={40} className="mx-auto text-cream-300 mb-4" />
-                <p className="text-lg font-serif mb-2">登入後查看徽章</p>
-                <p className="text-sm text-muted-foreground mb-6">玩遊戲即可獲得專屬徽章收藏</p>
+                <p className="text-lg font-serif mb-2">{t('badges.loginRequired')}</p>
+                <p className="text-sm text-muted-foreground mb-6">{t('badges.loginDesc')}</p>
                 <Link
                   href="/login?redirect=/games"
                   className="inline-flex items-center gap-2 px-6 py-2.5 bg-foreground text-cream-50 rounded-xl text-sm hover:opacity-90 transition-opacity"
                 >
                   <LogIn size={16} />
-                  登入
+                  {t('badges.loginCta')}
                 </Link>
               </div>
             ) : userBadges.length === 0 ? (
               <div className="text-center py-20">
                 <Medal size={40} className="mx-auto text-cream-300 mb-4" />
-                <p className="text-lg font-serif mb-2">尚未獲得徽章</p>
-                <p className="text-sm text-muted-foreground mb-6">完成遊戲挑戰即可解鎖專屬徽章！</p>
+                <p className="text-lg font-serif mb-2">{t('badges.empty')}</p>
+                <p className="text-sm text-muted-foreground mb-6">{t('badges.emptyDesc')}</p>
                 <button
                   onClick={() => setActiveTab('games')}
                   className="inline-flex items-center gap-2 px-6 py-2.5 bg-gold-500 text-white rounded-xl text-sm hover:opacity-90 transition-opacity"
                 >
                   <Sparkles size={16} />
-                  去玩遊戲
+                  {t('badges.goPlay')}
                 </button>
               </div>
             ) : (
@@ -330,7 +330,7 @@ export function GamesHub({
                       <p className="text-[10px] text-muted-foreground mb-2">{badge.desc}</p>
                     )}
                     <span className="inline-block text-[10px] text-gold-600 bg-gold-500/10 px-2 py-0.5 rounded-full">
-                      已獲得
+                      {t('badges.earned')}
                     </span>
                   </div>
                 ))}
@@ -345,6 +345,7 @@ export function GamesHub({
 
 // ── Game Card ──
 function GameCard({ game, isEnabled }: { game: typeof GAME_DEFS[number]; isEnabled: boolean }) {
+  const t = useTranslations('games')
   return (
     <div className={`relative rounded-2xl border overflow-hidden transition-all group ${
       isEnabled
@@ -379,11 +380,11 @@ function GameCard({ game, isEnabled }: { game: typeof GAME_DEFS[number]; isEnabl
             href={`/games/${game.slug}`}
             className="block w-full py-2.5 bg-foreground text-cream-50 rounded-xl text-sm tracking-wide text-center hover:bg-foreground/90 transition-colors"
           >
-            開始遊戲
+            {t('startGame')}
           </Link>
         ) : (
           <div className="w-full py-2.5 bg-cream-200 text-cream-400 rounded-xl text-sm tracking-wide text-center cursor-not-allowed">
-            即將上線
+            {t('comingSoon')}
           </div>
         )}
       </div>

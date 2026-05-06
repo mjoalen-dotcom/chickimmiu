@@ -6,6 +6,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { auth as nextAuth } from '@/auth'
 import { User, ShoppingBag, Heart, MapPin, Gift, Settings, Crown, Share2, RotateCcw, Star, FileText, Gamepad2, Sparkles, Brain } from 'lucide-react'
+import { getTranslations } from 'next-intl/server'
 import { LogoutButton } from './LogoutButton'
 
 export const metadata: Metadata = {
@@ -14,25 +15,28 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-const sidebarLinks = [
-  { href: '/account', label: '會員總覽', icon: User },
-  { href: '/account/orders', label: '我的訂單', icon: ShoppingBag },
-  { href: '/account/subscription', label: '我的訂閱', icon: Crown },
-  { href: '/account/wishlist', label: '收藏清單', icon: Heart },
-  { href: '/account/referrals', label: '推薦好友', icon: Share2 },
-  { href: '/games', label: '好運遊戲', icon: Gamepad2 },
-  { href: '/account/personality', label: '我的個性穿搭', icon: Brain },
-  { href: '/account/treasure', label: '我的寶物箱', icon: Sparkles },
-  { href: '/account/invoices', label: '電子發票', icon: FileText },
-  { href: '/account/returns', label: '退換貨', icon: RotateCcw },
-  { href: '/account/reviews', label: '我的評價', icon: Star },
-  { href: '/account/addresses', label: '地址管理', icon: MapPin },
-  { href: '/account/points', label: '點數 / 購物金', icon: Gift },
-  { href: '/account/settings', label: '帳號設定', icon: Settings },
-]
+const SIDEBAR_LINK_DEFS = [
+  { href: '/account', key: 'overview', icon: User },
+  { href: '/account/orders', key: 'orders', icon: ShoppingBag },
+  { href: '/account/subscription', key: 'subscription', icon: Crown },
+  { href: '/account/wishlist', key: 'wishlist', icon: Heart },
+  { href: '/account/referrals', key: 'referrals', icon: Share2 },
+  { href: '/games', key: 'games', icon: Gamepad2 },
+  { href: '/account/personality', key: 'personality', icon: Brain },
+  { href: '/account/treasure', key: 'treasure', icon: Sparkles },
+  { href: '/account/invoices', key: 'invoices', icon: FileText },
+  { href: '/account/returns', key: 'returns', icon: RotateCcw },
+  { href: '/account/reviews', key: 'reviews', icon: Star },
+  { href: '/account/addresses', key: 'addresses', icon: MapPin },
+  { href: '/account/points', key: 'points', icon: Gift },
+  { href: '/account/settings', key: 'settings', icon: Settings },
+] as const
 
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {
-  const payload = await getPayload({ config })
+  const [t, payload] = await Promise.all([
+    getTranslations('account'),
+    getPayload({ config }),
+  ])
   const headersList = await nextHeaders()
   // `nextAuth()` 在 session cookie 損毀時可能拋 JWTSessionError 而不是回 null（看內部
   // 解碼路徑），整層 layout 跟著炸 → 使用者收到 500 或被框架導去最近的 error.tsx，
@@ -67,18 +71,18 @@ export default async function AccountLayout({ children }: { children: React.Reac
   return (
     <div className="bg-cream-50 min-h-screen">
       <div className="container py-8 md:py-12">
-        <h1 className="text-2xl font-serif mb-8">我的帳戶</h1>
+        <h1 className="text-2xl font-serif mb-8">{t('pageTitle')}</h1>
         <div className="grid md:grid-cols-[240px_1fr] gap-8">
           {/* Sidebar */}
           <aside className="space-y-1">
-            {sidebarLinks.map((link) => (
+            {SIDEBAR_LINK_DEFS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-foreground/70 hover:text-gold-600 hover:bg-cream-100 transition-colors"
               >
                 <link.icon size={18} />
-                {link.label}
+                {t(`nav.${link.key}`)}
               </Link>
             ))}
             <LogoutButton />

@@ -157,5 +157,74 @@
       "title": "此系列目前尚无商品，敬请期待",
       "cta": "浏览全部商品"
     }
+  },
+  "account": {
+    "pageTitle": "我的账号",
+    "nav": {
+      "overview": "会员总览",
+      "orders": "我的订单",
+      "subscription": "我的订阅",
+      "wishlist": "收藏清单",
+      "referrals": "推荐好友",
+      "games": "好运游戏",
+      "personality": "个性穿搭",
+      "treasure": "宝物箱",
+      "invoices": "电子发票",
+      "returns": "退换货",
+      "reviews": "我的评价",
+      "addresses": "地址管理",
+      "points": "积分 / 购物金",
+      "settings": "账号设置"
+    },
+    "logout": "退出登录"
+  },
+  "games": {
+    "headerTag": "REWARDS & GAMES",
+    "title": "会员游乐园",
+    "subtitle": "玩游戏赢取积分与购物金，邀请好友对战更有趣！\n会员等级越高，免费次数越多、获奖概率越大。",
+    "todayPoints": "今日已获积分",
+    "openGames": "已开放游戏",
+    "myBadges": "已获得徽章",
+    "tabs": {
+      "games": "所有游戏",
+      "leaderboard": "排行榜",
+      "badges": "我的徽章"
+    },
+    "allGames": "全部游戏",
+    "startGame": "开始游戏",
+    "comingSoon": "即将上线",
+    "gamesEmpty": "游戏即将上线",
+    "gamesEmptyDesc": "我们正在准备精彩的游戏，敬请期待！",
+    "tierBenefits": {
+      "title": "等级越高、福利越多",
+      "tier": "会员等级",
+      "monthlySpins": "每月转盘",
+      "dailyScratches": "每日刮刮乐",
+      "dailyBattles": "每日对战",
+      "fashionChallenge": "穿搭挑战",
+      "rewardMultiplier": "奖励倍率"
+    },
+    "period": {
+      "today": "今日",
+      "week": "本周",
+      "month": "本月",
+      "all": "全部"
+    },
+    "leaderboard": {
+      "empty": "排行榜开放中",
+      "emptyDesc": "快去玩游戏累积积分，抢占榜首！",
+      "accumulatedNote": "（累计积分排行）",
+      "points": "积分",
+      "games": "场"
+    },
+    "badges": {
+      "loginRequired": "登录后查看徽章",
+      "loginDesc": "玩游戏即可获得专属徽章收藏",
+      "loginCta": "登录",
+      "empty": "尚未获得徽章",
+      "emptyDesc": "完成游戏挑战即可解锁专属徽章！",
+      "goPlay": "去玩游戏",
+      "earned": "已获得"
+    }
   }
 }
