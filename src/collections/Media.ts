@@ -16,18 +16,28 @@ const dirname = path.dirname(filename)
  * - staticDir 存放在專案根目錄的 public/media
  * - 自動產生多種尺寸（thumbnail / card / tablet / desktop）
  * - 只有管理員可以刪除，全站可讀取
+ *
+ * 相簿管理：
+ *   - `folders: true` 啟用 Payload 內建資料夾樹（real folder collection +
+ *     拖拉移動 + UI 建立/重新命名 + 縮圖 grid 檢視）。對應 admin route
+ *     `/admin/collections/media` 會顯示資料夾瀏覽器，可切換 list / grid。
+ *   - `folderName` 是 legacy 純文字相簿標籤，保留給 Shopline-style 批次匯入
+ *     （供應商工具會直接寫一段「商品貨號 / 活動名稱」字串）。新流程建議改用
+ *     真正的資料夾關聯 (`folder`)。
  */
 export const Media: CollectionConfig = {
   slug: 'media',
+  labels: { singular: '媒體庫', plural: '媒體庫' },
+  folders: true,
   admin: {
-    group: '媒體資源',
+    group: '⑥ 內容與頁面',
     useAsTitle: 'filename',
-    defaultColumns: ['filename', 'alt', 'folder', 'mimeType', 'filesize', 'updatedAt'],
-    listSearchableFields: ['filename', 'alt', 'folder'],
+    defaultColumns: ['filename', 'alt', 'folder', 'folderName', 'mimeType', 'filesize', 'updatedAt'],
+    listSearchableFields: ['filename', 'alt', 'folderName'],
     description:
-      '圖片 / 影片 / PDF 上傳。檔案大小上限：圖片 8 MB、影片 50 MB、PDF 10 MB。' +
-      '支援格式：jpeg / png / webp / gif / mp4 / pdf。' +
-      '若要上傳多張商品圖，請於「後台使用說明 → 商品圖整批上傳」查看正確資料夾命名與排序規則。',
+      '圖片 / 影片 / 音訊 / PDF 上傳。檔案大小上限：圖片 8 MB、影片 50 MB、音訊 50 MB、PDF 10 MB。' +
+      '支援格式：jpeg / png / webp / gif / mp4 / m4a / mp3 / pdf。' +
+      '相簿可在列表頁左側資料夾樹建立 / 拖拉整理；舊版「相簿名稱」純文字標籤仍可選填供搜尋。',
   },
   access: {
     read: () => true,
@@ -37,6 +47,39 @@ export const Media: CollectionConfig = {
   },
   endpoints: [importFromSupplierEndpoint],
   hooks: {
+    // beforeValidate：補檔名自動推 alt（必須在 field validate 前跑）
+    //   - 為什麼放在 beforeValidate 而非 beforeChange：
+    //     `alt` 雖已改成非必填，但仍套用 trim 等驗證；先填值再驗證才符合直覺。
+    //     批次上傳一次 10+ 張時可省去手動填每張 alt（最大 UX 痛點）。
+    //   - 推導規則：去副檔名、`-`/`_` 換空白、保留中英數字
+    //   - 若 admin 自己有填 alt 就不覆蓋
+    beforeValidate: [
+      async ({ req, data, operation }) => {
+        if (operation !== 'create') return data
+        const next = data ? { ...data } : ({} as Record<string, unknown>)
+        const altRaw = typeof next.alt === 'string' ? next.alt.trim() : ''
+        if (altRaw) return data // 使用者已填，不覆寫
+
+        // 來源：req.file.name（直接上傳）或 data.filename（local API 二階段）
+        const fname =
+          (typeof req?.file?.name === 'string' && req.file.name) ||
+          (typeof next.filename === 'string' && next.filename) ||
+          ''
+        if (!fname) return data
+
+        const stem = fname.replace(/\.[^./\\]+$/, '') // strip extension
+        const cleaned = stem
+          .replace(/[-_]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 80)
+        if (cleaned) {
+          next.alt = cleaned
+          return next
+        }
+        return data
+      },
+    ],
     // 上傳驗證：白名單 MIME、大小上限、禁路徑字元
     //   - 替 Payload 的 mimeTypes 做二次校驗（防 multipart 偽造）
     //   - Media 可被任何登入使用者上傳（access.create: Boolean(user)），
@@ -49,12 +92,15 @@ export const Media: CollectionConfig = {
         const mt = String(f.mimetype || '')
         const MAX_IMAGE = 8 * 1024 * 1024
         const MAX_VIDEO = 50 * 1024 * 1024
+        const MAX_AUDIO = 50 * 1024 * 1024
         const MAX_PDF = 10 * 1024 * 1024
         const max = mt.startsWith('video/')
           ? MAX_VIDEO
-          : mt === 'application/pdf'
-            ? MAX_PDF
-            : MAX_IMAGE
+          : mt.startsWith('audio/')
+            ? MAX_AUDIO
+            : mt === 'application/pdf'
+              ? MAX_PDF
+              : MAX_IMAGE
         if (typeof f.size === 'number' && f.size > max) {
           throw new Error(`檔案過大（上限 ${Math.round(max / 1024 / 1024)}MB）`)
         }
@@ -64,7 +110,8 @@ export const Media: CollectionConfig = {
           throw new Error('非法檔名（禁止路徑字元）')
         }
         // MIME 白名單二次把關（image/* 已在 upload.mimeTypes 收緊，這裡再確認）
-        const allow = /^(image\/(jpeg|png|webp|gif)|video\/mp4|application\/pdf)$/
+        // audio/mp4 = m4a, audio/mpeg = mp3
+        const allow = /^(image\/(jpeg|png|webp|gif)|video\/mp4|audio\/(mp4|mpeg)|application\/pdf)$/
         if (!allow.test(mt)) {
           throw new Error('不支援的檔案格式')
         }
@@ -79,7 +126,16 @@ export const Media: CollectionConfig = {
     adminThumbnail: 'thumbnail',
     // 去掉 image/* 萬用字元（image/svg+xml 是 XSS 向量）
     // 若未來要加 avif/heic 請顯式列出
-    mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'application/pdf'],
+    mimeTypes: [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'video/mp4',
+      'audio/mp4', // m4a
+      'audio/mpeg', // mp3
+      'application/pdf',
+    ],
     imageSizes: [
       {
         name: 'thumbnail',
@@ -119,9 +175,14 @@ export const Media: CollectionConfig = {
       name: 'alt',
       label: '替代文字（SEO / 無障礙）',
       type: 'text',
-      required: true,
+      // ⚠️ 從 required:true → 非必填（2026-04-27 PR『Media bulk + upload UX』）
+      //   - 改成 beforeValidate 自動由檔名補（避免批次上傳時每張要打 alt）
+      //   - 沒填 + 沒檔名（極端罕見）才會留空；admin 之後仍可手動補
+      //   - SEO/A11y 仍建議改成更語意化的描述
       admin: {
-        description: '給視障朋友與搜尋引擎用的圖片描述；例如「藍色洋裝正面商品照」。',
+        description:
+          '給視障朋友與搜尋引擎用的圖片描述；例如「藍色洋裝正面商品照」。' +
+          '留空會自動由檔名推（去除副檔名、底線改空白）。',
       },
     },
     {
@@ -130,14 +191,18 @@ export const Media: CollectionConfig = {
       type: 'text',
     },
     {
-      name: 'folder',
-      label: '相簿 / 資料夾名稱',
+      // ⚠️ Renamed from `folder` (text) → `folderName` 在 PR『Media folders』
+      //   - `folder` 改成 Payload 內建 folders 的 relationship 欄位
+      //   - 此欄位降級為輔助標籤：搜尋用 / 供應商批次匯入 fallback / 相容
+      //     Shopline-style「商品貨號」字串
+      name: 'folderName',
+      label: '相簿名稱（文字標籤，選填）',
       type: 'text',
       index: true,
       admin: {
         description:
-          '用於分類整理媒體資源，例如商品貨號（SS25-001）、活動名稱（2026-春季型錄）、' +
-          '或用途分類（banner、lookbook、ugc）。列表頁可用此欄位搜尋或篩選。',
+          '純文字標籤，給搜尋與供應商批次匯入使用；建議優先用左側資料夾樹（folder）整理。' +
+          '範例：商品貨號（SS25-001）、活動名稱（2026-春季型錄）、用途分類（banner / lookbook / ugc）。',
       },
     },
   ],

@@ -3,29 +3,37 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 import { TIER_LEVELS } from '@/lib/crm/tierEngine'
+import {
+  dispatchRedemption,
+  isSupportedRedemptionType,
+} from '@/lib/redemption/redemptionEngine'
 
 /**
  * Points Redemptions API
  *   GET  /api/v1/points  — 取得可兌換商品列表
  *   POST /api/v1/points  — 兌換商品（需 Payload session 登入）
  *
- * POST 流程（physical / movie_ticket / gift_physical）：
+ * POST 通用流程：
  *   1. Payload session auth
  *   2. 取得 redemption + user，驗證 active / 日期 / 庫存 / 點數 / 等級 /
  *      maxPerUser / maxPerDay
- *   3. 原子順序寫：bump redeemed → 扣 user.points → 建 points-transactions →
- *      建 user-rewards（state=unused, requiresPhysicalShipping=true, redemptionRef,
- *      expiresAt=now+validityDays）
- *   4. user-rewards 建立後，下次客戶下單時 Orders.beforeChange 自動 attach 到
- *      order.gifts[] 隨單寄出。gifts[] 不影響訂單金額；Returns.items[] 不能 ref
- *      贈品 → 結構上無法單獨退貨。
+ *   3. 原子順序寫：
+ *      a) bump redeemed
+ *      b) 扣 user.points
+ *      c) dispatch 到 redemptionEngine（依 type 各自處理 user-rewards / coupons /
+ *         shoppingCredit / 抽獎結果）
+ *      d) 建 points-transactions audit 行（用 engine 回傳的 transactionDescription）
+ *   4. 任一步失敗 → best-effort revert + 500
  *
- * 其他類型（coupon / lottery / store_credit / experience / ...）目前僅扣點 +
- * bump 計數，實際發放需另行接通；本 endpoint 暫不開放線上兌換以免使用者
- * 「扣了點卻拿不到任何東西」。
+ * type 對應路徑（詳見 src/lib/redemption/redemptionEngine.ts）：
+ *   - physical / movie_ticket / gift_physical → 隨下次訂單寄出
+ *   - coupon / discount_code / addon_deal / free_shipping → 個人化 Coupons row
+ *     + UserRewards（結帳輸入 code 套用）
+ *   - store_credit → 直接加 user.shoppingCredit + voucher audit
+ *   - lottery → winRate 擲骰；中 → 加權抽 prize 寫 voucher；未中 → 只扣點
+ *   - mystery → 必中，加權抽 prize 寫 voucher
+ *   - experience / styling / charity → 寫 voucher，由客服 / admin 手動聯絡履行
  */
-
-const SHIPPABLE_TYPES = new Set(['physical', 'movie_ticket', 'gift_physical'])
 
 type LooseRecord = Record<string, unknown>
 
@@ -135,12 +143,9 @@ export async function POST(req: NextRequest) {
     }
 
     const type = String(redemption.type ?? '')
-    if (!SHIPPABLE_TYPES.has(type)) {
+    if (!isSupportedRedemptionType(type)) {
       return NextResponse.json(
-        {
-          success: false,
-          error: '此類型獎品暫不開放線上兌換，請洽客服或於指定活動兌換',
-        },
+        { success: false, error: `不支援的兌換類型：${type}` },
         { status: 400 },
       )
     }
@@ -265,7 +270,7 @@ export async function POST(req: NextRequest) {
     // ── 3. Atomic-ish writes ──
     // SQLite single-writer 假設下，每個 update 本身原子；極少數高併發場景可能
     // 出現 stock 跑超過 1 件的競態，admin 可後台調整。
-    // 順序：bump redeemed (lock-ish) → 扣 user.points → 建 txn → 建 reward。
+    // 順序：bump redeemed → 扣 user.points → dispatch handler → 建 PointsTransactions
     // 任一步失敗時 best-effort revert 前面已寫的 mutation，並回 500。
 
     type Reverter = () => Promise<void>
@@ -308,9 +313,20 @@ export async function POST(req: NextRequest) {
           .catch(() => {})
       })
 
-      // (c) PointsTransactions audit row
+      // (c) dispatch — 由 engine 處理 user-rewards / coupons / shoppingCredit / 抽獎
+      const outcome = await dispatchRedemption({
+        payload,
+        redemption,
+        user,
+        userId: sessionUser.id as string | number,
+        cost,
+      })
+
+      // (d) PointsTransactions audit row
       // payloadAPI === 'local' 時 hooks skip user.points 同步 → 我們手動扣，
       // balance 由我們指定為扣除後的餘額。
+      const txnDescription =
+        outcome.transactionDescription ?? `兌換：${redemption.name ?? '點數商城商品'}`
       await payload.create({
         collection: 'points-transactions',
         data: {
@@ -319,53 +335,21 @@ export async function POST(req: NextRequest) {
           amount: -cost,
           balance: userPoints - cost,
           source: 'redemption',
-          description: `兌換：${redemption.name ?? '點數商城商品'}`,
-        } as LooseRecord,
-        overrideAccess: true,
-      })
-
-      // (d) UserRewards inventory row
-      const physicalConfig = (redemption.physicalConfig as LooseRecord | undefined) ?? {}
-      const rewardType =
-        (physicalConfig.rewardTypeOverride as string) ||
-        (type === 'movie_ticket' ? 'movie_ticket_physical' : 'gift_physical')
-      const validityDays = (physicalConfig.validityDays as number) ?? 365
-      const expiresAt = new Date(now + validityDays * 24 * 60 * 60 * 1000).toISOString()
-      const shippingNote = (physicalConfig.shippingNote as string) || ''
-      const sku = (physicalConfig.physicalSku as string) || ''
-      const linkedProductId = pickId(physicalConfig.linkedProduct)
-
-      const instructionsParts: string[] = []
-      if (sku) instructionsParts.push(`SKU：${sku}`)
-      if (linkedProductId) instructionsParts.push(`商品 ID：${linkedProductId}`)
-      if (shippingNote) instructionsParts.push(shippingNote)
-      const redemptionInstructions = instructionsParts.join('\n') || null
-
-      const created = await payload.create({
-        collection: 'user-rewards',
-        data: {
-          user: sessionUser.id,
-          rewardType,
-          displayName: String(redemption.name ?? '點數商城獎品'),
-          state: 'unused',
-          requiresPhysicalShipping: true,
-          expiresAt,
-          redemptionRef: redemptionId,
-          pointsCostSnapshot: cost,
-          ...(redemptionInstructions ? { redemptionInstructions } : {}),
+          description: txnDescription,
         } as LooseRecord,
         overrideAccess: true,
       })
 
       return NextResponse.json({
         success: true,
-        message: '兌換成功！獎品將隨您的下一張訂單寄出',
+        message: outcome.message,
         data: {
-          rewardId: (created as LooseRecord).id,
+          rewardId: outcome.rewardId,
           pointsDeducted: cost,
           remainingPoints: userPoints - cost,
-          expiresAt,
-          rewardType,
+          rewardType: type,
+          ...(outcome.lottery ? { lottery: outcome.lottery } : {}),
+          ...(outcome.details ?? {}),
         },
       })
     } catch (writeErr) {
@@ -374,7 +358,13 @@ export async function POST(req: NextRequest) {
         await revert()
       }
       return NextResponse.json(
-        { success: false, error: '兌換處理失敗，請稍後再試' },
+        {
+          success: false,
+          error:
+            writeErr instanceof Error
+              ? writeErr.message || '兌換處理失敗，請稍後再試'
+              : '兌換處理失敗，請稍後再試',
+        },
         { status: 500 },
       )
     }
@@ -386,3 +376,6 @@ export async function POST(req: NextRequest) {
     )
   }
 }
+
+// pickId 保留供未來型別 narrow 使用；目前未直接用到
+void pickId

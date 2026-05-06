@@ -9,6 +9,13 @@
       "autoPort": false
     },
     {
+      "name": "chickimmiu-next-3015",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev", "-p", "3015"],
+      "port": 3015,
+      "autoPort": false
+    },
+    {
       "name": "chickimmiu-next",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["dev", "-p", "3001"],

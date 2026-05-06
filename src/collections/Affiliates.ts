@@ -25,10 +25,11 @@ const updateOwnAffiliate: Access = ({ req: { user } }) => {
 
 export const Affiliates: CollectionConfig = {
   slug: 'affiliates',
+  labels: { singular: '合作夥伴', plural: '合作夥伴' },
   admin: {
     useAsTitle: 'referralCode',
     defaultColumns: ['user', 'referralCode', 'commissionRate', 'totalEarnings', 'withdrawableAmount', 'status'],
-    group: '合作夥伴',
+    group: '⑤ 互動體驗',
     description: '合作夥伴分潤資料管理',
   },
   access: {

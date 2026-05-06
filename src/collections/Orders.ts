@@ -1,6 +1,7 @@
 import type { CollectionConfig, Access, Where } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
+import { createExportEndpoint, type FieldMapping } from '../endpoints/importExport'
 import { orderCreditScoreHook } from '../lib/crm/creditScoreHooks'
 import { autoIssueInvoiceForOrder } from '../lib/invoice/ecpayInvoiceEngine'
 import { sendOrderConfirmationEmail } from '../lib/email/orderConfirmation'
@@ -32,18 +33,62 @@ const readOwnOrReferral: Access = ({ req: { user } }) => {
   return { customer: { equals: user.id } }
 }
 
+const orderFieldMappings: FieldMapping[] = [
+  // 識別
+  { key: 'orderNumber', label: '訂單編號' },
+  { key: 'createdAt', label: '建立時間' },
+  { key: 'status', label: '訂單狀態' },
+  // 顧客（depth 預設 2 會 populate customer relationship）
+  { key: 'customer.email', label: '顧客 Email' },
+  { key: 'customer.name', label: '顧客姓名' },
+  // 收件
+  { key: 'shippingAddress.recipientName', label: '收件人' },
+  { key: 'shippingAddress.phone', label: '收件電話' },
+  { key: 'shippingAddress.zipCode', label: '郵遞區號' },
+  { key: 'shippingAddress.city', label: '縣市' },
+  { key: 'shippingAddress.district', label: '鄉鎮區' },
+  { key: 'shippingAddress.address', label: '詳細地址' },
+  // 金額
+  { key: 'subtotal', label: '商品小計' },
+  { key: 'shippingFee', label: '運費' },
+  { key: 'codFee', label: 'COD 手續費' },
+  { key: 'discountAmount', label: '折扣金額' },
+  { key: 'taxAmount', label: '稅額' },
+  { key: 'total', label: '訂單總額' },
+  // 付款
+  { key: 'paymentMethod', label: '付款方式' },
+  { key: 'paymentStatus', label: '付款狀態' },
+  { key: 'paymentTransactionId', label: '金流交易編號' },
+  // 物流
+  { key: 'shippingMethod.methodName', label: '配送方式' },
+  { key: 'shippingMethod.carrier', label: '物流商' },
+  { key: 'trackingNumber', label: '託運單號' },
+  // 優惠
+  { key: 'couponCode', label: '優惠碼' },
+  // 備註
+  { key: 'customerNote', label: '顧客備註' },
+  { key: 'adminNote', label: '管理備註' },
+]
+
 export const Orders: CollectionConfig = {
   slug: 'orders',
+  labels: { singular: '訂單', plural: '訂單' },
   admin: {
     useAsTitle: 'orderNumber',
     defaultColumns: ['orderNumber', 'customer', 'total', 'quickProcess', 'paymentMethod', 'paymentStatus', 'createdAt'],
     listSearchableFields: ['orderNumber', 'customerEmail', 'customerName'],
-    group: '訂單管理',
+    group: '① 訂單與物流',
     description: '訂單紀錄與管理（含出貨單列印、取貨總報表）',
     components: {
       beforeListTable: [
         {
+          path: '@/components/admin/OrderBulkShipPanel',
+        },
+        {
           path: '@/components/admin/OrderToolsPanel',
+        },
+        {
+          path: '@/components/admin/OrderExportButton',
         },
       ],
     },
@@ -363,6 +408,47 @@ export const Orders: CollectionConfig = {
         },
       ],
     },
+    // ── UTM 歸因 ──
+    {
+      name: 'attribution',
+      label: 'UTM 歸因',
+      type: 'group',
+      admin: {
+        description:
+          '訂單的 UTM 來源歸因。firstTouch = 該會員首次進站時的 UTM（90 天 cookie）；' +
+          'lastTouch = 結帳當下 session 的 UTM。報表頁 /admin/reports/utm-attribution 用此資料聚合。',
+      },
+      fields: [
+        {
+          name: 'firstTouch',
+          label: '首次接觸（First-touch）',
+          type: 'group',
+          fields: [
+            { name: 'utmSource', label: 'UTM Source', type: 'text' },
+            { name: 'utmMedium', label: 'UTM Medium', type: 'text' },
+            { name: 'utmCampaign', label: 'UTM Campaign', type: 'text' },
+            { name: 'utmTerm', label: 'UTM Term', type: 'text' },
+            { name: 'utmContent', label: 'UTM Content', type: 'text' },
+            { name: 'referrer', label: 'Referrer', type: 'text' },
+            { name: 'capturedAt', label: '首次捕獲時間', type: 'date' },
+          ],
+        },
+        {
+          name: 'lastTouch',
+          label: '最後接觸（Last-touch）',
+          type: 'group',
+          fields: [
+            { name: 'utmSource', label: 'UTM Source', type: 'text' },
+            { name: 'utmMedium', label: 'UTM Medium', type: 'text' },
+            { name: 'utmCampaign', label: 'UTM Campaign', type: 'text' },
+            { name: 'utmTerm', label: 'UTM Term', type: 'text' },
+            { name: 'utmContent', label: 'UTM Content', type: 'text' },
+            { name: 'referrer', label: 'Referrer', type: 'text' },
+            { name: 'capturedAt', label: '最後捕獲時間', type: 'date' },
+          ],
+        },
+      ],
+    },
     // ── 備註 ──
     {
       name: 'customerNote',
@@ -379,6 +465,7 @@ export const Orders: CollectionConfig = {
     },
   ],
   timestamps: true,
+  endpoints: [createExportEndpoint('orders', orderFieldMappings)],
   hooks: {
     // ── 訂單編號自動產生（beforeValidate 以確保 required 驗證前已有值） ──
     // 若 caller（checkout / admin）已傳入 orderNumber 則尊重，不覆寫。

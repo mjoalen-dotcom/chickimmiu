@@ -5,7 +5,10 @@ import { isAdmin } from '../access/isAdmin'
 import { createExportEndpoint, createImportEndpoint, type FieldMapping } from '../endpoints/importExport'
 import { revalidateAllEndpoint } from '../endpoints/revalidateAll'
 import { shoplineXlsxImportEndpoint } from '../endpoints/shoplineXlsxImport'
+import { linkIntegrityScanEndpoint } from '../endpoints/linkIntegrityScan'
 import { revalidateProduct } from '../lib/revalidate'
+import { suggestPersonalityTypes } from '../lib/games/mbtiAutoRecommend'
+import { bumpCategoryCount, getCategoryId } from '../lib/categoryCount'
 
 const productFieldMappings: FieldMapping[] = [
   { key: 'name', label: '商品名稱' },
@@ -44,6 +47,7 @@ const productFieldMappings: FieldMapping[] = [
  */
 export const Products: CollectionConfig = {
   slug: 'products',
+  labels: { singular: '商品', plural: '商品' },
   admin: {
     useAsTitle: 'name',
     defaultColumns: [
@@ -57,11 +61,15 @@ export const Products: CollectionConfig = {
       'isNew',
       'updatedAt',
     ],
-    group: '商品管理',
-    description: '商品資料管理（含變體、庫存、分類、CSV/Excel 匯入匯出）',
+    group: '② 商品管理',
+    description:
+      '商品總管 — 變體 / 庫存 / 分類，6 種上方工具：批次操作、SHOPLINE BulkUpdateForm、Sinsang Market、Shopline 商品匯入、商品圖片遷移、CSV·Excel 匯入匯出。完整教學見 /admin/help。',
     listSearchableFields: ['name', 'slug', 'productSku'],
     components: {
       beforeListTable: [
+        {
+          path: '@/components/admin/ProductsUsageNotice',
+        },
         {
           path: '@/components/admin/ProductBulkActions',
         },
@@ -98,6 +106,7 @@ export const Products: CollectionConfig = {
     createImportEndpoint('products', productFieldMappings),
     revalidateAllEndpoint,
     shoplineXlsxImportEndpoint,
+    linkIntegrityScanEndpoint,
   ],
   hooks: {
     /* ── 1. 驗證前：自動 slug + 資料正規化 ── */
@@ -174,11 +183,30 @@ export const Products: CollectionConfig = {
           data.isLowStock = (data.stock ?? 0) <= threshold
         }
 
+        // 個性類型自動推薦：personalityTypes 為空時，依 tag/collection/分類/名稱
+        // keyword 比對 16 型 keyword map，自動填入 top 3。Admin 已勾選則尊重不覆蓋。
+        const existingPersonality = data.personalityTypes as unknown
+        const isEmpty =
+          existingPersonality == null ||
+          (Array.isArray(existingPersonality) && existingPersonality.length === 0)
+        if (isEmpty) {
+          const suggested = suggestPersonalityTypes({
+            name: data.name as string | undefined,
+            description: data.description,
+            tags: data.tags as Array<{ tag?: string | null }> | undefined,
+            collectionTags: data.collectionTags as string[] | undefined,
+            category: data.category as { title?: string | null } | string | number | null,
+          })
+          if (suggested.length > 0) {
+            data.personalityTypes = suggested
+          }
+        }
+
         return data
       },
     ],
 
-    /* ── 3. 存檔後：revalidate 前台 ── */
+    /* ── 3. 存檔後：revalidate 前台 + 推 Meta Catalog ── */
     afterChange: [
       ({ doc, previousDoc }) => {
         const slug = (doc as Record<string, unknown>)?.slug as string | undefined
@@ -191,13 +219,68 @@ export const Products: CollectionConfig = {
           revalidateProduct(prevSlug)
         }
       },
+      // Meta Commerce Catalog real-time push (PR-D)
+      // 動態 import 避開 Payload init 階段的 circular dep；fire-and-forget。
+      // 缺 token / catalog_id / feed disabled 自動 no-op，admin 存檔不受影響。
+      ({ doc }) => {
+        const id = (doc as Record<string, unknown>)?.id
+        if (id == null) return
+        void import('@/lib/ads/catalogBatchPusher')
+          .then(({ pushProductToCatalog }) =>
+            pushProductToCatalog(id as number | string, 'UPDATE'),
+          )
+          .catch((err) => {
+            console.warn('[Products.afterChange] catalog push failed (non-fatal):', err)
+          })
+      },
+      // PR-γ: 同步 categories.productCount
+      // 任何 hook 失敗都不能擋商品存檔（包在 try/catch、log warn）。
+      async ({ doc, previousDoc, req, operation }) => {
+        try {
+          const oldId = getCategoryId((previousDoc as Record<string, unknown> | undefined)?.category)
+          const newId = getCategoryId((doc as Record<string, unknown> | undefined)?.category)
+          if (operation === 'create') {
+            if (newId) await bumpCategoryCount(req.payload, newId, +1)
+          } else if (operation === 'update' && oldId !== newId) {
+            if (oldId) await bumpCategoryCount(req.payload, oldId, -1)
+            if (newId) await bumpCategoryCount(req.payload, newId, +1)
+          }
+        } catch (e) {
+          req.payload.logger?.warn?.(
+            `[Products.afterChange] category count bump failed: ${(e as Error).message}`,
+          )
+        }
+      },
     ],
 
-    /* ── 4. 刪除後：revalidate 前台（讓舊頁變 404） ── */
+    /* ── 4. 刪除後：revalidate 前台 + 從 Meta Catalog 移除 ── */
     afterDelete: [
       ({ doc }) => {
         const slug = (doc as Record<string, unknown>)?.slug as string | undefined
         revalidateProduct(slug)
+      },
+      // Meta Commerce Catalog DELETE
+      ({ doc }) => {
+        const id = (doc as Record<string, unknown>)?.id
+        if (id == null) return
+        void import('@/lib/ads/catalogBatchPusher')
+          .then(({ pushProductToCatalog }) =>
+            pushProductToCatalog(id as number | string, 'DELETE'),
+          )
+          .catch((err) => {
+            console.warn('[Products.afterDelete] catalog delete failed (non-fatal):', err)
+          })
+      },
+      // PR-γ: 同步 categories.productCount -1
+      async ({ doc, req }) => {
+        try {
+          const id = getCategoryId((doc as Record<string, unknown> | undefined)?.category)
+          if (id) await bumpCategoryCount(req.payload, id, -1)
+        } catch (e) {
+          req.payload.logger?.warn?.(
+            `[Products.afterDelete] category count bump failed: ${(e as Error).message}`,
+          )
+        }
       },
     ],
   },
@@ -253,6 +336,18 @@ export const Products: CollectionConfig = {
         position: 'sidebar',
         readOnly: true,
         description: '系統自動判斷，無需手動修改',
+      },
+    },
+    {
+      name: 'totalSold',
+      label: '累計售出件數',
+      type: 'number',
+      min: 0,
+      defaultValue: 0,
+      admin: {
+        position: 'sidebar',
+        description:
+          '前台 PDP 顯示「累計售出 X+ 件」徽章（≥ 50 件才會顯示）。可手動填入或未來由訂單統計自動更新。',
       },
     },
     {
@@ -474,10 +569,51 @@ export const Products: CollectionConfig = {
                 { label: '婚禮洋裝/正式洋裝', value: 'formal-dresses' },
                 { label: '現貨速到 Rush', value: 'rush' },
                 { label: '藝人穿搭', value: 'celebrity-style' },
+                { label: '韓星同款', value: 'korean-celebrity' },
               ],
               admin: {
-                description: '選擇此商品所屬的主題專區（可多選）',
+                description:
+                  '選擇此商品所屬的主題專區（可多選）。「韓星同款」會在前台 PDP 顯示專屬徽章 + 出現在 /products?tag=korean-celebrity 篩選結果。',
               },
+            },
+            {
+              name: 'koreanCelebrityRef',
+              label: '韓星 / 韓劇參考（如為韓星同款）',
+              type: 'group',
+              admin: {
+                description:
+                  '若有勾選「韓星同款」，建議填入細節以強化單品故事性。前台 PDP 會在徽章 hover 顯示。',
+                condition: (_data, siblingData) =>
+                  Array.isArray(siblingData?.collectionTags) &&
+                  siblingData.collectionTags.includes('korean-celebrity'),
+              },
+              fields: [
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'celebrityName',
+                      label: '韓星名稱',
+                      type: 'text',
+                      admin: { width: '50%', description: '例如 IU、Jennie、宋慧喬' },
+                    },
+                    {
+                      name: 'dramaOrShow',
+                      label: '出現的劇 / 節目',
+                      type: 'text',
+                      admin: { width: '50%', description: '例如 我的出走日記 第 5 集' },
+                    },
+                  ],
+                },
+                {
+                  name: 'sourceBrand',
+                  label: '原韓國品牌',
+                  type: 'text',
+                  admin: {
+                    description: '例如 Mardi Mercredi / Stand Oil。便於 SEO 與信任感建立',
+                  },
+                },
+              ],
             },
             /* 重量 */
             {
@@ -631,6 +767,15 @@ export const Products: CollectionConfig = {
                     },
                   ],
                 },
+                {
+                  name: 'gtin',
+                  label: 'GTIN / 條碼',
+                  type: 'text',
+                  admin: {
+                    description:
+                      '此變體（SKU）的 GTIN / EAN / UPC / ISBN。Meta / Google Shopping 動態廣告匹配商品時使用，沒有可留空但會降低廣告投放精準度。',
+                  },
+                },
               ],
             },
             {
@@ -760,10 +905,169 @@ export const Products: CollectionConfig = {
                   '品牌建議的搭配方式，例如：搭配高跟鞋變身優雅通勤，搭配球鞋更顯甜美',
               },
             },
+            {
+              name: 'personalityTypes',
+              label: '適合的個性類型 (MBTI)',
+              type: 'select',
+              hasMany: true,
+              options: [
+                { label: 'INTJ 建築師', value: 'INTJ' },
+                { label: 'INTP 邏輯學家', value: 'INTP' },
+                { label: 'ENTJ 指揮官', value: 'ENTJ' },
+                { label: 'ENTP 辯論家', value: 'ENTP' },
+                { label: 'INFJ 提倡者', value: 'INFJ' },
+                { label: 'INFP 調停者', value: 'INFP' },
+                { label: 'ENFJ 主人公', value: 'ENFJ' },
+                { label: 'ENFP 競選者', value: 'ENFP' },
+                { label: 'ISTJ 物流師', value: 'ISTJ' },
+                { label: 'ISFJ 守衛者', value: 'ISFJ' },
+                { label: 'ESTJ 總經理', value: 'ESTJ' },
+                { label: 'ESFJ 執政官', value: 'ESFJ' },
+                { label: 'ISTP 鑑賞家', value: 'ISTP' },
+                { label: 'ISFP 探險家', value: 'ISFP' },
+                { label: 'ESTP 企業家', value: 'ESTP' },
+                { label: 'ESFP 表演者', value: 'ESFP' },
+              ],
+              admin: {
+                description: '建議勾選 1-4 個此商品最適合的 MBTI 類型；新建商品儲存時會依 tag/分類自動推薦（已勾選則尊重不覆蓋）',
+                components: {
+                  Field: '@/components/admin/MBTIAutoRecommendField',
+                },
+              },
+            },
           ],
         },
 
-        /* ── Tab 5：SEO ── */
+        /* ── Tab 5：廣告目錄 ── */
+        {
+          label: '廣告目錄',
+          description:
+            'Meta / Google Shopping 動態廣告所需的目錄欄位。留空欄位會 fallback 到「廣告目錄設定」global 的預設值。',
+          fields: [
+            {
+              name: 'excludeFromAdsCatalog',
+              label: '排除在廣告目錄外',
+              type: 'checkbox',
+              defaultValue: false,
+              admin: {
+                description:
+                  '勾選後此商品不會出現在 /feeds/meta.xml 與 /feeds/google.xml，動態廣告抓不到此商品。',
+              },
+            },
+            {
+              type: 'row',
+              fields: [
+                {
+                  name: 'adsGender',
+                  label: '性別',
+                  type: 'select',
+                  defaultValue: 'female',
+                  options: [
+                    { label: '女性', value: 'female' },
+                    { label: '男性', value: 'male' },
+                    { label: '中性 / 不分性別', value: 'unisex' },
+                  ],
+                  admin: {
+                    width: '33%',
+                    description: 'Meta / Google 用來投放正確性別受眾',
+                  },
+                },
+                {
+                  name: 'adsAgeGroup',
+                  label: '年齡層',
+                  type: 'select',
+                  defaultValue: 'adult',
+                  options: [
+                    { label: '成人 Adult', value: 'adult' },
+                    { label: '青少年 Teen', value: 'teen' },
+                    { label: '兒童 Kids', value: 'kids' },
+                    { label: '幼兒 Toddler', value: 'toddler' },
+                    { label: '嬰兒 Infant', value: 'infant' },
+                    { label: '新生兒 Newborn', value: 'newborn' },
+                  ],
+                  admin: { width: '33%' },
+                },
+                {
+                  name: 'adsCondition',
+                  label: '商品狀況',
+                  type: 'select',
+                  defaultValue: 'new',
+                  options: [
+                    { label: '全新 New', value: 'new' },
+                    { label: '整新品 Refurbished', value: 'refurbished' },
+                    { label: '二手 Used', value: 'used' },
+                  ],
+                  admin: { width: '34%' },
+                },
+              ],
+            },
+            {
+              name: 'googleProductCategory',
+              label: 'Google 商品分類',
+              type: 'text',
+              admin: {
+                description:
+                  '依 Google Product Taxonomy 填寫，例如「Apparel & Accessories > Clothing > Dresses」' +
+                  '或數字 ID「2271」。留空時用「廣告目錄設定」的全站預設值。' +
+                  '完整列表：https://support.google.com/merchants/answer/6324436',
+              },
+            },
+            {
+              name: 'productType',
+              label: '商品類型（自家分類）',
+              type: 'text',
+              admin: {
+                description:
+                  '品牌自訂的分類路徑，例如「女裝 > 洋裝 > 韓系小洋裝」。留空 = 用 category collection 名稱。',
+              },
+            },
+            {
+              type: 'row',
+              fields: [
+                {
+                  name: 'gtin',
+                  label: 'GTIN / 條碼（商品層級）',
+                  type: 'text',
+                  admin: {
+                    width: '50%',
+                    description: '商品共用 GTIN（每個 SKU 變體可在「變體與庫存」分別覆寫）',
+                  },
+                },
+                {
+                  name: 'mpn',
+                  label: 'MPN 製造商料號',
+                  type: 'text',
+                  admin: {
+                    width: '50%',
+                    description: '無 GTIN 時 Google 要求 brand + mpn 組合替代',
+                  },
+                },
+              ],
+            },
+            {
+              name: 'adsTitleOverride',
+              label: '廣告標題（覆寫）',
+              type: 'text',
+              admin: {
+                description:
+                  '留空 = 用商品名稱。Meta/Google 廣告標題建議塞入主要關鍵字（如「韓系小洋裝 V領 米杏色」），與前台商品名不同調性可在此覆寫。最多 150 字元。',
+              },
+              maxLength: 150,
+            },
+            {
+              name: 'adsDescriptionOverride',
+              label: '廣告描述（覆寫）',
+              type: 'textarea',
+              admin: {
+                description:
+                  '留空 = 用「簡短描述」或商品描述純文字。建議 200-500 字，含材質、版型、適合場合等關鍵字。',
+              },
+              maxLength: 5000,
+            },
+          ],
+        },
+
+        /* ── Tab 6：SEO ── */
         {
           label: 'SEO',
           description: '搜尋引擎顯示標題、描述、Open Graph 分享圖',

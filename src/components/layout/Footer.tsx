@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { Phone, MapPin, Clock, ExternalLink, MessageCircle } from 'lucide-react'
 
 interface FooterProps {
@@ -21,31 +24,32 @@ interface FooterProps {
   }>
 }
 
-const DEFAULT_HELP_LINKS = [
-  { href: '/shopping-guide', label: '購物說明' },
-  { href: '/about', label: '商店介紹' },
-  { href: '/packaging', label: '商品包裝' },
-  { href: '/terms', label: '服務條款' },
-  { href: '/privacy-policy', label: '隱私權政策' },
-  { href: '/return-policy', label: '退換貨政策' },
-  { href: '/faq', label: '常見問題' },
-]
-
-const DEFAULT_SHOPPING_LINKS = [
-  { href: '/products', label: '全部商品' },
-  { href: '/products?tag=new', label: '新品上市' },
-  { href: '/products?tag=hot', label: '熱銷推薦' },
-  { href: '/blog', label: '穿搭誌' },
-  { href: '/games', label: '好運遊戲' },
-  { href: '/account', label: '會員中心' },
-  { href: '/account/orders', label: '訂單查詢' },
-  { href: '/account/subscription', label: '訂閱方案' },
-  { href: '/account/referrals', label: '推薦好友' },
-]
-
 export function Footer({ businessInfo, socialLinks, footerSections }: FooterProps) {
+  const t = useTranslations('footer')
   const biz = businessInfo || { legalName: '靚秀國際有限公司', taxId: '24540533', phone: '02-2718-9488', address: '台北市基隆路一段68號9樓', businessHours: '週一至週五 09:30-18:00' }
   const social = socialLinks || { instagram: 'https://www.instagram.com/chickimmiu/', facebook: 'https://www.facebook.com/chickimmiu/', line: 'https://page.line.me/nqo0262k?openQrModal=true' }
+
+  // CMS 沒設 footerSections 時用 i18n fallback
+  const defaultHelpLinks = [
+    { href: '/shopping-guide', label: t('helpShoppingGuide') },
+    { href: '/about', label: t('helpAbout') },
+    { href: '/packaging', label: t('helpPackaging') },
+    { href: '/terms', label: t('helpTerms') },
+    { href: '/privacy-policy', label: t('helpPrivacy') },
+    { href: '/return-policy', label: t('helpReturnPolicy') },
+    { href: '/faq', label: t('helpFaq') },
+  ]
+  const defaultShoppingLinks = [
+    { href: '/products', label: t('shoppingAll') },
+    { href: '/products?tag=new', label: t('shoppingNew') },
+    { href: '/products?tag=hot', label: t('shoppingHot') },
+    { href: '/blog', label: t('shoppingBlog') },
+    { href: '/games', label: t('shoppingGames') },
+    { href: '/account', label: t('shoppingMember') },
+    { href: '/account/orders', label: t('shoppingOrders') },
+    { href: '/account/subscription', label: t('shoppingSubscription') },
+    { href: '/account/referrals', label: t('shoppingReferrals') },
+  ]
   return (
     <footer data-component="footer" className="bg-[#2C2C2C] text-cream-100">
       {/* ── 主體：五欄 ── */}
@@ -79,15 +83,15 @@ export function Footer({ businessInfo, socialLinks, footerSections }: FooterProp
             <p className="text-sm text-cream-300 leading-relaxed">
               {biz.legalName}
               <br />
-              融合極簡優雅與韓系活力
+              {t('tagline')}
             </p>
             <div className="text-xs text-cream-400 leading-relaxed space-y-0.5">
-              <p className="text-gold-400 text-sm font-medium tracking-wider mb-1.5">Bank Info</p>
-              <p>銀行代號：822（中國信託）</p>
-              <p>分行：復興分行</p>
-              <p>帳號：495540523762</p>
-              <p>名稱：靚秀國際有限公司</p>
-              <p>統一編號：24540533</p>
+              <p className="text-gold-400 text-sm font-medium tracking-wider mb-1.5">{t('bankInfo')}</p>
+              <p>{t('bankCode')}</p>
+              <p>{t('bankBranch')}</p>
+              <p>{t('bankAccount')}</p>
+              <p>{t('bankName')}</p>
+              <p>{t('taxId')}</p>
             </div>
             <div className="flex gap-3">
               {social.instagram && (
@@ -101,7 +105,7 @@ export function Footer({ businessInfo, socialLinks, footerSections }: FooterProp
                 </a>
               )}
               {social.line && (
-                <a href={social.line} target="_blank" rel="noopener noreferrer" className="text-cream-300 hover:text-gold-400 transition-colors" aria-label="LINE 官方帳號">
+                <a href={social.line} target="_blank" rel="noopener noreferrer" className="text-cream-300 hover:text-gold-400 transition-colors" aria-label="LINE">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
                 </a>
               )}
@@ -110,7 +114,7 @@ export function Footer({ businessInfo, socialLinks, footerSections }: FooterProp
 
           {/* ── Contact（官網資訊） ── */}
           <div>
-            <h4 className="text-sm font-medium tracking-wider text-gold-400 mb-4">Contact</h4>
+            <h4 className="text-sm font-medium tracking-wider text-gold-400 mb-4">{t('contact')}</h4>
             <ul className="space-y-2">
               <li className="flex items-center gap-1.5 text-sm text-cream-300">
                 <Phone size={12} className="shrink-0" />
@@ -124,12 +128,12 @@ export function Footer({ businessInfo, socialLinks, footerSections }: FooterProp
                   className="flex items-center gap-1.5 text-sm text-cream-300 hover:text-gold-400 transition-colors"
                 >
                   <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
-                  Line / @ckmu
+                  {t('lineLabel')}
                 </a>
               </li>
               <li className="flex items-center gap-1.5 text-sm text-cream-300">
                 <MessageCircle size={12} className="shrink-0" />
-                Wechat / chickimmiu
+                {t('wechatLabel')}
               </li>
               <li className="flex items-center gap-1.5 text-sm text-cream-300">
                 <Clock size={12} className="shrink-0" />
@@ -147,14 +151,14 @@ export function Footer({ businessInfo, socialLinks, footerSections }: FooterProp
               className="inline-flex items-center gap-1 text-xs text-gold-400 hover:text-gold-300 transition-colors mt-3"
             >
               <ExternalLink size={10} />
-              合作夥伴 jinhow.ckmu.co
+              {t('partnerLabel')}
             </a>
           </div>
 
           {/* ── Footer Link Sections ── */}
           {(footerSections && footerSections.length > 0 ? footerSections : [
-            { title: 'Help', links: DEFAULT_HELP_LINKS },
-            { title: '購物 / 會員', links: DEFAULT_SHOPPING_LINKS },
+            { title: t('helpTitle'), links: defaultHelpLinks },
+            { title: t('shoppingTitle'), links: defaultShoppingLinks },
           ]).map((section) => (
             <div key={section.title}>
               <h4 className="text-sm font-medium tracking-wider text-gold-400 mb-4">{section.title}</h4>
@@ -175,8 +179,8 @@ export function Footer({ businessInfo, socialLinks, footerSections }: FooterProp
       {/* ── 版權列 ── */}
       <div className="border-t border-white/5">
         <div className="container py-4 flex flex-col sm:flex-row items-center justify-between gap-1 text-xs text-cream-400">
-          <p>&copy; {new Date().getFullYear()} {biz.legalName} CHIC KIM &amp; MIU｜統一編號 {biz.taxId}</p>
-          <p>All Rights Reserved</p>
+          <p>&copy; {new Date().getFullYear()} {biz.legalName} CHIC KIM &amp; MIU｜{t('taxIdLabel')} {biz.taxId}</p>
+          <p>{t('rightsReserved')}</p>
         </div>
       </div>
     </footer>

@@ -33,8 +33,9 @@ const isAdminOrAuthor: Access = ({ req: { user } }) => {
 
 export const StyleSubmissions: CollectionConfig = {
   slug: 'style-submissions',
+  labels: { singular: '穿搭投稿', plural: '穿搭投稿' },
   admin: {
-    group: '遊戲系統',
+    group: '⑤ 互動體驗',
     useAsTitle: 'caption',
     defaultColumns: ['player', 'gameType', 'status', 'voteCount', 'rank', 'createdAt'],
     description: '穿搭作品（8 個 UGC 遊戲共用）',

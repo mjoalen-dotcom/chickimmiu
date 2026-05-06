@@ -1,0 +1,10 @@
+# NotebookLM generation logs (transient, regeneratable)
+**/_logs/
+
+# Large binary artifacts (regenerate from source via NotebookLM pipeline)
+# Markdown / CSV / JSON artifacts are kept as text reference
+*.m4a
+*.mp3
+*.mp4
+*.pdf
+*.bak-*

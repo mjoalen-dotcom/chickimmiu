@@ -15,6 +15,7 @@ import { SizeCharts } from './collections/SizeCharts'
 import { Orders } from './collections/Orders'
 import { Affiliates } from './collections/Affiliates'
 import { BlogPosts } from './collections/BlogPosts'
+import { Podcasts } from './collections/Podcasts'
 import { Pages } from './collections/Pages'
 import { SubscriptionPlans } from './collections/SubscriptionPlans'
 import { ProductReviews } from './collections/ProductReviews'
@@ -46,7 +47,9 @@ import { Bundles } from './collections/Bundles'
 import { CollectibleCardTemplates } from './collections/CollectibleCardTemplates'
 import { CollectibleCards } from './collections/CollectibleCards'
 import { CollectibleCardEvents } from './collections/CollectibleCardEvents'
+import { SiteThemes } from './collections/SiteThemes'
 
+import { CollectionsPageSettings } from './globals/CollectionsPageSettings'
 import { GlobalSettings } from './globals/GlobalSettings'
 import { LoyaltySettings } from './globals/LoyaltySettings'
 import { ReferralSettings } from './globals/ReferralSettings'
@@ -59,15 +62,20 @@ import { InvoiceSettings } from './globals/InvoiceSettings'
 import { TaxSettings } from './globals/TaxSettings'
 import { GameSettings } from './globals/GameSettings'
 import { HomepageSettings } from './globals/HomepageSettings'
+import { ProductListSettings } from './globals/ProductListSettings'
 import { AboutPageSettings } from './globals/AboutPageSettings'
 import { FAQPageSettings } from './globals/FAQPageSettings'
 import { PolicyPagesSettings } from './globals/PolicyPagesSettings'
 import { NavigationSettings } from './globals/NavigationSettings'
 import { CheckoutSettings } from './globals/CheckoutSettings'
 import { OrderSettings } from './globals/OrderSettings'
+import { AdsCatalogSettings } from './globals/AdsCatalogSettings'
+import { AdAudiences } from './collections/AdAudiences'
 
 import { CreditScoreHistory } from './collections/CreditScoreHistory'
 import { PointsTransactions } from './collections/PointsTransactions'
+import { ProductViewEvents } from './collections/ProductViewEvents'
+import { UTMCampaigns } from './collections/UTMCampaigns'
 import { AutomationJourneys } from './collections/AutomationJourneys'
 import { AutomationLogs } from './collections/AutomationLogs'
 import { CustomerServiceTickets } from './collections/CustomerServiceTickets'
@@ -76,6 +84,13 @@ import { LoginAttempts } from './collections/LoginAttempts'
 import { Coupons } from './collections/Coupons'
 import { CouponRedemptions } from './collections/CouponRedemptions'
 import { DailyHoroscopes } from './collections/DailyHoroscopes'
+// 客服中心 v1 Phase 1A
+import { Conversations } from './collections/Conversations'
+import { Messages } from './collections/Messages'
+import { MessageTags } from './collections/MessageTags'
+import { ConversationActivities } from './collections/ConversationActivities'
+import { CustomerServiceSettings } from './globals/CustomerServiceSettings'
+import { Currencies } from './collections/Currencies'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -151,6 +166,48 @@ const emailAdapter = process.env.RESEND_API_KEY
  *   GameSettings — 遊戲系統設定（各遊戲免費次數、獎勵、排行榜、徽章）
  */
 export default buildConfig({
+  // 啟用 Payload 內建資料夾系統（v3 native folders，experimental but stable enough）
+  //   - 自動建立 `payload-folders` collection（樹狀，自我參照 folder 欄位）
+  //   - 已開 folders 的 collection（目前只有 Media）會多一個 `folder` relationship +
+  //     admin 列表多一個 grid / list toggle + drag-drop 移動圖片到資料夾
+  //   - collectionSpecific:true（預設）= 每個資料夾用 folderType[] 鎖定可放的 collection；
+  //     將來開放更多 collection 用 folder 時不需設定每個資料夾
+  //   - browseByFolder:false → 不在最上方 nav（會與「使用說明 / 會員分群分析 …」並排錯位）；
+  //     入口改成「媒體資料夾」這條 collection link，跟 Media 同 group。
+  //   - collectionOverrides → 把 auto-generated 的 payload-folders collection
+  //     從 admin.hidden 改成 visible、放進「媒體資源」group、改成中文標籤。
+  //     `views.list.Component` server-redirect 到 `/admin/collections/media/payload-folders`
+  //     視覺化樹狀瀏覽器（縮圖 + drag-drop），取代 Payload 預設的純文字表格列表，
+  //     讓「媒體資料夾」nav link 一鍵直達直覺版資料夾管理介面。
+  //     編輯個別資料夾走 views.edit（/admin/collections/payload-folders/<id>）不受影響。
+  //   - 對應 Media.ts `folders: true` + migration `enable_payload_folders`
+  //     + components/admin/PayloadFoldersListRedirect.tsx
+  folders: {
+    browseByFolder: false,
+    collectionOverrides: [
+      ({ collection }) => ({
+        ...collection,
+        labels: { singular: '媒體資料夾', plural: '媒體資料夾' },
+        admin: {
+          ...collection.admin,
+          group: '⑥ 內容與頁面',
+          hidden: false,
+          useAsTitle: 'name',
+          defaultColumns: ['name', 'folder', 'updatedAt'],
+          description: '管理 Media 用的資料夾樹（巢狀、可拖拉）。也可從 Media → By Folder tab 直接拖圖。',
+          components: {
+            ...collection.admin?.components,
+            views: {
+              ...collection.admin?.components?.views,
+              list: {
+                Component: '@/components/admin/PayloadFoldersListRedirect',
+              },
+            },
+          },
+        },
+      }),
+    ],
+  },
   admin: {
     user: Users.slug,
     importMap: {
@@ -167,10 +224,10 @@ export default buildConfig({
       },
       beforeDashboard: ['@/components/admin/Dashboard'],
       beforeNavLinks: [
-        '@/components/admin/HelpNavLink',
-        '@/components/admin/MemberAnalyticsNavLink',
-        '@/components/admin/RepeatPurchaseNavLink',
+        '@/components/admin/CKMUDashboardNavGroup',
         '@/components/admin/AdminStyles',
+        '@/components/admin/NavScrollPersist',
+        '@/components/admin/AdminUserMenu',
       ],
       views: {
         help: {
@@ -185,62 +242,130 @@ export default buildConfig({
           Component: '@/components/admin/RepeatPurchaseView',
           path: '/repeat-purchase',
         },
+        // PR-B：UTM 商品歸因
+        utmAttribution: {
+          Component: '@/components/admin/UTMAttributionView',
+          path: '/reports/utm-attribution',
+        },
+        utmBuilder: {
+          Component: '@/components/admin/UTMBuilderView',
+          path: '/tools/utm-builder',
+        },
+        // Wave 1 PR-ζ：連結完整性診斷（封測公開前掃 6 種前後台斷鏈）
+        linkIntegrity: {
+          Component: '@/components/admin/LinkIntegrityView',
+          path: '/diagnostics/link-integrity',
+        },
       },
     },
   },
+  // Collections array order determines sidebar group order in admin UI.
+  // Payload v3 groups by `admin.group` and sorts groups by the position of
+  // the FIRST collection registered for each group. Re-order the array to
+  // re-order the sidebar groups. (The ①…⑦ prefix in group names is a visual
+  // hint only; it does not influence sort.)
   collections: [
-    Users,
-    Media,
-    Categories,
-    SizeCharts,
-    MembershipTiers,
-    SubscriptionPlans,
-    Products,
-    ProductReviews,
+    // ① 訂單與物流
     Orders,
     Returns,
     Refunds,
     Exchanges,
     ShippingMethods,
-    Affiliates,
-    BlogPosts,
-    Pages,
-    UGCPosts,
+    Invoices,
+    // ② 商品管理
+    Categories,
+    SizeCharts,
+    Products,
+    ProductReviews,
+    // ③ 會員與 CRM
+    Users,
+    MembershipTiers,
+    SubscriptionPlans,
     PointsRedemptions,
     CreditScoreHistory,
     PointsTransactions,
+    MemberSegments,
+    UserRewards,
+    // 客服中心 v1 Phase 1A — Conversations + Messages 是 ③ 會員 CRM 的延伸
+    Conversations,
+    Messages,
+    MessageTags,
+    ConversationActivities,
+    ProductViewEvents, // PR-B：UTM 商品瀏覽事件流
+    // ④ 行銷推廣
     AutomationJourneys,
     AutomationLogs,
-    CustomerServiceTickets,
-    MemberSegments,
     MarketingCampaigns,
     MessageTemplates,
     ABTests,
     MarketingExecutionLogs,
     FestivalTemplates,
     BirthdayCampaigns,
-    ConciergeServiceRequests,
-    Invoices,
-    MiniGameRecords,
-    CardBattles,
-    GameLeaderboard,
-    UserRewards,
-    StyleSubmissions,
-    StyleGameRooms,
-    StyleVotes,
-    StyleWishes,
-    LoginAttempts,
     AddOnProducts,
     GiftRules,
     Bundles,
     Coupons,
     CouponRedemptions,
+    Currencies,
+    UTMCampaigns, // PR-B：集中管理 UTM 活動 slug
+    AdAudiences, // PR-E：DPA Retargeting Custom Audience 定義
+    // ⑤ 互動體驗
+    Affiliates,
+    UGCPosts,
+    CustomerServiceTickets,
+    ConciergeServiceRequests,
+    MiniGameRecords,
+    CardBattles,
+    GameLeaderboard,
+    StyleSubmissions,
+    StyleGameRooms,
+    StyleVotes,
+    StyleWishes,
     CollectibleCardTemplates,
     CollectibleCards,
     CollectibleCardEvents,
     DailyHoroscopes,
+    // ⑥ 內容與頁面
+    Media,
+    BlogPosts,
+    Podcasts,
+    Pages,
+    SiteThemes,
+    // ⑦ 系統與安全
+    LoginAttempts,
   ],
-  globals: [GlobalSettings, LoyaltySettings, ReferralSettings, PointRedemptionSettings, RecommendationSettings, CRMSettings, SegmentationSettings, MarketingAutomationSettings, InvoiceSettings, TaxSettings, GameSettings, HomepageSettings, AboutPageSettings, FAQPageSettings, PolicyPagesSettings, NavigationSettings, CheckoutSettings, OrderSettings],
+  // Globals registration order controls the sub-order of globals within each
+  // group section in the sidebar. Grouped & sequenced to match collections above.
+  globals: [
+    // ① 訂單與物流
+    CheckoutSettings,
+    OrderSettings,
+    InvoiceSettings,
+    TaxSettings,
+    // ③ 會員與 CRM
+    LoyaltySettings,
+    ReferralSettings,
+    PointRedemptionSettings,
+    CRMSettings,
+    SegmentationSettings,
+    CustomerServiceSettings, // 客服中心 v1 Phase 1A
+    // ④ 行銷推廣
+    MarketingAutomationSettings,
+    RecommendationSettings,
+    AdsCatalogSettings,
+    // ⑤ 互動體驗
+    GameSettings,
+    // ⑥ 內容與頁面
+    HomepageSettings,
+    ProductListSettings,
+    AboutPageSettings,
+    FAQPageSettings,
+    PolicyPagesSettings,
+    NavigationSettings,
+    CollectionsPageSettings,
+    // ⑦ 系統與安全
+    GlobalSettings,
+  ],
   editor: lexicalEditor({
     features: ({ defaultFeatures }) => [
       ...defaultFeatures,

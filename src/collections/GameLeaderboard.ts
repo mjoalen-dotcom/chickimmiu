@@ -4,8 +4,9 @@ import { isAdmin } from '../access/isAdmin'
 
 export const GameLeaderboard: CollectionConfig = {
   slug: 'game-leaderboard',
+  labels: { singular: '遊戲排行榜', plural: '遊戲排行榜' },
   admin: {
-    group: '遊戲系統',
+    group: '⑤ 互動體驗',
     useAsTitle: 'periodKey',
     defaultColumns: ['player', 'period', 'totalPoints', 'rank', 'gamesPlayed'],
     description: '遊戲排行榜與徽章紀錄（player + period + periodKey 為唯一組合）',

@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Globe, DollarSign, ChevronDown } from 'lucide-react'
+import { useLocaleStore, type LocaleCode } from '@/stores/localeStore'
 
-const LANGUAGES = [
+const LANGUAGES: { code: LocaleCode; label: string; flag: string }[] = [
   { code: 'zh-TW', label: '繁體中文', flag: '🇹🇼' },
   { code: 'zh-CN', label: '简体中文', flag: '🇨🇳' },
   { code: 'en', label: 'English', flag: '🇺🇸' },
@@ -11,19 +13,13 @@ const LANGUAGES = [
   { code: 'ko', label: '한국어', flag: '🇰🇷' },
 ]
 
-const CURRENCIES = [
-  { code: 'TWD', symbol: 'NT$', label: '新台幣' },
-  { code: 'USD', symbol: 'US$', label: '美元' },
-  { code: 'JPY', symbol: '¥', label: '日圓' },
-  { code: 'KRW', symbol: '₩', label: '韓圜' },
-  { code: 'CNY', symbol: '¥', label: '人民幣' },
-]
-
 /* ── 語言選擇 ── */
 export function LanguageSwitcher() {
   const [isOpen, setIsOpen] = useState(false)
-  const [currentLang, setCurrentLang] = useState('zh-TW')
   const ref = useRef<HTMLDivElement>(null)
+  const router = useRouter()
+  const currentLocale = useLocaleStore((s) => s.currentLocale)
+  const setLocale = useLocaleStore((s) => s.setLocale)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -33,19 +29,22 @@ export function LanguageSwitcher() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const lang = LANGUAGES.find((l) => l.code === currentLang)
+  const lang = LANGUAGES.find((l) => l.code === currentLocale)
 
-  const handleChange = (code: string) => {
-    setCurrentLang(code)
-    // Google Translate integration
-    if (typeof window !== 'undefined') {
-      const el = document.querySelector('.goog-te-combo') as HTMLSelectElement | null
-      if (el) {
-        el.value = code === 'zh-TW' ? '' : code.split('-')[0]
-        el.dispatchEvent(new Event('change'))
-      }
+  /**
+   * 切換語系：
+   *   1. setLocale → zustand store + 寫 cookie ckm_locale
+   *   2. router.refresh() → 觸發 RSC 重新跑（next-intl 會讀新 cookie 換 dictionary）
+   * Refresh 是軟更新，client state（cart / 表單）不丟。
+   */
+  const handleChange = (code: LocaleCode) => {
+    if (code === currentLocale) {
+      setIsOpen(false)
+      return
     }
+    setLocale(code)
     setIsOpen(false)
+    router.refresh()
   }
 
   return (
@@ -53,6 +52,7 @@ export function LanguageSwitcher() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-1 px-2 py-1.5 text-xs text-foreground/70 hover:text-gold-600 transition-colors rounded-lg hover:bg-cream-100"
+        aria-label="切換語言"
       >
         <Globe size={14} />
         <span className="hidden md:inline">{lang?.flag}</span>
@@ -66,7 +66,7 @@ export function LanguageSwitcher() {
               key={l.code}
               onClick={() => handleChange(l.code)}
               className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
-                l.code === currentLang
+                l.code === currentLocale
                   ? 'bg-gold-500/10 text-gold-600 font-medium'
                   : 'hover:bg-cream-50 text-foreground/80'
               }`}
@@ -84,8 +84,10 @@ export function LanguageSwitcher() {
 /* ── 幣別選擇 ── */
 export function CurrencySwitcher() {
   const [isOpen, setIsOpen] = useState(false)
-  const [currentCurrency, setCurrentCurrency] = useState('TWD')
   const ref = useRef<HTMLDivElement>(null)
+  const currentCurrency = useLocaleStore((s) => s.currentCurrency)
+  const currencies = useLocaleStore((s) => s.currencies)
+  const setCurrency = useLocaleStore((s) => s.setCurrency)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -95,13 +97,14 @@ export function CurrencySwitcher() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const currency = CURRENCIES.find((c) => c.code === currentCurrency)
+  const currency = currencies.find((c) => c.code === currentCurrency) ?? currencies[0]
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-1 px-2 py-1.5 text-xs text-foreground/70 hover:text-gold-600 transition-colors rounded-lg hover:bg-cream-100"
+        aria-label="切換顯示幣別"
       >
         <DollarSign size={14} />
         <span className="hidden md:inline">{currency?.code}</span>
@@ -109,21 +112,30 @@ export function CurrencySwitcher() {
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-2 w-40 bg-white rounded-xl shadow-xl border border-cream-200 overflow-hidden z-50 py-1">
-          {CURRENCIES.map((c) => (
+        <div className="absolute left-0 top-full mt-2 w-44 bg-white rounded-xl shadow-xl border border-cream-200 overflow-hidden z-50 py-1">
+          {currencies.map((c) => (
             <button
               key={c.code}
-              onClick={() => { setCurrentCurrency(c.code); setIsOpen(false) }}
+              onClick={() => {
+                setCurrency(c.code)
+                setIsOpen(false)
+              }}
               className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
                 c.code === currentCurrency
                   ? 'bg-gold-500/10 text-gold-600 font-medium'
                   : 'hover:bg-cream-50 text-foreground/80'
               }`}
             >
-              <span>{c.label}</span>
+              <span>
+                {c.label}{' '}
+                <span className="text-[10px] text-muted-foreground">({c.code})</span>
+              </span>
               <span className="text-xs text-muted-foreground">{c.symbol}</span>
             </button>
           ))}
+          <div className="px-3 py-2 text-[10px] text-muted-foreground border-t border-cream-200 leading-relaxed">
+            交易以新台幣結算，其他幣別僅供參考。
+          </div>
         </div>
       )}
     </div>

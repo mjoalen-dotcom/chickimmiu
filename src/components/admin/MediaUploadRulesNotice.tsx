@@ -81,11 +81,17 @@ const MediaUploadRulesNotice: React.FC = () => {
       <div style={rowStyle}>
         <div style={labelStyle}>相簿 / 資料夾</div>
         <div>
-          填入「相簿 / 資料夾名稱」欄位可在列表頁搜尋分組；建議用
-          <strong>商品貨號</strong>、
-          <strong>活動名稱</strong>或
+          優先用左側資料夾樹（拖拉移動、子資料夾），舊版「相簿名稱」純文字標籤仍可選填供搜尋。
+          建議資料夾命名：<strong>商品貨號</strong>、<strong>活動名稱</strong>、
           <strong>用途分類</strong>（banner / lookbook / ugc）。
-          完整建議請見「後台使用說明」。
+        </div>
+      </div>
+
+      <div style={rowStyle}>
+        <div style={labelStyle}>批次上傳</div>
+        <div>
+          列表頁右上「Bulk Upload」可一次選多檔，alt 留空會自動由檔名推（去除副檔名、底線改空白）。
+          上傳後可在列表勾選多筆 → <strong>Edit X</strong> 批次套用相同的相簿 / 標籤。
         </div>
       </div>
     </div>

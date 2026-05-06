@@ -31,7 +31,8 @@ import { ProductCard } from '@/components/product/ProductCard'
 import { AISizeRecommender } from '@/components/product/AISizeRecommender'
 import { AlsoBoughtSection } from '@/components/product/AlsoBoughtSection'
 import { ProductPageUpsell } from '@/components/recommendation/ProductPageUpsell'
-import { trackViewContent } from '@/lib/tracking'
+import { trackViewContent, trackProductView } from '@/lib/tracking'
+import { Price } from '@/components/common/Price'
 
 /* ─────────────────────────────────── types ── */
 interface Props {
@@ -231,7 +232,7 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
     return () => observer.disconnect()
   }, [])
 
-  // ViewContent tracking
+  // ViewContent tracking + UTM 商品瀏覽事件落庫
   useEffect(() => {
     trackViewContent({
       content_id: product.id as unknown as string,
@@ -240,6 +241,12 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
       value: (product.salePrice as number) ?? (product.price as number),
       currency: 'TWD',
     })
+    // PR-B：把這次 PDP 瀏覽寫到 product-view-events，附帶當下 UTM
+    // 使用 fire-and-forget；後端有 30s/SKU dedup 防 reload 灌爆
+    trackProductView(
+      product.id as unknown as string | number,
+      product.name as string | undefined,
+    )
   }, [product.id, product.name, product.category, product.salePrice, product.price])
 
   const sizes = [...new Set(
@@ -262,6 +269,29 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
       : null
 
   const canAddToCart = variants.length === 0 || (selectedColor && selectedSize)
+
+  /* ─── Quick Win D2: 韓系電商 social proof + 韓星同款 + 金老佛爺穿過 三種徽章 ─── */
+  const totalSold = (product.totalSold as number) ?? 0
+  // 50/100/300/500/1000+ 階梯顯示，避免冷啟動 "5 件" 不夠氣勢
+  const totalSoldDisplay = (() => {
+    if (totalSold >= 1000) return '1000+'
+    if (totalSold >= 500) return '500+'
+    if (totalSold >= 300) return '300+'
+    if (totalSold >= 100) return '100+'
+    if (totalSold >= 50) return '50+'
+    return null
+  })()
+  const collectionTags = ((product.collectionTags as string[] | undefined) || []) as string[]
+  const koreanCelebRef = product.koreanCelebrityRef as
+    | { celebrityName?: string; dramaOrShow?: string; sourceBrand?: string }
+    | undefined
+  const koreanCelebrityBadge = collectionTags.includes('korean-celebrity') || collectionTags.includes('celebrity-style')
+    ? [koreanCelebRef?.celebrityName, koreanCelebRef?.dramaOrShow]
+        .filter(Boolean)
+        .join(' · ') || '韓星同款'
+    : null
+  const jinStyleBadge =
+    collectionTags.includes('jin-style') || collectionTags.includes('jin-live')
 
   const handleAddToCart = useCallback(() => {
     if (!canAddToCart) return
@@ -390,6 +420,27 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
                       -{discountPercent}%
                     </span>
                   )}
+                  {totalSoldDisplay && (
+                    <span
+                      className="px-3 py-1 bg-amber-500 text-white text-xs rounded-full tracking-wider shadow-sm"
+                      title={`累計售出 ${(product.totalSold as number) || 0} 件`}
+                    >
+                      ✦ 售出 {totalSoldDisplay}
+                    </span>
+                  )}
+                  {koreanCelebrityBadge && (
+                    <span
+                      className="px-3 py-1 bg-rose-100 text-rose-700 text-xs rounded-full tracking-wider border border-rose-200"
+                      title={koreanCelebrityBadge}
+                    >
+                      ★ 韓星同款
+                    </span>
+                  )}
+                  {jinStyleBadge && (
+                    <span className="px-3 py-1 bg-gradient-to-r from-amber-200 to-orange-200 text-amber-800 text-xs rounded-full tracking-wider">
+                      ✿ 金老佛爺已穿
+                    </span>
+                  )}
                 </div>
 
                 {/* Nav arrows */}
@@ -439,13 +490,15 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
             <div>
               <h1 className="text-2xl md:text-3xl font-serif mb-3">{product.name as string}</h1>
               <div className="flex items-baseline gap-3">
-                <span className="text-2xl font-medium text-gold-600">
-                  NT$ {currentPrice.toLocaleString()}
-                </span>
+                <Price
+                  twd={currentPrice}
+                  className="text-2xl font-medium text-gold-600"
+                />
                 {currentPrice < originalPrice && (
-                  <span className="text-base text-muted-foreground line-through">
-                    NT$ {originalPrice.toLocaleString()}
-                  </span>
+                  <Price
+                    twd={originalPrice}
+                    className="text-base text-muted-foreground line-through"
+                  />
                 )}
                 {discountPercent && (
                   <span className="text-sm text-red-500 font-medium">-{discountPercent}%</span>
@@ -982,7 +1035,7 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
           >
             <div className="flex-shrink-0">
               <p className="text-xs text-foreground/50 leading-none">價格</p>
-              <p className="text-lg font-medium text-gold-600 leading-tight">NT$ {currentPrice.toLocaleString()}</p>
+              <Price twd={currentPrice} className="text-lg font-medium text-gold-600 leading-tight block" />
             </div>
             <button
               onClick={handleAddToCart}

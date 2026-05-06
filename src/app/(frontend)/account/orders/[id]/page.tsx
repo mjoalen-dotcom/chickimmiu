@@ -16,7 +16,9 @@ import {
   MapPin,
   FileText,
   CreditCard,
+  ExternalLink,
 } from 'lucide-react'
+import { getTrackingUrl, getCarrierLabel } from '@/lib/shipping/trackingUrl'
 
 import { getSelfServiceEligibility } from '@/lib/commerce/orderSelfService'
 import { OrderSelfServiceActions } from './OrderSelfServiceActions'
@@ -130,6 +132,9 @@ export default async function OrderDetailPage({
     (shippingMethod.convenienceStore as LooseRecord | null) ?? null
   const customerNote = (orderDoc.customerNote as string) ?? ''
   const trackingNumber = (orderDoc.trackingNumber as string) ?? ''
+  const carrier = (shippingMethod.carrier as string) ?? ''
+  const trackingUrl = getTrackingUrl(carrier, trackingNumber)
+  const carrierLabel = getCarrierLabel(carrier)
 
   const selfService = getSelfServiceEligibility(orderDoc)
   const initialAddressForm = {
@@ -183,9 +188,30 @@ export default async function OrderDetailPage({
           </div>
         </div>
         {trackingNumber && (
-          <div className="mt-4 pt-4 border-t border-cream-200 flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">追蹤編號</span>
-            <span className="font-mono">{trackingNumber}</span>
+          <div className="mt-4 pt-4 border-t border-cream-200 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">物流商</span>
+              <span>{carrierLabel}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">追蹤編號</span>
+              <span className="font-mono">{trackingNumber}</span>
+            </div>
+            {trackingUrl ? (
+              <a
+                href={trackingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-gold-600 hover:text-gold-700 transition-colors"
+              >
+                查詢物流進度
+                <ExternalLink size={12} />
+              </a>
+            ) : (
+              <p className="text-muted-foreground text-[11px]">
+                如需查詢進度，請至物流商網站使用上方追蹤編號查詢。
+              </p>
+            )}
           </div>
         )}
       </div>

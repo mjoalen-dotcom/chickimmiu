@@ -13,6 +13,7 @@ export const GlobalSettings: GlobalConfig = {
   slug: 'global-settings',
   label: '全站設定',
   admin: {
+    group: '⑦ 系統與安全',
     description: '管理全站通用設定：客服、追蹤碼、金流、Cookie 同意等',
   },
   access: {

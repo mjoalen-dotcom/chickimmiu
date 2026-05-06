@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>韓國女裝市場全景 Dashboard | chickimmiu 競品研究 2026-05-04</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700;900&family=Noto+Sans+TC:wght@300;400;500;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Noto Sans TC', 'Inter', sans-serif; background: #FAF7F2; }
+    .font-serif-tc { font-family: 'Noto Serif TC', serif; }
+    .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #D4A574; border-radius: 3px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: #FAF7F2; }
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="text-stone-800 min-h-screen" x-data="dashboard()" x-cloak>
+
+  <!-- Header -->
+  <header class="bg-gradient-to-br from-stone-50 via-amber-50 to-orange-50 border-b border-amber-200/50">
+    <div class="max-w-7xl mx-auto px-4 md:px-8 py-10 md:py-14">
+      <p class="text-xs tracking-[0.4em] text-amber-700 mb-3">CHICKIMMIU MARKET RESEARCH · 2026-05-04</p>
+      <h1 class="font-serif-tc text-3xl md:text-5xl font-medium leading-tight mb-3">
+        韓國女裝市場全景 Dashboard
+      </h1>
+      <p class="text-stone-600 text-sm md:text-base mb-6 leading-relaxed max-w-3xl">
+        覆蓋 4 切角 · 80+ 對象 · 80+ 來源驗證 — 韓國本土平台 / 韓國女裝品牌 / 台灣對標競品 / 韓國 SNS 熱門穿搭店。所有資料可篩選、搜尋、展開細節。
+      </p>
+      <div class="flex flex-wrap gap-3 md:gap-6 text-xs md:text-sm">
+        <div class="px-4 py-2 bg-white rounded-full border border-amber-200">
+          <span class="text-amber-600 font-bold" x-text="filtered.length"></span>
+          <span class="text-stone-500"> / <span x-text="data.length"></span> 對象</span>
+        </div>
+        <div class="px-4 py-2 bg-white rounded-full border border-amber-200">
+          <span class="text-stone-500">關鍵字：</span><span class="font-bold" x-text="search || '—'"></span>
+        </div>
+        <div class="px-4 py-2 bg-white rounded-full border border-amber-200">
+          <span class="text-stone-500">類別：</span>
+          <span class="font-bold" x-text="filterTypeLabel(typeFilter)"></span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Filter Bar -->
+  <div class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-stone-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 md:px-8 py-3">
+      <div class="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+        <!-- Type Filter Pills -->
+        <div class="flex gap-1.5 overflow-x-auto scrollbar-thin pb-1 md:pb-0">
+          <template x-for="t in types" :key="t.value">
+            <button
+              @click="typeFilter = t.value"
+              :class="typeFilter === t.value ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'"
+              class="shrink-0 px-3 md:px-4 py-1.5 text-xs md:text-sm rounded-full transition-colors flex items-center gap-1.5"
+            >
+              <span x-text="t.icon"></span>
+              <span x-text="t.label"></span>
+              <span class="text-[10px] opacity-70" x-text="`(${countByType(t.value)})`"></span>
+            </button>
+          </template>
+        </div>
+        <!-- Search -->
+        <div class="flex-1 relative">
+          <input
+            type="text"
+            x-model="search"
+            placeholder="搜尋品牌名、韓文、風格、對 chickimmiu 啟示..."
+            class="w-full pl-9 pr-3 py-2 text-sm border border-stone-200 rounded-full focus:outline-none focus:border-amber-500"
+          />
+          <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <!-- 在台 toggle -->
+        <div class="flex gap-1.5">
+          <template x-for="o in twOptions" :key="o.value">
+            <button
+              @click="twFilter = o.value"
+              :class="twFilter === o.value ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-white text-stone-500 border-stone-200 hover:bg-stone-50'"
+              class="shrink-0 px-3 py-1.5 text-xs rounded-full border transition-colors"
+              x-text="o.label"
+            ></button>
+          </template>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TL;DR Strategy Card -->
+  <div class="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8">
+    <div class="bg-gradient-to-br from-amber-50 to-orange-100 rounded-3xl p-6 md:p-8 border border-amber-200">
+      <p class="text-xs tracking-[0.4em] text-amber-700 mb-2">TL;DR · STRATEGIC POSITION</p>
+      <h2 class="font-serif-tc text-xl md:text-2xl font-bold mb-4">chickimmiu 的甜蜜點：「左上象限」獨佔</h2>
+      <div class="grid md:grid-cols-2 gap-6 text-sm md:text-base">
+        <div>
+          <p class="font-bold text-stone-800 mb-2">真正的對手（4 家）：</p>
+          <ul class="space-y-1.5 text-stone-600">
+            <li>• <strong>Lulu's 露露絲</strong> — 22 年老字號韓國代購</li>
+            <li>• <strong>W.Korea 正韓服飾</strong> — 神褲 16 萬件、台北/台中實體</li>
+            <li>• <strong>Healer 衣服是解藥</strong> — 質感韓風 + 中文 slogan</li>
+            <li>• <strong>MEIER.Q</strong> — 美而快子品牌、UR LIVING 設櫃</li>
+          </ul>
+          <p class="mt-3 text-xs text-stone-500">PAZZO / Queen Shop 量級太大，不應浪費資源正面剛</p>
+        </div>
+        <div>
+          <p class="font-bold text-stone-800 mb-2">不可複製的護城河：</p>
+          <ul class="space-y-1.5 text-stone-600">
+            <li>✿ 金老佛爺 22 年韓國部落客資產</li>
+            <li>✿ 月飛韓國親選的真實感</li>
+            <li>✿ KOL 個人 IP × 正韓選品 × 中高單價</li>
+            <li>✿ 後台 wallet / 點數 / 訂閱方案三層 LTV 系統</li>
+          </ul>
+          <p class="mt-3 text-xs text-stone-500">這 4 家對手都沒有「金老佛爺」這級別的個人 IP</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <main class="max-w-7xl mx-auto px-4 md:px-8 pb-16">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
+      <template x-for="item in filtered" :key="item.id">
+        <article
+          @click="active = item"
+          class="bg-white rounded-2xl border border-stone-200 hover:border-amber-300 hover:shadow-lg transition-all p-5 cursor-pointer group flex flex-col"
+        >
+          <div class="flex items-start gap-3 mb-3">
+            <div
+              class="w-12 h-12 shrink-0 rounded-xl flex items-center justify-center font-serif-tc text-xl font-bold text-white"
+              :style="`background: ${item.color || '#D4A574'}`"
+              x-text="item.emoji || item.name.charAt(0)"
+            ></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-[10px] tracking-widest text-amber-600 font-medium" x-text="item.typeBadge"></p>
+              <h3 class="font-serif-tc text-base font-bold text-stone-800 truncate" x-text="item.name"></h3>
+              <p class="text-xs text-stone-400 truncate" x-text="item.nameAlt || ''"></p>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-1 mb-3">
+            <template x-for="tag in (item.tags || []).slice(0, 3)" :key="tag">
+              <span class="px-2 py-0.5 text-[10px] bg-stone-100 text-stone-600 rounded-full" x-text="tag"></span>
+            </template>
+          </div>
+          <p class="text-xs text-stone-600 leading-relaxed mb-3 line-clamp-3" x-text="item.summary"></p>
+          <div class="mt-auto pt-3 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-500">
+            <span x-text="item.scale || '—'"></span>
+            <span :class="item.tw === '有' ? 'text-green-600' : item.tw === '無' ? 'text-stone-400' : 'text-amber-600'" x-text="item.tw === '有' ? '✓ 在台' : item.tw === '無' ? '✗ 未在台' : (item.tw || '—')"></span>
+          </div>
+          <div class="mt-2 text-[11px] text-amber-600 group-hover:text-amber-700 flex items-center gap-1 transition-colors">
+            點看詳情 <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
+        </article>
+      </template>
+    </div>
+
+    <!-- Empty state -->
+    <div x-show="filtered.length === 0" class="text-center py-20">
+      <p class="text-stone-400 text-sm">沒有符合條件的對象。試試清除篩選條件。</p>
+      <button @click="search = ''; typeFilter = 'all'; twFilter = 'all'" class="mt-3 px-4 py-2 text-xs bg-amber-100 text-amber-800 rounded-full">清除全部篩選</button>
+    </div>
+  </main>
+
+  <!-- Modal -->
+  <div
+    x-show="active !== null"
+    @click="active = null"
+    @keydown.escape.window="active = null"
+    class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-8"
+  >
+    <div
+      @click.stop
+      x-show="active !== null"
+      x-transition:enter="transition ease-out duration-200"
+      x-transition:enter-start="opacity-0 translate-y-4"
+      x-transition:enter-end="opacity-100 translate-y-0"
+      class="bg-white rounded-t-3xl md:rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto scrollbar-thin"
+    >
+      <template x-if="active">
+        <div class="p-6 md:p-10">
+          <div class="flex items-start justify-between mb-6">
+            <div class="flex items-start gap-4">
+              <div
+                class="w-16 h-16 shrink-0 rounded-2xl flex items-center justify-center font-serif-tc text-2xl font-bold text-white"
+                :style="`background: ${active.color || '#D4A574'}`"
+                x-text="active.emoji || active.name.charAt(0)"
+              ></div>
+              <div>
+                <p class="text-[10px] tracking-widest text-amber-600 font-medium" x-text="active.typeBadge"></p>
+                <h2 class="font-serif-tc text-2xl md:text-3xl font-bold text-stone-800" x-text="active.name"></h2>
+                <p class="text-stone-400 text-sm" x-text="active.nameAlt || ''"></p>
+                <a x-show="active.url" :href="active.url" target="_blank" rel="noopener" class="text-amber-600 text-xs hover:underline" x-text="active.url"></a>
+              </div>
+            </div>
+            <button @click="active = null" class="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-500">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+
+          <div class="grid md:grid-cols-3 gap-3 mb-6">
+            <div class="bg-stone-50 rounded-xl p-3">
+              <p class="text-[10px] text-stone-500 mb-1">規模</p>
+              <p class="text-sm font-bold" x-text="active.scale || '未公開'"></p>
+            </div>
+            <div class="bg-stone-50 rounded-xl p-3">
+              <p class="text-[10px] text-stone-500 mb-1">定位</p>
+              <p class="text-sm font-bold" x-text="active.position || '—'"></p>
+            </div>
+            <div class="bg-stone-50 rounded-xl p-3">
+              <p class="text-[10px] text-stone-500 mb-1">在台</p>
+              <p class="text-sm font-bold" :class="active.tw === '有' ? 'text-green-600' : active.tw === '無' ? 'text-stone-500' : 'text-amber-600'" x-text="active.tw || '—'"></p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-1.5 mb-6">
+            <template x-for="tag in (active.tags || [])" :key="tag">
+              <span class="px-3 py-1 text-xs bg-amber-50 text-amber-700 rounded-full" x-text="tag"></span>
+            </template>
+          </div>
+
+          <div class="prose prose-sm max-w-none">
+            <h3 class="font-serif-tc font-bold text-base mb-2 text-stone-800">📋 概觀</h3>
+            <p class="text-sm text-stone-700 leading-relaxed mb-4 whitespace-pre-line" x-text="active.summary"></p>
+
+            <template x-if="active.uxHighlights">
+              <div>
+                <h3 class="font-serif-tc font-bold text-base mb-2 text-stone-800">⭐ 核心亮點</h3>
+                <ul class="text-sm text-stone-700 space-y-1.5 mb-4">
+                  <template x-for="h in active.uxHighlights" :key="h">
+                    <li class="flex gap-2"><span class="text-amber-500 shrink-0">•</span><span x-text="h"></span></li>
+                  </template>
+                </ul>
+              </div>
+            </template>
+
+            <template x-if="active.takeaway">
+              <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-5 my-4 border border-amber-200">
+                <h3 class="font-serif-tc font-bold text-base mb-2 text-amber-800">✿ 對 chickimmiu 的啟示</h3>
+                <p class="text-sm text-stone-700 leading-relaxed whitespace-pre-line" x-text="active.takeaway"></p>
+              </div>
+            </template>
+
+            <template x-if="active.sources && active.sources.length">
+              <div>
+                <h3 class="font-serif-tc font-bold text-base mb-2 text-stone-800">📎 來源</h3>
+                <ul class="text-xs space-y-1">
+                  <template x-for="s in active.sources" :key="s.url">
+                    <li><a :href="s.url" target="_blank" rel="noopener" class="text-amber-600 hover:underline" x-text="s.title"></a></li>
+                  </template>
+                </ul>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-stone-200 bg-white py-8">
+    <div class="max-w-7xl mx-auto px-4 md:px-8 text-center text-xs text-stone-500">
+      <p>研究日期 2026-05-04 · 80+ 對象 · 4 切角 · 80+ 來源</p>
+      <p class="mt-1">Generated for <span class="font-bold text-amber-700">chickimmiu</span> 競品研究 · 完整 markdown 版見 <code class="bg-stone-100 px-1.5 py-0.5 rounded text-amber-700">docs/marketing/2026-05-04-korean-fashion-market-research.md</code></p>
+    </div>
+  </footer>
+
+  <script>
+    function dashboard() {
+      return {
+        search: '',
+        typeFilter: 'all',
+        twFilter: 'all',
+        active: null,
+        types: [
+          { value: 'all', label: '全部', icon: '✿' },
+          { value: 'platform', label: '韓國平台', icon: '🏬' },
+          { value: 'brand', label: '韓國品牌', icon: '👗' },
+          { value: 'tw', label: '台灣競品', icon: '🇹🇼' },
+          { value: 'sns', label: 'SNS / KOL', icon: '📸' }
+        ],
+        twOptions: [
+          { value: 'all', label: '在台不限' },
+          { value: '有', label: '✓ 已在台' },
+          { value: '無', label: '✗ 未在台' }
+        ],
+        filterTypeLabel(v) {
+          const t = this.types.find(x => x.value === v);
+          return t ? t.label : '全部';
+        },
+        countByType(v) {
+          if (v === 'all') return this.data.length;
+          return this.data.filter(d => d.type === v).length;
+        },
+        get filtered() {
+          let list = this.data;
+          if (this.typeFilter !== 'all') list = list.filter(d => d.type === this.typeFilter);
+          if (this.twFilter !== 'all') list = list.filter(d => d.tw === this.twFilter);
+          if (this.search.trim()) {
+            const s = this.search.toLowerCase().trim();
+            list = list.filter(d =>
+              (d.name + ' ' + (d.nameAlt || '') + ' ' + (d.summary || '') + ' ' + (d.takeaway || '') + ' ' + (d.tags || []).join(' ')).toLowerCase().includes(s)
+            );
+          }
+          return list;
+        },
+        data: [
+          // ═══════════════════════════ 切角 1：韓國本土平台 (12) ═══════════════════════════
+          {
+            id: 'p-musinsa', type: 'platform', typeBadge: '韓國平台 #1', name: 'Musinsa', nameAlt: '무신사 · musinsa.com',
+            url: 'https://www.musinsa.com', emoji: 'M', color: '#1A1A1A',
+            scale: 'MAU 5M+ / 2025 GMV 5 兆韓元', position: '男女綜合潮流', tw: '無',
+            tags: ['街拍 SNAP', 'IPO 估值 10 兆', 'PB Musinsa Standard'],
+            summary: '韓國時尚一哥。2025 營收 1.4679 兆韓元、GMV 5 兆韓元、營業利益 1,405 億韓元。準備 IPO 估值 10 兆韓元。會員 13M+、街拍社群起家、現代韓國街拍文化的源頭。',
+            uxHighlights: [
+              'SNAP 街拍：UGC 街拍照可直接 tag 商品下單，「內容即商品」最佳實踐',
+              'Musinsa Standard PB：朝向 1 兆韓元銷售目標，高毛利支柱',
+              '營收結構 38.8% 佣金 / 30.8% PB / 27.3% 商品銷售',
+              '海外 Global Store 2025/10 GMV YoY +2.5×（日本為主動能）'
+            ],
+            takeaway: '把 UGC 街拍接到 PDP 是減少廣告依賴的核心；1P/3P/PB 三層收入結構值得規劃。chickimmiu 已有點數系統，可把「上傳穿搭→領點數→其他人點 tag 直接買」做成飛輪。',
+            sources: [
+              { title: 'Musinsa Newsroom', url: 'https://about.musinsa.com/newsroom/about-musinsa' },
+              { title: 'Seoul Economic Daily', url: 'https://en.sedaily.com/news/2026/03/31/musinsa-posts-record-earnings-with-revenue-topping-1' }
+            ]
+          },
+          {
+            id: 'p-ably', type: 'platform', typeBadge: '韓國平台 #2', name: 'Ably', nameAlt: '에이블리 · a-bly.com',
+            url: 'https://a-bly.com', emoji: 'A', color: '#FF6B9D',
+            scale: 'MAU 8.33M / 估值 USD 21 億', position: '20 代女性親民 K-fashion', tw: '無',
+            tags: ['AI 個人化', '統一購物車', 'Alibaba 投資'],
+            summary: 'AI 個人化女裝超級 App。2024 交易額 >2 兆韓元、首度轉盈 33 億韓元、2025 估值 USD 21 億。Alibaba 投資 USD 7,140 萬（韓國首件 Alibaba 對韓國電商持股案）。',
+            uxHighlights: [
+              'AI 個人化：對 1,000 萬+ 用戶 profile 套用推薦演算法',
+              '統一購物車：跨多家商家一次結帳、一次配送追蹤',
+              '免費上架商家政策：吸引大量東大門小型賣家',
+              '超級 App：時尚 → 美妝 → 居家 → 食品橫向擴張'
+            ],
+            takeaway: '統一購物車對「多商家聚合」是關鍵 UX；早期免手續費吸商家、後期靠廣告 + PB 賺錢的反向漏斗。AI 冷啟動 onboarding 問卷可直接抄。'
+          },
+          {
+            id: 'p-zigzag', type: 'platform', typeBadge: '韓國平台 #3', name: 'Zigzag', nameAlt: '지그재그 · zigzag.kr',
+            url: 'https://zigzag.kr', emoji: 'Z', color: '#FF4A8C',
+            scale: '累積下載 35M / 2024 GMV >2 兆', position: '20-30 代女性聚合', tw: '無',
+            tags: ['Jikjin 直送', 'Lens 圖像搜尋', 'Kakao 集團'],
+            summary: '一站式女裝聚合龍頭。聚合 7,000+ 家獨立商城，2024 首度轉盈、2025 MAU YoY +38.1%。Kakao Style 旗下。',
+            uxHighlights: [
+              '多店聚合 + 統一結帳',
+              'Jikjin 直送（직진배송）：自有快配，佔 GMV 比 YoY +22pp',
+              'Zigzag Lens 圖像搜尋：YoY +40% 使用量',
+              '冷啟動 onboarding：要求填年齡 + 風格偏好',
+              '70%+ 促銷活動由 AI 編排'
+            ],
+            takeaway: '「冷啟動 onboarding 問卷 → 立刻客製首頁」這套留存儀式化值得 chickimmiu 註冊流程立刻採用；圖像搜尋對打卡導購是 native。'
+          },
+          {
+            id: 'p-29cm', type: 'platform', typeBadge: '韓國平台 #4', name: '29CM', nameAlt: '29cm.co.kr',
+            url: 'https://29cm.co.kr', emoji: '29', color: '#000000',
+            scale: '2024 GMV 1 兆韓元 / AOV 23 萬', position: '25-39 女性精品 lifestyle', tw: '無',
+            tags: ['雜誌風 UI', '編輯式策展', 'Musinsa 旗下'],
+            summary: '編輯式 premium 女性 lifestyle。2024 GMV 突破 1 兆韓元、AOV 約 230,000 韓元（顯著高於同業）、CAGR 64%。',
+            uxHighlights: [
+              '雜誌風 UI：每件商品附專欄式策展與品牌故事',
+              'Brand Philosophy / Brand Commentary / Igu Home Interview 編輯欄目',
+              '每週限定 Showcase 企劃孵化新品牌',
+              '跨品類：時尚 / 美妝 / 家具 / 家電 / 食品'
+            ],
+            takeaway: '對 chickimmiu 想做精品線最直接對標。雜誌排版式 PDP（產品大圖 + 文字策展 + 品牌 Q&A）拉高 AOV 與停留時間。chickimmiu 的 PageTemplatePicker 已具備此基礎。'
+          },
+          {
+            id: 'p-wconcept', type: 'platform', typeBadge: '韓國平台 #5', name: 'W Concept', nameAlt: 'W컨셉 · wconcept.co.kr',
+            url: 'https://wconcept.co.kr', emoji: 'W', color: '#2B2B2B',
+            scale: '2024 營收 1,195 億韓元 / 3,000+ 品牌', position: '25-35 女性設計師', tw: '無',
+            tags: ['Shinsegae 旗下', '44 國跨境', 'AI 尺寸推薦'],
+            summary: '韓國設計師品牌精選。2024 年新 CEO Lee Ji-eun 改版手機版（4/15 上線）：強化品牌主頁與大圖編輯。',
+            takeaway: 'lookbook + 設計師故事頁的版型可直接借鏡；跨境多語言展示模式對 chickimmiu 想做華語圈品牌出海有參考。'
+          },
+          {
+            id: 'p-shinsegae', type: 'platform', typeBadge: '韓國平台 #6', name: 'Shinsegae V', nameAlt: '신세계V · sivillage.com',
+            url: 'https://sivillage.com', emoji: 'S', color: '#8B4513',
+            scale: '2025 月銷再創新高', position: '30+ 女性精品', tw: '無',
+            tags: ['品牌正品', '集團點數', '精品奢華'],
+            summary: '精品正品保證 + 集團會員體系（信用卡 / 點數）整合。屬 Shinsegae International 旗下。',
+            takeaway: '「正品保證」徽章與序號驗證流程是高客單品必備信任元素。'
+          },
+          {
+            id: 'p-stylenanda-platform', type: 'platform', typeBadge: '韓國平台 #10', name: 'Stylenanda', nameAlt: '스타일난다 · stylenandaen.com',
+            url: 'https://stylenandaen.com', emoji: '★', color: '#FF69B4',
+            scale: 'L\'Oréal 2018 收購 USD 3.6 億', position: '18-28 edgy Y2K', tw: '部分',
+            tags: ['Pink Hotel', '3CE 美妝', 'D2C 範本'],
+            summary: '2004 創立，2018 被 L\'Oréal 收購。3CE 彩妝佔營收 70%，服飾線退居二線。Pink Hotel 體驗門市 + 多語站。',
+            takeaway: '強烈品牌世界觀（Pink Hotel）+ 跨品類（時尚 → 美妝）的 D2C 範本，對 chickimmiu 想做自有品牌延伸極具啟發。「店景即內容」邏輯可借用到台灣 popup。'
+          },
+          {
+            id: 'p-brandi', type: 'platform', typeBadge: '韓國平台 #9', name: 'Brandi', nameAlt: '브랜디 · brandi.co.kr',
+            url: 'https://brandi.co.kr', emoji: 'B', color: '#9D9D9D',
+            scale: '2025/9 申請企業重整', position: '20 代女性東大門', tw: '無',
+            tags: ['東大門當日配', 'Hi 賣家後台', '財務危機'],
+            summary: '東大門當日配先驅，Newnex 母公司 2025/9 申請企業重整。',
+            takeaway: '警示案例：純 marketplace 不做 PB，碰到中國低價會直接死。chickimmiu 應持續強化自有品牌與精選買手雙腳走路。'
+          },
+
+          // ═══════════════════════════ 切角 2：韓國品牌 (~20) ═══════════════════════════
+          {
+            id: 'b-mardi', type: 'brand', typeBadge: '韓國品牌 · 街頭設計師', name: 'Mardi Mercredi', nameAlt: '마르디 메크르디',
+            url: 'https://mardimercredi.com.tw', emoji: '✿', color: '#FFB5A7',
+            scale: 'Musinsa 種子投資後三位數成長', position: '法式 + 首爾風', tw: '有',
+            tags: ['小雛菊 logo', 'FLOWER MARDI', 'Y2K + 法式'],
+            summary: '2018 創立，「FLOWER MARDI」一支 T-shirt 撐起整個品牌。台北東區旗艦店（2024/10/25 開幕）+ 新光三越南西/台中/新竹遠百多家設櫃。',
+            takeaway: '單一花卉 logo + 灰白為主的乾淨拍攝 = 全亞洲都認得。台灣電商若要做設計師路線，floor 1 商品要有「圖騰級辨識度」。',
+            sources: [{ title: 'Marie Claire 台北旗艦', url: 'https://www.marieclaire.com.tw/fashion/news/82437' }]
+          },
+          {
+            id: 'b-marithe', type: 'brand', typeBadge: '韓國品牌 · 街頭設計師 ★ 高機會', name: 'Marithé F. Girbaud KR', nameAlt: '마리떼 프랑소와 저버',
+            url: 'https://en.marithe-official.com', emoji: 'MG', color: '#D4A574',
+            scale: '30 億 → 1.5 兆韓元（5 年 500×）', position: '20-30 代女性復古 logo', tw: '無',
+            tags: ['90s 復古', 'logo tee 核心', '台灣零佈局'],
+            summary: '最戲劇性的品牌復活案例。原法國品牌 2012 倒閉，韓國 Layer 2019 取得 KR 授權重塑為「年輕女性大眾市場」。',
+            takeaway: '【chickimmiu 應主動爭取代理】韓國爆量但台灣完全沒設櫃。授權復活 + 重塑年齡層 + logo-driven 視覺記憶。chickimmiu 看到「沒人做但 IG 流量強」的品牌可以爭取代理。',
+            sources: [{ title: 'Korea Times', url: 'https://www.koreatimes.co.kr/lifestyle/trends/20250924/how-marithe-francois-girbaud-made-a-comeback-in-the-fashion-world-especially-in-korea' }]
+          },
+          {
+            id: 'b-matinkim', type: 'brand', typeBadge: '韓國品牌 · 街頭設計師', name: 'Matin Kim', nameAlt: '마뗑킴',
+            url: 'https://matinkim.shop', emoji: 'MK', color: '#000000',
+            scale: '380K IG+TikTok / 海外 +121%', position: '極簡 + 邊鋒 graphic', tw: '無',
+            tags: ['Misto 收購', 'fan-driven design', '廣藏市場店'],
+            summary: '2018 創立，被 Misto（原 FILA Holdings）收購後成為韓國女裝旗艦。2025 三月到六月跟全球 400 個 KOL 合作、海外營收 +121%。每天看 IG/TikTok 留言、即時應用到下一季風格。',
+            takeaway: '【fan-driven loop 是 chickimmiu 立刻可學】每月發 carousel poll「下季想看什麼?」收 100-300 留言、挑 3-5 個方向公開回覆。把粉絲變成 co-designer。',
+            sources: [{ title: 'Korea Times Matin Kim', url: 'https://www.koreatimes.co.kr/business/companies/20250722/matin-kim-lets-fans-define-its-style' }]
+          },
+          {
+            id: 'b-stylenanda', type: 'brand', typeBadge: '韓國品牌 · 大眾少女系', name: 'Stylenanda', nameAlt: '스타일난다',
+            url: 'https://en.stylenanda.com', emoji: '★', color: '#FF69B4',
+            scale: 'L\'Oréal 旗下', position: 'Y2K / 性感 / Pink Hotel', tw: '有',
+            tags: ['Y2K OG', '3CE 美妝', '台北三越'],
+            summary: '2004 Kim So-Hee 創立，2018 被 L\'Oréal 以 3.6 億美元收購。台灣靠 3CE 帶動 fashion 流量。',
+            takeaway: '店景即內容（Pink Hotel）邏輯可借用到台灣 popup 或 lookbook 拍攝；CTA 一定要把「打卡點」做成消費入口。'
+          },
+          {
+            id: 'b-chuu', type: 'brand', typeBadge: '韓國品牌 · 大眾少女系', name: 'Chuu', nameAlt: '츄',
+            url: 'https://chuumade.com', emoji: 'C', color: '#FFB6C1',
+            scale: '台灣海外拓店首站', position: '甜美少女 / 25 歲永恆', tw: '有',
+            tags: ['-5kg jeans', '台北三越', '減齡 storytelling'],
+            summary: 'PPB Studios 旗下，「讓所有女性永遠 25 歲」。「-5kg jeans」是品牌代表。',
+            takeaway: '單品起一個有承諾的綽號比平鋪直敘描述好賣 10 倍。「-5kg jeans」這名字本身就是行銷。'
+          },
+          {
+            id: 'b-kirsh', type: 'brand', typeBadge: '韓國品牌 · 大眾少女系', name: 'Kirsh', nameAlt: '키르시',
+            url: 'https://kirsh.co.kr', emoji: '🍒', color: '#DC143C',
+            scale: 'IG 210K', position: '櫻桃 logo / 學院街頭', tw: '部分',
+            tags: ['logo-driven', '4 代女團 model', 'IVE 張員瑛代言'],
+            summary: 'VIVASTUDIO 旗下副牌，近年以櫻桃 logo 重新定位。靠 4 代女團 K-pop fans 全亞洲炸開。',
+            takeaway: '單一強記憶 logo 的力量（Mardi 小雛菊 / Kirsh 櫻桃）。chickimmiu 若有 mascot 可考慮固化視覺資產。'
+          },
+          {
+            id: 'b-andar', type: 'brand', typeBadge: '韓國品牌 · 運動機能', name: 'Andar', nameAlt: '안다르',
+            url: 'https://andar-global.com', emoji: 'A', color: '#000000',
+            scale: '2024 Q2 韓國 616 億韓圜', position: '韓版 Lululemon / 亞洲版型', tw: '有',
+            tags: ['亞洲版型', 'office athleisure', 'andar_tw IG'],
+            summary: '2015 創立，「親民版 Lululemon」。Aircooling Gini Signature Leggings 為招牌。台灣已正式進駐（andar_tw IG + 蝦皮 + Yogaland 代理 + Mellow Active 代理）。',
+            takeaway: '「亞洲版型」是說服台灣女性的最大關鍵字。office athleisure 是 2025 韓國最大成長軌，台灣電商若想做運動類，單純 yoga 不夠，要做「上班可穿的運動感」。'
+          },
+          {
+            id: 'b-standoil', type: 'brand', typeBadge: '韓國品牌 · 配件', name: 'Stand Oil', nameAlt: '스탠드오일',
+            url: 'https://en.standoil.kr', emoji: '🛍', color: '#F5DEB3',
+            scale: 'IG 30.2 萬 / 50% 訪客海外', position: '純素皮 / Y2K Chubby Bag', tw: '無',
+            tags: ['Chubby Bag', 'Bella Hadid 帶', 'NewJeans 代言'],
+            summary: '2018 由 Lee Hyejoo 創立。Bella Hadid、Jennie、Olivia Rodrigo、Charli XCX、Selena Gomez 都揹過。聖水洞旗艦 50% 訪客來自海外。',
+            takeaway: '配件帶服裝 — 一個強記憶包款可拉動整個女裝品牌的視覺。chickimmiu 應規劃 1 個「配件 hero piece」打 IG。'
+          },
+          {
+            id: 'b-margesherwood', type: 'brand', typeBadge: '韓國品牌 · 配件', name: 'Marge Sherwood', nameAlt: '마지셔우드',
+            url: 'https://margesherwood.com', emoji: 'MS', color: '#8B4513',
+            scale: 'IG 25.5 萬', position: 'retro-tinged polish', tw: '無',
+            tags: ['Hailey Bieber 揹', 'Soft Baguette', '90s 復古'],
+            summary: '2016 創辦，倫敦時裝學院相識的雙人組合。',
+            takeaway: '完全反 minimalism — 90s 化學色、皺褶皮、鱷魚壓紋亮面、寶石色，是另一條「不靠 minimalist 也能做韓系時尚 IG」的路。'
+          },
+          {
+            id: 'b-osoi', type: 'brand', typeBadge: '韓國品牌 · 配件', name: 'OSOI', nameAlt: '오소이',
+            url: 'https://osoi.kr', emoji: 'O', color: '#A0826D',
+            scale: 'IG 26.5 萬', position: 'unhurried / 建築感', tw: '無',
+            tags: ['IT-bag 三劍客', '建築背景設計師', 'Toni 圓型'],
+            summary: '2016 由建築背景設計師 Heejin Kang 創立。包款邊緣的「折疊」處理是建築語言的時裝化。SCMP 與 WWD 都把 OSOI 跟 Marge Sherwood、Stand Oil 並列為「韓系新 it-bag 三劍客」。',
+            takeaway: 'IG 上極少廣告感、只放 mood image，是「靜物式留白」風格參考。'
+          },
+          {
+            id: 'b-andersson', type: 'brand', typeBadge: '韓國品牌 · 設計師高單', name: 'Andersson Bell', nameAlt: '앤더슨벨',
+            url: 'https://adsb.co.kr', emoji: 'AB', color: '#2B4F8C',
+            scale: 'SSENSE / Farfetch', position: '韓 + 北歐 / patchwork', tw: '無',
+            tags: ['25-40 高消費', 'patchwork', '北歐極簡'],
+            summary: '2014 創立，「Andersson(瑞典姓)+ Bell(韓國寺廟鐘)」=韓國 + 北歐美學。打破性別刻板。',
+            takeaway: 'patchwork + 拼貼版型 + 極簡北歐線條 + 韓國街頭 mix；單品具強單獨記憶點。'
+          },
+          {
+            id: 'b-lowclassic', type: 'brand', typeBadge: '韓國品牌 · 設計師高單', name: 'Low Classic', nameAlt: '로우 클래식',
+            url: 'https://lowclassic.com', emoji: 'L', color: '#444444',
+            scale: 'IG 17 萬', position: '極簡 / utilitarian', tw: '無',
+            tags: ['25-45 office', 'elevated basics', '台灣缺位'],
+            summary: 'Lee Myoung Sin 設計總監、女性極簡 ready-to-wear。utilitarian + feminine 平衡，材質感重於印花。',
+            takeaway: '「elevated basics」這個 segment 在台灣很缺 — Mardi 雖紅但偏 casual，Low Classic 是辦公室通勤的高質感選項，是 chickimmiu 的差異化機會。'
+          },
+
+          // ═══════════════════════════ 切角 3：台灣競品 (~20) ═══════════════════════════
+          {
+            id: 't-pazzo', type: 'tw', typeBadge: '台灣競品 #1 大型集團', name: 'PAZZO', nameAlt: 'pazzo.com.tw',
+            url: 'https://www.pazzo.com.tw', emoji: 'P', color: '#000000',
+            scale: 'IG 305K / 集團 32.6 億 NT', position: '自有設計（歐美風 + 韓系線）', tw: '有',
+            tags: ['楊丞琳代言', '美而快上市', '9+ 實體店'],
+            summary: '2010 廖承豪創辦。美而快國際（4129）旗下 No.1 品牌，占集團電商營收近 40%。9+ 間實體店（信義 ATT、西門 4 層旗艦店、台中文心森林）。',
+            takeaway: 'PAZZO 是電商規模最大但非純韓系。chickimmiu 不需要硬碰硬比量；可走「金老佛爺月飛韓國精選」的編輯選品路線、強調個人品味與韓國第一手到貨速度，這是 PAZZO 集團化大量產所做不到的。'
+          },
+          {
+            id: 't-queenshop', type: 'tw', typeBadge: '台灣競品 #2 實體連鎖', name: 'Queen Shop', nameAlt: 'queenshop.com.tw',
+            url: 'https://www.queenshop.com.tw', emoji: 'Q', color: '#FF6B9D',
+            scale: 'IG 301K / FB 96.2 萬讚 / 27 實體店', position: '自有設計（日韓系混合）', tw: '有',
+            tags: ['27 間實體', '價最親民', '男女童全線'],
+            summary: '2006 從 Yahoo 拍賣起家。價位最親民（NT 290-790）、品項極寬。',
+            takeaway: 'Queen Shop 客單價低 + 實體店重，不會搶 1500 元以上的韓國選品市場。chickimmiu 應強調 KOL 個人品味 × 韓星同款 × 質感包裝這種 Queen Shop 做不到的「精品感」。'
+          },
+          {
+            id: 't-meierq', type: 'tw', typeBadge: '台灣競品 #3 同集團', name: 'MEIER.Q', nameAlt: 'meierq.com',
+            url: 'https://www.meierq.com', emoji: 'MQ', color: '#A0826D',
+            scale: 'IG 234K', position: '簡約日系/韓系混合 (MIT)', tw: '有',
+            tags: ['美而快子品牌', 'UR LIVING', 'MIT'],
+            summary: '美而快旗下子品牌（PAZZO 同集團）。集團物流 + UR LIVING 多品牌共櫃曝光、簡約優雅定位閃避 PAZZO 主線競爭。',
+            takeaway: '與 chickimmiu 風格交集最大；差異化要點是「MEIER.Q 是台製簡約風」、chickimmiu 是「正韓直送/韓星同款 + 編輯選品」，主打「韓國當地流行第一手」的時效感。'
+          },
+          {
+            id: 't-lulus', type: 'tw', typeBadge: '台灣競品 #4 ★ 最直接對手', name: "LULU's 露露絲", nameAlt: 'lulus.tw',
+            url: 'https://www.lulus.tw', emoji: 'L', color: '#FFB5A7',
+            scale: 'IG 141K / 22 年老字號', position: '韓國代購 + 自有設計', tw: '有',
+            tags: ['台中實體', 'Yahoo + 蝦皮', '22 年老品牌'],
+            summary: '2003 創立。台中實體門市、Yahoo 超級商城 + 蝦皮 + App 多通路、會員逾萬。IG/FB/蝦皮三同步直播。',
+            takeaway: '【最直接對手】chickimmiu 要在「個人 IP 強度（金老佛爺品牌力）+ 單品故事性（韓星同款 SKU 標籤）+ 編輯精選 vs 量產」這三點建立差異。'
+          },
+          {
+            id: 't-wkorea', type: 'tw', typeBadge: '台灣競品 #5 ★ 同象限', name: 'W.Korea 正韓服飾', nameAlt: 'wkorea.com.tw',
+            url: 'https://www.wkorea.com.tw', emoji: 'W', color: '#1A1A1A',
+            scale: 'IG 126K / 神褲 16 萬件', position: '純正韓代購（每月飛東大門）', tw: '有',
+            tags: ['神褲 hero SKU', 'Orgahue 院線', '台北信義 + 台中'],
+            summary: '2017 創立（推估）。神褲系列累計銷售逾 16 萬件、韓國 Orgahue 院線品牌獨家代理。',
+            takeaway: '神褲故事證明「單一 hero product」可打開正韓代購市場。chickimmiu 已有「螞蟻腰褲」作為類似 hero SKU，要強化它的辨識度與直播露出頻率。建議 PDP 顯眼處加「累積售出 X 件」徽章。'
+          },
+          {
+            id: 't-healer', type: 'tw', typeBadge: '台灣競品 #6 ★ 同象限', name: 'Healer 衣服是解藥', nameAlt: 'healer.com.tw',
+            url: 'https://www.healer.com.tw', emoji: 'H', color: '#8B4513',
+            scale: 'IG 106K', position: '韓代 + 自選 + showroom', tw: '有',
+            tags: ['品牌敘事', '中文 slogan', 'Dcard 信任問題'],
+            summary: '創辦人 Elsie 7 年電商經驗。「衣服是解藥」品牌詞優美。Dcard 有提到部分商品疑似淘寶款拆標再出。',
+            takeaway: 'Healer 是「品牌調性 + 內容力」典範，chickimmiu 要把品牌敘事拉到同等水準；同時透過「金老佛爺親選 + 韓星同款」標明貨源，與 Healer 信任問題做出差異。'
+          },
+          {
+            id: 't-lovfee', type: 'tw', typeBadge: '台灣競品 #7 KOL', name: 'LOVFEE', nameAlt: 'lovfee.com',
+            url: 'https://lovfee.com', emoji: 'LF', color: '#FFB6C1',
+            scale: '本人 IG 80 萬+ / 新光三越 8 櫃', position: '自有設計（KOL 大饅大力）', tw: '有',
+            tags: ['雙胞胎 KOL', '百貨設櫃', 'mouggan 副線'],
+            summary: 'KOL 雙人個人 IP × 兼具網紅內容力 × 百貨設櫃，是 KOL 品牌設櫃模板。',
+            takeaway: 'KOL 個人 IP + 百貨設櫃 + 韓系平價的鐵三角可行；參考其多品牌策略（後又建 mouggan），未來開分線品牌時不要重複疊加。'
+          },
+          {
+            id: 't-ob', type: 'tw', typeBadge: '台灣競品 · 利基', name: 'OB 嚴選', nameAlt: 'obdesign.com.tw',
+            url: 'https://www.obdesign.com.tw', emoji: 'OB', color: '#E67E22',
+            scale: 'IG 43K / 6,288 篇貼文', position: '自有設計（中大尺碼起家）', tw: '有',
+            tags: ['XS-3XL 全尺碼', '橘醬熊 IP', '25-45 跨齡'],
+            summary: '2007 創立。XS-3XL 全尺碼領導者、橘醬熊吉祥物 IP。',
+            takeaway: '尺碼覆蓋是 OB 唯一護城河；chickimmiu 不需追平，但至少 S/M/L/XL 標示精準、實際尺寸表清楚，避免韓貨常見尺寸偏小的退貨痛點。'
+          },
+          {
+            id: 't-miustar', type: 'tw', typeBadge: '台灣競品 · 蝦皮霸主', name: 'MIUSTAR', nameAlt: 'miu-star.com.tw',
+            url: 'https://www.miu-star.com.tw', emoji: 'MS', color: '#FF1493',
+            scale: '蝦皮多款銷量過萬', position: '自有設計（蝦皮為主）', tw: '有',
+            tags: ['百元紅海', '3 模特直播', 'PTT 抱怨色差'],
+            summary: '蝦皮 SKU 銷量過萬（牛仔短褲 8,000+、附罩杯背心 18,800+）。',
+            takeaway: '是底層的價位錨、跟 chickimmiu 不直接競爭；但「3 身材直播」這個細節可學。chickimmiu 絕不跟 MIUSTAR 比百元蝦皮直播 — 在那裡只會被淹沒。'
+          },
+          {
+            id: 't-chickimmiu', type: 'tw', typeBadge: '台灣競品 · 你自己', name: 'CHIC KIM & MIU', nameAlt: 'chickimmiu.com',
+            url: 'https://chickimmiu.com', emoji: '✿', color: '#D4A574',
+            scale: 'KOL 22 年韓國資歷', position: 'KOL 韓代 + 自選 + 中高單價', tw: '有',
+            tags: ['金老佛爺月飛韓國', 'PChome 通路', '左上象限獨佔'],
+            summary: '由具有 22 年韓國部落客經驗的「金老佛爺」創辦。每月飛韓國親選商品，中高單價 (NT 500-2000) 定位。',
+            takeaway: '【你的甜蜜點】「左上象限：純代購 × 高單價」象限只有 Lulu\'s / W.Korea / Healer 三家，但無一家具備 chickimmiu 級別的個人 KOL IP（金老佛爺 22 年部落客資產）。死守此象限，不要被 PAZZO/Queen Shop 量級擾亂、也不要往蝦皮百元紅海走。'
+          },
+
+          // ═══════════════════════════ 切角 4：SNS / KOL / 街拍 (~15) ═══════════════════════════
+          {
+            id: 's-depound', type: 'sns', typeBadge: 'SNS · 設計師小品牌', name: 'depound', nameAlt: '드파운드 · @depound',
+            url: 'https://www.instagram.com/depound', emoji: '▢', color: '#D2B48C',
+            scale: 'IG 22 萬', position: 'cozy minimalism', tw: '無',
+            tags: ['Korean Cozy Beige', '生活感 lookbook', '暖色'],
+            summary: '2016 首爾創立，「Integrate sensibility into daily life」。從帆布包、皮革斜背包做起，延伸到家居小物。',
+            takeaway: '把「商品 → 情境 → 生活方式」串成一條的代表。對台灣最直接的借鑑：品牌帳號可以「擺脫商品圖思維」，用 6-9 張 carousel 講一個情境故事。'
+          },
+          {
+            id: 's-amomento', type: 'sns', typeBadge: 'SNS · 設計師小品牌', name: 'AMOMENTO', nameAlt: '@amomento_official',
+            url: 'https://amomento.com', emoji: 'A', color: '#A0826D',
+            scale: '19 國 120+ 通路', position: 'quiet luxury / 永續', tw: '無',
+            tags: ['情緒板雙帳號', '建築剪裁', 'lo-fi'],
+            summary: '2016 由 Lee Mikyung（創意總監）+ Lee Myeongsoo（CEO）共創。WWD 點明：創意總監自己的 IG 帳號就是品牌的 lo-fi 情緒板。',
+            takeaway: '【chickimmiu 直接可學】老闆/設計師個人 IG 與品牌官方帳號做「互文」— 個人帳號發 inspirations、品牌帳號發成品。金老佛爺個人 IG 已是天然情緒板，主品牌帳號做成品 lookbook + 銷售。'
+          },
+          {
+            id: 's-openyy', type: 'sns', typeBadge: 'SNS · 設計師小品牌', name: 'Open YY', nameAlt: 'TheOpen Product · 開瑜',
+            url: 'https://en.openyy.com', emoji: 'OY', color: '#FF6B9D',
+            scale: '海外營收 4% → 31% (2021-2023)', position: '90s/Y2K + 不對稱', tw: '無',
+            tags: ['人帶品牌', '姊妹個人 IG', 'cut-out'],
+            summary: '2020 由姐妹 Jiyoung + Boyoung Kim 創立。兩姊妹個人 IG 比品牌帳號更早、更有粉絲，「人帶品牌」的經典 IG 模式。',
+            takeaway: '主理人個人 IG 養 6-12 個月再導向品牌，效果會比直接做品牌帳號好。粉絲先愛上她們本人的穿搭、再愛上品牌。'
+          },
+          {
+            id: 's-musinsa-snap', type: 'sns', typeBadge: 'SNS · OOTD 街拍 ★', name: '@musinsa_snap', nameAlt: '무신사 스냅',
+            url: 'https://www.instagram.com/musinsa_snap', emoji: 'MS', color: '#1A1A1A',
+            scale: 'IG 11.8 萬 / 3,400+ 貼文', position: 'Musinsa 官方 UGC 街拍', tw: '無',
+            tags: ['UGC 系統化', 'tag 直購', '街拍源頭'],
+            summary: 'Musinsa 從 2001 年「球鞋街拍」開始，「Street Snap」是 Musinsa 全球的招牌內容。',
+            takeaway: '【quick win 來源】chickimmiu 立刻可開 @chickimmiu_snap 副帳號收顧客實穿照，設「投稿 = 享 5% 折扣 / 獲贈」機制。每週一篇從投稿挑出來的「本週最佳穿搭」。'
+          },
+          {
+            id: 's-mejiwoo', type: 'sns', typeBadge: 'SNS · KOL', name: 'Mejiwoo (鄭多媛)', nameAlt: '@mejiwoo103',
+            url: 'https://www.instagram.com/mejiwoo103', emoji: 'M', color: '#9370DB',
+            scale: 'IG 1000 萬 (韓國第一)', position: '少女 / 學院 / 實穿', tw: '無',
+            tags: ['BTS J-Hope 姊', 'MEJIWOO 自創', 'AJ LOOK'],
+            summary: 'BTS J-Hope 的姐姐，2016 起 IG 模特，2018 自創 MEJIWOO，2020 與 KVLY 合作 AJ LOOK。',
+            takeaway: 'IG「日常感 vlog 式」拍法 — 在咖啡廳、機場、家裡，自然光多、構圖隨意，跟韓國年輕女生實際拍照習慣最接近。KOL 自創品牌不一定要走「設計師感」，重點是 KOL 個人風格與品牌 DNA 的高度一致。'
+          },
+          {
+            id: 's-irenekim', type: 'sns', typeBadge: 'SNS · KOL', name: 'Irene Kim', nameAlt: '@ireneisgood',
+            url: 'https://www.instagram.com/ireneisgood', emoji: 'I', color: '#FF4500',
+            scale: 'IG 290 萬', position: '街頭 / 童趣 / 撞色', tw: '無',
+            tags: ['IRENEISGOOD LABEL', 'Vogue 韓流大使', '#GOODFORYOU'],
+            summary: 'Vogue 稱「韓流時尚大使」、WWD 稱 fashion\'s It Girl。2018 推出自有 streetwear 品牌。',
+            takeaway: '不走韓系 quiet luxury 反而繽紛、撞色、童趣街頭。她不是把粉絲變現，而是把個人哲學產品化 — 這是 KOL 自創品牌成功的關鍵。'
+          },
+          {
+            id: 's-mulbada', type: 'sns', typeBadge: 'SNS · KOL', name: 'Mulbada', nameAlt: '@mulbada',
+            url: 'https://www.instagram.com/mulbada', emoji: 'M', color: '#FFB5A7',
+            scale: 'IG 38 萬', position: 'pastel / 女性化分件', tw: '無',
+            tags: ['Unbutton 品牌', 'micro KOL', 'capsule line'],
+            summary: '38 萬粉的 micro KOL，自創 Unbutton 品牌。IG 上她本人穿搭就是品牌 lookbook。',
+            takeaway: '【對台灣中型品牌啟發最大】micro KOL + 自創 capsule line 的成本結構，可能比花錢請大 KOL 代言更高效。chickimmiu 可選 1 位中型台灣 micro KOL（5K-30K，風格接近）做 3 個月「品牌 muse」合作。'
+          },
+          {
+            id: 's-voguekorea', type: 'sns', typeBadge: 'SNS · 媒體', name: '@voguekorea', nameAlt: 'Vogue Korea 官方',
+            url: 'https://www.instagram.com/voguekorea', emoji: 'V', color: '#000000',
+            scale: 'IG 367 萬', position: '韓國最具影響力雜誌', tw: '無',
+            tags: ['品牌雜誌化', 'cover star', '設計師深度報導'],
+            summary: '韓國最具影響力的時尚雜誌 IG，內容混合 cover star + 設計師深度報導 + 街拍 + lookbook。',
+            takeaway: '它的內容架構就是台灣品牌可以學的「品牌雜誌化」邏輯 — 一個 IG 帳號 = 一本動態雜誌。'
+          },
+          {
+            id: 's-haein', type: 'sns', typeBadge: 'SNS · OOTD', name: '@haein_e_e', nameAlt: '해인이 · 韓裔（舊金山）',
+            url: 'https://www.instagram.com/haein_e_e', emoji: 'H', color: '#FF69B4',
+            scale: 'IG 12.9 萬', position: '韓系穿搭教學 reels', tw: '無',
+            tags: ['style hack', 'rate my fit', '教學型短影音'],
+            summary: '韓裔在舊金山的時尚 KOL，reels 大量「style hack / rate my fit / autumn 配色」教學型內容。',
+            takeaway: '對中文市場啟發：教學型短影音是吸引潛在客的重要管道，純拍時髦感的 reels 反而留存率不一定高。'
+          }
+        ]
+      };
+    }
+  </script>
+</body>
+</html>

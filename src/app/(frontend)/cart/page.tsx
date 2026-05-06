@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, ArrowLeft } from 'lucide-react'
 import { useCartStore } from '@/stores/cartStore'
 import { CartCrossSell } from '@/components/recommendation/CartCrossSell'
+import { Price } from '@/components/common/Price'
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, clearCart } = useCartStore()
@@ -99,21 +100,18 @@ export default function CartPage() {
                           </p>
                         )}
                         {/* Mobile price */}
-                        <p className="text-sm text-gold-600 mt-2 md:hidden">
-                          NT$ {unitPrice.toLocaleString()}
-                        </p>
+                        <Price twd={unitPrice} className="text-sm text-gold-600 mt-2 md:hidden block" />
                       </div>
                     </div>
 
                     {/* Unit price (desktop) */}
                     <div className="hidden md:block text-center">
-                      <span className="text-sm text-gold-600">
-                        NT$ {unitPrice.toLocaleString()}
-                      </span>
+                      <Price twd={unitPrice} className="text-sm text-gold-600" />
                       {item.salePrice && item.salePrice < item.price && (
-                        <span className="block text-[10px] text-muted-foreground line-through">
-                          NT$ {item.price.toLocaleString()}
-                        </span>
+                        <Price
+                          twd={item.price}
+                          className="block text-[10px] text-muted-foreground line-through"
+                        />
                       )}
                     </div>
 
@@ -145,7 +143,7 @@ export default function CartPage() {
 
                     {/* Line total */}
                     <p className="hidden md:block text-right text-sm font-medium">
-                      NT$ {lineTotal.toLocaleString()}
+                      <Price twd={lineTotal} />
                     </p>
 
                     {/* Delete */}
@@ -161,9 +159,7 @@ export default function CartPage() {
 
                     {/* Mobile footer */}
                     <div className="flex items-center justify-between md:hidden pt-3 border-t border-cream-100">
-                      <span className="text-sm font-medium">
-                        NT$ {lineTotal.toLocaleString()}
-                      </span>
+                      <Price twd={lineTotal} className="text-sm font-medium" />
                       <button
                         onClick={() => removeItem(item.productId, item.variant?.sku)}
                         className="text-xs text-red-400 hover:text-red-600 transition-colors"
@@ -205,7 +201,7 @@ export default function CartPage() {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">商品小計</span>
-                  <span>NT$ {subtotal.toLocaleString()}</span>
+                  <Price twd={subtotal} />
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">運費</span>
@@ -213,22 +209,20 @@ export default function CartPage() {
                     {shippingFee === 0 ? (
                       <span className="text-green-600">免運費</span>
                     ) : (
-                      `NT$ ${shippingFee}`
+                      <Price twd={shippingFee} />
                     )}
                   </span>
                 </div>
                 {subtotal < 1000 && (
                   <p className="text-[10px] text-gold-600">
-                    再買 NT$ {(1000 - subtotal).toLocaleString()} 即可享免運費
+                    再買 <Price twd={1000 - subtotal} /> 即可享免運費
                   </p>
                 )}
               </div>
 
               <div className="border-t border-cream-200 pt-4 flex justify-between items-baseline">
                 <span className="font-medium">合計</span>
-                <span className="text-xl font-medium text-gold-600">
-                  NT$ {total.toLocaleString()}
-                </span>
+                <Price twd={total} className="text-xl font-medium text-gold-600" />
               </div>
 
               <Link

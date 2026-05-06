@@ -25,8 +25,9 @@ import { isAdmin } from '../access/isAdmin'
  */
 export const CollectibleCardTemplates: CollectionConfig = {
   slug: 'collectible-card-templates',
+  labels: { singular: '卡牌模板', plural: '卡牌模板' },
   admin: {
-    group: '卡牌系統',
+    group: '⑤ 互動體驗',
     useAsTitle: 'adminTitle',
     defaultColumns: ['adminTitle', 'product', 'totalSupply', 'salePoolRemaining', 'pointsShopPoolRemaining', 'craftingPoolRemaining', 'isActive'],
     description: '每個商品一張藍圖。觸發條件：商品定價 > NT$5,000 才能開藍圖發限量卡。',

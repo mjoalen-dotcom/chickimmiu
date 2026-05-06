@@ -9,8 +9,9 @@ const DARK = '#1A1F36'
 const GOLD_LIGHT = '#F3E8D5'
 const GOLD_DARK = '#9A7A3E'
 const CARD_BG = '#FFFFFF'
-const BORDER = '#E8DDD0'
-const MUTED = '#6B6560'
+const BORDER = '#D4C7B5'
+const MUTED = '#544940'        // 6.7:1 on white (was #6B6560 = 4.6:1, too faint for KPI labels / axis ticks)
+const MUTED_HEADER = '#E8DFC9' // header subtitle on navy (was #C4B49A = 4.0:1, just under WCAG AA)
 const TEXT = '#1A1F36'
 const GREEN = '#16A34A'
 const RED = '#DC2626'
@@ -53,19 +54,20 @@ interface DailyRevenue {
 }
 
 const STATUS_MAP: Record<string, { label: string; bg: string; color: string }> = {
-  pending:    { label: '待處理',  bg: '#FEF9C3', color: '#854D0E' },
-  processing: { label: '處理中',  bg: '#DBEAFE', color: '#1E40AF' },
-  shipped:    { label: '已出貨',  bg: '#DCFCE7', color: '#15803D' },
-  delivered:  { label: '已送達',  bg: '#D1FAE5', color: '#065F46' },
-  cancelled:  { label: '已取消',  bg: '#FEE2E2', color: '#991B1B' },
-  refunded:   { label: '已退款',  bg: '#F3F4F6', color: '#374151' },
+  pending:    { label: '待處理',  bg: '#FEF3C7', color: '#713F12' }, // 7.4:1
+  processing: { label: '處理中',  bg: '#BFDBFE', color: '#1E3A8A' }, // 7.5:1 (was #DBEAFE/#1E40AF = 4.16:1)
+  shipped:    { label: '已出貨',  bg: '#BBF7D0', color: '#14532D' }, // 7.7:1
+  delivered:  { label: '已送達',  bg: '#A7F3D0', color: '#064E3B' }, // 8.4:1
+  cancelled:  { label: '已取消',  bg: '#FECACA', color: '#7F1D1D' }, // 7.0:1
+  refunded:   { label: '已退款',  bg: '#E5E7EB', color: '#1F2937' }, // 11.5:1
 }
 
 const PAYMENT_MAP: Record<string, { label: string; color: string }> = {
-  pending:  { label: '待付款', color: '#D97706' },
-  paid:     { label: '已付款', color: '#15803D' },
-  failed:   { label: '付款失敗', color: '#DC2626' },
-  refunded: { label: '已退款', color: '#6B7280' },
+  pending:  { label: '待付款',  color: '#B45309' },
+  unpaid:   { label: '未付款',  color: '#B45309' }, // alias for legacy orders missing paymentStatus
+  paid:     { label: '已付款',  color: '#15803D' },
+  failed:   { label: '付款失敗', color: '#B91C1C' },
+  refunded: { label: '已退款',  color: '#374151' },
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -258,24 +260,39 @@ function KPICard({ label, value, icon, sub, accent = GOLD, loading = false }: {
 function MiniBarChart({ data, maxVal }: { data: DailyRevenue[]; maxVal: number }) {
   if (!data.length || maxVal === 0) return <div style={{ color: MUTED, fontSize: 12, textAlign: 'center', padding: 20 }}>No data</div>
   const barW = Math.max(4, Math.floor((100 / data.length) * 0.7))
+  // Parent uses alignItems:stretch so each column flex-item fills 120px height
+  // (was alignItems:flex-end which left columns at content-height — bar `height: ${h}%`
+  // computed against ~22px and rounded to 0px → bars invisible).
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 120, padding: '0 4px' }}>
+    <div style={{
+      display: 'flex', alignItems: 'stretch', gap: 2,
+      height: 120, padding: '0 4px 22px',
+      position: 'relative',
+    }}>
       {data.map((d, i) => {
         const h = Math.max(2, (d.revenue / maxVal) * 100)
         const isToday = d.date === getToday().toISOString().slice(0, 10)
+        const showLabel = i === 0 || i === data.length - 1 || i === Math.floor(data.length / 2)
         return (
-          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+          <div key={i} style={{
+            flex: 1, height: '100%',
+            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center',
+            position: 'relative',
+          }}>
             <div
               title={`${d.date}: ${formatNTD(d.revenue)} (${d.orders} 筆訂單)`}
               style={{
                 width: `${barW}%`, minWidth: 4, height: `${h}%`,
-                background: isToday ? GOLD : 'rgba(193,154,91,0.4)',
+                background: isToday ? GOLD_DARK : GOLD,
                 borderRadius: '2px 2px 0 0', transition: 'height 0.3s',
                 cursor: 'pointer',
               }}
             />
-            {(i === 0 || i === data.length - 1 || i === Math.floor(data.length / 2)) && (
-              <div style={{ fontSize: 9, color: MUTED, marginTop: 2 }}>{d.label}</div>
+            {showLabel && (
+              <div style={{
+                position: 'absolute', bottom: -18, fontSize: 11, fontWeight: 500,
+                color: MUTED, whiteSpace: 'nowrap',
+              }}>{d.label}</div>
             )}
           </div>
         )
@@ -455,7 +472,7 @@ export default function Dashboard() {
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: GOLD, letterSpacing: '0.06em' }}>
             CHIC KIM &amp; MIU
           </h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#C4B49A' }}>{dateLabel}</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: MUTED_HEADER }}>{dateLabel}</p>
         </div>
         <button
           onClick={() => void loadAll()}

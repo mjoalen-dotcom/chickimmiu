@@ -5,8 +5,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Heart, ShoppingBag, Eye } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useTranslations } from 'next-intl'
 import { useCartStore } from '@/stores/cartStore'
 import { useWishlistStore } from '@/stores/wishlistStore'
+import { Price } from '@/components/common/Price'
 
 export interface ProductCardProps {
   id: string
@@ -38,6 +40,8 @@ export function ProductCard({
   onQuickView,
 }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false)
+  const t = useTranslations('product')
+  const tCommon = useTranslations('common')
   const addItem = useCartStore((s) => s.addItem)
   const { toggleItem, isInWishlist } = useWishlistStore()
   const inWishlist = useWishlistStore((s) => s.isInWishlist(id))
@@ -105,12 +109,12 @@ export function ProductCard({
         <div className="absolute top-3 left-3 flex flex-col gap-1.5">
           {isNew && (
             <span className="px-2 py-0.5 bg-gold-500 text-white text-[10px] rounded-full tracking-wider font-medium">
-              NEW
+              {t('badgeNew')}
             </span>
           )}
           {isHot && (
             <span className="px-2 py-0.5 bg-red-500 text-white text-[10px] rounded-full tracking-wider font-medium">
-              HOT
+              {t('badgeHot')}
             </span>
           )}
           {discountPercent && (
@@ -124,7 +128,7 @@ export function ProductCard({
         <button
           onClick={handleToggleWishlist}
           className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center transition-colors hover:bg-white"
-          aria-label={inWishlist ? '取消收藏' : '加入收藏'}
+          aria-label={inWishlist ? t('removeFromWishlist') : t('addToWishlist')}
         >
           <Heart
             size={16}
@@ -143,13 +147,13 @@ export function ProductCard({
             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-foreground/90 text-cream-50 text-xs rounded-lg backdrop-blur-sm hover:bg-foreground transition-colors"
           >
             <ShoppingBag size={14} />
-            加入購物車
+            {tCommon('addToCart')}
           </button>
           {onQuickView && (
             <button
               onClick={handleQuickView}
               className="w-10 flex items-center justify-center bg-white/90 text-foreground rounded-lg backdrop-blur-sm hover:bg-white transition-colors"
-              aria-label="快速預覽"
+              aria-label={t('quickView')}
             >
               <Eye size={14} />
             </button>
@@ -164,7 +168,7 @@ export function ProductCard({
               animate={{ opacity: isHovered ? 0 : 1 }}
               className="inline-block px-3 py-1 bg-black/50 text-white text-[10px] rounded-full backdrop-blur-sm"
             >
-              {soldCount.toLocaleString()} 人已購買
+              {t('soldCount', { count: soldCount.toLocaleString() })}
             </motion.span>
           </div>
         )}
@@ -189,7 +193,7 @@ export function ProductCard({
             ))}
             {colors.length > 5 && (
               <span className="text-[10px] text-muted-foreground">
-                +{colors.length - 5}
+                {t('moreColors', { count: colors.length - 5 })}
               </span>
             )}
           </div>
@@ -197,20 +201,16 @@ export function ProductCard({
 
         {/* Price */}
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-medium text-gold-600">
-            NT$ {(salePrice ?? price).toLocaleString()}
-          </span>
+          <Price twd={salePrice ?? price} className="text-sm font-medium text-gold-600" />
           {salePrice && salePrice < price && (
-            <span className="text-xs text-muted-foreground line-through">
-              NT$ {price.toLocaleString()}
-            </span>
+            <Price twd={price} className="text-xs text-muted-foreground line-through" />
           )}
         </div>
 
         {/* Member price */}
         {memberPrice && memberPrice < (salePrice ?? price) && (
           <p className="text-[10px] text-purple-600 tracking-wide">
-            VIP NT$ {memberPrice.toLocaleString()}
+            {t('vipPriceLabel')} <Price twd={memberPrice} />
           </p>
         )}
       </div>

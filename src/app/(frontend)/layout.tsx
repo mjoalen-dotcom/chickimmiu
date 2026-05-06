@@ -20,6 +20,9 @@ import { ExitIntentPopup } from '@/components/recommendation/ExitIntentPopup'
 import { GTMScript } from '@/components/tracking/GTMScript'
 import { TrackingProvider } from '@/components/tracking/TrackingProvider'
 import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/seo/JsonLd'
+import { ThemeStyles } from '@/components/layout/ThemeStyles'
+import { NextIntlClientProvider } from 'next-intl'
+import { getLocale, getMessages } from 'next-intl/server'
 
 const notoSansTC = Noto_Sans_TC({
   subsets: ['latin'],
@@ -159,10 +162,12 @@ export default async function FrontendLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [globalSettings, navSettings, currentUser] = await Promise.all([
+  const [globalSettings, navSettings, currentUser, locale, messages] = await Promise.all([
     getGlobalSettings(),
     getNavigationSettings(),
     getCurrentUser(),
+    getLocale(),
+    getMessages(),
   ])
 
   const cs = (globalSettings?.customerService || {}) as unknown as Record<string, unknown>
@@ -189,9 +194,17 @@ export default async function FrontendLayout({
   if (socialLinks.tiktok) sameAs.push(socialLinks.tiktok as string)
   if (socialLinks.line) sameAs.push(socialLinks.line as string)
 
+  // BCP 47 lang attribute — zh-TW / zh-CN / en / ja / ko 都是合法 tag
+  const htmlLang = locale === 'zh-TW' ? 'zh-Hant-TW' : locale === 'zh-CN' ? 'zh-Hans-CN' : locale
+
   return (
-    <html lang="zh-Hant-TW" className={`${notoSansTC.variable} ${notoSerifTC.variable}`}>
+    <html lang={htmlLang} className={`${notoSansTC.variable} ${notoSerifTC.variable}`}>
       <head>
+        {/* Active SiteThemes preset → :root CSS variables. Sits at the very
+            top of <head> so the rest of the page renders with the right
+            tokens; falls back to globals.css :root values when no active
+            theme exists. */}
+        <ThemeStyles />
         {/* iOS Safari / iPad privacy hardening — MUST run before ANY other JS
             that touches storage. When the user enables "Block All Cookies",
             "Prevent Cross-Site Tracking", Lockdown Mode, or Private Browsing,
@@ -307,6 +320,7 @@ export default async function FrontendLayout({
         )}
       </head>
       <body className="font-sans antialiased bg-background text-foreground">
+        <NextIntlClientProvider locale={locale} messages={messages}>
         <Providers>
           <BootBeaconCleanup />
           {/* Previously this subtree was wrapped in <Suspense fallback={null}>
@@ -387,6 +401,7 @@ export default async function FrontendLayout({
             acceptButtonText={cc.acceptButtonText as string | undefined}
           />
         </Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   )

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useSession, signOut as nextAuthSignOut } from 'next-auth/react'
+import { useTranslations } from 'next-intl'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, Search, User, ShoppingBag, Heart, ChevronDown, LogOut, Gift, Package, UserCircle } from 'lucide-react'
 import { useCartStore } from '@/stores/cartStore'
@@ -18,21 +19,22 @@ interface MenuItem {
   children?: { label: string; href: string }[]
 }
 
-const DEFAULT_NAV_LINKS: MenuItem[] = [
-  { href: '/products', label: '全部商品' },
-  { href: '/products?tag=new', label: '新品上市' },
-  { href: '/products?tag=hot', label: '熱銷推薦' },
-  { href: '/products?tag=sale', label: '限時優惠' },
-  { href: '#', label: '主題精選', children: [
-    { href: '/collections/jin-live', label: '金老佛爺 Live' },
-    { href: '/collections/jin-style', label: '金金同款專區' },
-    { href: '/collections/host-style', label: '主播同款專區' },
-    { href: '/collections/brand-custom', label: '品牌自訂款' },
-    { href: '/collections/formal-dresses', label: '婚禮洋裝/正式洋裝' },
-    { href: '/collections/rush', label: '現貨速到 Rush' },
-    { href: '/collections/celebrity-style', label: '藝人穿搭' },
-  ]},
-  { href: '/blog', label: '穿搭誌' },
+/**
+ * 預設導航項目 — 當 CMS NavigationSettings.mainMenu 沒設時使用。
+ * Top-level labels 走 i18n（從 useTranslations 動態組），主題精選的 children
+ * 是品牌專屬名稱（金老佛爺 Live 等）暫不翻譯。
+ *
+ * Children 寫死保持中文是因為這些是品牌 IP 名稱，多語版本會讓識別性下降；
+ * 若 PR 3+ 要翻可以加進 dictionary 的 navbar.collections.* namespace。
+ */
+const DEFAULT_NAV_CHILDREN = [
+  { href: '/collections/jin-live', label: '金老佛爺 Live' },
+  { href: '/collections/jin-style', label: '金金同款專區' },
+  { href: '/collections/host-style', label: '主播同款專區' },
+  { href: '/collections/brand-custom', label: '品牌自訂款' },
+  { href: '/collections/formal-dresses', label: '婚禮洋裝/正式洋裝' },
+  { href: '/collections/rush', label: '現貨速到 Rush' },
+  { href: '/collections/celebrity-style', label: '藝人穿搭' },
 ]
 
 const DEFAULT_LOGO = 'https://shoplineimg.com/559df3efe37ec64e9f000092/69ae37b56be0c5b5e4ceb2d9/1200x.webp?source_format=png'
@@ -47,7 +49,17 @@ interface NavbarProps {
 }
 
 export function Navbar({ announcementText, announcementLink, announcementStyle = 'default', menuItems, logoUrl, currentUser }: NavbarProps) {
-  const navLinks = menuItems && menuItems.length > 0 ? menuItems : DEFAULT_NAV_LINKS
+  const t = useTranslations('navbar')
+  // CMS 有資料用 CMS（admin 自管多語）；沒設才走 i18n 預設
+  const defaultNavLinks: MenuItem[] = [
+    { href: '/products', label: t('navAllProducts') },
+    { href: '/products?tag=new', label: t('navNewArrivals') },
+    { href: '/products?tag=hot', label: t('navHotItems') },
+    { href: '/products?tag=sale', label: t('navSale') },
+    { href: '#', label: t('navCollections'), children: DEFAULT_NAV_CHILDREN },
+    { href: '/blog', label: t('navBlog') },
+  ]
+  const navLinks = menuItems && menuItems.length > 0 ? menuItems : defaultNavLinks
   const logo = logoUrl && logoUrl !== '/images/logo-ckmu.svg' ? logoUrl : DEFAULT_LOGO
   const [isOpen, setIsOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -66,13 +78,14 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
 
   // Canonical user：優先 SSR 帶進來的 currentUser（Payload session），
   // fallback 到 client-side NextAuth session。
+  const memberFallback = t('memberFallback')
   const effectiveUser = currentUser
     ? { name: currentUser.name, email: currentUser.email }
     : session?.user
-      ? { name: session.user.name || session.user.email || '會員', email: session.user.email || '' }
+      ? { name: session.user.name || session.user.email || memberFallback, email: session.user.email || '' }
       : null
   const isLoggedIn = effectiveUser !== null
-  const displayName = effectiveUser?.name || '會員'
+  const displayName = effectiveUser?.name || memberFallback
 
   async function handleLogout() {
     if (isLoggingOut) return
@@ -103,10 +116,10 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
         }`}>
           {announcementLink ? (
             <Link href={announcementLink} className="hover:underline">
-              {announcementText || '全館滿 $1,000 免運費 ♥ 新會員註冊即享 9 折'}
+              {announcementText || t('announcementDefault')}
             </Link>
           ) : (
-            announcementText || '全館滿 $1,000 免運費 ♥ 新會員註冊即享 9 折'
+            announcementText || t('announcementDefault')
           )}
         </div>
       )}
@@ -119,7 +132,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="md:hidden p-2 -ml-2 text-foreground"
-              aria-label="選單"
+              aria-label={t('menu')}
             >
               {isOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
@@ -147,14 +160,14 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
             <button
               onClick={() => setIsSearchOpen(!isSearchOpen)}
               className="p-2 text-foreground/70 hover:text-gold-600 transition-colors"
-              aria-label="搜尋"
+              aria-label={t('search')}
             >
               <Search size={20} />
             </button>
             <Link
               href="/wishlist"
               className="hidden md:flex p-2 text-foreground/70 hover:text-gold-600 transition-colors relative"
-              aria-label="收藏"
+              aria-label={t('wishlist')}
             >
               <Heart size={20} />
               {wishlistCount > 0 && (
@@ -173,7 +186,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
                   type="button"
                   onClick={() => setIsUserMenuOpen((v) => !v)}
                   className="flex items-center gap-1 p-2 text-foreground/70 hover:text-gold-600 transition-colors"
-                  aria-label="會員選單"
+                  aria-label={t('accountMenu')}
                   aria-expanded={isUserMenuOpen}
                 >
                   <User size={20} />
@@ -201,7 +214,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:text-gold-600 hover:bg-cream-50 transition-colors"
                       >
                         <UserCircle size={16} />
-                        會員總覽
+                        {t('memberOverview')}
                       </Link>
                       <Link
                         href="/account/orders"
@@ -209,7 +222,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:text-gold-600 hover:bg-cream-50 transition-colors"
                       >
                         <Package size={16} />
-                        我的訂單
+                        {t('myOrders')}
                       </Link>
                       <Link
                         href="/account/points"
@@ -217,7 +230,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:text-gold-600 hover:bg-cream-50 transition-colors"
                       >
                         <Gift size={16} />
-                        點數 / 購物金
+                        {t('pointsAndCredit')}
                       </Link>
                       <button
                         type="button"
@@ -226,7 +239,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors border-t border-cream-100 mt-1 disabled:opacity-60"
                       >
                         <LogOut size={16} />
-                        {isLoggingOut ? '登出中…' : '登出'}
+                        {isLoggingOut ? t('loggingOut') : t('logout')}
                       </button>
                     </motion.div>
                   )}
@@ -236,7 +249,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
               <Link
                 href="/login"
                 className="p-2 text-foreground/70 hover:text-gold-600 transition-colors"
-                aria-label="登入"
+                aria-label={t('login')}
               >
                 <User size={20} />
               </Link>
@@ -244,7 +257,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
             <button
               onClick={openCartDrawer}
               className="p-2 text-foreground/70 hover:text-gold-600 transition-colors relative"
-              aria-label="購物車"
+              aria-label={t('cart')}
             >
               <ShoppingBag size={20} />
               {cartCount > 0 && (
@@ -334,7 +347,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
                 <input
                   name="q"
                   type="search"
-                  placeholder="搜尋商品、分類或關鍵字…"
+                  placeholder={t('searchPlaceholder')}
                   className="w-full px-4 py-3 rounded-lg bg-white border border-cream-200 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-gold-400/40"
                   autoFocus
                 />
@@ -425,14 +438,14 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
                 {isLoggedIn ? (
                   <>
                     <div className="px-2 pb-2 text-xs text-muted-foreground">
-                      已登入：<span className="font-medium text-foreground/80">{displayName}</span>
+                      {t('loggedInAs')}<span className="font-medium text-foreground/80">{displayName}</span>
                     </div>
                     <Link
                       href="/account"
                       onClick={() => setIsOpen(false)}
                       className="block w-full text-center px-4 py-3 text-sm bg-gold-500 text-white rounded-md hover:bg-gold-600 transition-colors"
                     >
-                      我的帳戶
+                      {t('myAccount')}
                     </Link>
                     <button
                       type="button"
@@ -444,7 +457,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
                       className="flex items-center justify-center gap-2 w-full px-4 py-3 text-sm text-red-500 border border-red-200 rounded-md hover:bg-red-50 transition-colors disabled:opacity-60"
                     >
                       <LogOut size={16} />
-                      {isLoggingOut ? '登出中…' : '登出'}
+                      {isLoggingOut ? t('loggingOut') : t('logout')}
                     </button>
                   </>
                 ) : (
@@ -453,7 +466,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
                     onClick={() => setIsOpen(false)}
                     className="block w-full text-center px-4 py-3 text-sm bg-gold-500 text-white rounded-md hover:bg-gold-600 transition-colors"
                   >
-                    登入 / 註冊
+                    {t('loginOrRegister')}
                   </Link>
                 )}
               </div>

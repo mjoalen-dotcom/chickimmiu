@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getPayload } from 'payload'
-import config from '@payload-config'
+import { resolveApiUser } from '@/lib/auth/resolveApiUser'
 
 import { checkRateLimit } from '@/lib/rateLimit'
 import {
@@ -42,8 +41,7 @@ export async function POST(
       )
     }
 
-    const payload = await getPayload({ config })
-    const { user } = await payload.auth({ headers: req.headers })
+    const { user } = await resolveApiUser(req.headers)
     if (!user) {
       return NextResponse.json({ success: false, error: '請先登入' }, { status: 401 })
     }

@@ -1,0 +1,161 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "submit": "Submit",
+    "search": "Search",
+    "viewMore": "View more",
+    "addToCart": "Add to cart",
+    "buyNow": "Buy now",
+    "errorGeneric": "Something went wrong. Please try again.",
+    "successGeneric": "Success"
+  },
+  "navbar": {
+    "menu": "Menu",
+    "search": "Search",
+    "searchPlaceholder": "Search products, categories, or keywords…",
+    "wishlist": "Wishlist",
+    "account": "Account",
+    "accountMenu": "Account menu",
+    "memberOverview": "Account overview",
+    "myOrders": "My orders",
+    "pointsAndCredit": "Points / Credit",
+    "logout": "Log out",
+    "loggingOut": "Logging out…",
+    "login": "Log in",
+    "register": "Sign up",
+    "loginOrRegister": "Log in / Sign up",
+    "myAccount": "My account",
+    "loggedInAs": "Logged in as:",
+    "memberFallback": "Member",
+    "cart": "Cart",
+    "announcementDefault": "Free shipping on orders over NT$1,000 ♥ 10% off for new members",
+    "navAllProducts": "All products",
+    "navNewArrivals": "New arrivals",
+    "navHotItems": "Best sellers",
+    "navSale": "Sale",
+    "navCollections": "Collections",
+    "navBlog": "Style journal"
+  },
+  "footer": {
+    "tagline": "Minimalist elegance meets Korean charm",
+    "bankInfo": "Bank Info",
+    "bankCode": "Bank code: 822 (CTBC Bank)",
+    "bankBranch": "Branch: Fuxing",
+    "bankAccount": "Account: 495540523762",
+    "bankName": "Name: Jin Show International Co., Ltd.",
+    "taxId": "Tax ID: 24540533",
+    "taxIdLabel": "Tax ID",
+    "contact": "Contact",
+    "lineLabel": "Line / @ckmu",
+    "wechatLabel": "Wechat / chickimmiu",
+    "partnerLabel": "Partner: jinhow.ckmu.co",
+    "helpTitle": "Help",
+    "helpShoppingGuide": "Shopping guide",
+    "helpAbout": "About us",
+    "helpPackaging": "Packaging",
+    "helpTerms": "Terms of service",
+    "helpPrivacy": "Privacy policy",
+    "helpReturnPolicy": "Return policy",
+    "helpFaq": "FAQ",
+    "shoppingTitle": "Shop / Account",
+    "shoppingAll": "All products",
+    "shoppingNew": "New arrivals",
+    "shoppingHot": "Best sellers",
+    "shoppingBlog": "Style journal",
+    "shoppingGames": "Lucky games",
+    "shoppingMember": "Member centre",
+    "shoppingOrders": "Order tracking",
+    "shoppingSubscription": "Subscription plans",
+    "shoppingReferrals": "Refer a friend",
+    "rightsReserved": "All Rights Reserved"
+  },
+  "product": {
+    "badgeNew": "NEW",
+    "badgeHot": "HOT",
+    "soldCount": "{count} sold",
+    "addToWishlist": "Add to wishlist",
+    "removeFromWishlist": "Remove from wishlist",
+    "quickView": "Quick view",
+    "vipPriceLabel": "VIP",
+    "moreColors": "+{count}"
+  },
+  "hero": {
+    "slide1Tag": "Spring/Summer 2026 New Arrivals",
+    "slide1Title": "Elegance meets\ncharm",
+    "slide1Subtitle": "From everyday commute to date night — CHIC KIM & MIU helps every woman find her own style.",
+    "slide1Cta": "Shop all",
+    "slide2Tag": "Limited-time offer",
+    "slide2Title": "Effortless\nspring style",
+    "slide2Subtitle": "Hundreds of spring/summer pieces on limited-time sale — find your signature look.",
+    "slide2Cta": "Shop sale",
+    "slide3Tag": "Members only",
+    "slide3Title": "Subscribe for\nexclusive perks",
+    "slide3Subtitle": "Site-wide discounts, monthly credits, member-only giveaways and more.",
+    "slide3Cta": "View plans"
+  },
+  "productList": {
+    "overline": "PRODUCTS",
+    "title": "All Products",
+    "categoryNav": {
+      "label": "Categories",
+      "all": "All Categories",
+      "allOf": "All {name}"
+    },
+    "tags": {
+      "all": "All",
+      "new": "New Arrivals",
+      "hot": "Bestsellers",
+      "sale": "On Sale",
+      "koreanCelebrity": "★ K-Celeb Style",
+      "jinStyle": "✿ Jin's Picks"
+    },
+    "sort": {
+      "newest": "Newest",
+      "priceAsc": "Price: Low to High",
+      "priceDesc": "Price: High to Low",
+      "popular": "Popular"
+    },
+    "filters": {
+      "more": "More Filters",
+      "clear": "Clear Filters",
+      "color": "Color",
+      "priceRange": "Price Range",
+      "size": "Size",
+      "minPlaceholder": "NT$ 0",
+      "maxPlaceholder": "NT$ 10,000"
+    },
+    "count": "{n} items",
+    "empty": {
+      "title": "No products match your filters",
+      "cta": "Clear filters"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {n}",
+      "of": "of {total}"
+    }
+  },
+  "category": {
+    "overline": "CATEGORY",
+    "empty": "No products in this category yet",
+    "breadcrumb": {
+      "home": "Home",
+      "products": "All Products"
+    }
+  },
+  "collections": {
+    "heroOverline": "Collection",
+    "heroTitle": "Curated Collections",
+    "heroDescription": "Browse our curated themes by style, occasion, and inspiration",
+    "browse": "Browse →",
+    "empty": {
+      "title": "This collection is empty for now — stay tuned",
+      "cta": "Browse All Products"
+    }
+  }
+}

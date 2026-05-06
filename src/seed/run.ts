@@ -15,6 +15,7 @@ import { getPayload } from 'payload'
 import config from '../payload.config'
 import { seedCategories } from './seedCategories'
 import { seedRealProducts } from './seedRealProducts'
+import { seedCurrencies } from './seedCurrencies'
 
 async function seed() {
   console.log('╔══════════════════════════════════════════╗')
@@ -25,17 +26,17 @@ async function seed() {
   const start = Date.now()
 
   // Step 1: 分類（含完整子分類樹）
-  console.log('📂 Step 1/4: 建立商品分類...')
+  console.log('📂 Step 1/5: 建立商品分類...')
   await seedCategories()
   console.log()
 
   // Step 2: 真實商品（~120 件）
-  console.log('🛍️  Step 2/4: 建立真實商品（www.chickimmiu.com）...')
+  console.log('🛍️  Step 2/5: 建立真實商品（www.chickimmiu.com）...')
   await seedRealProducts()
   console.log()
 
   // Step 3: 點數兌換範本
-  console.log('🎁 Step 3/4: 建立點數兌換範本...')
+  console.log('🎁 Step 3/5: 建立點數兌換範本...')
   const payload = await getPayload({ config })
   const redemptionTemplates = [
     { name: '威秀電影票 (單張)', slug: 'vieshow-movie-ticket-single', type: 'movie_ticket', pointsCost: 500, stock: 50, description: '威秀影城電影票一張，全台門市皆可使用（2D一般廳）' },
@@ -69,8 +70,13 @@ async function seed() {
   }
   console.log()
 
-  // Step 4: 上傳範本
-  console.log('📋 Step 4/4: 產生上傳範本...')
+  // Step 4: 幣別與匯率（5 種：TWD/USD/JPY/KRW/CNY）
+  console.log('💱 Step 4/5: 建立幣別與匯率...')
+  await seedCurrencies(payload)
+  console.log()
+
+  // Step 5: 上傳範本
+  console.log('📋 Step 5/5: 產生上傳範本...')
   const { generateTemplates } = await import('./generateTemplates')
   await generateTemplates()
   console.log()

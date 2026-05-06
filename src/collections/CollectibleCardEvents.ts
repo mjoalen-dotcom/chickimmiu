@@ -34,8 +34,9 @@ const readOwnEvents: Access = ({ req: { user } }) => {
 
 export const CollectibleCardEvents: CollectionConfig = {
   slug: 'collectible-card-events',
+  labels: { singular: '卡牌事件記錄', plural: '卡牌事件記錄' },
   admin: {
-    group: '卡牌系統',
+    group: '⑤ 互動體驗',
     useAsTitle: 'action',
     defaultColumns: ['action', 'card', 'fromUser', 'toUser', 'pointsDelta', 'createdAt'],
     description: '造型卡事件審計日誌（唯讀）。',

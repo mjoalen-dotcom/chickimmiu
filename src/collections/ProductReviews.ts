@@ -11,7 +11,7 @@ export const ProductReviews: CollectionConfig = {
   slug: 'product-reviews',
   labels: { singular: '商品評價', plural: '商品評價' },
   admin: {
-    group: '商品管理',
+    group: '② 商品管理',
     description: '管理商品評價與審核',
     defaultColumns: ['product', 'rating', 'status', 'createdAt'],
   },

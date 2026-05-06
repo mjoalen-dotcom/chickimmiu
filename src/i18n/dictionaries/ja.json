@@ -1,0 +1,161 @@
+{
+  "common": {
+    "loading": "読み込み中…",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "confirm": "確認",
+    "close": "閉じる",
+    "submit": "送信",
+    "search": "検索",
+    "viewMore": "もっと見る",
+    "addToCart": "カートに追加",
+    "buyNow": "今すぐ購入",
+    "errorGeneric": "エラーが発生しました。もう一度お試しください",
+    "successGeneric": "完了しました"
+  },
+  "navbar": {
+    "menu": "メニュー",
+    "search": "検索",
+    "searchPlaceholder": "商品・カテゴリ・キーワードで検索…",
+    "wishlist": "お気に入り",
+    "account": "会員",
+    "accountMenu": "会員メニュー",
+    "memberOverview": "会員ホーム",
+    "myOrders": "注文履歴",
+    "pointsAndCredit": "ポイント / クレジット",
+    "logout": "ログアウト",
+    "loggingOut": "ログアウト中…",
+    "login": "ログイン",
+    "register": "新規登録",
+    "loginOrRegister": "ログイン / 新規登録",
+    "myAccount": "マイアカウント",
+    "loggedInAs": "ログイン中：",
+    "memberFallback": "会員",
+    "cart": "カート",
+    "announcementDefault": "NT$1,000 以上のお買い上げで送料無料 ♥ 新規会員 10% OFF",
+    "navAllProducts": "全商品",
+    "navNewArrivals": "新着商品",
+    "navHotItems": "人気商品",
+    "navSale": "セール",
+    "navCollections": "コレクション",
+    "navBlog": "スタイルマガジン"
+  },
+  "footer": {
+    "tagline": "ミニマルな上品さと韓国風の遊び心",
+    "bankInfo": "Bank Info",
+    "bankCode": "銀行コード：822（CTBC 銀行）",
+    "bankBranch": "支店：復興支店",
+    "bankAccount": "口座：495540523762",
+    "bankName": "口座名義：Jin Show International Co., Ltd.",
+    "taxId": "統一番号：24540533",
+    "taxIdLabel": "統一番号",
+    "contact": "Contact",
+    "lineLabel": "Line / @ckmu",
+    "wechatLabel": "Wechat / chickimmiu",
+    "partnerLabel": "パートナー：jinhow.ckmu.co",
+    "helpTitle": "Help",
+    "helpShoppingGuide": "ショッピングガイド",
+    "helpAbout": "ブランドについて",
+    "helpPackaging": "パッケージ",
+    "helpTerms": "利用規約",
+    "helpPrivacy": "プライバシーポリシー",
+    "helpReturnPolicy": "返品ポリシー",
+    "helpFaq": "よくある質問",
+    "shoppingTitle": "ショップ / 会員",
+    "shoppingAll": "全商品",
+    "shoppingNew": "新着商品",
+    "shoppingHot": "人気商品",
+    "shoppingBlog": "スタイルマガジン",
+    "shoppingGames": "ラッキーゲーム",
+    "shoppingMember": "会員センター",
+    "shoppingOrders": "注文照会",
+    "shoppingSubscription": "サブスク",
+    "shoppingReferrals": "友達紹介",
+    "rightsReserved": "All Rights Reserved"
+  },
+  "product": {
+    "badgeNew": "NEW",
+    "badgeHot": "HOT",
+    "soldCount": "{count} 人が購入",
+    "addToWishlist": "お気に入りに追加",
+    "removeFromWishlist": "お気に入りを解除",
+    "quickView": "クイックビュー",
+    "vipPriceLabel": "VIP",
+    "moreColors": "+{count}"
+  },
+  "hero": {
+    "slide1Tag": "2026 春夏 新作入荷",
+    "slide1Title": "上品さと可愛さが\n出会う",
+    "slide1Subtitle": "通勤からデートまで、CHIC KIM & MIU は一人ひとりに似合うスタイルを届けます。",
+    "slide1Cta": "全商品を見る",
+    "slide2Tag": "期間限定セール",
+    "slide2Title": "あなただけの\n春夏スタイル",
+    "slide2Subtitle": "春夏の人気アイテムを期間限定で特別価格に。お気に入りの一着を見つけて。",
+    "slide2Cta": "セールを見る",
+    "slide3Tag": "会員限定",
+    "slide3Title": "サブスクで\n特別な特典を",
+    "slide3Subtitle": "全品割引、毎月のクレジット、会員限定の抽選など、嬉しい特典がいっぱい。",
+    "slide3Cta": "プランを見る"
+  },
+  "productList": {
+    "overline": "PRODUCTS",
+    "title": "全商品",
+    "categoryNav": {
+      "label": "カテゴリ",
+      "all": "すべてのカテゴリ",
+      "allOf": "{name} のすべて"
+    },
+    "tags": {
+      "all": "すべて",
+      "new": "新着商品",
+      "hot": "人気商品",
+      "sale": "セール",
+      "koreanCelebrity": "★ K-スターと同じ",
+      "jinStyle": "✿ Jin の愛用品"
+    },
+    "sort": {
+      "newest": "新着順",
+      "priceAsc": "価格：安い順",
+      "priceDesc": "価格：高い順",
+      "popular": "人気順"
+    },
+    "filters": {
+      "more": "もっと絞り込む",
+      "clear": "絞り込みを解除",
+      "color": "カラー",
+      "priceRange": "価格帯",
+      "size": "サイズ",
+      "minPlaceholder": "NT$ 0",
+      "maxPlaceholder": "NT$ 10,000"
+    },
+    "count": "{n} 件",
+    "empty": {
+      "title": "条件に合う商品が見つかりませんでした",
+      "cta": "絞り込みを解除"
+    },
+    "pagination": {
+      "previous": "前へ",
+      "next": "次へ",
+      "page": "{n} ページ",
+      "of": "全 {total} ページ"
+    }
+  },
+  "category": {
+    "overline": "CATEGORY",
+    "empty": "このカテゴリにはまだ商品がありません",
+    "breadcrumb": {
+      "home": "ホーム",
+      "products": "全商品"
+    }
+  },
+  "collections": {
+    "heroOverline": "Collection",
+    "heroTitle": "テーマコレクション",
+    "heroDescription": "スタイル・シーン・テーマ別に厳選したコレクションをご覧ください",
+    "browse": "コレクションを見る →",
+    "empty": {
+      "title": "このコレクションは準備中です。お楽しみに",
+      "cta": "全商品を見る"
+    }
+  }
+}

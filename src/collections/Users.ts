@@ -7,6 +7,7 @@ import { customerRegisterEndpoint } from '../endpoints/customerRegister'
 import { customerLogoutEndpoint } from '../endpoints/customerLogout'
 import { memberAnalyticsEndpoint } from '../endpoints/memberAnalytics'
 import { repeatPurchaseEndpoint } from '../endpoints/repeatPurchaseAnalytics'
+import { shoplineCustomerImportEndpoint } from '../endpoints/shoplineCustomerImport'
 import { generateUniqueReferralCode } from '../lib/referralCode'
 
 const userFieldMappings: FieldMapping[] = [
@@ -36,10 +37,11 @@ const userFieldMappings: FieldMapping[] = [
  */
 export const Users: CollectionConfig = {
   slug: 'users',
+  labels: { singular: '會員', plural: '會員' },
   admin: {
     useAsTitle: 'email',
     defaultColumns: ['name', 'email', 'role', 'memberTier', 'points', 'totalSpent', 'creditStatus', 'createdAt'],
-    group: '會員管理',
+    group: '③ 會員與 CRM',
     description: '系統使用者（管理員、合作夥伴、一般會員）— 分區管理介面',
     components: {
       beforeListTable: [
@@ -125,6 +127,7 @@ export const Users: CollectionConfig = {
     customerLogoutEndpoint,
     memberAnalyticsEndpoint,
     repeatPurchaseEndpoint,
+    shoplineCustomerImportEndpoint,
   ],
   hooks: {
     // 新增使用者時（admin 建立、customer /register、OAuth 橋接皆適用）自動產生
@@ -410,6 +413,34 @@ export const Users: CollectionConfig = {
                   label: '備註',
                   type: 'text',
                   admin: { description: '例如「客戶帳款代墊」「2026 春夏季使用」' },
+                },
+              ],
+            },
+            // ── 來源追蹤 ──
+            {
+              type: 'row',
+              fields: [
+                {
+                  name: 'shoplineCustomerId',
+                  label: 'Shopline 顧客 ID',
+                  type: 'text',
+                  index: true,
+                  admin: { width: '50%', description: 'Shopline 匯出的 customer_id，用於資料對接' },
+                },
+                {
+                  name: 'signupSource',
+                  label: '註冊來源',
+                  type: 'select',
+                  options: [
+                    { label: 'Shopline 匯入', value: 'shopline' },
+                    { label: '官網自然註冊', value: 'organic' },
+                    { label: 'LINE 登入', value: 'line' },
+                    { label: 'Facebook 登入', value: 'facebook' },
+                    { label: 'Google 登入', value: 'google' },
+                    { label: '推薦', value: 'referral' },
+                    { label: '後台手動建立', value: 'admin' },
+                  ],
+                  admin: { width: '50%', description: '會員首次註冊的管道' },
                 },
               ],
             },
@@ -952,14 +983,106 @@ export const Users: CollectionConfig = {
                 readOnly: true,
               },
             },
+            // ── UTM 首次接觸歸因（會員註冊時記錄一次，永久不變）──
+            {
+              name: 'firstTouchAttribution',
+              label: 'UTM 首次接觸歸因',
+              type: 'group',
+              admin: {
+                description:
+                  '會員首次進站（90 天 cookie）的 UTM 來源，註冊時自動寫入。' +
+                  '報表頁可看「哪個來源帶來最多註冊」、各來源的會員 LTV 比較。',
+                readOnly: true,
+              },
+              fields: [
+                { name: 'utmSource', label: 'UTM Source', type: 'text' },
+                { name: 'utmMedium', label: 'UTM Medium', type: 'text' },
+                { name: 'utmCampaign', label: 'UTM Campaign', type: 'text' },
+                { name: 'utmTerm', label: 'UTM Term', type: 'text' },
+                { name: 'utmContent', label: 'UTM Content', type: 'text' },
+                { name: 'referrer', label: 'Referrer', type: 'text' },
+                { name: 'landingPath', label: '首次進站頁', type: 'text' },
+                { name: 'capturedAt', label: '捕獲時間', type: 'date' },
+              ],
+            },
           ],
         },
 
         // ── TAB 7: Game Activity & AI DM ──────────────────────────
         {
           label: '遊戲 & AI',
-          description: '遊樂場活動記錄、AI 推薦 DM',
+          description: '遊樂場活動記錄、MBTI 個性、AI 推薦 DM',
           fields: [
+            {
+              name: 'mbtiProfile',
+              label: 'MBTI 個性測驗結果',
+              type: 'group',
+              admin: { description: '會員在 MBTI 個性穿搭測驗中的最近一次結果（用於商品推薦）' },
+              fields: [
+                {
+                  name: 'mbtiType',
+                  label: 'MBTI 類型',
+                  type: 'select',
+                  options: [
+                    { label: 'INTJ 建築師', value: 'INTJ' },
+                    { label: 'INTP 邏輯學家', value: 'INTP' },
+                    { label: 'ENTJ 指揮官', value: 'ENTJ' },
+                    { label: 'ENTP 辯論家', value: 'ENTP' },
+                    { label: 'INFJ 提倡者', value: 'INFJ' },
+                    { label: 'INFP 調停者', value: 'INFP' },
+                    { label: 'ENFJ 主人公', value: 'ENFJ' },
+                    { label: 'ENFP 競選者', value: 'ENFP' },
+                    { label: 'ISTJ 物流師', value: 'ISTJ' },
+                    { label: 'ISFJ 守衛者', value: 'ISFJ' },
+                    { label: 'ESTJ 總經理', value: 'ESTJ' },
+                    { label: 'ESFJ 執政官', value: 'ESFJ' },
+                    { label: 'ISTP 鑑賞家', value: 'ISTP' },
+                    { label: 'ISFP 探險家', value: 'ISFP' },
+                    { label: 'ESTP 企業家', value: 'ESTP' },
+                    { label: 'ESFP 表演者', value: 'ESFP' },
+                  ],
+                  admin: { description: '由 MBTI 個性穿搭測驗自動寫入；商品推薦會以此為依據' },
+                },
+                {
+                  name: 'mbtiTakenAt',
+                  label: '上次測驗時間',
+                  type: 'date',
+                  admin: { readOnly: true, description: '系統自動記錄' },
+                },
+                {
+                  name: 'mbtiScores',
+                  label: '測驗分數（JSON）',
+                  type: 'json',
+                  admin: { readOnly: true, description: '4 維度淨分（E-I / S-N / T-F / J-P），系統自動記錄' },
+                },
+                // MBTI64（PR-Y）：基本 MBTI 16 型 × 4 場合 = 64 sub-personalities
+                {
+                  name: 'primaryOccasion',
+                  label: '主要場合（MBTI64）',
+                  type: 'select',
+                  options: [
+                    { label: '都會 都會 / 通勤 / 商務', value: 'urban' },
+                    { label: '度假 旅行 / 戶外 / 放鬆', value: 'vacation' },
+                    { label: '派對 夜晚 / 慶典 / 紅毯', value: 'party' },
+                    { label: '居家 在家 / 散步 / 日常', value: 'cozy' },
+                  ],
+                  admin: {
+                    description:
+                      '由測驗最後 4 題 lifestyle 場合題自動推算；與 mbtiType 組合 → 64 sub-personality 推薦',
+                  },
+                },
+                {
+                  name: 'occasionScores',
+                  label: '場合分數（JSON）',
+                  type: 'json',
+                  admin: {
+                    readOnly: true,
+                    description:
+                      '4 場合票數（urban/vacation/party/cozy），系統自動記錄；用於分群與重新推薦',
+                  },
+                },
+              ],
+            },
             {
               name: 'gameActivity',
               label: '遊樂場活動記錄',
@@ -1083,6 +1206,99 @@ export const Users: CollectionConfig = {
                   Field: '@/components/admin/MemberTreasureBoxPanel',
                 },
               },
+            },
+          ],
+        },
+
+        // ── TAB 9: 客服通知偏好（僅 admin role 顯示）──────────────
+        // 客服中心 v1 Phase 1A：staff 收新訊息通知偏好設定
+        // 邏輯接通在 Phase 1D（SSE bell）+ Phase 5D（email digest）
+        {
+          label: '客服通知',
+          description: '僅 staff（admin role）有效；新對話 / 未讀訊息的通知偏好',
+          fields: [
+            {
+              name: 'notificationPreferences',
+              label: '客服通知偏好',
+              type: 'group',
+              admin: {
+                description: '只在 role=admin 時生效；customer / partner 此區設定無作用',
+                condition: (data) => data?.role === 'admin',
+              },
+              fields: [
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'bellInAdmin',
+                      label: '後台鈴鐺通知',
+                      type: 'checkbox',
+                      defaultValue: true,
+                      admin: { width: '50%' },
+                    },
+                    {
+                      name: 'emailDigest',
+                      label: '每日 email digest',
+                      type: 'checkbox',
+                      defaultValue: false,
+                      admin: { width: '50%' },
+                    },
+                  ],
+                },
+                {
+                  name: 'emailDigestTime',
+                  label: 'Email digest 寄出時間（HH:mm）',
+                  type: 'text',
+                  defaultValue: '09:00',
+                  admin: {
+                    description: 'businessHours.timezone 為基準（預設 Asia/Taipei）',
+                  },
+                },
+                {
+                  name: 'channels',
+                  label: '訂閱 channel 通知',
+                  type: 'select',
+                  hasMany: true,
+                  defaultValue: ['web', 'line', 'fb', 'ig', 'email'],
+                  options: [
+                    { label: '站內 Web Chat', value: 'web' },
+                    { label: 'LINE OA', value: 'line' },
+                    { label: 'FB Messenger', value: 'fb' },
+                    { label: 'IG DM', value: 'ig' },
+                    { label: 'Email', value: 'email' },
+                    { label: '電話', value: 'phone' },
+                    { label: '網頁表單', value: 'web_form' },
+                  ],
+                },
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'quietHoursStart',
+                      label: '靜音時段開始',
+                      type: 'text',
+                      admin: {
+                        width: '50%',
+                        description: 'HH:mm；勿擾期間不發 push、bell 不亮，但 email digest 仍寄',
+                      },
+                    },
+                    {
+                      name: 'quietHoursEnd',
+                      label: '靜音時段結束',
+                      type: 'text',
+                      admin: { width: '50%' },
+                    },
+                  ],
+                },
+                {
+                  name: 'mobilePushToken',
+                  label: '手機 push token',
+                  type: 'text',
+                  admin: {
+                    description: '為將來 PWA push 預留欄位；Phase 1A 暫不實作',
+                  },
+                },
+              ],
             },
           ],
         },

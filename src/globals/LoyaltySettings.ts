@@ -12,6 +12,7 @@ export const LoyaltySettings: GlobalConfig = {
   slug: 'loyalty-settings',
   label: '忠誠度計畫設定',
   admin: {
+    group: '③ 會員與 CRM',
     description: '會員點數計算、各等級權益、兌換規則、遊戲次數完整設定',
   },
   access: {
@@ -37,6 +38,20 @@ export const LoyaltySettings: GlobalConfig = {
         { name: 'pointsExpiryDays', label: '點數有效期限（天）', type: 'number', defaultValue: 365, admin: { description: '0 = 永不過期' } },
         { name: 'minRedeemPoints', label: '最低兌換點數', type: 'number', defaultValue: 100 },
         { name: 'maxRedeemPercentage', label: '單筆訂單最高點數折抵比例（%）', type: 'number', defaultValue: 30, admin: { description: '例如 30% 表示 NT$1000 訂單最多折 NT$300' } },
+      ],
+    },
+
+    // ── 新會員註冊禮 ──
+    {
+      name: 'signupReward',
+      label: '新會員註冊禮',
+      type: 'group',
+      admin: { description: '會員首次註冊（含 OAuth bridge 首次建檔）自動贈送點數 / 購物金' },
+      fields: [
+        { name: 'enabled', label: '啟用註冊禮', type: 'checkbox', defaultValue: true },
+        { name: 'points', label: '註冊贈送點數', type: 'number', defaultValue: 100, admin: { description: '0 = 不贈送點數' } },
+        { name: 'shoppingCredit', label: '註冊贈送購物金', type: 'number', defaultValue: 0, admin: { description: 'NT$，0 = 不贈送購物金' } },
+        { name: 'description', label: '紀錄備註', type: 'text', defaultValue: '新會員註冊禮', admin: { description: '寫進 PointsTransactions.description 用' } },
       ],
     },
 

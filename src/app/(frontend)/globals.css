@@ -44,6 +44,19 @@
     --ring: 35 42% 55%;
 
     --radius: 0.625rem;
+
+    /* Brand theme tokens — runtime overridden by <ThemeStyles> in (frontend)/layout.tsx
+       拿 SiteThemes 的 active doc 注入 :root，這裡是預設 fallback（沒 active theme 時用）。
+       格式：RGB channel "R G B"（0-255），給 Tailwind brand-* 透過 rgb(var(--x) / alpha) 使用。 */
+    --theme-primary: 193 154 91;       /* #C19A5B 金色 */
+    --theme-accent: 239 187 170;        /* #EFBBAA 蜜桃粉 */
+    --theme-surface: 249 245 236;       /* #F9F5EC 米白 */
+    --theme-ink: 44 44 44;              /* #2C2C2C 深黑 */
+    --theme-on-primary: 253 251 247;    /* #FDFBF7 米白文字（在金底上） */
+    --theme-on-accent: 44 44 44;        /* #2C2C2C 深黑文字（在蜜桃底上） */
+    --theme-overlay-from: 0 0 0;        /* 黑色漸層起點 */
+    --theme-overlay-to: 0 0 0;          /* 黑色漸層終點 */
+    --theme-overlay-opacity: 0.45;      /* hero 全幅遮罩透明度 */
   }
 
   .dark {

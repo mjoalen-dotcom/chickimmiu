@@ -31,7 +31,15 @@ import {
 import { useCartStore } from '@/stores/cartStore'
 import { CheckoutLastChance } from '@/components/recommendation/CheckoutLastChance'
 import { PromoUpsellSection } from '@/components/cart/PromoUpsellSection'
-import { trackBeginCheckout, trackPurchase, getStoredUTM } from '@/lib/tracking'
+import {
+  trackBeginCheckout,
+  trackPurchase,
+  getStoredUTM,
+  purchaseEventId,
+  getCurrentAttribution,
+} from '@/lib/tracking'
+import { sendServerPurchaseEvent } from '@/app/actions/tracking'
+import { Price } from '@/components/common/Price'
 
 /* ── 付款方式 ──
  * cash_cod 只在所選物流支援貨到付款（cashOnDelivery=true）時顯示，
@@ -663,6 +671,22 @@ export default function CheckoutPage() {
             : undefined,
         estimatedDays: shippingOption?.estimatedDays,
       },
+      // PR-B：UTM 歸因（first-touch 90 天 cookie + last-touch session）
+      // Orders.ts attribution group 不存 landingPath（只 Users.firstTouchAttribution 存），
+      // 所以這裡 strip 掉 landingPath 欄位。
+      attribution: (() => {
+        const a = getCurrentAttribution()
+        const stripLanding = (t: typeof a.firstTouch) => {
+          if (!t) return undefined
+          const { landingPath: _drop, ...rest } = t
+          void _drop
+          return rest
+        }
+        return {
+          firstTouch: stripLanding(a.firstTouch),
+          lastTouch: stripLanding(a.lastTouch),
+        }
+      })(),
       customerNote: form.customerNote || undefined,
     }
 
@@ -746,20 +770,47 @@ export default function CheckoutPage() {
       }
     }
 
-    trackPurchase({
-      transaction_id: createdOrderNumber,
+    // ── Pixel + CAPI 雙線（Meta 用 (event_name, event_id) 去重）──
+    // eventID 用訂單編號衍生，雙擊「完成下單」也只算一次 conversion。
+    const eventID = purchaseEventId(createdOrderNumber)
+
+    trackPurchase(
+      {
+        transaction_id: createdOrderNumber,
+        value: total,
+        currency: 'TWD',
+        shipping: shippingFee,
+        items: items.map((i) => ({
+          item_id: i.productId,
+          item_name: i.name,
+          price: i.salePrice ?? i.price,
+          quantity: i.quantity,
+          item_variant: i.variant
+            ? `${i.variant.colorName} / ${i.variant.size}`
+            : undefined,
+        })),
+      },
+      eventID,
+    )
+
+    // Server-side CAPI — 缺 META_CAPI_ACCESS_TOKEN env (或 GlobalSettings.tracking
+    // .metaCapiToken) 時自動 no-op。失敗永遠不擋 checkout 後續導頁。
+    sendServerPurchaseEvent({
+      transactionId: createdOrderNumber,
       value: total,
       currency: 'TWD',
-      shipping: shippingFee,
+      eventID,
+      sourceUrl: typeof window !== 'undefined' ? window.location.href : undefined,
+      userEmail: user?.email,
+      userPhone: form.phone,
       items: items.map((i) => ({
-        item_id: i.productId,
-        item_name: i.name,
-        price: i.salePrice ?? i.price,
+        id: i.productId,
+        name: i.name,
         quantity: i.quantity,
-        item_variant: i.variant
-          ? `${i.variant.colorName} / ${i.variant.size}`
-          : undefined,
+        price: i.salePrice ?? i.price,
       })),
+    }).catch((err) => {
+      console.warn('[Checkout] CAPI fire-and-forget failed (non-fatal):', err)
     })
 
     clearCart()
@@ -1526,9 +1577,10 @@ export default function CheckoutPage() {
                             x {item.quantity}
                           </p>
                         </div>
-                        <p className="text-xs font-medium whitespace-nowrap">
-                          NT$ {(unitPrice * item.quantity).toLocaleString()}
-                        </p>
+                        <Price
+                          twd={unitPrice * item.quantity}
+                          className="text-xs font-medium whitespace-nowrap"
+                        />
                       </div>
                     )
                   })}
@@ -1537,7 +1589,7 @@ export default function CheckoutPage() {
                 <div className="border-t border-cream-200 pt-4 space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">商品小計</span>
-                    <span>NT$ {subtotal.toLocaleString()}</span>
+                    <Price twd={subtotal} />
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
@@ -1547,7 +1599,7 @@ export default function CheckoutPage() {
                       {shippingFee === 0 ? (
                         <span className="text-green-600">免運費</span>
                       ) : (
-                        `NT$ ${shippingFee}`
+                        <Price twd={shippingFee} />
                       )}
                     </span>
                   </div>
@@ -1560,7 +1612,7 @@ export default function CheckoutPage() {
                   {codFee > 0 && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">貨到付款手續費</span>
-                      <span>NT$ {codFee}</span>
+                      <Price twd={codFee} />
                     </div>
                   )}
                   {appliedCoupon && (couponDiscount > 0 || appliedCoupon.freeShipping) && (
@@ -1570,9 +1622,13 @@ export default function CheckoutPage() {
                         優惠券（{appliedCoupon.couponCode}）
                       </span>
                       <span>
-                        {appliedCoupon.freeShipping
-                          ? '免運'
-                          : `− NT$ ${couponDiscount.toLocaleString()}`}
+                        {appliedCoupon.freeShipping ? (
+                          '免運'
+                        ) : (
+                          <>
+                            − <Price twd={couponDiscount} />
+                          </>
+                        )}
                       </span>
                     </div>
                   )}
@@ -1592,7 +1648,7 @@ export default function CheckoutPage() {
                         <span>
                           {taxSettings.defaultTaxIncluded ? '含' : '加收'} {rate}% 營業稅
                         </span>
-                        <span>NT$ {tax.toLocaleString()}</span>
+                        <Price twd={tax} />
                       </div>
                     )
                   })()}
@@ -1600,10 +1656,11 @@ export default function CheckoutPage() {
 
                 <div className="border-t border-cream-200 pt-4 flex justify-between items-baseline">
                   <span className="font-medium">合計</span>
-                  <span className="text-xl font-medium text-gold-600">
-                    NT$ {total.toLocaleString()}
-                  </span>
+                  <Price twd={total} className="text-xl font-medium text-gold-600" />
                 </div>
+                <p className="text-[10px] text-muted-foreground text-right -mt-2">
+                  本站交易實際以新台幣（TWD）結算，其他幣別僅供顯示參考。
+                </p>
 
                 {checkoutCfg.minOrderAmount > 0 && subtotal < checkoutCfg.minOrderAmount && (
                   <p className="text-xs text-rose-600 bg-rose-50 px-3 py-2 rounded-lg">

@@ -1,0 +1,161 @@
+{
+  "common": {
+    "loading": "로딩 중…",
+    "save": "저장",
+    "cancel": "취소",
+    "confirm": "확인",
+    "close": "닫기",
+    "submit": "제출",
+    "search": "검색",
+    "viewMore": "더 보기",
+    "addToCart": "장바구니 담기",
+    "buyNow": "바로 구매",
+    "errorGeneric": "오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+    "successGeneric": "완료되었습니다"
+  },
+  "navbar": {
+    "menu": "메뉴",
+    "search": "검색",
+    "searchPlaceholder": "상품·카테고리·키워드 검색…",
+    "wishlist": "위시리스트",
+    "account": "회원",
+    "accountMenu": "회원 메뉴",
+    "memberOverview": "회원 홈",
+    "myOrders": "주문 내역",
+    "pointsAndCredit": "포인트 / 적립금",
+    "logout": "로그아웃",
+    "loggingOut": "로그아웃 중…",
+    "login": "로그인",
+    "register": "회원가입",
+    "loginOrRegister": "로그인 / 회원가입",
+    "myAccount": "마이 페이지",
+    "loggedInAs": "로그인 중:",
+    "memberFallback": "회원",
+    "cart": "장바구니",
+    "announcementDefault": "NT$1,000 이상 구매 시 무료 배송 ♥ 신규 회원 10% 할인",
+    "navAllProducts": "전체 상품",
+    "navNewArrivals": "신상품",
+    "navHotItems": "베스트",
+    "navSale": "세일",
+    "navCollections": "컬렉션",
+    "navBlog": "스타일 매거진"
+  },
+  "footer": {
+    "tagline": "미니멀한 우아함과 한국적 감성의 만남",
+    "bankInfo": "Bank Info",
+    "bankCode": "은행코드: 822 (CTBC 은행)",
+    "bankBranch": "지점: 부흥지점",
+    "bankAccount": "계좌: 495540523762",
+    "bankName": "예금주: Jin Show International Co., Ltd.",
+    "taxId": "사업자번호: 24540533",
+    "taxIdLabel": "사업자번호",
+    "contact": "Contact",
+    "lineLabel": "Line / @ckmu",
+    "wechatLabel": "Wechat / chickimmiu",
+    "partnerLabel": "파트너: jinhow.ckmu.co",
+    "helpTitle": "Help",
+    "helpShoppingGuide": "쇼핑 가이드",
+    "helpAbout": "브랜드 소개",
+    "helpPackaging": "패키지",
+    "helpTerms": "이용약관",
+    "helpPrivacy": "개인정보 처리방침",
+    "helpReturnPolicy": "반품·교환 정책",
+    "helpFaq": "자주 묻는 질문",
+    "shoppingTitle": "쇼핑 / 회원",
+    "shoppingAll": "전체 상품",
+    "shoppingNew": "신상품",
+    "shoppingHot": "베스트",
+    "shoppingBlog": "스타일 매거진",
+    "shoppingGames": "럭키 게임",
+    "shoppingMember": "회원 센터",
+    "shoppingOrders": "주문 조회",
+    "shoppingSubscription": "구독 플랜",
+    "shoppingReferrals": "친구 추천",
+    "rightsReserved": "All Rights Reserved"
+  },
+  "product": {
+    "badgeNew": "NEW",
+    "badgeHot": "HOT",
+    "soldCount": "{count} 명이 구매",
+    "addToWishlist": "위시리스트 추가",
+    "removeFromWishlist": "위시리스트 제거",
+    "quickView": "빠른 보기",
+    "vipPriceLabel": "VIP",
+    "moreColors": "+{count}"
+  },
+  "hero": {
+    "slide1Tag": "2026 봄·여름 신상품",
+    "slide1Title": "우아함과 사랑스러움\n그 사이",
+    "slide1Subtitle": "데일리 출근부터 데이트까지, CHIC KIM & MIU 와 함께 나만의 스타일을 찾아보세요.",
+    "slide1Cta": "전체 상품 보기",
+    "slide2Tag": "한정 세일",
+    "slide2Title": "오직 당신을 위한\n봄·여름 스타일",
+    "slide2Subtitle": "봄·여름 베스트 아이템 한정 세일 — 당신의 인생템을 만나보세요.",
+    "slide2Cta": "세일 보기",
+    "slide3Tag": "회원 전용",
+    "slide3Title": "구독하고\n특별한 혜택을",
+    "slide3Subtitle": "전 품목 할인, 매달 적립금, 회원 전용 추첨 등 다양한 혜택을 만나보세요.",
+    "slide3Cta": "플랜 보기"
+  },
+  "productList": {
+    "overline": "PRODUCTS",
+    "title": "전체 상품",
+    "categoryNav": {
+      "label": "카테고리",
+      "all": "전체 카테고리",
+      "allOf": "전체 {name}"
+    },
+    "tags": {
+      "all": "전체",
+      "new": "신상품",
+      "hot": "베스트",
+      "sale": "세일",
+      "koreanCelebrity": "★ K-스타일",
+      "jinStyle": "✿ Jin's Pick"
+    },
+    "sort": {
+      "newest": "최신순",
+      "priceAsc": "가격: 낮은순",
+      "priceDesc": "가격: 높은순",
+      "popular": "인기순"
+    },
+    "filters": {
+      "more": "필터 더보기",
+      "clear": "필터 초기화",
+      "color": "색상",
+      "priceRange": "가격대",
+      "size": "사이즈",
+      "minPlaceholder": "NT$ 0",
+      "maxPlaceholder": "NT$ 10,000"
+    },
+    "count": "{n} 개 상품",
+    "empty": {
+      "title": "조건에 맞는 상품이 없습니다",
+      "cta": "필터 초기화"
+    },
+    "pagination": {
+      "previous": "이전",
+      "next": "다음",
+      "page": "{n} 페이지",
+      "of": "전체 {total} 페이지"
+    }
+  },
+  "category": {
+    "overline": "CATEGORY",
+    "empty": "이 카테고리에는 아직 상품이 없습니다",
+    "breadcrumb": {
+      "home": "홈",
+      "products": "전체 상품"
+    }
+  },
+  "collections": {
+    "heroOverline": "Collection",
+    "heroTitle": "테마 컬렉션",
+    "heroDescription": "스타일·상황·테마별로 큐레이션한 컬렉션을 만나보세요",
+    "browse": "컬렉션 보기 →",
+    "empty": {
+      "title": "이 컬렉션은 준비 중입니다. 곧 만나요",
+      "cta": "전체 상품 보기"
+    }
+  }
+}

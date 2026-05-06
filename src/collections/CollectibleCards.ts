@@ -36,8 +36,9 @@ const readOwnCards: Access = ({ req: { user } }) => {
 
 export const CollectibleCards: CollectionConfig = {
   slug: 'collectible-cards',
+  labels: { singular: '收藏卡牌', plural: '收藏卡牌' },
   admin: {
-    group: '卡牌系統',
+    group: '⑤ 互動體驗',
     useAsTitle: 'displayTitle',
     defaultColumns: ['displayTitle', 'cardType', 'serialNo', 'owner', 'status', 'mintedVia', 'mintedAt'],
     description: '會員持有的每張造型卡（common + limited）。',

@@ -19,6 +19,7 @@ import { WishPoolGame } from './WishPoolGame'
 import { BlindBoxGame } from './BlindBoxGame'
 import { QueenVoteGame } from './QueenVoteGame'
 import { TeamStyleGame } from './TeamStyleGame'
+import { MBTIStyleGame } from './MBTIStyleGame'
 
 interface Props {
   game: GameDef & { settings: Record<string, unknown> }
@@ -39,6 +40,7 @@ const GAME_COMPONENTS: Record<string, React.ComponentType<{ settings: Record<str
   'blind-box': BlindBoxGame,
   'queen-vote': QueenVoteGame,
   'team-style': TeamStyleGame,
+  'mbti-style': MBTIStyleGame,
 }
 
 export function GamePageClient({ game }: Props) {
