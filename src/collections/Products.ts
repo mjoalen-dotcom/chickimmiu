@@ -5,6 +5,7 @@ import { isAdmin } from '../access/isAdmin'
 import { createExportEndpoint, createImportEndpoint, type FieldMapping } from '../endpoints/importExport'
 import { revalidateAllEndpoint } from '../endpoints/revalidateAll'
 import { shoplineXlsxImportEndpoint } from '../endpoints/shoplineXlsxImport'
+import { linkIntegrityScanEndpoint } from '../endpoints/linkIntegrityScan'
 import { revalidateProduct } from '../lib/revalidate'
 import { suggestPersonalityTypes } from '../lib/games/mbtiAutoRecommend'
 
@@ -104,6 +105,7 @@ export const Products: CollectionConfig = {
     createImportEndpoint('products', productFieldMappings),
     revalidateAllEndpoint,
     shoplineXlsxImportEndpoint,
+    linkIntegrityScanEndpoint,
   ],
   hooks: {
     /* ── 1. 驗證前：自動 slug + 資料正規化 ── */
