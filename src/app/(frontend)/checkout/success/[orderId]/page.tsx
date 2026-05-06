@@ -1,38 +1,82 @@
-'use client'
-
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
 import { CheckCircle, Package, ArrowRight, Home } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { getPayload } from 'payload'
+import config from '@payload-config'
 import { ThankYouRecommendations } from '@/components/recommendation/ThankYouRecommendations'
 
-export default function CheckoutSuccessPage() {
-  const params = useParams()
-  const orderId = params.orderId as string
+type LooseRecord = Record<string, unknown>
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: '待處理',
+  processing: '處理中',
+  shipped: '已出貨',
+  delivered: '已送達',
+  cancelled: '已取消',
+  refunded: '已退款',
+}
+
+const PAYMENT_STATUS_CONF: Record<string, { label: string; className: string }> = {
+  unpaid:       { label: '待付款',   className: 'text-amber-600' },
+  paid:         { label: '已付款',   className: 'text-green-600' },
+  partial_paid: { label: '部分付款', className: 'text-amber-600' },
+  refunded:     { label: '已退款',   className: 'text-muted-foreground' },
+  failed:       { label: '付款失敗', className: 'text-red-600' },
+}
+
+const PAYMENT_HINT: Record<string, string> = {
+  cash_cod:    '貨到付款 — 請備妥現金，由配送員收款後完成付款確認。',
+  cash_meetup: '面交付款 — 請至指定取貨地點現場付款。',
+}
+
+export default async function CheckoutSuccessPage({
+  params,
+}: {
+  params: Promise<{ orderId: string }>
+}) {
+  const { orderId } = await params
+
+  let orderStatus = 'pending'
+  let paymentStatus = 'unpaid'
+  let paymentMethod = ''
+  let found = false
+
+  if (process.env.DATABASE_URI) {
+    try {
+      const payload = await getPayload({ config })
+      const result = await payload.find({
+        collection: 'orders',
+        where: { orderNumber: { equals: orderId } },
+        limit: 1,
+        depth: 0,
+      })
+      const order = (result.docs[0] ?? null) as LooseRecord | null
+      if (order) {
+        found = true
+        orderStatus = (order.status as string) ?? 'pending'
+        paymentStatus = (order.paymentStatus as string) ?? 'unpaid'
+        paymentMethod = (order.paymentMethod as string) ?? ''
+      }
+    } catch {
+      // fallback to pending/unpaid defaults
+    }
+  }
+
+  const statusLabel = STATUS_LABEL[orderStatus] ?? orderStatus
+  const pmConf = PAYMENT_STATUS_CONF[paymentStatus] ?? { label: paymentStatus, className: 'text-foreground' }
+  const hint = PAYMENT_HINT[paymentMethod]
 
   return (
     <main className="bg-cream-50 min-h-screen flex items-center justify-center px-4 py-16">
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-lg text-center"
-      >
-        {/* Success icon */}
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-          className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-50 flex items-center justify-center"
-        >
+      <div className="w-full max-w-lg text-center">
+        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-50 flex items-center justify-center">
           <CheckCircle size={40} className="text-green-500" />
-        </motion.div>
+        </div>
 
         <h1 className="text-2xl md:text-3xl font-serif mb-3">感謝您的訂購！</h1>
         <p className="text-muted-foreground text-sm mb-2">
           我們已收到您的訂單，將儘快為您處理。
         </p>
 
-        {/* Order info card */}
         <div className="bg-white rounded-2xl border border-cream-200 p-6 mt-8 mb-8 space-y-4 text-left">
           <div className="flex items-center gap-3 pb-4 border-b border-cream-200">
             <Package size={20} className="text-gold-500" />
@@ -45,20 +89,27 @@ export default function CheckoutSuccessPage() {
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">訂單狀態</span>
-              <span className="text-gold-600">待處理</span>
+              <span className="text-gold-600">{statusLabel}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">付款狀態</span>
-              <span className="text-green-600">已付款</span>
+              <span className={pmConf.className}>{pmConf.label}</span>
             </div>
           </div>
 
-          <p className="text-xs text-muted-foreground pt-2 border-t border-cream-200">
-            訂單確認信已寄至您的信箱，您也可以在「我的帳戶」中查看訂單進度。
+          {hint && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+              {hint}
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground border-t border-cream-200 pt-2">
+            {found
+              ? '訂單確認信已寄至您的信箱，您也可以在「我的帳戶」中查看訂單進度。'
+              : '請至「我的帳戶 → 我的訂單」查看訂單進度。'}
           </p>
         </div>
 
-        {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
             href="/account/orders"
@@ -76,11 +127,8 @@ export default function CheckoutSuccessPage() {
           </Link>
         </div>
 
-        {/* ── AI 智能推薦：感謝頁推薦 + 限時回購 ── */}
         <ThankYouRecommendations />
-
-        {/* Purchase 事件已在 checkout/page.tsx 的 handleSubmit 中觸發 */}
-      </motion.div>
+      </div>
     </main>
   )
 }
