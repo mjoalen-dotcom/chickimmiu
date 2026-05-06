@@ -61,6 +61,7 @@ import { InvoiceSettings } from './globals/InvoiceSettings'
 import { TaxSettings } from './globals/TaxSettings'
 import { GameSettings } from './globals/GameSettings'
 import { HomepageSettings } from './globals/HomepageSettings'
+import { ProductListSettings } from './globals/ProductListSettings'
 import { AboutPageSettings } from './globals/AboutPageSettings'
 import { FAQPageSettings } from './globals/FAQPageSettings'
 import { PolicyPagesSettings } from './globals/PolicyPagesSettings'
@@ -350,6 +351,7 @@ export default buildConfig({
     GameSettings,
     // ⑥ 內容與頁面
     HomepageSettings,
+    ProductListSettings,
     AboutPageSettings,
     FAQPageSettings,
     PolicyPagesSettings,
