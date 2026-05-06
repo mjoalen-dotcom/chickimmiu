@@ -43,6 +43,7 @@ import * as migration_20260505_200000_add_ad_audiences from './20260505_200000_a
 import * as migration_20260505_220000_add_shopline_customer_fields from './20260505_220000_add_shopline_customer_fields';
 import * as migration_20260506_000000_add_ad_audiences_lock_rels from './20260506_000000_add_ad_audiences_lock_rels';
 import * as migration_20260506_120000_rename_utm_campaign_columns from './20260506_120000_rename_utm_campaign_columns';
+import * as migration_20260506_180000_add_product_alias_slugs from './20260506_180000_add_product_alias_slugs';
 
 export const migrations = [
   {
@@ -264,6 +265,11 @@ export const migrations = [
     up: migration_20260506_120000_rename_utm_campaign_columns.up,
     down: migration_20260506_120000_rename_utm_campaign_columns.down,
     name: '20260506_120000_rename_utm_campaign_columns',
+  },
+  {
+    up: migration_20260506_180000_add_product_alias_slugs.up,
+    down: migration_20260506_180000_add_product_alias_slugs.down,
+    name: '20260506_180000_add_product_alias_slugs',
   },
   {
     up: migration_20260423_000000_add_currencies.up,

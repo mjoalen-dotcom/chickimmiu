@@ -1,7 +1,7 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { ProductDetailClient } from './ProductDetailClient'
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/seo/JsonLd'
 import { normalizeMediaUrl } from '@/lib/media-url'
@@ -53,9 +53,8 @@ async function findProductBySlug(slug: string): Promise<Record<string, unknown> 
       }
     }
 
-    // PR-δ placeholder — aliasSlugs fallback 會由 PR-δ 在 page component
-    // 內 notFound() 之前另外加（含 301 redirect 到 canonical slug），
-    // 不放這個 helper 內。
+    // aliasSlugs fallback 由 PR-δ 在 generateMetadata 內也試一次 + 在
+    // ProductDetailPage 內 notFound() 之前再試一次（雙保險），不放這個 helper。
 
     console.log('[PDP] miss', { slug, decoded, candidates })
     return null
@@ -65,10 +64,55 @@ async function findProductBySlug(slug: string): Promise<Record<string, unknown> 
   }
 }
 
+/**
+ * PR-δ — 由 alias slug 查回 canonical slug。
+ * 找不到回 null。同時試 raw 與 decodeURIComponent 兩種候選，與
+ * findProductBySlug 對 percent-encoded UTF-8 slug 的處理對齊。
+ */
+async function findCanonicalByAlias(slug: string): Promise<string | null> {
+  if (!process.env.DATABASE_URI) return null
+
+  let decoded: string
+  try {
+    decoded = decodeURIComponent(slug)
+  } catch {
+    decoded = slug
+  }
+  const candidates = Array.from(new Set([slug, decoded]))
+
+  try {
+    const payload = await getPayload({ config })
+    for (const cand of candidates) {
+      const { docs } = await payload.find({
+        collection: 'products',
+        where: { 'aliasSlugs.slug': { equals: cand } },
+        limit: 1,
+        depth: 0,
+      })
+      const aliasMatch = docs[0] as unknown as Record<string, unknown> | undefined
+      if (aliasMatch?.slug && typeof aliasMatch.slug === 'string') {
+        return aliasMatch.slug
+      }
+    }
+  } catch (err) {
+    console.error('[PDP] aliasSlugs lookup threw:', err)
+  }
+  return null
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const product = await findProductBySlug(slug)
-  if (!product) return { title: '商品不存在｜CHIC KIM & MIU' }
+  if (!product) {
+    // PR-δ: alias fallback 也在 metadata 階段試一次。能在這裡 redirect 比在
+    // page component 內 redirect 早，可避免 Next.js 因為已經 stream 而退化成
+    // <meta http-equiv="refresh"> 的 fallback。
+    const canonical = await findCanonicalByAlias(slug)
+    if (canonical && canonical !== slug) {
+      redirect(`/products/${canonical}`)
+    }
+    return { title: '商品不存在｜CHIC KIM & MIU' }
+  }
 
   const seo = product.seo as unknown as Record<string, unknown> | undefined
   const images = product.images as { image?: { url?: string } }[] | undefined
@@ -97,6 +141,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductDetailPage({ params }: Props) {
   const { slug } = await params
   const product = await findProductBySlug(slug)
+
+  // PR-δ: aliasSlugs fallback（雙保險）。generateMetadata 應該已經先試過，
+  // 但若那邊因 cache / metadata 路徑沒走到，這裡再守一次。命中且其 canonical
+  // 不同 → redirect 到 canonical（在 page component 觸發時 Next 可能會退化成
+  // meta-refresh，metadata 階段的 redirect 才會是 HTTP 307）。
+  if (!product) {
+    const canonical = await findCanonicalByAlias(slug)
+    if (canonical && canonical !== slug) {
+      redirect(`/products/${canonical}`)
+    }
+  }
+
   let relatedProducts: Record<string, unknown>[] = []
 
   if (product && process.env.DATABASE_URI) {
