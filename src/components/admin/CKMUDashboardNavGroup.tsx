@@ -28,6 +28,11 @@ const items: { href: string; label: string; id: string }[] = [
   { href: '/admin', label: '營運總覽', id: 'nav-ckmu-overview' },
   { href: '/admin/member-analytics', label: '會員分群分析', id: 'nav-ckmu-member-analytics' },
   { href: '/admin/repeat-purchase', label: '回購分析', id: 'nav-ckmu-repeat-purchase' },
+  {
+    href: '/admin/diagnostics/link-integrity',
+    label: '連結完整性診斷',
+    id: 'nav-ckmu-link-integrity',
+  },
   { href: '/admin/help', label: '使用說明', id: 'nav-ckmu-help' },
 ]
 
