@@ -249,6 +249,11 @@ export default buildConfig({
           Component: '@/components/admin/UTMBuilderView',
           path: '/tools/utm-builder',
         },
+        // Wave 1 PR-ζ：連結完整性診斷（封測公開前掃 6 種前後台斷鏈）
+        linkIntegrity: {
+          Component: '@/components/admin/LinkIntegrityView',
+          path: '/diagnostics/link-integrity',
+        },
       },
     },
   },
