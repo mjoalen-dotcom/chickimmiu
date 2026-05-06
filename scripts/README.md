@@ -2,6 +2,16 @@
 
 維運腳本。各檔案首註解寫設計理由 + 用法。
 
+## 測試 / Smoke
+
+- **`smoke-storefront.ts`** — 對前台抽樣 ~30 個路徑驗 HTTP status + 關鍵字。
+  ```bash
+  pnpm smoke:storefront                                         # 對 localhost:3006
+  BASE_URL=https://pre.chickimmiu.com pnpm smoke:storefront     # 對 prod
+  FAIL_FAST=1 pnpm smoke:storefront                             # 第一個失敗立刻退出
+  ```
+  pass = exit 0；任一 fail = exit 1；執行例外 = exit 2。
+
 ## 部署相關
 
 - **`deploy-prod.sh`** — `pre.chickimmiu.com` (Hetzner) 的 deploy 流程：
