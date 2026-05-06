@@ -7,14 +7,13 @@ import { Sparkles, Trophy, Medal, TrendingUp, Crown, Lock } from 'lucide-react'
 import { GAME_CATEGORIES, GAME_DEFS } from '@/lib/games/gameConfig'
 import type { EnabledGame } from '@/lib/games/getEnabledGames'
 
-// ── Demo 排行榜 ──
-const DEMO_LEADERBOARD = [
-  { rank: 1, name: '璀*天后', points: 2850, tier: '璀璨天后', badge: '👑' },
-  { rank: 2, name: '星*皇后', points: 2340, tier: '星耀皇后', badge: '🌟' },
-  { rank: 3, name: '金*女王', points: 1890, tier: '金曦女王', badge: '💎' },
-  { rank: 4, name: '優*仙子', points: 1230, tier: '曦漾仙子', badge: '🦋' },
-  { rank: 5, name: '曦*仙子', points: 980, tier: '曦漾仙子', badge: '🌸' },
-]
+export type LeaderboardEntry = {
+  rank: number
+  name: string
+  points: number
+  tier: string
+  badge: string
+}
 
 const BADGES = [
   { id: 'first_game', name: '初次冒險', icon: '🎮', desc: '完成第一場遊戲', earned: true },
@@ -31,9 +30,10 @@ interface Props {
   enabledGames: EnabledGame[]
   todayGamePoints?: number | null
   badgeCount?: number | null
+  leaderboard?: LeaderboardEntry[]
 }
 
-export function GamesHub({ enabledGames, todayGamePoints = null, badgeCount = null }: Props) {
+export function GamesHub({ enabledGames, todayGamePoints = null, badgeCount = null, leaderboard = [] }: Props) {
   const [activeTab, setActiveTab] = useState<'games' | 'leaderboard' | 'badges'>('games')
   const [activeCat, setActiveCat] = useState<string>('all')
 
@@ -225,14 +225,19 @@ export function GamesHub({ enabledGames, todayGamePoints = null, badgeCount = nu
             </div>
 
             {/* Podium */}
-            <div className="flex items-end justify-center gap-4 py-8">
-              <PodiumEntry entry={DEMO_LEADERBOARD[1]} size="sm" color="gray" height="h-20" />
-              <PodiumEntry entry={DEMO_LEADERBOARD[0]} size="lg" color="gold" height="h-28" crown />
-              <PodiumEntry entry={DEMO_LEADERBOARD[2]} size="sm" color="amber" height="h-14" />
-            </div>
+            {leaderboard.length >= 3 && (
+              <div className="flex items-end justify-center gap-4 py-8">
+                <PodiumEntry entry={leaderboard[1]} size="sm" color="gray" height="h-20" />
+                <PodiumEntry entry={leaderboard[0]} size="lg" color="gold" height="h-28" crown />
+                <PodiumEntry entry={leaderboard[2]} size="sm" color="amber" height="h-14" />
+              </div>
+            )}
 
+            {leaderboard.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground text-sm">排行榜暫無資料</div>
+            ) : (
             <div className="bg-white rounded-2xl border border-cream-200 overflow-hidden">
-              {DEMO_LEADERBOARD.map((entry) => (
+              {leaderboard.map((entry) => (
                 <div
                   key={entry.rank}
                   className={`flex items-center gap-4 px-6 py-4 border-b border-cream-100 last:border-none ${
@@ -257,6 +262,7 @@ export function GamesHub({ enabledGames, todayGamePoints = null, badgeCount = nu
                 </div>
               ))}
             </div>
+            )}
           </div>
         )}
 
@@ -343,7 +349,7 @@ function GameCard({ game, isEnabled }: { game: typeof GAME_DEFS[number]; isEnabl
 
 // ── Podium Entry ──
 function PodiumEntry({ entry, size, color, height, crown }: {
-  entry: typeof DEMO_LEADERBOARD[number]
+  entry: LeaderboardEntry
   size: 'sm' | 'lg'
   color: string
   height: string
