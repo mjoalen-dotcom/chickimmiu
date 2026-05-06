@@ -21,7 +21,6 @@ import {
   Clock,
   Star,
   MessageSquare,
-  ThumbsUp,
   Zap,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -35,9 +34,19 @@ import { trackViewContent, trackProductView } from '@/lib/tracking'
 import { Price } from '@/components/common/Price'
 
 /* ─────────────────────────────────── types ── */
+export interface ReviewLite {
+  id: string
+  name: string
+  rating: number
+  date: string
+  title: string
+  content: string
+}
+
 interface Props {
   product: Record<string, unknown>
   relatedProducts: Record<string, unknown>[]
+  initialReviews?: ReviewLite[]
 }
 
 interface LexicalNode {
@@ -158,7 +167,7 @@ const TABS = [
 type TabId = (typeof TABS)[number]['id']
 
 /* ═══════════════════════════════════ Main Component ═══════════════════════════════════ */
-export function ProductDetailClient({ product, relatedProducts }: Props) {
+export function ProductDetailClient({ product, relatedProducts, initialReviews = [] }: Props) {
   const router = useRouter()
   const rawImages = (product.images as { image?: { url?: string; alt?: string } }[]) || []
   // Normalise media URLs: /api/media/file/X → /media/X for static serving
@@ -977,7 +986,7 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
 
             {/* ── 顧客評價 ── */}
             {activeTab === 'reviews' && (
-              <ProductReviewsSection />
+              <ProductReviewsSection reviews={initialReviews} />
             )}
           </div>
         </div>
@@ -1062,51 +1071,37 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
 
 /* ══════════ Product Reviews Section ══════════ */
 
-const DEMO_REVIEWS = [
-  {
-    id: '1', name: '小**', rating: 5, date: '2026-04-06',
-    title: '質感超讚！',
-    content: '布料很有質感，穿起來非常修身，出席正式場合超適合。',
-    helpful: 12, verified: true,
-  },
-  {
-    id: '2', name: '王**', rating: 4, date: '2026-03-28',
-    title: '版型很好',
-    content: '版型很好看，建議平常穿M的可以拿S，偏大一點。整體很滿意！',
-    helpful: 8, verified: true,
-  },
-  {
-    id: '3', name: '林**', rating: 5, date: '2026-03-15',
-    title: '超級美！',
-    content: '顏色比照片還美，質感也很好。已經回購第二件了。',
-    helpful: 5, verified: true,
-  },
-]
-
-function ProductReviewsSection() {
-  const avgRating = DEMO_REVIEWS.reduce((sum, r) => sum + r.rating, 0) / DEMO_REVIEWS.length
+function ProductReviewsSection({ reviews }: { reviews: ReviewLite[] }) {
+  const count = reviews.length
+  const avgRating = count > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / count : 0
   const ratingCounts = [5, 4, 3, 2, 1].map((r) => ({
     stars: r,
-    count: DEMO_REVIEWS.filter((review) => review.rating === r).length,
+    count: reviews.filter((rv) => rv.rating === r).length,
   }))
 
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <p className="text-4xl font-medium text-gold-600">{avgRating.toFixed(1)}</p>
-          <div>
-            <div className="flex gap-0.5">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <Star
-                  key={s}
-                  size={16}
-                  className={s <= Math.round(avgRating) ? 'text-gold-500 fill-gold-500' : 'text-cream-300'}
-                />
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">{DEMO_REVIEWS.length} 則評價</p>
-          </div>
+          {count > 0 ? (
+            <>
+              <p className="text-4xl font-medium text-gold-600">{avgRating.toFixed(1)}</p>
+              <div>
+                <div className="flex gap-0.5">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      size={16}
+                      className={s <= Math.round(avgRating) ? 'text-gold-500 fill-gold-500' : 'text-cream-300'}
+                    />
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">{count} 則評價</p>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">尚無評價</p>
+          )}
         </div>
         <Link
           href="/login"
@@ -1117,57 +1112,52 @@ function ProductReviewsSection() {
         </Link>
       </div>
 
-      {/* Rating bars */}
-      <div className="space-y-2 mb-8">
-        {ratingCounts.map((rc) => (
-          <div key={rc.stars} className="flex items-center gap-3">
-            <span className="text-sm w-8 text-right">{rc.stars} 星</span>
-            <div className="flex-1 h-2 rounded-full bg-cream-200 overflow-hidden">
-              <div
-                className="h-full bg-gold-500 rounded-full"
-                style={{ width: `${DEMO_REVIEWS.length > 0 ? (rc.count / DEMO_REVIEWS.length) * 100 : 0}%` }}
-              />
-            </div>
-            <span className="text-xs text-muted-foreground w-6">{rc.count}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Review list */}
-      <div className="space-y-4">
-        {DEMO_REVIEWS.map((review) => (
-          <div key={review.id} className="bg-white rounded-2xl border border-cream-200 p-5">
-            <div className="flex items-start justify-between mb-2">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{review.name}</span>
-                  {review.verified && (
-                    <span className="text-[10px] px-2 py-0.5 bg-green-50 text-green-600 rounded-full">已購買</span>
-                  )}
+      {count > 0 && (
+        <>
+          {/* Rating bars */}
+          <div className="space-y-2 mb-8">
+            {ratingCounts.map((rc) => (
+              <div key={rc.stars} className="flex items-center gap-3">
+                <span className="text-sm w-8 text-right">{rc.stars} 星</span>
+                <div className="flex-1 h-2 rounded-full bg-cream-200 overflow-hidden">
+                  <div
+                    className="h-full bg-gold-500 rounded-full"
+                    style={{ width: `${(rc.count / count) * 100}%` }}
+                  />
                 </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="flex gap-0.5">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star
-                        key={s}
-                        size={12}
-                        className={s <= review.rating ? 'text-gold-500 fill-gold-500' : 'text-cream-300'}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-xs text-muted-foreground">{review.date}</span>
-                </div>
+                <span className="text-xs text-muted-foreground w-6">{rc.count}</span>
               </div>
-            </div>
-            <p className="text-sm font-medium mb-1">{review.title}</p>
-            <p className="text-sm text-muted-foreground leading-relaxed">{review.content}</p>
-            <button className="flex items-center gap-1.5 mt-3 text-xs text-muted-foreground hover:text-gold-600 transition-colors">
-              <ThumbsUp size={12} />
-              有幫助 ({review.helpful})
-            </button>
+            ))}
           </div>
-        ))}
-      </div>
+
+          {/* Review list */}
+          <div className="space-y-4">
+            {reviews.map((review) => (
+              <div key={review.id} className="bg-white rounded-2xl border border-cream-200 p-5">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <span className="text-sm font-medium">{review.name}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            size={12}
+                            className={s <= review.rating ? 'text-gold-500 fill-gold-500' : 'text-cream-300'}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-xs text-muted-foreground">{review.date}</span>
+                    </div>
+                  </div>
+                </div>
+                {review.title && <p className="text-sm font-medium mb-1">{review.title}</p>}
+                <p className="text-sm text-muted-foreground leading-relaxed">{review.content}</p>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
