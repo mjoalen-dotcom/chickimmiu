@@ -8,6 +8,7 @@ import { shoplineXlsxImportEndpoint } from '../endpoints/shoplineXlsxImport'
 import { linkIntegrityScanEndpoint } from '../endpoints/linkIntegrityScan'
 import { revalidateProduct } from '../lib/revalidate'
 import { suggestPersonalityTypes } from '../lib/games/mbtiAutoRecommend'
+import { bumpCategoryCount, getCategoryId } from '../lib/categoryCount'
 
 const productFieldMappings: FieldMapping[] = [
   { key: 'name', label: '商品名稱' },
@@ -232,6 +233,24 @@ export const Products: CollectionConfig = {
             console.warn('[Products.afterChange] catalog push failed (non-fatal):', err)
           })
       },
+      // PR-γ: 同步 categories.productCount
+      // 任何 hook 失敗都不能擋商品存檔（包在 try/catch、log warn）。
+      async ({ doc, previousDoc, req, operation }) => {
+        try {
+          const oldId = getCategoryId((previousDoc as Record<string, unknown> | undefined)?.category)
+          const newId = getCategoryId((doc as Record<string, unknown> | undefined)?.category)
+          if (operation === 'create') {
+            if (newId) await bumpCategoryCount(req.payload, newId, +1)
+          } else if (operation === 'update' && oldId !== newId) {
+            if (oldId) await bumpCategoryCount(req.payload, oldId, -1)
+            if (newId) await bumpCategoryCount(req.payload, newId, +1)
+          }
+        } catch (e) {
+          req.payload.logger?.warn?.(
+            `[Products.afterChange] category count bump failed: ${(e as Error).message}`,
+          )
+        }
+      },
     ],
 
     /* ── 4. 刪除後：revalidate 前台 + 從 Meta Catalog 移除 ── */
@@ -251,6 +270,17 @@ export const Products: CollectionConfig = {
           .catch((err) => {
             console.warn('[Products.afterDelete] catalog delete failed (non-fatal):', err)
           })
+      },
+      // PR-γ: 同步 categories.productCount -1
+      async ({ doc, req }) => {
+        try {
+          const id = getCategoryId((doc as Record<string, unknown> | undefined)?.category)
+          if (id) await bumpCategoryCount(req.payload, id, -1)
+        } catch (e) {
+          req.payload.logger?.warn?.(
+            `[Products.afterDelete] category count bump failed: ${(e as Error).message}`,
+          )
+        }
       },
     ],
   },
