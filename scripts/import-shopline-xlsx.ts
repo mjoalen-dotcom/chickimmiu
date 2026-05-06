@@ -18,6 +18,8 @@
  *   - upsert key = sourcing.sourceId === Shopline Product ID
  *   - 既有就 update，沒有就 create
  *   - slug 在 update 時保留原有，避免破壞外部連結
+ *   - PR-η: 新 aliasSlugs 欄位 — 建立時把 Shopline 計算 slug 寫入
+ *           更新時合併既有別名，確保 Shopline 舊 URL 301 正確跳轉
  */
 
 import fs from 'fs'
@@ -82,7 +84,7 @@ async function processFile(
     log(`  Sample (前 3 筆):`)
     for (const p of batch.slice(0, 3)) {
       log(
-        `    - ${p.shoplineProductId} ${p.name} | NT$${p.price}${p.salePrice ? '/特' + p.salePrice : ''} | ${p.variants.length} variants | cat=${p.categorySlug || '(none)'} | status=${p.status}`,
+        `    - ${p.shoplineProductId} ${p.name} | NT$${p.price}${p.salePrice ? '/特' + p.salePrice : ''} | ${p.variants.length} variants | cat=${p.categorySlug || '(none)'} | status=${p.status} | alias=${p.slug}`,
       )
     }
     return { created: 0, updated: 0, failed: 0, unmapped }
@@ -110,14 +112,35 @@ async function processFile(
         depth: 0,
       })
 
+      type ExistingDoc = {
+        id: number
+        slug?: string
+        aliasSlugs?: { slug: string; source?: string }[]
+      }
+
+      const existingDoc = existing.docs[0] as unknown as ExistingDoc | undefined
       const categoryId = p.categorySlug ? catBySlug.get(p.categorySlug) || fallbackCatId : fallbackCatId
       const status = STATUS_OVERRIDE === 'keep' ? p.status : STATUS_OVERRIDE
 
+      // Canonical slug: keep existing on update to preserve inbound links.
+      const canonicalSlug = existingDoc?.slug || p.slug
+
+      // aliasSlugs (PR-η): merge existing aliases + Shopline computed slug.
+      // Shopline computed slug (p.slug) is written as source:'shopline' so
+      // the PDP fallback can 301-redirect old Shopline product URLs.
+      const aliasMap = new Map<string, string>()
+      for (const a of existingDoc?.aliasSlugs ?? []) {
+        if (a.slug) aliasMap.set(a.slug, a.source || 'shopline')
+      }
+      if (p.slug && p.slug !== canonicalSlug) {
+        // only add if not identical to current canonical — no self-alias
+        aliasMap.set(p.slug, 'shopline')
+      }
+      const aliasSlugs = Array.from(aliasMap.entries()).map(([slug, source]) => ({ slug, source }))
+
       const data: Record<string, unknown> = {
         name: p.name,
-        slug: existing.docs[0]
-          ? ((existing.docs[0] as unknown as { slug?: string }).slug || p.slug)
-          : p.slug,
+        slug: canonicalSlug,
         brand: p.brand,
         productSku: p.productSku,
         shortDescription: p.shortDescription,
@@ -139,6 +162,7 @@ async function processFile(
           priceOverride: v.priceOverride,
         })),
         ...(p.variants.length === 0 && typeof p.stock === 'number' ? { stock: p.stock } : {}),
+        aliasSlugs,
         sourcing: {
           sourceId: p.sourcing.sourceId,
           supplierName: p.sourcing.supplierName,
@@ -150,10 +174,10 @@ async function processFile(
         },
       }
 
-      if (existing.docs.length > 0) {
+      if (existingDoc) {
         await payload.update({
           collection: 'products',
-          id: existing.docs[0].id as number,
+          id: existingDoc.id,
           data: data as ProductData,
         })
         updated++
