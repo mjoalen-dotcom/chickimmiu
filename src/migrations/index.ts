@@ -42,6 +42,7 @@ import * as migration_20260505_160000_add_utm_lock_rels from './20260505_160000_
 import * as migration_20260505_200000_add_ad_audiences from './20260505_200000_add_ad_audiences';
 import * as migration_20260505_220000_add_shopline_customer_fields from './20260505_220000_add_shopline_customer_fields';
 import * as migration_20260506_000000_add_ad_audiences_lock_rels from './20260506_000000_add_ad_audiences_lock_rels';
+import * as migration_20260506_015839_add_collections_page_settings from './20260506_015839_add_collections_page_settings';
 import * as migration_20260506_120000_rename_utm_campaign_columns from './20260506_120000_rename_utm_campaign_columns';
 import * as migration_20260506_140000_add_product_list_settings from './20260506_140000_add_product_list_settings';
 
@@ -172,6 +173,11 @@ export const migrations = [
     name: '20260422_200000_fix_policy_returns_notice_title',
   },
   {
+    up: migration_20260423_000000_add_currencies.up,
+    down: migration_20260423_000000_add_currencies.down,
+    name: '20260423_000000_add_currencies',
+  },
+  {
     up: migration_20260426_120000_add_daily_horoscopes.up,
     down: migration_20260426_120000_add_daily_horoscopes.down,
     name: '20260426_120000_add_daily_horoscopes',
@@ -204,7 +210,7 @@ export const migrations = [
   {
     up: migration_20260428_074640_add_customer_service_v1.up,
     down: migration_20260428_074640_add_customer_service_v1.down,
-    name: '20260428_074640_add_customer_service_v1'
+    name: '20260428_074640_add_customer_service_v1',
   },
   {
     up: migration_20260429_120000_add_ads_catalog.up,
@@ -262,14 +268,14 @@ export const migrations = [
     name: '20260506_000000_add_ad_audiences_lock_rels',
   },
   {
-    up: migration_20260506_120000_rename_utm_campaign_columns.up,
-    down: migration_20260506_120000_rename_utm_campaign_columns.down,
-    name: '20260506_120000_rename_utm_campaign_columns',
+    up: migration_20260506_015839_add_collections_page_settings.up,
+    down: migration_20260506_015839_add_collections_page_settings.down,
+    name: '20260506_015839_add_collections_page_settings',
   },
   {
-    up: migration_20260423_000000_add_currencies.up,
-    down: migration_20260423_000000_add_currencies.down,
-    name: '20260423_000000_add_currencies',
+    up: migration_20260506_120000_rename_utm_campaign_columns.up,
+    down: migration_20260506_120000_rename_utm_campaign_columns.down,
+    name: '20260506_120000_rename_utm_campaign_columns'
   },
   {
     up: migration_20260506_140000_add_product_list_settings.up,
