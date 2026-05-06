@@ -1,8 +1,8 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
-import { ProductDetailClient, type ReviewLite } from './ProductDetailClient'
+import { notFound, redirect } from 'next/navigation'
+import { ProductDetailClient } from './ProductDetailClient'
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/seo/JsonLd'
 import { normalizeMediaUrl } from '@/lib/media-url'
 
@@ -192,6 +192,25 @@ export default async function ProductDetailPage({ params }: Props) {
       }
     } catch (err) {
       console.error('[PDP] related products query threw:', err)
+    }
+  }
+
+  // PR-δ：alias fallback — 找不到 canonical slug 時查 aliasSlugs 子表，命中則 301
+  if (!product && process.env.DATABASE_URI) {
+    try {
+      const payload = await getPayload({ config })
+      const { docs } = await payload.find({
+        collection: 'products',
+        where: { 'aliasSlugs.slug': { equals: slug } },
+        limit: 1,
+        depth: 0,
+      })
+      const aliasMatch = docs[0] as Record<string, unknown> | undefined
+      if (aliasMatch?.slug && aliasMatch.slug !== slug) {
+        redirect(`/products/${aliasMatch.slug as string}`)
+      }
+    } catch {
+      // ignore — notFound() below handles both DB errors and misses
     }
   }
 
