@@ -49,6 +49,7 @@ import { CollectibleCards } from './collections/CollectibleCards'
 import { CollectibleCardEvents } from './collections/CollectibleCardEvents'
 import { SiteThemes } from './collections/SiteThemes'
 
+import { CollectionsPageSettings } from './globals/CollectionsPageSettings'
 import { GlobalSettings } from './globals/GlobalSettings'
 import { LoyaltySettings } from './globals/LoyaltySettings'
 import { ReferralSettings } from './globals/ReferralSettings'
@@ -354,6 +355,7 @@ export default buildConfig({
     FAQPageSettings,
     PolicyPagesSettings,
     NavigationSettings,
+    CollectionsPageSettings,
     // ⑦ 系統與安全
     GlobalSettings,
   ],
