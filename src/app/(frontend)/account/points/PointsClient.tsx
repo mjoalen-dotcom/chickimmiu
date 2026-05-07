@@ -8,6 +8,7 @@ import {
   HandHeart, Palette, Zap, ChevronRight, X, CheckCircle2,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ScratchCard } from '@/components/gamification/ScratchCard'
 
 /* ── Types from server ── */
 export type TierLite = {
@@ -114,6 +115,7 @@ export default function PointsClient({
   type LotteryFeedback = { won: boolean; prizeName?: string; prizeValue?: number | null }
   const [confirmItem, setConfirmItem] = useState<ShopItemLite | null>(null)
   const [redeeming, setRedeeming] = useState(false)
+  const [showScratchCard, setShowScratchCard] = useState(false)
   const [toast, setToast] = useState<
     { kind: 'success' | 'error' | 'lose'; text: string } | null
   >(null)
@@ -258,6 +260,30 @@ export default function PointsClient({
           </div>
         </div>
       )}
+
+      {/* ── 今日刮刮樂 ── */}
+      <button
+        onClick={() => setShowScratchCard(true)}
+        className="w-full flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-pink-50 to-cream-100 border border-pink-200/60 rounded-2xl hover:border-pink-300 transition-colors group"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
+            <Sparkles size={18} className="text-pink-500" />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-medium">今日刮刮樂</p>
+            <p className="text-[11px] text-muted-foreground">刮開查看今日幸運獎勵</p>
+          </div>
+        </div>
+        <ChevronRight size={16} className="text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+      </button>
+
+      {/* ── ScratchCard Modal ── */}
+      <ScratchCard
+        open={showScratchCard}
+        onClose={() => setShowScratchCard(false)}
+        onComplete={() => router.refresh()}
+      />
 
       {/* ── Tab 切換 ── */}
       <div className="flex gap-1 bg-cream-100 rounded-xl p-1">
