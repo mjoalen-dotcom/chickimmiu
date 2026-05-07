@@ -10,7 +10,6 @@ import { SpinWheelGame } from './SpinWheelGame'
 import { ScratchCardGame } from './ScratchCardGame'
 import { MovieLotteryGame } from './MovieLotteryGame'
 import { FashionChallengeGame } from './FashionChallengeGame'
-import { CardBattleGame } from './CardBattleGame'
 import { StylePKGame } from './StylePKGame'
 import { StyleRelayGame } from './StyleRelayGame'
 import { WeeklyChallengeGame } from './WeeklyChallengeGame'
@@ -31,7 +30,6 @@ const GAME_COMPONENTS: Record<string, React.ComponentType<{ settings: Record<str
   'scratch-card': ScratchCardGame,
   'movie-lottery': MovieLotteryGame,
   'fashion-challenge': FashionChallengeGame,
-  'card-battle': CardBattleGame,
   'style-pk': StylePKGame,
   'style-relay': StyleRelayGame,
   'weekly-challenge': WeeklyChallengeGame,
