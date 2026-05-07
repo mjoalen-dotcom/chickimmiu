@@ -20,6 +20,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${siteUrl}/shopping-guide`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${siteUrl}/packaging`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${siteUrl}/games`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${siteUrl}/podcast`, lastModified: now, changeFrequency: 'weekly', priority: 0.5 },
+    { url: `${siteUrl}/bundles`, lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
+    { url: `${siteUrl}/size-guide`, lastModified: now, changeFrequency: 'yearly', priority: 0.5 },
+    { url: `${siteUrl}/contact`, lastModified: now, changeFrequency: 'yearly', priority: 0.5 },
     { url: `${siteUrl}/terms`, lastModified: now, changeFrequency: 'yearly', priority: 0.4 },
     { url: `${siteUrl}/privacy-policy`, lastModified: now, changeFrequency: 'yearly', priority: 0.4 },
     { url: `${siteUrl}/return-policy`, lastModified: now, changeFrequency: 'yearly', priority: 0.4 },
@@ -27,10 +31,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${siteUrl}/register`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
   ]
 
-  // ── 動態頁面：商品、部落格、Landing Pages ──
+  // ── 動態頁面：商品、部落格、Landing Pages、Podcast ──
   let productPages: MetadataRoute.Sitemap = []
   let blogPages: MetadataRoute.Sitemap = []
   let landingPages: MetadataRoute.Sitemap = []
+  let podcastPages: MetadataRoute.Sitemap = []
 
   if (process.env.DATABASE_URI) {
     try {
@@ -79,10 +84,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: 'monthly' as const,
         priority: 0.6,
       }))
+
+      // Podcast episodes
+      const podcasts = await payload.find({
+        collection: 'podcasts',
+        where: { status: { equals: 'published' } },
+        limit: 500,
+        depth: 0,
+      })
+      podcastPages = podcasts.docs.map((p) => ({
+        url: `${siteUrl}/podcast/${(p as unknown as Record<string, unknown>).slug}`,
+        lastModified: new Date(p.updatedAt),
+        changeFrequency: 'monthly' as const,
+        priority: 0.5,
+      }))
     } catch {
       // DB not ready — only static pages
     }
   }
 
-  return [...staticPages, ...productPages, ...blogPages, ...landingPages]
+  return [...staticPages, ...productPages, ...blogPages, ...landingPages, ...podcastPages]
 }
