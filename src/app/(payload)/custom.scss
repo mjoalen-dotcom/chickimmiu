@@ -615,15 +615,21 @@ button[class*='btn--style-error'] {
 
 // Collapsible headers (the array row "Hero Banner 01 / Quick Menu 01 / ..." bar)
 //
-// CRITICAL: do NOT set `color` on `.collapsible__toggle` — that selector matches
-// the position:absolute click-target button which contains a screen-reader-only
-// <span>{t("fields:toggleBlock")}</span>. Payload's default sets the button's
-// color to transparent so the SR text stays invisible. Overriding it leaks the
-// raw "Toggle block" string visibly above every array row in the admin UI
-// (HomepageSettings 輪播橫幅 / 快捷選單 / 服務亮點 was the reported regression).
+// CRITICAL: `.collapsible__toggle` is a position:absolute click-target button
+// covering the row-wrap area, containing a screen-reader-only
+// <span>{t("fields:toggleBlock")}</span>. Payload's default SCSS sets the button
+// to `color: transparent` to keep the SR text invisible — but our earlier
+// `.template-default__content { color: #1a1f36 !important }` cascades down via
+// inheritance and re-paints the SR text visibly above every array row.
 //
-// Style the wrap (visible bar) and the row-label instead — those are the actual
-// visible elements. The toggle button overlays the wrap and remains transparent.
+// Force `color: transparent !important` on the button to win over the inherited
+// `color: #1a1f36 !important` from the content wrapper. The actual visible row
+// title comes from `.row-label` (a SIBLING element, not a child of the button).
+.collapsible__toggle,
+[class*='collapsible__toggle'] {
+  color: transparent !important;
+}
+
 .collapsible__toggle-wrap,
 [class*='collapsible__toggle-wrap'] {
   background-color: var(--color-brand-cream) !important;
