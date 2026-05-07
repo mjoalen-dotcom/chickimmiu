@@ -45,6 +45,7 @@ import * as migration_20260506_000000_add_ad_audiences_lock_rels from './2026050
 import * as migration_20260506_015839_add_collections_page_settings from './20260506_015839_add_collections_page_settings';
 import * as migration_20260506_120000_rename_utm_campaign_columns from './20260506_120000_rename_utm_campaign_columns';
 import * as migration_20260506_140000_add_product_list_settings from './20260506_140000_add_product_list_settings';
+import * as migration_20260507_100000_add_game_settings_rels from './20260507_100000_add_game_settings_rels';
 
 export const migrations = [
   {
@@ -281,5 +282,10 @@ export const migrations = [
     up: migration_20260506_140000_add_product_list_settings.up,
     down: migration_20260506_140000_add_product_list_settings.down,
     name: '20260506_140000_add_product_list_settings',
+  },
+  {
+    up: migration_20260507_100000_add_game_settings_rels.up,
+    down: migration_20260507_100000_add_game_settings_rels.down,
+    name: '20260507_100000_add_game_settings_rels',
   },
 ];

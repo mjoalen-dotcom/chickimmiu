@@ -219,6 +219,16 @@ export const GameSettings: GlobalConfig = {
                 { name: 'displayName', label: '顯示名稱', type: 'text', defaultValue: '璀璨穿搭挑戰' },
                 { name: 'description', label: '遊戲說明', type: 'textarea', defaultValue: '60秒混搭穿搭，AI即時評分！挑戰S級時尚達人！' },
                 { name: 'icon', label: '圖示 Emoji', type: 'text', defaultValue: '✨' },
+                {
+                  name: 'gameAssets',
+                  label: '挑戰商品庫',
+                  type: 'relationship',
+                  relationTo: 'products',
+                  hasMany: true,
+                  admin: {
+                    description: '指定玩家在挑戰中可選用的商品；留空時前端顯示「暫無商品」',
+                  },
+                },
               ],
             },
           ],
