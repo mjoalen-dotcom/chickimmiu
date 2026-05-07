@@ -7,33 +7,29 @@ import { Sparkles, Trophy, Medal, TrendingUp, Crown, Lock } from 'lucide-react'
 import { GAME_CATEGORIES, GAME_DEFS } from '@/lib/games/gameConfig'
 import type { EnabledGame } from '@/lib/games/getEnabledGames'
 
-// ── Demo 排行榜 ──
-const DEMO_LEADERBOARD = [
-  { rank: 1, name: '璀*天后', points: 2850, tier: '璀璨天后', badge: '👑' },
-  { rank: 2, name: '星*皇后', points: 2340, tier: '星耀皇后', badge: '🌟' },
-  { rank: 3, name: '金*女王', points: 1890, tier: '金曦女王', badge: '💎' },
-  { rank: 4, name: '優*仙子', points: 1230, tier: '曦漾仙子', badge: '🦋' },
-  { rank: 5, name: '曦*仙子', points: 980, tier: '曦漾仙子', badge: '🌸' },
-]
+export interface LeaderboardEntry {
+  rank: number
+  name: string
+  points: number
+  tier: string
+  badgeIcon?: string
+}
 
-const BADGES = [
-  { id: 'first_game', name: '初次冒險', icon: '🎮', desc: '完成第一場遊戲', earned: true },
-  { id: 'lucky_star', name: '幸運之星', icon: '⭐', desc: '第一次獲獎', earned: true },
-  { id: 'streak_3', name: '連勝達人', icon: '🔥', desc: '連續獲勝 3 場', earned: false },
-  { id: 'master_50', name: '遊戲大師', icon: '🎯', desc: '累計遊玩 50 場', earned: false },
-  { id: 'battle_king', name: '挑戰王者', icon: '👑', desc: '對戰勝利 10 場', earned: false },
-  { id: 'social_butterfly', name: '社交蝴蝶', icon: '🦋', desc: '完成 5 場好友對戰', earned: false },
-  { id: 'points_rich', name: '點數富翁', icon: '💰', desc: '遊戲累計獲得 1000 點', earned: false },
-  { id: 'hero_100', name: '百戰英雄', icon: '🏅', desc: '累計遊玩 100 場', earned: false },
-]
+export interface UserBadge {
+  id: string
+  name: string
+  state: string
+}
 
 interface Props {
   enabledGames: EnabledGame[]
   todayGamePoints?: number | null
   badgeCount?: number | null
+  leaderboard?: LeaderboardEntry[]
+  userBadges?: UserBadge[] | null
 }
 
-export function GamesHub({ enabledGames, todayGamePoints = null, badgeCount = null }: Props) {
+export function GamesHub({ enabledGames, todayGamePoints = null, badgeCount = null, leaderboard = [], userBadges = null }: Props) {
   const [activeTab, setActiveTab] = useState<'games' | 'leaderboard' | 'badges'>('games')
   const [activeCat, setActiveCat] = useState<string>('all')
 
@@ -212,78 +208,95 @@ export function GamesHub({ enabledGames, todayGamePoints = null, badgeCount = nu
         {activeTab === 'leaderboard' && (
           <div className="space-y-6 animate-fade-in">
             <div className="flex items-center gap-2">
-              {['今日', '本週', '本月', '全部'].map((period, i) => (
-                <button
-                  key={period}
-                  className={`px-4 py-1.5 rounded-full text-xs border transition-colors ${
-                    i === 0 ? 'bg-foreground text-cream-50 border-foreground' : 'border-cream-200 hover:border-gold-400'
-                  }`}
-                >
-                  {period}
-                </button>
-              ))}
+              <button className="px-4 py-1.5 rounded-full text-xs border bg-foreground text-cream-50 border-foreground">
+                累計排行
+              </button>
             </div>
 
-            {/* Podium */}
-            <div className="flex items-end justify-center gap-4 py-8">
-              <PodiumEntry entry={DEMO_LEADERBOARD[1]} size="sm" color="gray" height="h-20" />
-              <PodiumEntry entry={DEMO_LEADERBOARD[0]} size="lg" color="gold" height="h-28" crown />
-              <PodiumEntry entry={DEMO_LEADERBOARD[2]} size="sm" color="amber" height="h-14" />
-            </div>
+            {leaderboard.length === 0 ? (
+              <div className="text-center py-20">
+                <p className="text-4xl mb-4">🏆</p>
+                <p className="text-lg font-serif mb-2">排行榜尚無資料</p>
+                <p className="text-sm text-muted-foreground">成為第一位上榜的玩家！</p>
+              </div>
+            ) : (
+              <>
+                {leaderboard.length >= 3 && (
+                  <div className="flex items-end justify-center gap-4 py-8">
+                    <PodiumEntry entry={leaderboard[1]} size="sm" color="gray" height="h-20" />
+                    <PodiumEntry entry={leaderboard[0]} size="lg" color="gold" height="h-28" crown />
+                    <PodiumEntry entry={leaderboard[2]} size="sm" color="amber" height="h-14" />
+                  </div>
+                )}
 
-            <div className="bg-white rounded-2xl border border-cream-200 overflow-hidden">
-              {DEMO_LEADERBOARD.map((entry) => (
-                <div
-                  key={entry.rank}
-                  className={`flex items-center gap-4 px-6 py-4 border-b border-cream-100 last:border-none ${
-                    entry.rank <= 3 ? 'bg-gold-500/5' : ''
-                  }`}
-                >
-                  <span className={`w-8 text-center font-serif text-lg ${
-                    entry.rank === 1 ? 'text-gold-600' : entry.rank === 2 ? 'text-gray-500' : entry.rank === 3 ? 'text-amber-600' : 'text-muted-foreground'
-                  }`}>
-                    {entry.rank}
-                  </span>
-                  <span className="text-lg">{entry.badge}</span>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{entry.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{entry.tier}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gold-600">{entry.points.toLocaleString()}</p>
-                    <p className="text-[10px] text-muted-foreground">點數</p>
-                  </div>
-                  <TrendingUp size={14} className="text-green-500" />
+                <div className="bg-white rounded-2xl border border-cream-200 overflow-hidden">
+                  {leaderboard.map((entry) => (
+                    <div
+                      key={entry.rank}
+                      className={`flex items-center gap-4 px-6 py-4 border-b border-cream-100 last:border-none ${
+                        entry.rank <= 3 ? 'bg-gold-500/5' : ''
+                      }`}
+                    >
+                      <span className={`w-8 text-center font-serif text-lg ${
+                        entry.rank === 1 ? 'text-gold-600' : entry.rank === 2 ? 'text-gray-500' : entry.rank === 3 ? 'text-amber-600' : 'text-muted-foreground'
+                      }`}>
+                        {entry.rank}
+                      </span>
+                      {entry.badgeIcon && <span className="text-lg">{entry.badgeIcon}</span>}
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{entry.name}</p>
+                        {entry.tier && <p className="text-[10px] text-muted-foreground">{entry.tier}</p>}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gold-600">{entry.points.toLocaleString()}</p>
+                        <p className="text-[10px] text-muted-foreground">點數</p>
+                      </div>
+                      <TrendingUp size={14} className="text-green-500" />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
           </div>
         )}
 
         {/* ═══════ Badges Tab ═══════ */}
         {activeTab === 'badges' && (
           <div className="animate-fade-in">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {BADGES.map((badge) => (
-                <div
-                  key={badge.id}
-                  className={`rounded-2xl border p-5 text-center transition-all ${
-                    badge.earned
-                      ? 'bg-gradient-to-br from-gold-500/10 to-cream-100 border-gold-500/30'
-                      : 'bg-cream-50 border-cream-200 opacity-50 grayscale'
-                  }`}
+            {userBadges === null ? (
+              <div className="text-center py-20">
+                <p className="text-4xl mb-4">🔒</p>
+                <p className="text-lg font-serif mb-2">登入後查看徽章</p>
+                <Link href="/login" className="text-sm text-gold-600 underline">前往登入</Link>
+              </div>
+            ) : userBadges.length === 0 ? (
+              <div className="text-center py-20">
+                <p className="text-4xl mb-4">🎖️</p>
+                <p className="text-lg font-serif mb-2">尚無徽章</p>
+                <p className="text-sm text-muted-foreground mb-4">完成遊戲挑戰即可獲得徽章！</p>
+                <button
+                  onClick={() => setActiveTab('games')}
+                  className="text-sm px-5 py-2 bg-gold-500 text-white rounded-xl hover:bg-gold-600 transition-colors"
                 >
-                  <span className="text-3xl block mb-3">{badge.icon}</span>
-                  <p className="text-sm font-medium mb-1">{badge.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{badge.desc}</p>
-                  {badge.earned && (
+                  去玩遊戲
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {userBadges.map((badge) => (
+                  <div
+                    key={badge.id}
+                    className="rounded-2xl border p-5 text-center bg-gradient-to-br from-gold-500/10 to-cream-100 border-gold-500/30"
+                  >
+                    <span className="text-3xl block mb-3">🏅</span>
+                    <p className="text-sm font-medium mb-1">{badge.name}</p>
                     <span className="inline-block mt-2 text-[10px] text-gold-600 bg-gold-500/10 px-2 py-0.5 rounded-full">
                       已獲得
                     </span>
-                  )}
-                </div>
-              ))}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -343,7 +356,7 @@ function GameCard({ game, isEnabled }: { game: typeof GAME_DEFS[number]; isEnabl
 
 // ── Podium Entry ──
 function PodiumEntry({ entry, size, color, height, crown }: {
-  entry: typeof DEMO_LEADERBOARD[number]
+  entry: LeaderboardEntry
   size: 'sm' | 'lg'
   color: string
   height: string
