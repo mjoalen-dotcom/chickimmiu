@@ -613,15 +613,30 @@ button[class*='btn--style-error'] {
   box-shadow: 0 1px 4px rgba(26, 31, 54, 0.06) !important;
 }
 
-// Collapsible headers
-.collapsible__toggle,
-[class*='collapsible__toggle'] {
+// Collapsible headers (the array row "Hero Banner 01 / Quick Menu 01 / ..." bar)
+//
+// CRITICAL: do NOT set `color` on `.collapsible__toggle` — that selector matches
+// the position:absolute click-target button which contains a screen-reader-only
+// <span>{t("fields:toggleBlock")}</span>. Payload's default sets the button's
+// color to transparent so the SR text stays invisible. Overriding it leaks the
+// raw "Toggle block" string visibly above every array row in the admin UI
+// (HomepageSettings 輪播橫幅 / 快捷選單 / 服務亮點 was the reported regression).
+//
+// Style the wrap (visible bar) and the row-label instead — those are the actual
+// visible elements. The toggle button overlays the wrap and remains transparent.
+.collapsible__toggle-wrap,
+[class*='collapsible__toggle-wrap'] {
   background-color: var(--color-brand-cream) !important;
   border-bottom: 1px solid var(--color-brand-cream-mid) !important;
-  color: #1a1f36 !important;
   font-weight: 600 !important;
   font-size: 13px !important;
   border-radius: 8px 8px 0 0 !important;
+}
+
+.collapsible .row-label,
+[class*='collapsible'] [class*='row-label'] {
+  color: #1a1f36 !important;
+  font-weight: 600 !important;
 }
 
 // ─── Dropdown Overflow Fix ───────────────────────────────────────────
