@@ -298,7 +298,7 @@ Step 2: P4 (FashionChallengeSettings.gameAssets + migration)  ──  2–4h  �
 Step 3: 5.8.4 + 5.8.5 清死碼（SpinWheel + CardBattleGame）    ──  ✅ DONE (commit 6dd4053, 2026-04-18)
 Step 4: 5.8.1 ScratchCard Modal surface                       ──  ✅ DONE (commit a86a4c5, 2026-05-07)
 Step 5: 5.8.2 FashionChallenge Modal surface                  ──  ✅ DONE (commit fe59893, 2026-05-07)
-Step 6: 5.8.3 CardBattle real backend + polling               ──  ✅ DONE (commit TBD, 2026-05-07)
+Step 6: 5.8.3 CardBattle real backend + polling               ──  ✅ DONE (commit f6c81bc, 2026-05-07)
                                                               ──────────
                                                           TOTAL 32–53h
 ```
