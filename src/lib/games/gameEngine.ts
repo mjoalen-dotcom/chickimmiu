@@ -319,38 +319,59 @@ export async function recordGamePlay(params: RecordGamePlayParams): Promise<Reco
     } as never,
   })
 
-  // Award points or credit to user if applicable
-  if (params.prizeType === 'points' && params.prizeAmount && params.prizeAmount > 0) {
-    const user = await payload.findByID({ collection: 'users', id: params.userId })
-    const userData = user as unknown as Record<string, unknown>
-    const currentPoints = (userData.points as number) || 0
-    await (payload.update as Function)({
-      collection: 'users',
-      id: params.userId,
-      data: { points: currentPoints + params.prizeAmount } as never,
-    })
-  }
+  // Read user ONCE to get current balances
+  const user = await payload.findByID({ collection: 'users', id: params.userId })
+  const userData = user as unknown as Record<string, unknown>
+  let pointsBalance = (userData.points as number) || 0
+  let creditBalance = (userData.shoppingCredit as number) || 0
+  const userUpdates: Record<string, number> = {}
 
-  if (params.prizeType === 'credit' && params.prizeAmount && params.prizeAmount > 0) {
-    const user = await payload.findByID({ collection: 'users', id: params.userId })
-    const userData = user as unknown as Record<string, unknown>
-    const currentCredit = (userData.shoppingCredit as number) || 0
-    await (payload.update as Function)({
-      collection: 'users',
-      id: params.userId,
-      data: { shoppingCredit: currentCredit + params.prizeAmount } as never,
-    })
-  }
-
-  // Deduct points cost if applicable
+  // 1. Deduct spent points first (pay before receiving prize), write points-transactions
   if (params.pointsSpent && params.pointsSpent > 0) {
-    const user = await payload.findByID({ collection: 'users', id: params.userId })
-    const userData = user as unknown as Record<string, unknown>
-    const currentPoints = (userData.points as number) || 0
+    pointsBalance = Math.max(0, pointsBalance - params.pointsSpent)
+    userUpdates.points = pointsBalance
+    await (payload.create as Function)({
+      collection: 'points-transactions',
+      data: {
+        user: params.userId,
+        amount: -(params.pointsSpent),
+        type: 'redeem',
+        source: 'game',
+        description: `[${params.gameType}] 遊戲消耗點數`,
+        balance: pointsBalance,
+      } as never,
+    })
+  }
+
+  // 2. Award points prize, write points-transactions
+  if (params.prizeType === 'points' && params.prizeAmount && params.prizeAmount > 0) {
+    pointsBalance += params.prizeAmount
+    userUpdates.points = pointsBalance
+    await (payload.create as Function)({
+      collection: 'points-transactions',
+      data: {
+        user: params.userId,
+        amount: params.prizeAmount,
+        type: 'earn',
+        source: 'game',
+        description: params.prizeDescription || `[${params.gameType}] 遊戲獎勵`,
+        balance: pointsBalance,
+      } as never,
+    })
+  }
+
+  // 3. Award credit prize (no ledger entry; credit is tracked separately)
+  if (params.prizeType === 'credit' && params.prizeAmount && params.prizeAmount > 0) {
+    creditBalance += params.prizeAmount
+    userUpdates.shoppingCredit = creditBalance
+  }
+
+  // Single write to user document
+  if (Object.keys(userUpdates).length > 0) {
     await (payload.update as Function)({
       collection: 'users',
       id: params.userId,
-      data: { points: Math.max(0, currentPoints - params.pointsSpent) } as never,
+      data: userUpdates as never,
     })
   }
 
