@@ -94,31 +94,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+// Shape kept in sync with ProductDetailClient.ReviewLite (client renders review.name).
 export type ReviewLite = {
   id: string
-  reviewerName: string
+  name: string
   rating: number
+  date: string
   title: string
   content: string
-  date: string
-  variant: string | null
-}
-
-function maskName(raw: unknown): string {
-  const obj = raw as Record<string, unknown> | null | undefined
-  const name = (typeof obj?.name === 'string' ? obj.name : '') || ''
-  if (!name) return '匿名'
-  return name.charAt(0) + '**'
-}
-
-function formatReviewDate(raw: unknown): string {
-  if (!raw) return ''
-  try {
-    const d = new Date(raw as string)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  } catch {
-    return ''
-  }
 }
 
 export default async function ProductDetailPage({ params }: Props) {
@@ -174,32 +157,6 @@ export default async function ProductDetailPage({ params }: Props) {
             seen.add(doc.id)
           }
         }
-
-        // ── 顧客評價（只撈 approved）──
-        const reviewsResult = await payload.find({
-          collection: 'product-reviews',
-          where: {
-            and: [
-              { product: { equals: product.id } },
-              { status: { equals: 'approved' } },
-            ],
-          },
-          sort: '-createdAt',
-          limit: 50,
-          depth: 1,
-        })
-        initialReviews = (reviewsResult.docs as unknown as Record<string, unknown>[]).map((doc) => {
-          const orderInfo = (doc.orderInfo as Record<string, unknown> | null) ?? {}
-          return {
-            id: String(doc.id),
-            reviewerName: maskName(doc.reviewer),
-            rating: (doc.rating as number) ?? 5,
-            title: (doc.title as string) ?? '',
-            content: (doc.content as string) ?? '',
-            date: formatReviewDate(doc.createdAt),
-            variant: (orderInfo.variant as string | null | undefined) ?? null,
-          }
-        })
       }
     } catch (err) {
       console.error('[PDP] related products query threw:', err)
@@ -227,8 +184,7 @@ export default async function ProductDetailPage({ params }: Props) {
 
   if (!product) notFound()
 
-  // Fetch approved reviews for this product
-  let initialReviews: ReviewLite[] = []
+  // 顧客評價（只撈 approved）— product 確定存在後再 fetch；shape 對齊 ProductDetailClient.ReviewLite
   if (process.env.DATABASE_URI) {
     try {
       const payload = await getPayload({ config })
