@@ -94,10 +94,38 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+export type ReviewLite = {
+  id: string
+  reviewerName: string
+  rating: number
+  title: string
+  content: string
+  date: string
+  variant: string | null
+}
+
+function maskName(raw: unknown): string {
+  const obj = raw as Record<string, unknown> | null | undefined
+  const name = (typeof obj?.name === 'string' ? obj.name : '') || ''
+  if (!name) return '匿名'
+  return name.charAt(0) + '**'
+}
+
+function formatReviewDate(raw: unknown): string {
+  if (!raw) return ''
+  try {
+    const d = new Date(raw as string)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  } catch {
+    return ''
+  }
+}
+
 export default async function ProductDetailPage({ params }: Props) {
   const { slug } = await params
   const product = await findProductBySlug(slug)
   let relatedProducts: Record<string, unknown>[] = []
+  let initialReviews: ReviewLite[] = []
 
   if (product && process.env.DATABASE_URI) {
     try {
@@ -135,6 +163,32 @@ export default async function ProductDetailPage({ params }: Props) {
             seen.add(doc.id)
           }
         }
+
+        // ── 顧客評價（只撈 approved）──
+        const reviewsResult = await payload.find({
+          collection: 'product-reviews',
+          where: {
+            and: [
+              { product: { equals: product.id } },
+              { status: { equals: 'approved' } },
+            ],
+          },
+          sort: '-createdAt',
+          limit: 50,
+          depth: 1,
+        })
+        initialReviews = (reviewsResult.docs as unknown as Record<string, unknown>[]).map((doc) => {
+          const orderInfo = (doc.orderInfo as Record<string, unknown> | null) ?? {}
+          return {
+            id: String(doc.id),
+            reviewerName: maskName(doc.reviewer),
+            rating: (doc.rating as number) ?? 5,
+            title: (doc.title as string) ?? '',
+            content: (doc.content as string) ?? '',
+            date: formatReviewDate(doc.createdAt),
+            variant: (orderInfo.variant as string | null | undefined) ?? null,
+          }
+        })
       }
     } catch (err) {
       console.error('[PDP] related products query threw:', err)
