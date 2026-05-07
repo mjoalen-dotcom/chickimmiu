@@ -2,9 +2,13 @@ import { getPayload } from 'payload'
 import type { Where } from 'payload'
 import config from '@payload-config'
 import type { Metadata } from 'next'
-import { getTranslations } from 'next-intl/server'
 import { ProductListClient } from './ProductListClient'
 
+/**
+ * 強制每次 request 都重新 render，讓後台編輯可以立刻在前台看到。
+ * 配合 Products collection 的 afterChange/afterDelete hooks，這頁會一直
+ * 吃到最新資料。未來若改用 ISR + revalidateTag 快取，可改成 revalidate = 60。
+ */
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
@@ -12,27 +16,22 @@ export const metadata: Metadata = {
   description: '探索 CHIC KIM & MIU 全系列商品，找到屬於你的優雅與可愛。',
 }
 
-type PLS = {
-  pageSize: number
-  defaultSort: string
-  hideOutOfStock: boolean
-  showSizeFilter: boolean
+type PLSDoc = {
+  pageSize?: number
+  pageSizeOptions?: { value: number }[]
+  defaultSort?: string
+  maxPriceCap?: number
+  showSizeFilter?: boolean
+  hideOutOfStock?: boolean
 }
 
-const DEFAULT_PLS: PLS = {
+const DEFAULT_SETTINGS: PLSDoc = {
   pageSize: 24,
+  pageSizeOptions: [{ value: 12 }, { value: 24 }, { value: 48 }],
   defaultSort: 'newest',
-  hideOutOfStock: false,
+  maxPriceCap: 10000,
   showSizeFilter: true,
-}
-
-function sortParamToPayload(sort: string): string {
-  switch (sort) {
-    case 'price-asc': return 'price'
-    case 'price-desc': return '-price'
-    case 'popular': return '-stock'
-    default: return '-createdAt'
-  }
+  hideOutOfStock: false,
 }
 
 export default async function ProductsPage({
@@ -40,53 +39,40 @@ export default async function ProductsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const t = await getTranslations('productList')
   const params = await searchParams
   let products: Record<string, unknown>[] = []
   let categories: Record<string, unknown>[] = []
-  let totalPages = 1
-  let totalDocs = 0
-  let pls: PLS = DEFAULT_PLS
-
-  const tag = typeof params.tag === 'string' ? params.tag : undefined
-  const category = typeof params.category === 'string' ? params.category : undefined
-  const sort = typeof params.sort === 'string' ? params.sort : undefined
-  const page = Math.max(1, parseInt((params.page as string) || '1', 10) || 1)
+  let settings: PLSDoc = DEFAULT_SETTINGS
 
   if (process.env.DATABASE_URI) {
     try {
       const payload = await getPayload({ config })
 
-      // ProductListSettings
+      // Fetch ProductListSettings global (PR-α) for pagination/filter config
       try {
-        const settings = (await payload.findGlobal({
-          slug: 'product-list-settings',
-          depth: 0,
-        })) as unknown as Partial<PLS> & { banner?: unknown }
-        pls = {
-          pageSize: (settings.pageSize as number) || DEFAULT_PLS.pageSize,
-          defaultSort: (settings.defaultSort as string) || DEFAULT_PLS.defaultSort,
-          hideOutOfStock: Boolean(settings.hideOutOfStock),
-          showSizeFilter: settings.showSizeFilter !== false,
-        }
+        const pls = await payload.findGlobal({ slug: 'product-list-settings' })
+        settings = (pls as unknown as PLSDoc) ?? DEFAULT_SETTINGS
       } catch {
-        // fallback to defaults
+        // global may not be initialised yet
       }
 
-      const activeSort = sort || pls.defaultSort
-
-      // Categories sorted by sortOrder then name
+      // Fetch categories sorted by sortOrder (from DB), parent populated.
+      // isActive:not_equals:false keeps null/undefined rows too.
       const catResult = await payload.find({
         collection: 'categories',
         where: { isActive: { not_equals: false } },
-        limit: 200,
-        sort: 'sortOrder,name',
+        limit: 100,
+        sort: 'sortOrder',
         depth: 1,
       })
       categories = catResult.docs as unknown as Record<string, unknown>[]
 
       // Build where clause
       const where: Where = {}
+
+      const tag = typeof params.tag === 'string' ? params.tag : undefined
+      const category = typeof params.category === 'string' ? params.category : undefined
+
       if (tag === 'new') where.isNew = { equals: true }
       if (tag === 'hot') where.isHot = { equals: true }
       if (tag === 'sale') where.salePrice = { greater_than: 0 }
@@ -97,37 +83,38 @@ export default async function ProductsPage({
         where.collectionTags = { in: ['jin-style', 'jin-live'] }
       }
       if (category) where.category = { equals: category }
-      if (pls.hideOutOfStock) where.stock = { greater_than: 0 }
+      if (settings.hideOutOfStock) {
+        where.or = [{ stock: { greater_than: 0 } }]
+      }
 
       const result = await payload.find({
         collection: 'products',
         where,
-        limit: pls.pageSize,
-        page,
-        sort: sortParamToPayload(activeSort),
+        limit: 500,
+        sort: '-createdAt',
         depth: 2,
       })
       products = result.docs as unknown as Record<string, unknown>[]
-      totalPages = result.totalPages
-      totalDocs = result.totalDocs
     } catch {
       // DB not ready
     }
   }
 
+  const pageSizeOptions = (settings.pageSizeOptions ?? DEFAULT_SETTINGS.pageSizeOptions)!.map(
+    (o) => o.value,
+  )
+
   return (
     <ProductListClient
       initialProducts={products}
       categories={categories}
-      initialTag={tag}
-      initialCategory={category}
-      sort={sort || pls.defaultSort}
-      page={page}
-      totalPages={totalPages}
-      totalDocs={totalDocs}
-      showSizeFilter={pls.showSizeFilter}
-      plsTitle={t('title')}
-      plsOverline={t('overline')}
+      initialTag={typeof params.tag === 'string' ? params.tag : undefined}
+      initialCategory={typeof params.category === 'string' ? params.category : undefined}
+      defaultPageSize={settings.pageSize ?? 24}
+      pageSizeOptions={pageSizeOptions}
+      defaultSort={settings.defaultSort ?? 'newest'}
+      maxPriceCap={settings.maxPriceCap ?? 10000}
+      showSizeFilter={settings.showSizeFilter ?? true}
     />
   )
 }

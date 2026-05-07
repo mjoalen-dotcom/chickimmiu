@@ -3,11 +3,13 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, ArrowLeft } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useCartStore } from '@/stores/cartStore'
 import { CartCrossSell } from '@/components/recommendation/CartCrossSell'
 import { Price } from '@/components/common/Price'
 
 export default function CartPage() {
+  const t = useTranslations('cart')
   const { items, updateQuantity, removeItem, clearCart } = useCartStore()
 
   const subtotal = items.reduce(
@@ -22,15 +24,15 @@ export default function CartPage() {
       <main className="bg-cream-50 min-h-screen">
         <div className="container py-16 text-center">
           <ShoppingBag size={64} className="mx-auto text-cream-200 mb-6" />
-          <h1 className="text-2xl font-serif mb-3">你的購物車是空的</h1>
+          <h1 className="text-2xl font-serif mb-3">{t('emptyTitle')}</h1>
           <p className="text-sm text-muted-foreground mb-8">
-            快去探索我們的精選商品吧！
+            {t('emptySubtitle')}
           </p>
           <Link
             href="/products"
             className="inline-flex items-center gap-2 px-8 py-3.5 bg-foreground text-cream-50 rounded-full text-sm tracking-wide hover:bg-foreground/90 transition-colors"
           >
-            探索全部商品
+            {t('emptyCta')}
             <ArrowRight size={16} />
           </Link>
         </div>
@@ -43,8 +45,8 @@ export default function CartPage() {
       {/* Header */}
       <div className="bg-gradient-to-b from-cream-100 to-cream-50 border-b border-cream-200">
         <div className="container py-8 md:py-12">
-          <p className="text-xs tracking-[0.3em] text-gold-500 mb-2">SHOPPING BAG</p>
-          <h1 className="text-2xl md:text-3xl font-serif">購物車</h1>
+          <p className="text-xs tracking-[0.3em] text-gold-500 mb-2">{t('eyebrow')}</p>
+          <h1 className="text-2xl md:text-3xl font-serif">{t('title')}</h1>
         </div>
       </div>
 
@@ -54,10 +56,10 @@ export default function CartPage() {
           <div className="space-y-4">
             {/* Header row (desktop) */}
             <div className="hidden md:grid grid-cols-[1fr_120px_140px_100px_40px] gap-4 text-xs text-muted-foreground px-4 pb-2 border-b border-cream-200">
-              <span>商品</span>
-              <span className="text-center">單價</span>
-              <span className="text-center">數量</span>
-              <span className="text-right">小計</span>
+              <span>{t('headerProduct')}</span>
+              <span className="text-center">{t('headerUnitPrice')}</span>
+              <span className="text-center">{t('headerQuantity')}</span>
+              <span className="text-right">{t('headerSubtotal')}</span>
               <span />
             </div>
 
@@ -83,7 +85,7 @@ export default function CartPage() {
                           />
                         ) : (
                           <div className="absolute inset-0 flex items-center justify-center text-[10px] text-muted-foreground">
-                            圖片
+                            {t('imageFallback')}
                           </div>
                         )}
                       </div>
@@ -117,7 +119,7 @@ export default function CartPage() {
 
                     {/* Quantity */}
                     <div className="flex items-center justify-between md:justify-center mb-4 md:mb-0">
-                      <span className="text-xs text-muted-foreground md:hidden">數量</span>
+                      <span className="text-xs text-muted-foreground md:hidden">{t('qtyLabel')}</span>
                       <div className="inline-flex items-center border border-cream-200 rounded-lg">
                         <button
                           onClick={() =>
@@ -151,7 +153,7 @@ export default function CartPage() {
                       <button
                         onClick={() => removeItem(item.productId, item.variant?.sku)}
                         className="p-2 text-muted-foreground/50 hover:text-red-500 transition-colors"
-                        aria-label="刪除"
+                        aria-label={t('delete')}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -164,7 +166,7 @@ export default function CartPage() {
                         onClick={() => removeItem(item.productId, item.variant?.sku)}
                         className="text-xs text-red-400 hover:text-red-600 transition-colors"
                       >
-                        移除
+                        {t('remove')}
                       </button>
                     </div>
                   </div>
@@ -179,13 +181,13 @@ export default function CartPage() {
                 className="flex items-center gap-2 text-sm text-foreground/60 hover:text-gold-600 transition-colors"
               >
                 <ArrowLeft size={16} />
-                繼續購物
+                {t('continueShopping')}
               </Link>
               <button
                 onClick={clearCart}
                 className="text-xs text-muted-foreground hover:text-red-500 transition-colors"
               >
-                清空購物車
+                {t('clearCart')}
               </button>
             </div>
 
@@ -196,18 +198,18 @@ export default function CartPage() {
           {/* ── Summary Sidebar ── */}
           <div className="lg:sticky lg:top-28 h-fit">
             <div className="bg-white rounded-2xl border border-cream-200 p-6 space-y-5">
-              <h2 className="font-medium">訂單摘要</h2>
+              <h2 className="font-medium">{t('summaryTitle')}</h2>
 
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">商品小計</span>
+                  <span className="text-muted-foreground">{t('subtotal')}</span>
                   <Price twd={subtotal} />
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">運費</span>
+                  <span className="text-muted-foreground">{t('shipping')}</span>
                   <span>
                     {shippingFee === 0 ? (
-                      <span className="text-green-600">免運費</span>
+                      <span className="text-green-600">{t('freeShipping')}</span>
                     ) : (
                       <Price twd={shippingFee} />
                     )}
@@ -215,13 +217,13 @@ export default function CartPage() {
                 </div>
                 {subtotal < 1000 && (
                   <p className="text-[10px] text-gold-600">
-                    再買 <Price twd={1000 - subtotal} /> 即可享免運費
+                    {t('freeShippingHintPrefix')}<Price twd={1000 - subtotal} />{t('freeShippingHintSuffix')}
                   </p>
                 )}
               </div>
 
               <div className="border-t border-cream-200 pt-4 flex justify-between items-baseline">
-                <span className="font-medium">合計</span>
+                <span className="font-medium">{t('total')}</span>
                 <Price twd={total} className="text-xl font-medium text-gold-600" />
               </div>
 
@@ -229,7 +231,7 @@ export default function CartPage() {
                 href="/checkout"
                 className="block w-full py-3.5 text-center bg-foreground text-cream-50 rounded-xl text-sm tracking-wide hover:bg-foreground/90 transition-colors"
               >
-                前往結帳
+                {t('goToCheckout')}
               </Link>
 
               <div className="grid grid-cols-3 gap-2 text-center">
