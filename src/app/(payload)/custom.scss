@@ -626,7 +626,9 @@ button[class*='btn--style-error'] {
 // `color: #1a1f36 !important` from the content wrapper. The actual visible row
 // title comes from `.row-label` (a SIBLING element, not a child of the button).
 .collapsible__toggle,
-[class*='collapsible__toggle'] {
+.collapsible__toggle span,
+[class*='collapsible__toggle'],
+[class*='collapsible__toggle'] span {
   color: transparent !important;
 }
 
@@ -1278,12 +1280,22 @@ input[type='checkbox'] {
 }
 
 // Document sidebar labels and values
+//
+// CRITICAL: do NOT use `[class*='sidebar']` here — that substring matcher ALSO
+// hits the unrelated wrapper `.document-fields--no-sidebar` (which encloses the
+// MAIN content area when there's no sidebar). When that happens, every `<span>`
+// inside the main form gets `color: #1a1f36 !important` cascaded — including
+// the SR-only `<span>{t("fields:toggleBlock")}</span>` inside
+// `.collapsible__toggle`, which Payload meant to keep transparent. The result
+// was the "Toggle block" string showing on top of every array row in HomepageSettings.
+//
+// Match the actual sidebar root by exact class instead.
 .document-fields__sidebar,
-[class*='sidebar'] label,
-[class*='sidebar'] span,
-[class*='sidebar'] p,
-[class*='sidebar'] h4,
-[class*='sidebar'] h5 {
+.document-fields__sidebar label,
+.document-fields__sidebar span,
+.document-fields__sidebar p,
+.document-fields__sidebar h4,
+.document-fields__sidebar h5 {
   color: #1a1f36 !important;
 }
 
