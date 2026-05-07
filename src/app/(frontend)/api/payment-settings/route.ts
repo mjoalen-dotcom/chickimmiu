@@ -13,7 +13,7 @@ import config from '@payload-config'
 export const dynamic = 'force-dynamic'
 
 const FALLBACK = {
-  enabledMethods: ['ecpay', 'cash_cod'] as string[],
+  enabledMethods: ['cash_cod', 'cash_meetup'] as string[],
   codDefaultFee: 30,
   codMaxAmount: 20000,
 }

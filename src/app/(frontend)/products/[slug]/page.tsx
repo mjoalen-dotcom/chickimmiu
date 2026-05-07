@@ -2,7 +2,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { ProductDetailClient } from './ProductDetailClient'
+import { ProductDetailClient, type ReviewLite } from './ProductDetailClient'
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/seo/JsonLd'
 import { normalizeMediaUrl } from '@/lib/media-url'
 
@@ -143,6 +143,46 @@ export default async function ProductDetailPage({ params }: Props) {
 
   if (!product) notFound()
 
+  // Fetch approved reviews for this product
+  let initialReviews: ReviewLite[] = []
+  if (process.env.DATABASE_URI) {
+    try {
+      const rvResult = await payload.find({
+        collection: 'product-reviews',
+        where: {
+          and: [
+            { product: { equals: product.id } },
+            { status: { equals: 'approved' } },
+          ],
+        },
+        sort: '-createdAt',
+        limit: 30,
+        depth: 1,
+      })
+      initialReviews = (rvResult.docs as unknown as Record<string, unknown>[]).map((r) => {
+        const reviewer = (r.reviewer as Record<string, unknown> | null) ?? null
+        const rawName = typeof reviewer?.name === 'string' ? reviewer.name : '顧客'
+        const maskedName = rawName.length > 1 ? rawName[0] + '**' : rawName
+        const dateStr = (() => {
+          try {
+            const d = new Date(r.createdAt as string)
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+          } catch { return '' }
+        })()
+        return {
+          id: String(r.id),
+          name: maskedName,
+          rating: (r.rating as number) ?? 5,
+          date: dateStr,
+          title: (r.title as string) ?? '',
+          content: (r.content as string) ?? '',
+        }
+      })
+    } catch (err) {
+      console.error('[PDP] reviews query threw:', err)
+    }
+  }
+
   const images = product.images as { image?: { url?: string } }[] | undefined
   const firstImage = normalizeMediaUrl(images?.[0]?.image?.url)
 
@@ -163,7 +203,7 @@ export default async function ProductDetailPage({ params }: Props) {
           { name: product.name as string, href: `/products/${slug}` },
         ]}
       />
-      <ProductDetailClient product={product} relatedProducts={relatedProducts} />
+      <ProductDetailClient product={product} relatedProducts={relatedProducts} initialReviews={initialReviews} />
     </>
   )
 }
