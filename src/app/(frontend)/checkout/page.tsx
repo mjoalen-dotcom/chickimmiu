@@ -289,6 +289,7 @@ export default function CheckoutPage() {
 
   const [tosAccepted, setTosAccepted] = useState(false)
   const [marketingAccepted, setMarketingAccepted] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/checkout-settings')
@@ -556,43 +557,44 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSubmitError(null)
 
     // 超商取貨驗證
     if (isConvenienceStore && !storeInfo.storeName) {
-      alert('請選擇取貨門市')
+      setSubmitError('請選擇取貨門市')
       return
     }
 
     // 到辦公室取貨驗證
     if (isMeetup && (!meetupInfo.location.trim() || !meetupInfo.preferredTime.trim())) {
-      alert('請填寫取貨地點與建議時段')
+      setSubmitError('請填寫取貨地點與建議時段')
       return
     }
 
     // Orders.customer 是必填 relationship → 必須登入。
     // （useCurrentUser 以 Payload cookie 為準，POST /api/orders 會驗同一 cookie。）
     if (!isAuthenticated || !user) {
-      alert('請先登入後再結帳')
+      setSubmitError('請先登入後再結帳')
       router.push('/login?redirect=/checkout')
       return
     }
 
     // 最低消費 / 最大件數 / TOS / 行銷同意（讀 CheckoutSettings）
     if (checkoutCfg.minOrderAmount > 0 && subtotal < checkoutCfg.minOrderAmount) {
-      alert(`最低消費金額為 NT$${checkoutCfg.minOrderAmount.toLocaleString()}`)
+      setSubmitError(`最低消費金額為 NT$${checkoutCfg.minOrderAmount.toLocaleString()}`)
       return
     }
     const totalItems = items.reduce((n, i) => n + i.quantity, 0)
     if (totalItems > checkoutCfg.maxItemsPerOrder) {
-      alert(`單筆訂單最多 ${checkoutCfg.maxItemsPerOrder} 件商品`)
+      setSubmitError(`單筆訂單最多 ${checkoutCfg.maxItemsPerOrder} 件商品`)
       return
     }
     if (checkoutCfg.requireTOS && !tosAccepted) {
-      alert('請先勾選同意服務條款')
+      setSubmitError('請先勾選同意服務條款')
       return
     }
     if (checkoutCfg.requireMarketingConsent && !marketingAccepted) {
-      alert('請先勾選同意接收行銷訊息')
+      setSubmitError('請先勾選同意接收行銷訊息')
       return
     }
 
@@ -706,7 +708,7 @@ export default function CheckoutPage() {
         const errMsg =
           errBody?.errors?.[0]?.message || errBody?.message || `HTTP ${res.status}`
         console.error('[Checkout] Order API failed:', errMsg, errBody, { utm: utmParams })
-        alert(`訂單建立失敗：${errMsg}`)
+        setSubmitError(`訂單建立失敗：${errMsg}`)
         setIsProcessing(false)
         return
       }
@@ -715,13 +717,13 @@ export default function CheckoutPage() {
       createdOrderNumber = result.doc?.orderNumber || ''
       if (!createdOrderNumber) {
         console.error('[Checkout] Order created but no orderNumber in response', result)
-        alert('訂單建立成功但編號遺失，請聯繫客服')
+        setSubmitError('訂單建立成功但編號遺失，請聯繫客服')
         setIsProcessing(false)
         return
       }
     } catch (err) {
       console.error('[Checkout] Order creation error:', err)
-      alert('訂單建立失敗，請檢查網路連線後再試')
+      setSubmitError('訂單建立失敗，請檢查網路連線後再試')
       setIsProcessing(false)
       return
     }
@@ -1700,6 +1702,13 @@ export default function CheckoutPage() {
                     />
                     <span>{checkoutCfg.marketingConsentText}</span>
                   </label>
+                )}
+
+                {submitError && (
+                  <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-start gap-2">
+                    <span className="shrink-0 mt-0.5">⚠</span>
+                    <span>{submitError}</span>
+                  </div>
                 )}
 
                 <button

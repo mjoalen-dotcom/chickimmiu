@@ -109,15 +109,12 @@ interface Props {
   maxItems?: number
   showHeader?: boolean
   title?: string
-  /** Real Payload products to attach to each UGC slot (in order, cycled). */
+  /** Real UGC posts from Payload. When provided, overrides demo data. */
+  ugcPosts?: UGCItem[]
+  /** Real Payload products to attach to each demo UGC slot (fallback only). */
   taggedProducts?: { slug: string; name: string; price: number; image: string }[]
 }
 
-/**
- * Replace the demo `taggedProducts` on each UGC item with real Payload
- * products (cycled in order). When no real products are passed in, drop
- * the broken demo links so we never link to slugs that 404.
- */
 function applyRealProducts(
   items: UGCItem[],
   realProducts?: { slug: string; name: string; price: number; image: string }[],
@@ -136,10 +133,14 @@ export function UGCGallery({
   maxItems = 6,
   showHeader = true,
   title = '穿搭靈感',
+  ugcPosts,
   taggedProducts,
 }: Props) {
   const [selectedItem, setSelectedItem] = useState<UGCItem | null>(null)
-  const items = applyRealProducts(DEMO_UGC.slice(0, maxItems), taggedProducts)
+  const items =
+    ugcPosts && ugcPosts.length > 0
+      ? ugcPosts.slice(0, maxItems)
+      : applyRealProducts(DEMO_UGC.slice(0, maxItems), taggedProducts)
 
   return (
     <section>

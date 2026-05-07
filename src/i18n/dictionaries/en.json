@@ -157,5 +157,74 @@
       "title": "This collection is empty for now — stay tuned",
       "cta": "Browse All Products"
     }
+  },
+  "account": {
+    "pageTitle": "My Account",
+    "nav": {
+      "overview": "Account Overview",
+      "orders": "My Orders",
+      "subscription": "My Subscription",
+      "wishlist": "Wishlist",
+      "referrals": "Refer a Friend",
+      "games": "Lucky Games",
+      "personality": "Style Profile",
+      "treasure": "Treasure Box",
+      "invoices": "E-Invoices",
+      "returns": "Returns",
+      "reviews": "My Reviews",
+      "addresses": "Address Book",
+      "points": "Points / Credits",
+      "settings": "Account Settings"
+    },
+    "logout": "Log out"
+  },
+  "games": {
+    "headerTag": "REWARDS & GAMES",
+    "title": "Member Arcade",
+    "subtitle": "Play games to earn points and credits — invite friends for even more fun!\nHigher tier = more free plays and better winning odds.",
+    "todayPoints": "Points earned today",
+    "openGames": "Games available",
+    "myBadges": "Badges earned",
+    "tabs": {
+      "games": "All Games",
+      "leaderboard": "Leaderboard",
+      "badges": "My Badges"
+    },
+    "allGames": "All Games",
+    "startGame": "Play now",
+    "comingSoon": "Coming soon",
+    "gamesEmpty": "Games coming soon",
+    "gamesEmptyDesc": "We're preparing exciting games for you — stay tuned!",
+    "tierBenefits": {
+      "title": "Higher tier = more perks",
+      "tier": "Member Tier",
+      "monthlySpins": "Monthly Spins",
+      "dailyScratches": "Daily Scratches",
+      "dailyBattles": "Daily Battles",
+      "fashionChallenge": "Style Challenge",
+      "rewardMultiplier": "Reward Multiplier"
+    },
+    "period": {
+      "today": "Today",
+      "week": "This Week",
+      "month": "This Month",
+      "all": "All Time"
+    },
+    "leaderboard": {
+      "empty": "Leaderboard is open",
+      "emptyDesc": "Play games to earn points and claim the top spot!",
+      "accumulatedNote": "(cumulative points ranking)",
+      "points": "pts",
+      "games": "games"
+    },
+    "badges": {
+      "loginRequired": "Log in to view badges",
+      "loginDesc": "Play games to collect exclusive badges",
+      "loginCta": "Log in",
+      "empty": "No badges yet",
+      "emptyDesc": "Complete game challenges to unlock exclusive badges!",
+      "goPlay": "Play games",
+      "earned": "Earned"
+    }
   }
 }

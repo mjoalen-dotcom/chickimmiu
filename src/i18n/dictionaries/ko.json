@@ -157,5 +157,74 @@
       "title": "이 컬렉션은 준비 중입니다. 곧 만나요",
       "cta": "전체 상품 보기"
     }
+  },
+  "account": {
+    "pageTitle": "내 계정",
+    "nav": {
+      "overview": "계정 개요",
+      "orders": "주문 내역",
+      "subscription": "구독 관리",
+      "wishlist": "찜 목록",
+      "referrals": "친구 추천",
+      "games": "럭키 게임",
+      "personality": "스타일 프로필",
+      "treasure": "보물 상자",
+      "invoices": "전자 영수증",
+      "returns": "반품·교환",
+      "reviews": "나의 리뷰",
+      "addresses": "배송지 관리",
+      "points": "포인트 / 크레딧",
+      "settings": "계정 설정"
+    },
+    "logout": "로그아웃"
+  },
+  "games": {
+    "headerTag": "REWARDS & GAMES",
+    "title": "멤버 아케이드",
+    "subtitle": "게임으로 포인트와 크레딧을 획득하세요 — 친구를 초대하면 더욱 재미있어요!\n회원 등급이 높을수록 무료 플레이 횟수가 많아지고 당첨 확률이 높아집니다.",
+    "todayPoints": "오늘 획득 포인트",
+    "openGames": "이용 가능 게임",
+    "myBadges": "획득한 배지",
+    "tabs": {
+      "games": "전체 게임",
+      "leaderboard": "리더보드",
+      "badges": "나의 배지"
+    },
+    "allGames": "전체 게임",
+    "startGame": "게임 시작",
+    "comingSoon": "출시 예정",
+    "gamesEmpty": "게임 출시 예정",
+    "gamesEmptyDesc": "재미있는 게임을 준비 중입니다. 기대해 주세요!",
+    "tierBenefits": {
+      "title": "등급이 높을수록 혜택이 많아져요",
+      "tier": "회원 등급",
+      "monthlySpins": "월간 스핀",
+      "dailyScratches": "일일 스크래치",
+      "dailyBattles": "일일 배틀",
+      "fashionChallenge": "스타일 챌린지",
+      "rewardMultiplier": "보상 배율"
+    },
+    "period": {
+      "today": "오늘",
+      "week": "이번 주",
+      "month": "이번 달",
+      "all": "전체"
+    },
+    "leaderboard": {
+      "empty": "리더보드 오픈 중",
+      "emptyDesc": "게임으로 포인트를 쌓고 1위를 차지하세요!",
+      "accumulatedNote": "（누적 포인트 순위）",
+      "points": "포인트",
+      "games": "회"
+    },
+    "badges": {
+      "loginRequired": "배지를 보려면 로그인하세요",
+      "loginDesc": "게임을 플레이하면 전용 배지를 수집할 수 있어요",
+      "loginCta": "로그인",
+      "empty": "아직 배지가 없어요",
+      "emptyDesc": "게임 챌린지를 완료하면 전용 배지를 해금할 수 있어요!",
+      "goPlay": "게임하러 가기",
+      "earned": "획득 완료"
+    }
   }
 }

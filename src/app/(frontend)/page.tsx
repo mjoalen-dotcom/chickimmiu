@@ -37,6 +37,7 @@ async function fetchHomeData() {
     hotProducts: [] as Record<string, unknown>[],
     heroBanners: [] as string[],
     blogPosts: [] as Record<string, unknown>[],
+    ugcDocs: [] as Record<string, unknown>[],
   }
 
   if (!process.env.DATABASE_URI) return defaults
@@ -104,14 +105,29 @@ async function fetchHomeData() {
       } catch { /* blog collection may be empty */ }
     }
 
-    return { homepage, activeTheme, newProducts, hotProducts, heroBanners, blogPosts }
+    // Fetch approved UGC posts for homepage gallery
+    let ugcDocs: Record<string, unknown>[] = []
+    const ugcSection = homepage?.ugcSection as Record<string, unknown> | undefined
+    const ugcLimit = (ugcSection?.maxItems as number) || 6
+    try {
+      const ugcResult = await payload.find({
+        collection: 'ugc-posts',
+        where: { status: { equals: 'approved' } },
+        sort: '-isPinned,-createdAt',
+        limit: ugcLimit,
+        depth: 2,
+      })
+      ugcDocs = ugcResult.docs as unknown as Record<string, unknown>[]
+    } catch { /* collection may be empty */ }
+
+    return { homepage, activeTheme, newProducts, hotProducts, heroBanners, blogPosts, ugcDocs }
   } catch {
     return defaults
   }
 }
 
 export default async function HomePage() {
-  const { homepage, activeTheme, newProducts, hotProducts, heroBanners, blogPosts } = await fetchHomeData()
+  const { homepage, activeTheme, newProducts, hotProducts, heroBanners, blogPosts, ugcDocs } = await fetchHomeData()
 
   // ── CMS Hero Slides ──
   const cmsBanners = homepage?.heroBanners as Array<Record<string, unknown>> | undefined
@@ -183,6 +199,59 @@ export default async function HomePage() {
     })
     .filter((p): p is { slug: string; name: string; price: number; image: string } => p !== null)
     .slice(0, 6)
+
+  // ── Real UGC posts from Payload ──
+  type UGCProductRef = { slug: string; name: string; price: number; image: string }
+  type UGCItemProp = {
+    id: string; authorName: string; authorHandle: string; authorAvatar?: string
+    platform: 'instagram' | 'facebook' | 'tiktok'; contentType: 'image' | 'video' | 'carousel' | 'reel'
+    image: string; caption?: string; likes: number; comments: number
+    externalUrl?: string; taggedProducts?: UGCProductRef[]
+  }
+  const ugcPosts: UGCItemProp[] = ugcDocs.map((d) => {
+    const mediaItems = d.mediaItems as Array<Record<string, unknown>> | null
+    const firstMedia = mediaItems?.[0]
+    const fileDoc = firstMedia?.file as Record<string, unknown> | null
+    const image = normalizeMediaUrl(fileDoc?.url as string | undefined)
+      ?? (firstMedia?.thumbnailUrl as string | null)
+      ?? null
+    if (!image) return null
+
+    const rawPlatform = (d.platform as string) ?? 'instagram'
+    const platform = (['instagram', 'facebook', 'tiktok'].includes(rawPlatform)
+      ? rawPlatform : 'instagram') as UGCItemProp['platform']
+
+    const rawContent = (d.contentType as string) ?? 'image'
+    const contentType = (['image', 'video', 'carousel', 'reel'].includes(rawContent)
+      ? rawContent : 'image') as UGCItemProp['contentType']
+
+    const taggedProductDocs = d.taggedProducts as Array<Record<string, unknown>> | null
+    const taggedProducts: UGCProductRef[] = (taggedProductDocs ?? [])
+      .map((p) => {
+        const slug = p.slug as string | undefined
+        const name = p.name as string | undefined
+        const price = p.price as number | undefined
+        const imgs = p.images as { image?: { url?: string } }[] | undefined
+        const img = normalizeMediaUrl(imgs?.[0]?.image?.url)
+        if (!slug || !name || typeof price !== 'number' || !img) return null
+        return { slug, name, price, image: img }
+      })
+      .filter((p): p is UGCProductRef => p !== null)
+
+    return {
+      id: String(d.id),
+      authorName: (d.authorName as string) || '會員',
+      authorHandle: (d.authorHandle as string) || '',
+      platform,
+      contentType,
+      image,
+      caption: (d.caption as string | null) ?? undefined,
+      likes: (d.likes as number) ?? 0,
+      comments: (d.comments as number) ?? 0,
+      externalUrl: (d.externalUrl as string | null) ?? undefined,
+      taggedProducts: taggedProducts.length > 0 ? taggedProducts : undefined,
+    } satisfies UGCItemProp
+  }).filter((p): p is UGCItemProp => p !== null)
 
   // ── Section configs ──
   const newSection = (homepage?.newProductsSection as Record<string, unknown>) || {}
@@ -478,7 +547,8 @@ export default async function HomePage() {
             <UGCGallery
               layout="shoppable_gallery"
               maxItems={(ugcSection.maxItems as number) || 6}
-              taggedProducts={ugcTaggedProducts}
+              ugcPosts={ugcPosts.length > 0 ? ugcPosts : undefined}
+              taggedProducts={ugcPosts.length === 0 ? ugcTaggedProducts : undefined}
             />
           </div>
         </section>

@@ -157,5 +157,74 @@
       "title": "このコレクションは準備中です。お楽しみに",
       "cta": "全商品を見る"
     }
+  },
+  "account": {
+    "pageTitle": "マイアカウント",
+    "nav": {
+      "overview": "アカウント概要",
+      "orders": "注文履歴",
+      "subscription": "サブスクリプション",
+      "wishlist": "お気に入り",
+      "referrals": "友達紹介",
+      "games": "ラッキーゲーム",
+      "personality": "スタイル診断",
+      "treasure": "トレジャーボックス",
+      "invoices": "電子インボイス",
+      "returns": "返品・交換",
+      "reviews": "マイレビュー",
+      "addresses": "住所管理",
+      "points": "ポイント / クレジット",
+      "settings": "アカウント設定"
+    },
+    "logout": "ログアウト"
+  },
+  "games": {
+    "headerTag": "REWARDS & GAMES",
+    "title": "メンバーアーケード",
+    "subtitle": "ゲームでポイントとクレジットを獲得しましょう！\n会員ランクが高いほど、無料プレイ回数が増え、当選確率もアップ。",
+    "todayPoints": "本日獲得ポイント",
+    "openGames": "利用可能ゲーム",
+    "myBadges": "獲得バッジ",
+    "tabs": {
+      "games": "全ゲーム",
+      "leaderboard": "ランキング",
+      "badges": "マイバッジ"
+    },
+    "allGames": "全ゲーム",
+    "startGame": "プレイする",
+    "comingSoon": "近日公開",
+    "gamesEmpty": "ゲームは近日公開予定",
+    "gamesEmptyDesc": "素敵なゲームを準備中です。お楽しみに！",
+    "tierBenefits": {
+      "title": "ランクが高いほど特典が増える",
+      "tier": "会員ランク",
+      "monthlySpins": "月間スピン",
+      "dailyScratches": "毎日スクラッチ",
+      "dailyBattles": "毎日バトル",
+      "fashionChallenge": "ファッションチャレンジ",
+      "rewardMultiplier": "報酬倍率"
+    },
+    "period": {
+      "today": "今日",
+      "week": "今週",
+      "month": "今月",
+      "all": "全期間"
+    },
+    "leaderboard": {
+      "empty": "ランキング受付中",
+      "emptyDesc": "ゲームでポイントを貯めてトップを目指そう！",
+      "accumulatedNote": "（累計ポイントランキング）",
+      "points": "pt",
+      "games": "回"
+    },
+    "badges": {
+      "loginRequired": "バッジを見るにはログインが必要です",
+      "loginDesc": "ゲームをプレイして限定バッジをコレクションしよう",
+      "loginCta": "ログイン",
+      "empty": "まだバッジがありません",
+      "emptyDesc": "ゲームチャレンジをクリアして限定バッジを解放しよう！",
+      "goPlay": "ゲームをプレイ",
+      "earned": "取得済み"
+    }
   }
 }
