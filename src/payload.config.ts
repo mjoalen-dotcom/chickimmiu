@@ -306,7 +306,6 @@ export default buildConfig({
     Bundles,
     Coupons,
     CouponRedemptions,
-    Currencies,
     UTMCampaigns, // PR-B：集中管理 UTM 活動 slug
     AdAudiences, // PR-E：DPA Retargeting Custom Audience 定義
     // ⑤ 互動體驗
@@ -333,6 +332,7 @@ export default buildConfig({
     SiteThemes,
     // ⑦ 系統與安全
     LoginAttempts,
+    Currencies, // 幣別與匯率（前台 CurrencySwitcher 資料源；TWD 結算實際值不受影響）
   ],
   // Globals registration order controls the sub-order of globals within each
   // group section in the sidebar. Grouped & sequenced to match collections above.
