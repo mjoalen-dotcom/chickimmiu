@@ -1,8 +1,8 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
-import { ProductDetailClient, type ReviewLite } from './ProductDetailClient'
+import { notFound, redirect } from 'next/navigation'
+import { ProductDetailClient } from './ProductDetailClient'
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/seo/JsonLd'
 import { normalizeMediaUrl } from '@/lib/media-url'
 
@@ -127,7 +127,18 @@ export default async function ProductDetailPage({ params }: Props) {
   let relatedProducts: Record<string, unknown>[] = []
   let initialReviews: ReviewLite[] = []
 
-  if (product && process.env.DATABASE_URI) {
+  // Read defaultRelatedCount from ProductListSettings (PR-μ)
+  let relatedCount = 4
+  if (process.env.DATABASE_URI) {
+    try {
+      const payload = await getPayload({ config })
+      const pls = await payload.findGlobal({ slug: 'product-list-settings', depth: 0 })
+      const rc = (pls as unknown as { defaultRelatedCount?: number })?.defaultRelatedCount
+      if (typeof rc === 'number' && rc >= 0) relatedCount = rc
+    } catch { /* use default */ }
+  }
+
+  if (product && process.env.DATABASE_URI && relatedCount > 0) {
     try {
       const payload = await getPayload({ config })
       const cat = product.category as unknown as Record<string, unknown> | string | undefined
@@ -139,7 +150,7 @@ export default async function ProductDetailPage({ params }: Props) {
             category: { equals: catId },
             id: { not_equals: product.id },
           },
-          limit: 4,
+          limit: relatedCount,
           depth: 2,
         })
         relatedProducts = related.docs as unknown as Record<string, unknown>[]
@@ -147,17 +158,17 @@ export default async function ProductDetailPage({ params }: Props) {
       // Fallback: if same-category lookup didn't return enough, top up
       // with the most-recent other products so 「同樣的人也買了」 is always
       // populated instead of disappearing on small categories.
-      if (relatedProducts.length < 4) {
+      if (relatedProducts.length < relatedCount) {
         const fallback = await payload.find({
           collection: 'products',
           where: { id: { not_equals: product.id } },
           sort: '-createdAt',
-          limit: 4,
+          limit: relatedCount,
           depth: 2,
         })
         const seen = new Set(relatedProducts.map((p) => p.id))
         for (const doc of fallback.docs as unknown as Record<string, unknown>[]) {
-          if (relatedProducts.length >= 4) break
+          if (relatedProducts.length >= relatedCount) break
           if (!seen.has(doc.id)) {
             relatedProducts.push(doc)
             seen.add(doc.id)
@@ -192,6 +203,25 @@ export default async function ProductDetailPage({ params }: Props) {
       }
     } catch (err) {
       console.error('[PDP] related products query threw:', err)
+    }
+  }
+
+  // PR-δ：alias fallback — 找不到 canonical slug 時查 aliasSlugs 子表，命中則 301
+  if (!product && process.env.DATABASE_URI) {
+    try {
+      const payload = await getPayload({ config })
+      const { docs } = await payload.find({
+        collection: 'products',
+        where: { 'aliasSlugs.slug': { equals: slug } },
+        limit: 1,
+        depth: 0,
+      })
+      const aliasMatch = docs[0] as Record<string, unknown> | undefined
+      if (aliasMatch?.slug && aliasMatch.slug !== slug) {
+        redirect(`/products/${aliasMatch.slug as string}`)
+      }
+    } catch {
+      // ignore — notFound() below handles both DB errors and misses
     }
   }
 

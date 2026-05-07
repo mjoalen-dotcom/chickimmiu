@@ -25,7 +25,8 @@
     "seed:demo": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedDemoData.ts",
     "seed:demo:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedDemoData.ts -- --dry-run",
     "seed:journeys": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedAutomationJourneys.ts",
-    "seed:journeys:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedAutomationJourneys.ts -- --dry-run"
+    "seed:journeys:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedAutomationJourneys.ts -- --dry-run",
+    "smoke:storefront": "node --import tsx/esm scripts/smoke-storefront.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

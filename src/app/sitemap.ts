@@ -30,8 +30,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${siteUrl}/register`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
   ]
 
-  // ── 動態頁面：商品、部落格、Landing Pages ──
+  // ── 動態頁面：商品、分類、部落格、Landing Pages ──
   let productPages: MetadataRoute.Sitemap = []
+  let categoryPages: MetadataRoute.Sitemap = []
   let blogPages: MetadataRoute.Sitemap = []
   let landingPages: MetadataRoute.Sitemap = []
 
@@ -53,6 +54,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: new Date(p.updatedAt),
         changeFrequency: 'weekly' as const,
         priority: 0.8,
+      }))
+
+      // 分類頁（PR-ε 建立的 /category/[slug] 路由）
+      const categories = await payload.find({
+        collection: 'categories',
+        where: { isActive: { not_equals: false } },
+        limit: 500,
+        depth: 0,
+      })
+      categoryPages = categories.docs.map((c) => ({
+        url: `${siteUrl}/category/${c.slug}`,
+        lastModified: new Date(c.updatedAt),
+        changeFrequency: 'weekly' as const,
+        priority: 0.7,
       }))
 
       // 部落格
@@ -87,5 +102,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  return [...staticPages, ...productPages, ...blogPages, ...landingPages]
+  return [...staticPages, ...productPages, ...categoryPages, ...blogPages, ...landingPages]
 }
