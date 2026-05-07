@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ScratchCard } from '@/components/gamification/ScratchCard'
+import { FashionChallenge } from '@/components/gamification/FashionChallenge'
 
 /* ── Types from server ── */
 export type TierLite = {
@@ -91,6 +92,7 @@ export default function PointsClient({
   const router = useRouter()
   const [tab, setTab] = useState<Tab>('shop')
   const [showScratch, setShowScratch] = useState(false)
+  const [showFashion, setShowFashion] = useState(false)
   const points = user.points
   const credit = user.shoppingCredit
   const expiringPoints = user.expiringPoints
@@ -230,6 +232,25 @@ export default function PointsClient({
             className="shrink-0 px-4 py-2 bg-emerald-500 text-white text-xs font-medium rounded-full hover:bg-emerald-600 transition-colors"
           >
             立即刮開
+          </button>
+        </div>
+      </div>
+
+      {/* ── 璀璨穿搭挑戰 ── */}
+      <div className="bg-gradient-to-r from-gold-500/10 to-amber-500/10 border border-gold-500/20 rounded-2xl p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-2xl shrink-0">✨</span>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">璀璨穿搭挑戰</p>
+              <p className="text-xs text-muted-foreground">60秒挑戰，AI即時評分，贏取點數！</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowFashion(true)}
+            className="shrink-0 px-4 py-2 bg-gold-500 text-white text-xs font-medium rounded-full hover:bg-gold-600 transition-colors"
+          >
+            開始挑戰
           </button>
         </div>
       </div>
@@ -549,6 +570,13 @@ export default function PointsClient({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── 璀璨穿搭挑戰 Modal ── */}
+      <FashionChallenge
+        open={showFashion}
+        onClose={() => setShowFashion(false)}
+        onComplete={() => { setShowFashion(false); router.refresh() }}
+      />
 
       {/* ── 刮刮樂 Modal ── */}
       <ScratchCard
