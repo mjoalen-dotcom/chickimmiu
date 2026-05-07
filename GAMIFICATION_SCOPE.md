@@ -297,7 +297,7 @@ Step 1: P1 (balanceAfter fix)     ──  ✅ DONE (commit 733eccd, 2026-04-18)
 Step 2: P4 (FashionChallengeSettings.gameAssets + migration)  ──  2–4h  獨立 commit
 Step 3: 5.8.4 + 5.8.5 清死碼（SpinWheel + CardBattleGame）    ──  ✅ DONE (commit 6dd4053, 2026-04-18)
 Step 4: 5.8.1 ScratchCard Modal surface                       ──  ✅ DONE (commit a86a4c5, 2026-05-07)
-Step 5: 5.8.2 FashionChallenge Modal surface                  ──  12–20h
+Step 5: 5.8.2 FashionChallenge Modal surface                  ──  ✅ DONE (commit fe59893, 2026-05-07)
 Step 6: 5.8.3 CardBattle real backend + polling               ──  10–16h
                                                               ──────────
                                                           TOTAL 32–53h
