@@ -8,6 +8,7 @@ import {
   HandHeart, Palette, Zap, ChevronRight, X, CheckCircle2,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ScratchCard } from '@/components/gamification/ScratchCard'
 
 /* ── Types from server ── */
 export type TierLite = {
@@ -89,6 +90,7 @@ export default function PointsClient({
 }) {
   const router = useRouter()
   const [tab, setTab] = useState<Tab>('shop')
+  const [showScratch, setShowScratch] = useState(false)
   const points = user.points
   const credit = user.shoppingCredit
   const expiringPoints = user.expiringPoints
@@ -210,6 +212,25 @@ export default function PointsClient({
           <p className="text-xs text-muted-foreground">購物金</p>
           <p className="text-2xl font-medium">NT$ {credit.toLocaleString()}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">永不過期</p>
+        </div>
+      </div>
+
+      {/* ── 今日幸運 ── */}
+      <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-2xl p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-2xl shrink-0">🎫</span>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">今日刮刮樂</p>
+              <p className="text-xs text-muted-foreground">刮開卡片，贏取點數或購物金</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowScratch(true)}
+            className="shrink-0 px-4 py-2 bg-emerald-500 text-white text-xs font-medium rounded-full hover:bg-emerald-600 transition-colors"
+          >
+            立即刮開
+          </button>
         </div>
       </div>
 
@@ -528,6 +549,13 @@ export default function PointsClient({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── 刮刮樂 Modal ── */}
+      <ScratchCard
+        open={showScratch}
+        onClose={() => setShowScratch(false)}
+        onComplete={() => { setShowScratch(false); router.refresh() }}
+      />
 
       {/* ── 兌換確認 Modal ── */}
       <AnimatePresence>
