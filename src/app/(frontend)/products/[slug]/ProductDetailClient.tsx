@@ -201,6 +201,20 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
     .filter((m) => m.image?.url)
   const careInstructions = (product.careInstructions as string | undefined) || undefined
   const stylingTips = (product.stylingTips as string | undefined) || undefined
+  const purchaseLimit =
+    typeof product.purchaseLimit === 'number' && product.purchaseLimit > 0
+      ? Math.floor(product.purchaseLimit)
+      : 0
+  const introVideoRaw = product.introVideo as
+    | { url?: string; mimeType?: string }
+    | string
+    | number
+    | null
+    | undefined
+  const introVideoUrl =
+    introVideoRaw && typeof introVideoRaw === 'object'
+      ? normalizeMediaUrl(introVideoRaw.url)
+      : null
   const modelInfo = product.modelInfo as
     | {
         height?: string
@@ -238,6 +252,8 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
   const [showSizeGuide, setShowSizeGuide] = useState(false)
   const [activeTab, setActiveTab] = useState<TabId>('description')
   const [showStickyBar, setShowStickyBar] = useState(false)
+  const [cartToast, setCartToast] = useState<string | null>(null)
+  const cartToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   /* ─── Lightbox state ─── */
   const [lightboxOpen, setLightboxOpen] = useState(false)
@@ -274,6 +290,12 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
   const { toggleItem, isInWishlist } = useWishlistStore()
   const inWishlist = isInWishlist(product.id as unknown as string)
   const addToCartRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    return () => {
+      if (cartToastTimerRef.current) clearTimeout(cartToastTimerRef.current)
+    }
+  }, [])
 
   // Sticky bar visibility
   useEffect(() => {
@@ -347,8 +369,8 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
     collectionTags.includes('jin-style') || collectionTags.includes('jin-live')
 
   const handleAddToCart = useCallback(() => {
-    if (!canAddToCart) return
-    addItem(
+    if (!canAddToCart) return false
+    const result = addItem(
       {
         productId: product.id as unknown as string,
         slug: product.slug as string,
@@ -364,14 +386,35 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
               sku: selectedVariant.sku,
             }
           : undefined,
+        purchaseLimit: purchaseLimit > 0 ? purchaseLimit : undefined,
       },
       quantity,
     )
-  }, [addItem, canAddToCart, product, images, originalPrice, currentPrice, selectedVariant, quantity])
+    if (!result.ok) {
+      setCartToast(result.message || '加入購物車失敗')
+      if (cartToastTimerRef.current) clearTimeout(cartToastTimerRef.current)
+      cartToastTimerRef.current = setTimeout(() => setCartToast(null), 1800)
+      return false
+    }
+    setCartToast('✅ 已加入購物車')
+    if (cartToastTimerRef.current) clearTimeout(cartToastTimerRef.current)
+    cartToastTimerRef.current = setTimeout(() => setCartToast(null), 1300)
+    return true
+  }, [
+    addItem,
+    canAddToCart,
+    product,
+    images,
+    originalPrice,
+    currentPrice,
+    selectedVariant,
+    purchaseLimit,
+    quantity,
+  ])
 
   const handleBuyNow = useCallback(() => {
-    handleAddToCart()
-    router.push('/checkout')
+    const ok = handleAddToCart()
+    if (ok) router.push('/checkout')
   }, [handleAddToCart, router])
 
   const handleWishlist = () => {
@@ -477,6 +520,18 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
 
             {/* Main image */}
             <div className="flex-1 space-y-3">
+              {introVideoUrl && (
+                <div className="rounded-2xl overflow-hidden border border-cream-200 bg-black">
+                  <video
+                    src={introVideoUrl}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    className="w-full max-h-[480px] object-cover"
+                  />
+                </div>
+              )}
               <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-cream-100 border border-cream-200">
                 {images[currentImage]?.image?.url ? (
                   <Image
@@ -778,6 +833,16 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
 
             {/* ── Action buttons (加入購物車 + 立即購買) ── */}
             <div ref={addToCartRef} className="space-y-3">
+              {purchaseLimit > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                  每人限購 {purchaseLimit} 件
+                </div>
+              )}
+              {cartToast && (
+                <div className="rounded-xl border border-cream-200 bg-white px-3 py-2 text-sm text-foreground/80 shadow-sm">
+                  {cartToast}
+                </div>
+              )}
               <div className="flex gap-3">
                 <button
                   onClick={handleAddToCart}

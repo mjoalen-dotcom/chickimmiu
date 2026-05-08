@@ -909,13 +909,68 @@ export const Products: CollectionConfig = {
                 },
               ],
             },
-            /* 重量 */
+            /* 重量 + 尺寸（對應 dimensions_length/width/height） */
             {
-              name: 'weight',
-              label: '商品重量（公克）',
+              type: 'row',
+              fields: [
+                {
+                  name: 'weight',
+                  label: '商品重量（公克）',
+                  type: 'number',
+                  min: 0,
+                  admin: {
+                    width: '25%',
+                    description: '用於運費計算',
+                  },
+                },
+                {
+                  name: 'dimensions',
+                  label: '商品尺寸（cm）',
+                  type: 'group',
+                  admin: {
+                    width: '75%',
+                    description: '長 × 寬 × 高（公分）',
+                  },
+                  fields: [
+                    {
+                      type: 'row',
+                      fields: [
+                        {
+                          name: 'length',
+                          label: '長',
+                          type: 'number',
+                          min: 0,
+                          admin: { width: '33%' },
+                        },
+                        {
+                          name: 'width',
+                          label: '寬',
+                          type: 'number',
+                          min: 0,
+                          admin: { width: '33%' },
+                        },
+                        {
+                          name: 'height',
+                          label: '高',
+                          type: 'number',
+                          min: 0,
+                          admin: { width: '34%' },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              name: 'purchaseLimit',
+              label: '單人限購數量',
               type: 'number',
               min: 0,
-              admin: { description: '用於運費計算' },
+              defaultValue: 0,
+              admin: {
+                description: '單人單次最多購買數量。0 表示不限',
+              },
             },
           ],
         },
@@ -933,6 +988,20 @@ export const Products: CollectionConfig = {
               admin: {
                 description:
                   '列表頁與首頁展示的主要圖片。若留空會使用下方圖庫第一張。',
+              },
+            },
+            {
+              name: 'introVideo',
+              label: '商品介紹影片',
+              type: 'upload',
+              relationTo: 'media',
+              filterOptions: {
+                mimeType: {
+                  contains: 'video',
+                },
+              },
+              admin: {
+                description: '可放在 PDP 主圖上方（建議 9:16 或 4:5 直式短影片）',
               },
             },
             {
@@ -1414,7 +1483,7 @@ export const Products: CollectionConfig = {
                   label: 'GTIN / 條碼（商品層級）',
                   type: 'text',
                   admin: {
-                    width: '50%',
+                    width: '33%',
                     description: '商品共用 GTIN（每個 SKU 變體可在「變體與庫存」分別覆寫）',
                   },
                 },
@@ -1423,8 +1492,17 @@ export const Products: CollectionConfig = {
                   label: 'MPN 製造商料號',
                   type: 'text',
                   admin: {
-                    width: '50%',
+                    width: '33%',
                     description: '無 GTIN 時 Google 要求 brand + mpn 組合替代',
+                  },
+                },
+                {
+                  name: 'hsCode',
+                  label: 'HS Code',
+                  type: 'text',
+                  admin: {
+                    width: '34%',
+                    description: '海關 HS code，跨境運送用',
                   },
                 },
               ],

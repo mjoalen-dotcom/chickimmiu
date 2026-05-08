@@ -26,6 +26,7 @@ export interface QuickViewProduct {
   images?: { url: string; alt?: string }[]
   variants?: Variant[]
   description?: string
+  purchaseLimit?: number | null
 }
 
 interface ProductQuickViewProps {
@@ -80,6 +81,10 @@ export function ProductQuickView({ product, open, onClose }: ProductQuickViewPro
               sku: selectedVariant.sku,
             }
           : undefined,
+        purchaseLimit:
+          typeof product.purchaseLimit === 'number' && product.purchaseLimit > 0
+            ? Math.floor(product.purchaseLimit)
+            : undefined,
       },
       quantity,
     )
