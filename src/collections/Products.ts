@@ -960,6 +960,9 @@ export const Products: CollectionConfig = {
               admin: {
                 description:
                   '每一個變體 = 一個顏色 × 尺寸組合。若商品只有一個款式，可留空，改用下方「總庫存」欄位。',
+                components: {
+                  Field: '@/components/admin/VariantInlineTable',
+                },
               },
               fields: [
                 {
