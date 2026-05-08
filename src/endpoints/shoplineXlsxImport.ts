@@ -108,15 +108,16 @@ export const shoplineXlsxImportEndpoint: Endpoint = {
       if (c.slug) catBySlug.set(c.slug, c.id)
     }
 
-    // 2) 如果缺少 fallback 分類「匯入草稿」，建立一個
-    let fallbackCatId = catBySlug.get('shopline-import')
+    // 2) 如果缺少 fallback 分類「未分類」，建立一個。所有沒分類 /
+    // orphan category 的 Shopline 匯入商品都先收進這個 bucket。
+    let fallbackCatId = catBySlug.get('uncategorized')
     if (!fallbackCatId) {
       const created = await req.payload.create({
         collection: 'categories',
-        data: { name: 'Shopline 匯入', slug: 'shopline-import' },
+        data: { name: '未分類', slug: 'uncategorized' },
       })
       fallbackCatId = (created as unknown as { id: number }).id
-      catBySlug.set('shopline-import', fallbackCatId)
+      catBySlug.set('uncategorized', fallbackCatId)
     }
 
     const results: {

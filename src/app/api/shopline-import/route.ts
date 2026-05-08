@@ -7,6 +7,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { ParsedProduct } from '@/lib/shopline/csvParser'
+import type { RequiredDataFromCollectionSlug } from 'payload'
+
+type ProductData = RequiredDataFromCollectionSlug<'products'>
 
 interface ImportResult {
   success: number
@@ -52,6 +55,20 @@ export async function POST(req: NextRequest) {
       categoryMap.set(slug, cat.id as number)
     }
 
+    let fallbackCategoryId = categoryMap.get('uncategorized')
+    if (!fallbackCategoryId) {
+      const fallbackCategory = await payload.create({
+        collection: 'categories',
+        data: {
+          name: '未分類',
+          slug: 'uncategorized',
+          description: '系統 fallback 分類：用於沒有分類或分類關聯失效的商品。',
+        },
+      })
+      fallbackCategoryId = fallbackCategory.id as number
+      categoryMap.set('uncategorized', fallbackCategoryId)
+    }
+
     const result: ImportResult = {
       success: 0,
       failed: 0,
@@ -85,16 +102,7 @@ export async function POST(req: NextRequest) {
 
         // 解析分類 ID
         const categoryId = product.categorySlug ? categoryMap.get(product.categorySlug) : null
-        if (!categoryId) {
-          // 嘗試用 'all-products' 作為預設
-          const fallbackId = categoryMap.get('all-products') || categoryMap.get('new-arrival')
-          if (!fallbackId) {
-            result.failed++
-            result.details.push({ name: product.name, status: 'error', message: `找不到分類: ${product.categorySlug}` })
-            continue
-          }
-        }
-        const finalCategoryId = categoryId || categoryMap.get('all-products') || 1
+        const finalCategoryId = categoryId || fallbackCategoryId
 
         // 生成 slug
         const slug = product.name
@@ -145,10 +153,10 @@ export async function POST(req: NextRequest) {
 
         if (existing.docs.length > 0 && mode === 'update') {
           // 更新
-          await (payload.update as Function)({
+          await payload.update({
             collection: 'products',
             id: existing.docs[0].id,
-            data: productData,
+            data: productData as ProductData,
           })
           result.success++
           result.details.push({
@@ -158,15 +166,15 @@ export async function POST(req: NextRequest) {
           })
         } else {
           // 新增
-          const created = await (payload.create as Function)({
+          const created = await payload.create({
             collection: 'products',
-            data: productData,
+            data: productData as ProductData,
           })
           result.success++
           result.details.push({
             name: product.name,
             status: 'created',
-            id: created.id,
+            id: created.id as number,
           })
         }
       } catch (err: unknown) {
