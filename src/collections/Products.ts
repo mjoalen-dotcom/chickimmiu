@@ -91,6 +91,12 @@ export const Products: CollectionConfig = {
           clientProps: { collectionSlug: 'products' },
         },
       ],
+      edit: {
+        beforeDocumentControls: [
+          { path: '@/components/admin/ProductTabBadges' },
+          { path: '@/components/admin/ProductSaveToast' },
+        ],
+      },
     },
   },
   access: {
@@ -534,6 +540,17 @@ export const Products: CollectionConfig = {
         },
       ],
     },
+    {
+      name: 'marginInsight',
+      label: '毛利洞察',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        components: {
+          Field: '@/components/admin/ProductMarginInsight',
+        },
+      },
+    },
 
     /* ════════════════════════════════════════════════
      *  TABS：主編輯區
@@ -541,10 +558,10 @@ export const Products: CollectionConfig = {
     {
       type: 'tabs',
       tabs: [
-        /* ── Tab 1：基本資訊 ── */
+        /* ── Tab 1：基本與價格 ── */
         {
-          label: '基本資訊',
-          description: '商品名稱、描述、價格、分類、標籤',
+          label: '① 基本與價格',
+          description: '商品名稱、價格、分類、標籤與基礎內容設定',
           fields: [
             {
               type: 'row',
@@ -858,10 +875,10 @@ export const Products: CollectionConfig = {
           ],
         },
 
-        /* ── Tab 2：媒體與圖庫 ── */
+        /* ── Tab 2：媒體與變體 ── */
         {
-          label: '媒體與圖庫',
-          description: '封面圖、商品圖庫',
+          label: '② 媒體與變體',
+          description: '封面圖、圖庫、變體、庫存與預購設定',
           fields: [
             {
               name: 'featuredImage',
@@ -927,14 +944,6 @@ export const Products: CollectionConfig = {
                 },
               ],
             },
-          ],
-        },
-
-        /* ── Tab 3：變體與庫存 ── */
-        {
-          label: '變體與庫存',
-          description: '顏色、尺寸、每變體庫存、尺寸表、預購設定',
-          fields: [
             {
               name: 'variantMatrixTool',
               type: 'ui',
@@ -1100,10 +1109,10 @@ export const Products: CollectionConfig = {
           ],
         },
 
-        /* ── Tab 4：穿搭資訊 ── */
+        /* ── Tab 3：穿搭與 SEO ── */
         {
-          label: '穿搭資訊',
-          description: '材質、洗滌說明、模特兒資訊（會顯示在前台商品詳細頁）',
+          label: '③ 穿搭與 SEO',
+          description: '材質、模特資訊、穿搭建議與 SEO 設定',
           fields: [
             {
               name: 'material',
@@ -1234,14 +1243,43 @@ export const Products: CollectionConfig = {
                 },
               },
             },
+            {
+              name: 'seo',
+              label: 'SEO 設定',
+              type: 'group',
+              fields: [
+                {
+                  name: 'metaTitle',
+                  label: 'Meta 標題',
+                  type: 'text',
+                  admin: { description: '留空時使用商品名稱。建議 60 字以內。' },
+                },
+                {
+                  name: 'metaDescription',
+                  label: 'Meta 描述',
+                  type: 'textarea',
+                  admin: { description: '建議 155 字以內。' },
+                },
+                {
+                  name: 'metaImage',
+                  label: 'OG 分享圖',
+                  type: 'upload',
+                  relationTo: 'media',
+                  admin: {
+                    description:
+                      '社群分享時的預覽圖。留空時使用封面主圖。建議 1200×630。',
+                  },
+                },
+              ],
+            },
           ],
         },
 
-        /* ── Tab 5：廣告目錄 ── */
+        /* ── Tab 4：廣告與進階 ── */
         {
-          label: '廣告目錄',
+          label: '④ 廣告與進階',
           description:
-            'Meta / Google Shopping 動態廣告所需的目錄欄位。留空欄位會 fallback 到「廣告目錄設定」global 的預設值。',
+            'Meta / Google Shopping 動態廣告所需欄位與進階投放設定。留空欄位會 fallback 到「廣告目錄設定」global 的預設值。',
           fields: [
             {
               name: 'excludeFromAdsCatalog',
@@ -1364,44 +1402,7 @@ export const Products: CollectionConfig = {
               maxLength: 5000,
             },
           ],
-        },
-
-        /* ── Tab 6：SEO ── */
-        {
-          label: 'SEO',
-          description: '搜尋引擎顯示標題、描述、Open Graph 分享圖',
-          fields: [
-            {
-              name: 'seo',
-              label: 'SEO 設定',
-              type: 'group',
-              fields: [
-                {
-                  name: 'metaTitle',
-                  label: 'Meta 標題',
-                  type: 'text',
-                  admin: { description: '留空時使用商品名稱。建議 60 字以內。' },
-                },
-                {
-                  name: 'metaDescription',
-                  label: 'Meta 描述',
-                  type: 'textarea',
-                  admin: { description: '建議 155 字以內。' },
-                },
-                {
-                  name: 'metaImage',
-                  label: 'OG 分享圖',
-                  type: 'upload',
-                  relationTo: 'media',
-                  admin: {
-                    description:
-                      '社群分享時的預覽圖。留空時使用封面主圖。建議 1200×630。',
-                  },
-                },
-              ],
-            },
-          ],
-        },
+        }
       ],
     },
   ],

@@ -49,7 +49,7 @@ export default async function CheckoutSuccessPage({
         limit: 1,
         depth: 0,
       })
-      const order = (result.docs[0] ?? null) as LooseRecord | null
+      const order = ((result.docs[0] as unknown as LooseRecord) ?? null) as LooseRecord | null
       if (order) {
         found = true
         orderStatus = (order.status as string) ?? 'pending'

@@ -128,10 +128,12 @@ export const shoplineCustomerImportEndpoint: Endpoint = {
               id: match.doc.id as number,
             })
           } else {
-            const newUser = await req.payload.create({
+            const newUser = await (req.payload.create as any)({
               collection: 'users',
+              draft: false,
               data: {
                 ...userData,
+                name: c.name || c.email || `Shopline ${c.customer_id || c.phone || 'Customer'}`,
                 email: c.email || `shopline_${c.customer_id || c.phone}@placeholder.local`,
                 password: generateRandomPassword(),
                 role: 'customer',
