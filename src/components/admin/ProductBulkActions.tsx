@@ -9,13 +9,17 @@
  *   1. 「按條件批次」— 上方 6 顆按鈕，掃 DB 找符合條件的商品再切換狀態
  *      (e.g. 所有草稿 → 上架；所有缺貨 → 下架；排程；快取)
  *   2. 「對勾選商品執行」— 下方 4 顆按鈕，對使用者在表格中勾選的 N 筆執行
- *      上架 / 下架 / 草稿 / 刪除（刪除為破壞性，雙重確認）
+ *      上架 / 下架 / 草稿 / 移到垃圾桶（軟刪，7 日內可還原）
  *
  * 走 Payload v3 SelectionProvider context（BeforeListTable 在 SelectionProvider 子樹內）。
  *
+ * Trash 機制：Products collection 設 `trash: true`，所以「移到垃圾桶」走
+ *   PATCH ?where=... { deletedAt: ISO }，不是 DELETE。
+ * 永久刪除走後台「垃圾桶」分頁的 Payload 內建按鈕，或 cron
+ *   /api/cron/purge-trashed-products 每天清理 deletedAt < now-7d 的紀錄。
+ *
  * 所有批次操作走 Payload 標準 REST API：
  *   PATCH  /api/products?where[...]=...     body 為共用欄位
- *   DELETE /api/products?where[id][in]=...
  */
 
 import React, { useState } from 'react'
@@ -167,26 +171,18 @@ const ProductBulkActions: React.FC = () => {
     }
   }
 
-  const deleteSelected = async () => {
+  const trashSelected = async () => {
     if (busy) return
     if (selectedCount === 0) {
-      setMessage('ℹ️ 請先在下方表格勾選要刪除的商品')
+      setMessage('ℹ️ 請先在下方表格勾選要移到垃圾桶的商品')
       return
     }
     if (
       !window.confirm(
-        `⚠️ 將永久刪除選定的 ${selectedCount} 筆商品。\n\n此動作無法復原。確定要繼續嗎？`,
+        `將把選定的 ${selectedCount} 筆商品移到垃圾桶。\n\n7 日內可在「垃圾桶」分頁還原；7 日後系統自動永久刪除。\n\n確定嗎？`,
       )
     ) {
       setMessage('已取消')
-      return
-    }
-    const second = window.prompt(
-      `再次確認：請輸入「刪除 ${selectedCount} 筆」以執行：`,
-      '',
-    )
-    if (second !== `刪除 ${selectedCount} 筆`) {
-      setMessage('已取消（確認字串不一致）')
       return
     }
     const qs = buildSelectedQuery()
@@ -197,14 +193,17 @@ const ProductBulkActions: React.FC = () => {
     setBusy(true)
     setMessage('')
     try {
+      // Payload v3 trash: PATCH ?where=... { deletedAt: ISO } 等同 admin「移到垃圾桶」按鈕
       const res = await fetch(`/api/products${qs}`, {
-        method: 'DELETE',
+        method: 'PATCH',
         credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deletedAt: new Date().toISOString() }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setMessage(
-          `❌ 刪除失敗：${
+          `❌ 移到垃圾桶失敗：${
             (data as { errors?: { message?: string }[]; message?: string })?.errors?.[0]?.message ||
             (data as { message?: string })?.message ||
             `HTTP ${res.status}`
@@ -212,11 +211,11 @@ const ProductBulkActions: React.FC = () => {
         )
         return
       }
-      const removed =
+      const moved =
         (data as { docs?: unknown[] })?.docs?.length ??
         (data as { result?: { docs?: unknown[] } })?.result?.docs?.length ??
         selectedCount
-      setMessage(`✅ 已刪除 ${removed} 筆商品（即將重新整理）`)
+      setMessage(`✅ 已將 ${moved} 筆商品移到垃圾桶（即將重新整理）`)
       setTimeout(() => window.location.reload(), 800)
     } catch (err) {
       setMessage(`❌ 錯誤：${err instanceof Error ? err.message : '未知'}`)
@@ -525,6 +524,8 @@ const ProductBulkActions: React.FC = () => {
       {selectedCount === 0 && (
         <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>
           ※ 請在下方表格每列最左側的 checkbox 勾選要處理的商品；勾選後再點下面的按鈕。
+          <br />
+          ※ 「移到垃圾桶」是軟刪除，7 日內可在側邊欄「商品（垃圾桶）」分頁還原；7 日後系統自動永久刪除。
         </div>
       )}
       <div style={btnRow}>
@@ -555,10 +556,11 @@ const ProductBulkActions: React.FC = () => {
         <button
           type="button"
           style={{ ...btnDanger, ...dimWhenIdle }}
-          onClick={deleteSelected}
+          onClick={trashSelected}
           disabled={busy || selectedCount === 0}
+          title="軟刪除：7 日內可在「垃圾桶」分頁還原；7 日後自動永久刪除"
         >
-          🗑️ 刪除選定 {selectedCount > 0 ? `(${selectedCount})` : ''}
+          🗑️ 移到垃圾桶 {selectedCount > 0 ? `(${selectedCount})` : ''}
         </button>
       </div>
 

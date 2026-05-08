@@ -93,6 +93,20 @@ export const Products: CollectionConfig = {
       ],
     },
   },
+  /**
+   * 啟用 Payload v3 軟刪（垃圾桶）。
+   *
+   * 行為：
+   *   - 自動加 `deletedAt` timestamp 欄位（migration: 20260508_120000_add_products_deleted_at.ts）
+   *   - 列表預設不顯示 deletedAt != null 的商品
+   *   - 後台 sidebar 自動多一個「垃圾桶」分頁
+   *   - 「移到垃圾桶」= PATCH ?where=... { deletedAt: ISO }（保留資料、可還原）
+   *   - 「永久刪除」= DELETE ?where=...（在垃圾桶分頁才會做）
+   *
+   * 配套：
+   *   - 7 日後自動清理：/api/cron/purge-trashed-products（每日呼叫一次）
+   */
+  trash: true,
   access: {
     read: ({ req: { user } }) => {
       if (user?.role === 'admin') return true
