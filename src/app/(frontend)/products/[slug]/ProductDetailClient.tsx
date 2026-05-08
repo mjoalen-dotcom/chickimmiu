@@ -32,6 +32,7 @@ import { AlsoBoughtSection } from '@/components/product/AlsoBoughtSection'
 import { ProductPageUpsell } from '@/components/recommendation/ProductPageUpsell'
 import { trackViewContent, trackProductView } from '@/lib/tracking'
 import { Price } from '@/components/common/Price'
+import ImageLightbox, { type LightboxImage } from './_components/ImageLightbox'
 
 /* ─────────────────────────────────── types ── */
 export interface ReviewLite {
@@ -186,6 +187,18 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
 
   /* ─── Phase 1 public fields（前台顯示用，內部採購欄位改走 sourcing group） ─── */
   const material = (product.material as string | undefined) || undefined
+  const materialDescription = (product.materialDescription as string | undefined) || undefined
+  const rawMaterialImages =
+    (product.materialImages as { image?: { url?: string; alt?: string }; caption?: string }[]) ||
+    []
+  const materialImages = rawMaterialImages
+    .map((m) => ({
+      ...m,
+      image: m.image
+        ? { ...m.image, url: normalizeMediaUrl(m.image.url) }
+        : m.image,
+    }))
+    .filter((m) => m.image?.url)
   const careInstructions = (product.careInstructions as string | undefined) || undefined
   const stylingTips = (product.stylingTips as string | undefined) || undefined
   const modelInfo = product.modelInfo as
@@ -225,6 +238,37 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
   const [showSizeGuide, setShowSizeGuide] = useState(false)
   const [activeTab, setActiveTab] = useState<TabId>('description')
   const [showStickyBar, setShowStickyBar] = useState(false)
+
+  /* ─── Lightbox state ─── */
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxImages, setLightboxImages] = useState<LightboxImage[]>([])
+  const [lightboxStart, setLightboxStart] = useState(0)
+  const galleryLightboxImages: LightboxImage[] = images
+    .filter((img) => img.image?.url)
+    .map((img) => ({
+      url: img.image!.url!,
+      alt: img.image?.alt || (product.name as string),
+      caption: (img as { caption?: string }).caption,
+    }))
+  const openGalleryLightbox = (start: number) => {
+    setLightboxImages(galleryLightboxImages)
+    setLightboxStart(start)
+    setLightboxOpen(true)
+  }
+  const openMaterialLightbox = (start: number) => {
+    setLightboxImages(
+      materialImages.map((m) => ({
+        url: m.image!.url!,
+        alt: m.image?.alt || `${product.name as string} 材質說明`,
+        caption: m.caption,
+      })),
+    )
+    setLightboxStart(start)
+    setLightboxOpen(true)
+  }
+
+  /* 縮圖列上限：超過此值最後一格變 +N（點開 lightbox） */
+  const THUMB_LIMIT = 5
 
   const addItem = useCartStore((s) => s.addItem)
   const { toggleItem, isInWishlist } = useWishlistStore()
@@ -371,30 +415,63 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
           {/* ══════════ Gallery ══════════ */}
           <div className="flex gap-3">
-            {/* Thumbnails — vertical on desktop */}
+            {/* Thumbnails — vertical on desktop（最多 5 格，多餘合併成 +N，點開全螢幕 lightbox） */}
             {images.length > 1 && (
               <div className="hidden md:flex flex-col gap-2 w-[72px] shrink-0">
-                {images.map((img, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentImage(i)}
-                    className={`relative aspect-[3/4] rounded-lg overflow-hidden border-2 transition-colors ${
-                      i === currentImage ? 'border-gold-500' : 'border-cream-200 hover:border-gold-300'
-                    }`}
-                  >
-                    {img.image?.url ? (
-                      <Image
-                        src={img.image.url}
-                        alt={img.image.alt || `${product.name} ${i + 1}`}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      <div className="bg-cream-100 w-full h-full" />
-                    )}
-                  </button>
-                ))}
+                {(() => {
+                  const overflow = images.length > THUMB_LIMIT
+                  const visibleCount = overflow ? THUMB_LIMIT - 1 : images.length
+                  const visible = images.slice(0, visibleCount)
+                  return (
+                    <>
+                      {visible.map((img, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setCurrentImage(i)}
+                          className={`relative aspect-[3/4] rounded-lg overflow-hidden border-2 transition-colors ${
+                            i === currentImage
+                              ? 'border-gold-500'
+                              : 'border-cream-200 hover:border-gold-300'
+                          }`}
+                          aria-label={`商品圖 ${i + 1}`}
+                        >
+                          {img.image?.url ? (
+                            <Image
+                              src={img.image.url}
+                              alt={img.image.alt || `${product.name} ${i + 1}`}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="bg-cream-100 w-full h-full" />
+                          )}
+                        </button>
+                      ))}
+                      {overflow && (
+                        <button
+                          type="button"
+                          onClick={() => openGalleryLightbox(visibleCount)}
+                          className="relative aspect-[3/4] rounded-lg overflow-hidden border-2 border-cream-200 hover:border-gold-500 transition-colors group"
+                          aria-label={`查看全部 ${images.length} 張圖片`}
+                        >
+                          {images[visibleCount]?.image?.url && (
+                            <Image
+                              src={images[visibleCount].image!.url!}
+                              alt=""
+                              fill
+                              className="object-cover opacity-60 group-hover:opacity-50 transition-opacity"
+                              unoptimized
+                            />
+                          )}
+                          <span className="absolute inset-0 bg-black/45 flex items-center justify-center text-white text-sm font-medium tracking-wide">
+                            +{images.length - visibleCount}
+                          </span>
+                        </button>
+                      )}
+                    </>
+                  )
+                })()}
               </div>
             )}
 
@@ -471,24 +548,55 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
                 )}
               </div>
 
-              {/* Mobile thumbnails — horizontal */}
+              {/* Mobile thumbnails — horizontal（同樣最多 5 格 + +N） */}
               {images.length > 1 && (
                 <div className="flex md:hidden gap-2 overflow-x-auto scrollbar-hide">
-                  {images.map((img, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentImage(i)}
-                      className={`relative w-14 h-[70px] rounded-lg overflow-hidden shrink-0 border-2 transition-colors ${
-                        i === currentImage ? 'border-gold-500' : 'border-cream-200'
-                      }`}
-                    >
-                      {img.image?.url ? (
-                        <Image src={img.image.url} alt="" fill className="object-cover" unoptimized />
-                      ) : (
-                        <div className="bg-cream-100 w-full h-full" />
-                      )}
-                    </button>
-                  ))}
+                  {(() => {
+                    const overflow = images.length > THUMB_LIMIT
+                    const visibleCount = overflow ? THUMB_LIMIT - 1 : images.length
+                    const visible = images.slice(0, visibleCount)
+                    return (
+                      <>
+                        {visible.map((img, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setCurrentImage(i)}
+                            className={`relative w-14 h-[70px] rounded-lg overflow-hidden shrink-0 border-2 transition-colors ${
+                              i === currentImage ? 'border-gold-500' : 'border-cream-200'
+                            }`}
+                            aria-label={`商品圖 ${i + 1}`}
+                          >
+                            {img.image?.url ? (
+                              <Image src={img.image.url} alt="" fill className="object-cover" unoptimized />
+                            ) : (
+                              <div className="bg-cream-100 w-full h-full" />
+                            )}
+                          </button>
+                        ))}
+                        {overflow && (
+                          <button
+                            type="button"
+                            onClick={() => openGalleryLightbox(visibleCount)}
+                            className="relative w-14 h-[70px] rounded-lg overflow-hidden shrink-0 border-2 border-cream-200 hover:border-gold-500 transition-colors group"
+                            aria-label={`查看全部 ${images.length} 張圖片`}
+                          >
+                            {images[visibleCount]?.image?.url && (
+                              <Image
+                                src={images[visibleCount].image!.url!}
+                                alt=""
+                                fill
+                                className="object-cover opacity-60 group-hover:opacity-50 transition-opacity"
+                                unoptimized
+                              />
+                            )}
+                            <span className="absolute inset-0 bg-black/45 flex items-center justify-center text-white text-xs font-medium">
+                              +{images.length - visibleCount}
+                            </span>
+                          </button>
+                        )}
+                      </>
+                    )
+                  })()}
                 </div>
               )}
             </div>
@@ -759,24 +867,62 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
                   </div>
                 )}
 
-                {/* Product images in description */}
-                {images.length > 1 && (
-                  <div className="mt-8 space-y-4">
-                    {images.slice(1).map((img, i) => (
-                      img.image?.url && (
-                        <div key={i} className="relative w-full aspect-[3/4] rounded-xl overflow-hidden">
-                          <Image
-                            src={img.image.url}
-                            alt={img.image.alt || `${product.name} 商品圖 ${i + 2}`}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
-                        </div>
-                      )
-                    ))}
-                  </div>
-                )}
+                {/* Product images in description — grid，超過 5 張第 5 格變 +N，點開全螢幕滑行檢視 */}
+                {(() => {
+                  const descImages = images.slice(1).filter((img) => img.image?.url)
+                  if (descImages.length === 0) return null
+                  const DESC_LIMIT = 5
+                  const overflow = descImages.length > DESC_LIMIT
+                  const visibleCount = overflow ? DESC_LIMIT - 1 : descImages.length
+                  const visible = descImages.slice(0, visibleCount)
+                  return (
+                    <div className="mt-8">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {visible.map((img, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => openGalleryLightbox(i + 1)}
+                            className="relative w-full aspect-[3/4] rounded-xl overflow-hidden group cursor-zoom-in"
+                            aria-label={`放大商品圖 ${i + 2}`}
+                          >
+                            <Image
+                              src={img.image!.url!}
+                              alt={img.image!.alt || `${product.name} 商品圖 ${i + 2}`}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform duration-300"
+                              unoptimized
+                            />
+                          </button>
+                        ))}
+                        {overflow && (
+                          <button
+                            type="button"
+                            onClick={() => openGalleryLightbox(visibleCount + 1)}
+                            className="relative w-full aspect-[3/4] rounded-xl overflow-hidden group cursor-zoom-in"
+                            aria-label={`查看全部 ${descImages.length} 張商品圖`}
+                          >
+                            {descImages[visibleCount]?.image?.url && (
+                              <Image
+                                src={descImages[visibleCount].image!.url!}
+                                alt=""
+                                fill
+                                className="object-cover opacity-50 group-hover:opacity-40 transition-opacity"
+                                unoptimized
+                              />
+                            )}
+                            <span className="absolute inset-0 bg-black/55 flex items-center justify-center text-white text-xl md:text-2xl font-medium tracking-wide">
+                              +{descImages.length - visibleCount}
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                      <p className="mt-3 text-xs text-foreground/40 text-center">
+                        點圖片放大檢視，可左右滑行瀏覽
+                      </p>
+                    </div>
+                  )
+                })()}
               </div>
             )}
 
@@ -835,6 +981,46 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
                     </tbody>
                   </table>
                 </div>
+
+                {/* Material description + images */}
+                {(materialDescription || materialImages.length > 0) && (
+                  <div className="mt-6 bg-white rounded-2xl border border-cream-200 p-6">
+                    <h3 className="font-medium text-sm mb-4">材質說明</h3>
+                    {materialDescription && (
+                      <p className="text-sm text-foreground/70 whitespace-pre-line mb-5">
+                        {materialDescription}
+                      </p>
+                    )}
+                    {materialImages.length > 0 && (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {materialImages.map((m, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => openMaterialLightbox(i)}
+                            className="group cursor-zoom-in"
+                            aria-label={`放大材質圖片 ${i + 1}`}
+                          >
+                            <div className="relative w-full aspect-square rounded-xl overflow-hidden">
+                              <Image
+                                src={m.image!.url!}
+                                alt={m.image?.alt || `${product.name} 材質 ${i + 1}`}
+                                fill
+                                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                unoptimized
+                              />
+                            </div>
+                            {m.caption && (
+                              <p className="mt-2 text-xs text-foreground/60 text-center">
+                                {m.caption}
+                              </p>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Care instructions */}
                 <div className="mt-6 bg-white rounded-2xl border border-cream-200 p-6">
@@ -1065,6 +1251,14 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Lightbox — 商品圖庫 / 材質說明圖共用 */}
+      <ImageLightbox
+        open={lightboxOpen}
+        images={lightboxImages}
+        startIndex={lightboxStart}
+        onClose={() => setLightboxOpen(false)}
+      />
     </main>
   )
 }
