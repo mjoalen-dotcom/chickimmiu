@@ -31,6 +31,7 @@ import { UnderlineFeatureClient as UnderlineFeatureClient_e70f5e05f09f93e00b997e
 import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { default as default_5c3d166f438f19c8fb2f98618e6617ec } from '@/components/admin/VariantMatrixGenerator'
+import { default as default_e96600431ff221191298fd821860e529 } from '@/components/admin/ColorEyedropperField'
 import { default as default_59cc8ca8a29697d2ab08eacf91828a68 } from '@/components/admin/MBTIAutoRecommendField'
 import { default as default_b2c226491d0a75ead0fc7b037ffcfa6f } from '@/components/admin/ProductsUsageNotice'
 import { default as default_4ae243489190f3c0d72c150aec1cbca3 } from '@/components/admin/ProductBulkActions'
@@ -101,6 +102,7 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#BoldFeatureClient": BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@/components/admin/VariantMatrixGenerator#default": default_5c3d166f438f19c8fb2f98618e6617ec,
+  "@/components/admin/ColorEyedropperField#default": default_e96600431ff221191298fd821860e529,
   "@/components/admin/MBTIAutoRecommendField#default": default_59cc8ca8a29697d2ab08eacf91828a68,
   "@/components/admin/ProductsUsageNotice#default": default_b2c226491d0a75ead0fc7b037ffcfa6f,
   "@/components/admin/ProductBulkActions#default": default_4ae243489190f3c0d72c150aec1cbca3,

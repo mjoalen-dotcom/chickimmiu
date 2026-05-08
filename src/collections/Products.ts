@@ -814,7 +814,11 @@ export const Products: CollectionConfig = {
                       type: 'text',
                       admin: {
                         width: '30%',
-                        description: 'HEX 色碼，例如 #F5E8D0',
+                        description:
+                          'HEX 色碼。可手填、從色塊圖滴管取色、或一鍵取主色（需先上傳右側色塊圖）',
+                        components: {
+                          Field: '@/components/admin/ColorEyedropperField',
+                        },
                       },
                     },
                     {
