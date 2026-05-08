@@ -153,6 +153,158 @@ const ProductBulkActions: React.FC = () => {
     }
   }
 
+  const archiveByLowStock = async () => {
+    if (busy) return
+    const input = window.prompt(
+      '將把「已上架且庫存 < N」的商品設為下架。請輸入 N（庫存閾值，例：3）',
+      '3',
+    )
+    if (input == null) return
+    const threshold = Number(input)
+    if (!Number.isFinite(threshold) || threshold < 0) {
+      setMessage('❌ 請輸入大於等於 0 的整數')
+      return
+    }
+
+    setBusy(true)
+    setMessage('')
+    try {
+      const query = `where[and][0][stock][less_than]=${threshold}&where[and][1][status][equals]=published`
+      const count = await countWhere(query)
+      if (count === 0) {
+        setMessage(`ℹ️ 沒有「已上架且庫存 < ${threshold}」的商品`)
+        return
+      }
+      if (
+        !window.confirm(
+          `將把 ${count} 筆「已上架且庫存 < ${threshold}」的商品設為「已下架」，確定嗎？`,
+        )
+      ) {
+        setMessage('已取消')
+        return
+      }
+      const result = await bulkPatch(query, { status: 'archived' })
+      if (result.ok) {
+        setMessage(`✅ 已將 ${result.updated ?? count} 筆低庫存商品下架`)
+      } else {
+        setMessage(`❌ 批次下架失敗：${result.message}`)
+      }
+    } catch (err) {
+      setMessage(`❌ 錯誤：${err instanceof Error ? err.message : '未知'}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const archiveAllPublished = async () => {
+    if (busy) return
+    setBusy(true)
+    setMessage('')
+    try {
+      const query = 'where[status][equals]=published'
+      const count = await countWhere(query)
+      if (count === 0) {
+        setMessage('ℹ️ 目前沒有已上架商品')
+        return
+      }
+      // 雙重確認 — 破壞性大
+      if (
+        !window.confirm(
+          `⚠️ 將把全部 ${count} 筆「已上架」商品全部下架。確定嗎？（此動作會立刻讓前台所有商品消失）`,
+        )
+      ) {
+        setMessage('已取消')
+        return
+      }
+      const second = window.prompt(
+        `再次確認：請輸入「下架全部 ${count} 筆」以確認執行：`,
+        '',
+      )
+      if (second !== `下架全部 ${count} 筆`) {
+        setMessage('已取消（確認字串不一致）')
+        return
+      }
+
+      const result = await bulkPatch(query, { status: 'archived' })
+      if (result.ok) {
+        setMessage(`✅ 已將 ${result.updated ?? count} 筆商品全部下架`)
+      } else {
+        setMessage(`❌ 批次下架失敗：${result.message}`)
+      }
+    } catch (err) {
+      setMessage(`❌ 錯誤：${err instanceof Error ? err.message : '未知'}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const draftAllArchived = async () => {
+    if (busy) return
+    setBusy(true)
+    setMessage('')
+    try {
+      const query = 'where[status][equals]=archived'
+      const count = await countWhere(query)
+      if (count === 0) {
+        setMessage('ℹ️ 沒有已下架商品')
+        return
+      }
+      if (
+        !window.confirm(
+          `將把 ${count} 筆「已下架」商品轉回「草稿」狀態（不會自動上架），確定嗎？`,
+        )
+      ) {
+        setMessage('已取消')
+        return
+      }
+      const result = await bulkPatch(query, { status: 'draft' })
+      if (result.ok) {
+        setMessage(`✅ 已將 ${result.updated ?? count} 筆商品轉為草稿`)
+      } else {
+        setMessage(`❌ 批次轉草稿失敗：${result.message}`)
+      }
+    } catch (err) {
+      setMessage(`❌ 錯誤：${err instanceof Error ? err.message : '未知'}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const applySchedulesNow = async () => {
+    if (busy) return
+    if (
+      !window.confirm(
+        '立刻掃描「預定上架/下架時間」並切換符合條件的商品狀態？（也會由 cron 自動跑，這個是手動觸發）',
+      )
+    ) {
+      return
+    }
+    setBusy(true)
+    setMessage('')
+    try {
+      const res = await fetch('/api/products/apply-schedules', {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        published?: number
+        archived?: number
+        message?: string
+      }
+      if (res.ok) {
+        setMessage(
+          `✅ 排程已執行：上架 ${data.published ?? 0} 筆 / 下架 ${data.archived ?? 0} 筆`,
+        )
+      } else {
+        setMessage(`❌ 排程執行失敗：${data?.message ?? `HTTP ${res.status}`}`)
+      }
+    } catch (err) {
+      setMessage(`❌ 錯誤：${err instanceof Error ? err.message : '未知'}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const revalidateAll = async () => {
     if (busy) return
     if (!window.confirm('確定要重新產生整個前台快取嗎？（/、/products 會立即更新）')) {
@@ -180,18 +332,39 @@ const ProductBulkActions: React.FC = () => {
     }
   }
 
+  const btnDanger: React.CSSProperties = {
+    ...btn,
+    background: '#fef2f2',
+    borderColor: '#fecaca',
+    color: '#b91c1c',
+  }
+
   return (
     <div style={panel}>
       <h4 style={title}>⚡ 批次操作</h4>
-      <div style={btnRow}>
+      <div style={{ ...btnRow, marginBottom: 8 }}>
         <button type="button" style={btn} onClick={publishAllDrafts} disabled={busy}>
           ✅ 批次上架所有草稿
         </button>
-        <button type="button" style={btn} onClick={archiveOutOfStock} disabled={busy}>
-          📦 將「已上架但庫存 0」設為下架
+        <button type="button" style={btn} onClick={draftAllArchived} disabled={busy}>
+          📝 將已下架轉回草稿
+        </button>
+        <button type="button" style={btn} onClick={applySchedulesNow} disabled={busy}>
+          ⏰ 立刻執行排程上下架
         </button>
         <button type="button" style={btn} onClick={revalidateAll} disabled={busy}>
           🔄 全站快取重新生成
+        </button>
+      </div>
+      <div style={btnRow}>
+        <button type="button" style={btn} onClick={archiveOutOfStock} disabled={busy}>
+          📦 庫存 0 自動下架
+        </button>
+        <button type="button" style={btn} onClick={archiveByLowStock} disabled={busy}>
+          📉 依庫存閾值下架（輸入 N）
+        </button>
+        <button type="button" style={btnDanger} onClick={archiveAllPublished} disabled={busy}>
+          ⚠️ 全部下架（停售/暫停營業用）
         </button>
       </div>
       {message && (

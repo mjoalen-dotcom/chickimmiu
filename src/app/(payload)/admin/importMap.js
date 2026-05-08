@@ -6,6 +6,7 @@ import { default as default_ac9b3343bdbbc9a11f639268e925829e } from '@/component
 import { default as default_7b3334ccab91a8bc2d541f847ce2c885 } from '@/components/admin/ExchangeApprovalCellButton'
 import { default as default_2d9516e76c36d74134ebee4f781829f6 } from '@/components/admin/CategoryRecountButton'
 import { default as default_ebf9d2025b92d97c921799c47cf282d1 } from '@/components/admin/CategoryTreeView'
+import { default as default_cb040906944cedc20f0a1dc81a047b38 } from '@/components/admin/ProductStatusCell'
 import { RscEntryLexicalCell as RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
 import { RscEntryLexicalField as RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
 import { LexicalDiffComponent as LexicalDiffComponent_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
@@ -75,6 +76,7 @@ export const importMap = {
   "@/components/admin/ExchangeApprovalCellButton#default": default_7b3334ccab91a8bc2d541f847ce2c885,
   "@/components/admin/CategoryRecountButton#default": default_2d9516e76c36d74134ebee4f781829f6,
   "@/components/admin/CategoryTreeView#default": default_ebf9d2025b92d97c921799c47cf282d1,
+  "@/components/admin/ProductStatusCell#default": default_cb040906944cedc20f0a1dc81a047b38,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalField": RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#LexicalDiffComponent": LexicalDiffComponent_44fe37237e0ebf4470c9990d8cb7b07e,
