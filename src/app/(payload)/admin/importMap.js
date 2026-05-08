@@ -46,6 +46,7 @@ import { default as default_235ae141af0ae2ee10377f179570df1f } from '@/component
 import { default as default_131a3f06e1429f7f0173fc5b4da87663 } from '@/components/admin/ImportExportButtons'
 import { default as default_da45625f08d6c78051d9389e2ef13996 } from '@/components/admin/ProductTabBadges'
 import { default as default_75a69f86e8fd1756deda3bb508c9e126 } from '@/components/admin/ProductSaveToast'
+import { default as default_dad6df07f5ce6091043bf2907b451c8b } from '@/components/admin/ProductDuplicateButton'
 import { default as default_2155efc8584149395a6a7408e7342b75 } from '@/components/admin/MemberTreasureBoxPanel'
 import { default as default_7daf04b168de0230737ba8fdd5db8d46 } from '@/components/admin/MediaUploadRulesNotice'
 import { FolderTableCell as FolderTableCell_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
@@ -123,6 +124,7 @@ export const importMap = {
   "@/components/admin/ImportExportButtons#default": default_131a3f06e1429f7f0173fc5b4da87663,
   "@/components/admin/ProductTabBadges#default": default_da45625f08d6c78051d9389e2ef13996,
   "@/components/admin/ProductSaveToast#default": default_75a69f86e8fd1756deda3bb508c9e126,
+  "@/components/admin/ProductDuplicateButton#default": default_dad6df07f5ce6091043bf2907b451c8b,
   "@/components/admin/MemberTreasureBoxPanel#default": default_2155efc8584149395a6a7408e7342b75,
   "@/components/admin/MediaUploadRulesNotice#default": default_7daf04b168de0230737ba8fdd5db8d46,
   "@payloadcms/next/rsc#FolderTableCell": FolderTableCell_f9c02e79a4aed9a3924487c0cd4cafb1,

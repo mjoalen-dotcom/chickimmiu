@@ -29,6 +29,50 @@ const productFieldMappings: FieldMapping[] = [
   { key: 'tags', label: '標籤（JSON）' },
 ]
 
+const productBeforeDuplicateHook = {
+  beforeDuplicate: [
+    ({ data }: { data?: Record<string, unknown> | null }) => {
+      if (!data || typeof data !== 'object') return data
+      const ts = Date.now().toString(36)
+      const mutable = data as Record<string, unknown>
+
+      const baseSlug =
+        typeof mutable.slug === 'string' && mutable.slug.trim()
+          ? mutable.slug.trim()
+          : 'product'
+      const baseName =
+        typeof mutable.name === 'string' && mutable.name.trim()
+          ? mutable.name.trim()
+          : '未命名商品'
+
+      mutable.slug = `${baseSlug}-copy-${ts}`
+      mutable.name = `${baseName}（複本）`
+      mutable.status = 'draft'
+      mutable.totalSold = 0
+      mutable.publishAt = null
+      mutable.unpublishAt = null
+      mutable.aliasSlugs = []
+
+      if (Array.isArray(mutable.variants)) {
+        mutable.variants = mutable.variants.map((variant: unknown) => {
+          if (!variant || typeof variant !== 'object') return variant
+          const row = variant as Record<string, unknown>
+          const sku =
+            typeof row.sku === 'string' && row.sku.trim()
+              ? row.sku.trim()
+              : 'variant'
+          return {
+            ...row,
+            sku: `${sku}-copy-${ts}`,
+          }
+        })
+      }
+
+      return mutable
+    },
+  ],
+} as unknown as Partial<NonNullable<CollectionConfig['hooks']>>
+
 /**
  * Products Collection
  * ───────────────────
@@ -95,6 +139,7 @@ export const Products: CollectionConfig = {
         beforeDocumentControls: [
           { path: '@/components/admin/ProductTabBadges' },
           { path: '@/components/admin/ProductSaveToast' },
+          { path: '@/components/admin/ProductDuplicateButton' },
         ],
       },
     },
@@ -117,6 +162,7 @@ export const Products: CollectionConfig = {
     applyProductSchedulesEndpoint,
   ],
   hooks: {
+    ...productBeforeDuplicateHook,
     /* ── 1. 驗證前：自動 slug + 資料正規化 ── */
     beforeValidate: [
       ({ data }) => {
@@ -289,7 +335,6 @@ export const Products: CollectionConfig = {
         return data
       },
     ],
-
     /* ── 3. 存檔後：revalidate 前台 + 推 Meta Catalog ── */
     afterChange: [
       ({ doc, previousDoc }) => {
