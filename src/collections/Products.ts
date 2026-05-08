@@ -138,6 +138,82 @@ export const Products: CollectionConfig = {
 
     /* ── 2. 存檔前：驗證 + 自動計算低庫存 ── */
     beforeChange: [
+      /* 2a. 自動計價：useAutoPricing=true 時用公式覆寫 price
+       *     成本沒填 / 公式抓不到 / 匯率抓不到 → 跳過（不擋存檔）
+       */
+      async ({ data, req }) => {
+        if (!data) return data
+        const ap = data.autoPricing as
+          | {
+              useAutoPricing?: boolean
+              costAmount?: number | null
+              costCurrencyCode?: string
+            }
+          | undefined
+        if (!ap?.useAutoPricing) return data
+        const costAmount = Number(ap.costAmount)
+        if (!Number.isFinite(costAmount) || costAmount <= 0) return data
+
+        try {
+          const formula = (await req.payload.findGlobal({
+            slug: 'pricing-formula-settings',
+            depth: 0,
+          })) as unknown as Record<string, unknown> | null
+          if (!formula) return data
+
+          const code =
+            ap.costCurrencyCode ||
+            (formula.currencyCode as string | undefined) ||
+            'KRW'
+
+          // 取匯率：manualRateOverride 優先，否則查 currencies
+          let rate: number | null = null
+          const manual = formula.manualRateOverride
+          if (manual != null && Number(manual) > 0) {
+            rate = Number(manual)
+          } else {
+            const cur = await req.payload.find({
+              collection: 'currencies',
+              where: { code: { equals: code } },
+              limit: 1,
+              depth: 0,
+            })
+            const found = cur.docs[0] as { rateAgainstTwd?: number } | undefined
+            if (found && Number(found.rateAgainstTwd) > 0) {
+              rate = Number(found.rateAgainstTwd)
+            }
+          }
+          if (!rate) return data
+
+          const { computeSuggestedPrice } = await import(
+            '@/lib/pricing/computeSuggestedPrice'
+          )
+          const result = computeSuggestedPrice({
+            costInLocalCurrency: costAmount,
+            weight: Number(data.weight ?? 0),
+            rate,
+            weightShippingPerGram: Number(formula.weightShippingPerGram),
+            weightShippingFlatFee: Number(formula.weightShippingFlatFee),
+            profitMode: formula.profitMode as
+              | 'percent_only'
+              | 'fixed_only'
+              | 'whichever_higher',
+            profitPercent: Number(formula.profitPercent),
+            profitFixedFloor: Number(formula.profitFixedFloor),
+            priceRoundTo: Number(formula.priceRoundTo),
+          })
+          if (result && result.suggestedPrice > 0) {
+            data.price = result.suggestedPrice
+          }
+        } catch (e) {
+          req.payload.logger?.warn?.(
+            `[Products.beforeChange] auto pricing failed (non-fatal): ${
+              (e as Error).message
+            }`,
+          )
+        }
+        return data
+      },
       ({ data }) => {
         if (!data) return data
 
@@ -574,6 +650,62 @@ export const Products: CollectionConfig = {
                 description: '列表頁 hover 預覽、購物車、分享卡片會使用（純文字，約 50-100 字）',
               },
             },
+            /* 自動計價（採購成本 → 建議售價） */
+            {
+              name: 'autoPricing',
+              label: '🧮 自動計價（採購成本 → 建議售價）',
+              type: 'group',
+              admin: {
+                description:
+                  '填採購金額（韓元 / 日圓 / 美元 / 人民幣）+ 商品重量，系統自動算建議售價。' +
+                  '勾「使用自動計價」存檔時自動覆寫「原價」；公式設定在「⑦ 系統與安全 → 商品計價公式」。',
+              },
+              fields: [
+                {
+                  name: 'useAutoPricing',
+                  label: '使用自動計價（存檔時自動覆寫下方原價）',
+                  type: 'checkbox',
+                  defaultValue: false,
+                },
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'costAmount',
+                      label: '採購金額',
+                      type: 'number',
+                      min: 0,
+                      admin: {
+                        width: '60%',
+                        description: '採購幣別填寫（不填 = 跳過自動計價）',
+                      },
+                    },
+                    {
+                      name: 'costCurrencyCode',
+                      label: '採購幣別',
+                      type: 'select',
+                      defaultValue: 'KRW',
+                      options: [
+                        { label: '韓元 KRW', value: 'KRW' },
+                        { label: '日圓 JPY', value: 'JPY' },
+                        { label: '美元 USD', value: 'USD' },
+                        { label: '人民幣 CNY', value: 'CNY' },
+                      ],
+                      admin: { width: '40%' },
+                    },
+                  ],
+                },
+                {
+                  name: 'pricingPreview',
+                  type: 'ui',
+                  admin: {
+                    components: {
+                      Field: '@/components/admin/AutoPricingPreview',
+                    },
+                  },
+                },
+              ],
+            },
             /* 價格 */
             {
               type: 'row',
@@ -584,7 +716,11 @@ export const Products: CollectionConfig = {
                   type: 'number',
                   required: true,
                   min: 0,
-                  admin: { width: '50%' },
+                  admin: {
+                    width: '50%',
+                    description:
+                      '勾上方「使用自動計價」時存檔自動覆寫；不勾則手填',
+                  },
                 },
                 {
                   name: 'salePrice',
@@ -614,13 +750,32 @@ export const Products: CollectionConfig = {
                 description: '預設為應稅 5%。詳細稅率設定在「稅務設定」global',
               },
             },
-            /* 分類 & 標籤 */
+            /* 分類 & 標籤 — 主分類（單選）+ 其他分類（多選）由 TreePicker 統一操作 */
             {
               name: 'category',
-              label: '商品分類',
+              label: '主分類',
               type: 'relationship',
               relationTo: 'categories',
               required: true,
+              admin: {
+                description:
+                  '主分類用於前台麵包屑 / SEO / productCount 統計（單選必填）',
+                components: {
+                  Field: '@/components/admin/ProductCategoryTreePicker',
+                },
+              },
+            },
+            {
+              name: 'additionalCategories',
+              label: '其他分類',
+              type: 'relationship',
+              relationTo: 'categories',
+              hasMany: true,
+              admin: {
+                hidden: true,
+                description:
+                  '隱藏欄位 — 由「主分類」上方的 TreePicker 一併操作',
+              },
             },
             {
               name: 'tags',

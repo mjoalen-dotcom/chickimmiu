@@ -51,6 +51,7 @@ import { SiteThemes } from './collections/SiteThemes'
 
 import { CollectionsPageSettings } from './globals/CollectionsPageSettings'
 import { GlobalSettings } from './globals/GlobalSettings'
+import { PricingFormulaSettings } from './globals/PricingFormulaSettings'
 import { LoyaltySettings } from './globals/LoyaltySettings'
 import { ReferralSettings } from './globals/ReferralSettings'
 import { PointRedemptionSettings } from './globals/PointRedemptionSettings'
@@ -365,6 +366,7 @@ export default buildConfig({
     CollectionsPageSettings,
     // ⑦ 系統與安全
     GlobalSettings,
+    PricingFormulaSettings,
   ],
   editor: lexicalEditor({
     features: ({ defaultFeatures }) => [
