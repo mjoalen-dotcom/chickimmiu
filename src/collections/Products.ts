@@ -137,6 +137,7 @@ export const Products: CollectionConfig = {
       ],
       edit: {
         beforeDocumentControls: [
+          { path: '@/components/admin/ProductCreateWizard' },
           { path: '@/components/admin/ProductTabBadges' },
           { path: '@/components/admin/ProductSaveToast' },
           { path: '@/components/admin/ProductDuplicateButton' },
@@ -593,6 +594,17 @@ export const Products: CollectionConfig = {
         position: 'sidebar',
         components: {
           Field: '@/components/admin/ProductMarginInsight',
+        },
+      },
+    },
+    {
+      name: 'wizardLauncher',
+      label: '建立精靈',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        components: {
+          Field: '@/components/admin/ProductWizardLauncher',
         },
       },
     },

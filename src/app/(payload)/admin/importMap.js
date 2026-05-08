@@ -8,6 +8,7 @@ import { default as default_2d9516e76c36d74134ebee4f781829f6 } from '@/component
 import { default as default_ebf9d2025b92d97c921799c47cf282d1 } from '@/components/admin/CategoryTreeView'
 import { default as default_cb040906944cedc20f0a1dc81a047b38 } from '@/components/admin/ProductStatusCell'
 import { default as default_9b57c43980e97d4b56c8d7a919923508 } from '@/components/admin/ProductMarginInsight'
+import { default as default_9eb65d1e13a161fff630e7bf785e9dc3 } from '@/components/admin/ProductWizardLauncher'
 import { RscEntryLexicalCell as RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
 import { RscEntryLexicalField as RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
 import { LexicalDiffComponent as LexicalDiffComponent_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
@@ -44,6 +45,7 @@ import { default as default_e668e9854d72bcea32f70845627cdf0d } from '@/component
 import { default as default_99d8a7df13704a09eb2683c564fe3977 } from '@/components/admin/ShoplineImportPanel'
 import { default as default_235ae141af0ae2ee10377f179570df1f } from '@/components/admin/ImageMigrationPanel'
 import { default as default_131a3f06e1429f7f0173fc5b4da87663 } from '@/components/admin/ImportExportButtons'
+import { default as default_e8d6ffb15fc46072823f2ab09538bb28 } from '@/components/admin/ProductCreateWizard'
 import { default as default_da45625f08d6c78051d9389e2ef13996 } from '@/components/admin/ProductTabBadges'
 import { default as default_75a69f86e8fd1756deda3bb508c9e126 } from '@/components/admin/ProductSaveToast'
 import { default as default_dad6df07f5ce6091043bf2907b451c8b } from '@/components/admin/ProductDuplicateButton'
@@ -86,6 +88,7 @@ export const importMap = {
   "@/components/admin/CategoryTreeView#default": default_ebf9d2025b92d97c921799c47cf282d1,
   "@/components/admin/ProductStatusCell#default": default_cb040906944cedc20f0a1dc81a047b38,
   "@/components/admin/ProductMarginInsight#default": default_9b57c43980e97d4b56c8d7a919923508,
+  "@/components/admin/ProductWizardLauncher#default": default_9eb65d1e13a161fff630e7bf785e9dc3,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalField": RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#LexicalDiffComponent": LexicalDiffComponent_44fe37237e0ebf4470c9990d8cb7b07e,
@@ -122,6 +125,7 @@ export const importMap = {
   "@/components/admin/ShoplineImportPanel#default": default_99d8a7df13704a09eb2683c564fe3977,
   "@/components/admin/ImageMigrationPanel#default": default_235ae141af0ae2ee10377f179570df1f,
   "@/components/admin/ImportExportButtons#default": default_131a3f06e1429f7f0173fc5b4da87663,
+  "@/components/admin/ProductCreateWizard#default": default_e8d6ffb15fc46072823f2ab09538bb28,
   "@/components/admin/ProductTabBadges#default": default_da45625f08d6c78051d9389e2ef13996,
   "@/components/admin/ProductSaveToast#default": default_75a69f86e8fd1756deda3bb508c9e126,
   "@/components/admin/ProductDuplicateButton#default": default_dad6df07f5ce6091043bf2907b451c8b,
