@@ -5,19 +5,21 @@
  * ──────────────────
  * 顯示於「商品列表」頁面上方的一個快速批次操作面板。
  *
- * 功能：
- *   1. 批次上架：將所有 status='draft' 的商品設為 'published'
- *   2. 批次下架：將所有庫存 = 0 的商品設為 'archived'
- *   3. 全站快取 revalidate：呼叫自訂 endpoint，重新產生 /、/products 快取
+ * 兩個區塊：
+ *   1. 「按條件批次」— 上方 6 顆按鈕，掃 DB 找符合條件的商品再切換狀態
+ *      (e.g. 所有草稿 → 上架；所有缺貨 → 下架；排程；快取)
+ *   2. 「對勾選商品執行」— 下方 4 顆按鈕，對使用者在表格中勾選的 N 筆執行
+ *      上架 / 下架 / 草稿 / 刪除（刪除為破壞性，雙重確認）
  *
- * 每個動作前會先以 `?where=...&limit=0` 預覽符合條件的商品數量，
- * 然後要求使用者在 confirm() 中二次確認，避免誤觸。
+ * 走 Payload v3 SelectionProvider context（BeforeListTable 在 SelectionProvider 子樹內）。
  *
- * 所有批次 PATCH 走 Payload 標準 REST API：
- *   PATCH /api/products?where[...]=...   body 為共用欄位
+ * 所有批次操作走 Payload 標準 REST API：
+ *   PATCH  /api/products?where[...]=...     body 為共用欄位
+ *   DELETE /api/products?where[id][in]=...
  */
 
 import React, { useState } from 'react'
+import { useSelection } from '@payloadcms/ui'
 
 const panel: React.CSSProperties = {
   border: '1px solid var(--theme-elevation-150, #e4e4e7)',
@@ -89,9 +91,139 @@ async function bulkPatch(
   return { ok: true, updated }
 }
 
+type SelectionContext = {
+  count?: number
+  getQueryParams?: (additional?: Record<string, unknown>) => string
+  selectedIDs?: (string | number)[]
+}
+
 const ProductBulkActions: React.FC = () => {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  const selection = useSelection() as SelectionContext
+  const selectedCount = selection?.count ?? 0
+  const selectedIDs = selection?.selectedIDs ?? []
+  const getQueryParams = selection?.getQueryParams
+
+  const buildSelectedQuery = (): string | null => {
+    if (selectedCount === 0) return null
+    if (typeof getQueryParams === 'function') return getQueryParams()
+    if (selectedIDs.length > 0) {
+      const params = selectedIDs.map((id, i) => `where[id][in][${i}]=${encodeURIComponent(String(id))}`).join('&')
+      return `?${params}`
+    }
+    return null
+  }
+
+  const patchSelected = async (nextStatus: 'published' | 'archived' | 'draft', label: string) => {
+    if (busy) return
+    if (selectedCount === 0) {
+      setMessage('ℹ️ 請先在下方表格勾選要處理的商品')
+      return
+    }
+    if (
+      !window.confirm(
+        `將把選定的 ${selectedCount} 筆商品設為「${label}」，確定嗎？`,
+      )
+    ) {
+      setMessage('已取消')
+      return
+    }
+    const qs = buildSelectedQuery()
+    if (!qs) {
+      setMessage('❌ 無法取得勾選清單')
+      return
+    }
+    setBusy(true)
+    setMessage('')
+    try {
+      const res = await fetch(`/api/products${qs}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setMessage(
+          `❌ 切換失敗：${
+            (data as { errors?: { message?: string }[]; message?: string })?.errors?.[0]?.message ||
+            (data as { message?: string })?.message ||
+            `HTTP ${res.status}`
+          }`,
+        )
+        return
+      }
+      const updated =
+        (data as { docs?: unknown[] })?.docs?.length ??
+        (data as { result?: { docs?: unknown[] } })?.result?.docs?.length ??
+        selectedCount
+      setMessage(`✅ 已將 ${updated} 筆商品設為「${label}」（即將重新整理）`)
+      setTimeout(() => window.location.reload(), 800)
+    } catch (err) {
+      setMessage(`❌ 錯誤：${err instanceof Error ? err.message : '未知'}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const deleteSelected = async () => {
+    if (busy) return
+    if (selectedCount === 0) {
+      setMessage('ℹ️ 請先在下方表格勾選要刪除的商品')
+      return
+    }
+    if (
+      !window.confirm(
+        `⚠️ 將永久刪除選定的 ${selectedCount} 筆商品。\n\n此動作無法復原。確定要繼續嗎？`,
+      )
+    ) {
+      setMessage('已取消')
+      return
+    }
+    const second = window.prompt(
+      `再次確認：請輸入「刪除 ${selectedCount} 筆」以執行：`,
+      '',
+    )
+    if (second !== `刪除 ${selectedCount} 筆`) {
+      setMessage('已取消（確認字串不一致）')
+      return
+    }
+    const qs = buildSelectedQuery()
+    if (!qs) {
+      setMessage('❌ 無法取得勾選清單')
+      return
+    }
+    setBusy(true)
+    setMessage('')
+    try {
+      const res = await fetch(`/api/products${qs}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setMessage(
+          `❌ 刪除失敗：${
+            (data as { errors?: { message?: string }[]; message?: string })?.errors?.[0]?.message ||
+            (data as { message?: string })?.message ||
+            `HTTP ${res.status}`
+          }`,
+        )
+        return
+      }
+      const removed =
+        (data as { docs?: unknown[] })?.docs?.length ??
+        (data as { result?: { docs?: unknown[] } })?.result?.docs?.length ??
+        selectedCount
+      setMessage(`✅ 已刪除 ${removed} 筆商品（即將重新整理）`)
+      setTimeout(() => window.location.reload(), 800)
+    } catch (err) {
+      setMessage(`❌ 錯誤：${err instanceof Error ? err.message : '未知'}`)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const publishAllDrafts = async () => {
     if (busy) return
@@ -339,6 +471,8 @@ const ProductBulkActions: React.FC = () => {
     color: '#b91c1c',
   }
 
+  const dimWhenIdle: React.CSSProperties = selectedCount === 0 ? { opacity: 0.5 } : {}
+
   return (
     <div style={panel}>
       <h4 style={title}>⚡ 批次操作</h4>
@@ -367,6 +501,67 @@ const ProductBulkActions: React.FC = () => {
           ⚠️ 全部下架（停售/暫停營業用）
         </button>
       </div>
+
+      <hr
+        style={{
+          margin: '14px 0 10px',
+          border: 'none',
+          borderTop: '1px dashed var(--theme-elevation-200, #d4d4d8)',
+        }}
+      />
+      <h4 style={title}>
+        🎯 對勾選的商品執行
+        <span
+          style={{
+            marginLeft: 8,
+            fontSize: 12,
+            fontWeight: 500,
+            color: selectedCount > 0 ? 'var(--color-brand-gold, #c19a5b)' : '#888',
+          }}
+        >
+          （已勾選 {selectedCount} 筆）
+        </span>
+      </h4>
+      {selectedCount === 0 && (
+        <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>
+          ※ 請在下方表格每列最左側的 checkbox 勾選要處理的商品；勾選後再點下面的按鈕。
+        </div>
+      )}
+      <div style={btnRow}>
+        <button
+          type="button"
+          style={{ ...btn, ...dimWhenIdle }}
+          onClick={() => patchSelected('published', '已上架')}
+          disabled={busy || selectedCount === 0}
+        >
+          ✅ 上架選定 {selectedCount > 0 ? `(${selectedCount})` : ''}
+        </button>
+        <button
+          type="button"
+          style={{ ...btn, ...dimWhenIdle }}
+          onClick={() => patchSelected('archived', '已下架')}
+          disabled={busy || selectedCount === 0}
+        >
+          📦 下架選定 {selectedCount > 0 ? `(${selectedCount})` : ''}
+        </button>
+        <button
+          type="button"
+          style={{ ...btn, ...dimWhenIdle }}
+          onClick={() => patchSelected('draft', '草稿')}
+          disabled={busy || selectedCount === 0}
+        >
+          📝 轉為草稿 {selectedCount > 0 ? `(${selectedCount})` : ''}
+        </button>
+        <button
+          type="button"
+          style={{ ...btnDanger, ...dimWhenIdle }}
+          onClick={deleteSelected}
+          disabled={busy || selectedCount === 0}
+        >
+          🗑️ 刪除選定 {selectedCount > 0 ? `(${selectedCount})` : ''}
+        </button>
+      </div>
+
       {message && (
         <div
           style={{
