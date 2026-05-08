@@ -8,8 +8,8 @@
  * 兩個區塊：
  *   1. 「按條件批次」— 上方 6 顆按鈕，掃 DB 找符合條件的商品再切換狀態
  *      (e.g. 所有草稿 → 上架；所有缺貨 → 下架；排程；快取)
- *   2. 「對勾選商品執行」— 下方 4 顆按鈕，對使用者在表格中勾選的 N 筆執行
- *      上架 / 下架 / 草稿 / 刪除（刪除為破壞性，雙重確認）
+ *   2. 「對勾選商品執行」— 下方 7 顆按鈕，對使用者在表格中勾選的 N 筆執行
+ *      上架 / 下架 / 草稿 / 刪除 / 改分類 / 改價 / 加標籤
  *
  * 走 Payload v3 SelectionProvider context（BeforeListTable 在 SelectionProvider 子樹內）。
  *
@@ -97,9 +97,49 @@ type SelectionContext = {
   selectedIDs?: (string | number)[]
 }
 
+type CategoryOption = {
+  id: string
+  name: string
+}
+
+type ProductLite = {
+  id: string
+  name: string
+  price: number
+  productSku?: string
+  tags?: Array<{ tag?: string }>
+}
+
+function toNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+function splitTagInput(value: string): string[] {
+  return value
+    .split(/[,，、]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const output: T[][] = []
+  for (let i = 0; i < items.length; i += size) {
+    output.push(items.slice(i, i + size))
+  }
+  return output
+}
+
 const ProductBulkActions: React.FC = () => {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  const [categories, setCategories] = useState<CategoryOption[]>([])
+  const [selectedCategoryId, setSelectedCategoryId] = useState('')
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false)
   const selection = useSelection() as SelectionContext
   const selectedCount = selection?.count ?? 0
   const selectedIDs = selection?.selectedIDs ?? []
@@ -113,6 +153,56 @@ const ProductBulkActions: React.FC = () => {
       return `?${params}`
     }
     return null
+  }
+
+  const getSelectedProductIDs = async (): Promise<string[]> => {
+    if (selectedIDs.length > 0) {
+      return selectedIDs.map((id) => String(id))
+    }
+
+    const qs = buildSelectedQuery()
+    if (!qs) return []
+
+    const query = qs.startsWith('?') ? qs.slice(1) : qs
+    const res = await fetch(`/api/products?${query}&limit=200&depth=0`, {
+      credentials: 'include',
+    })
+    if (!res.ok) throw new Error(`讀取勾選商品失敗（HTTP ${res.status}）`)
+    const data = (await res.json().catch(() => ({}))) as { docs?: Array<{ id?: string | number }> }
+    return (data.docs ?? [])
+      .map((doc) => (doc.id == null ? '' : String(doc.id)))
+      .filter(Boolean)
+  }
+
+  const fetchProductById = async (id: string): Promise<ProductLite> => {
+    const res = await fetch(`/api/products/${encodeURIComponent(id)}?depth=0`, {
+      credentials: 'include',
+    })
+    if (!res.ok) throw new Error(`GET /api/products/${id} 失敗（HTTP ${res.status}）`)
+    const data = (await res.json()) as Record<string, unknown>
+    return {
+      id: String(data.id ?? id),
+      name: String(data.name ?? ''),
+      price: toNumber(data.price) ?? 0,
+      productSku: typeof data.productSku === 'string' ? data.productSku : undefined,
+      tags: Array.isArray(data.tags) ? (data.tags as Array<{ tag?: string }>) : [],
+    }
+  }
+
+  const patchProductById = async (id: string, body: Record<string, unknown>) => {
+    const res = await fetch(`/api/products/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as {
+        message?: string
+        errors?: Array<{ message?: string }>
+      }
+      throw new Error(data.errors?.[0]?.message || data.message || `HTTP ${res.status}`)
+    }
   }
 
   const patchSelected = async (nextStatus: 'published' | 'archived' | 'draft', label: string) => {
@@ -222,6 +312,274 @@ const ProductBulkActions: React.FC = () => {
       setMessage(`❌ 錯誤：${err instanceof Error ? err.message : '未知'}`)
     } finally {
       setBusy(false)
+    }
+  }
+
+  const openCategoryModal = async () => {
+    if (busy) return
+    if (selectedCount === 0) {
+      setMessage('ℹ️ 請先勾選要改分類的商品')
+      return
+    }
+
+    setBusy(true)
+    setMessage('')
+    try {
+      const res = await fetch('/api/categories?limit=200&depth=0&sort=name', {
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = (await res.json().catch(() => ({}))) as {
+        docs?: Array<{ id?: string | number; name?: string }>
+      }
+      const options = (data.docs ?? [])
+        .map((doc) => ({
+          id: doc.id == null ? '' : String(doc.id),
+          name: doc.name || '(未命名分類)',
+        }))
+        .filter((item) => item.id)
+
+      if (options.length === 0) {
+        setMessage('❌ 找不到可用分類')
+        return
+      }
+
+      setCategories(options)
+      setSelectedCategoryId(options[0].id)
+      setCategoryModalOpen(true)
+    } catch (err) {
+      setMessage(`❌ 載入分類失敗：${err instanceof Error ? err.message : '未知'}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const applyCategoryChange = async () => {
+    if (busy) return
+    if (!selectedCategoryId) return
+
+    let ids: string[] = []
+    try {
+      ids = await getSelectedProductIDs()
+    } catch (err) {
+      setMessage(`❌ 讀取勾選商品失敗：${err instanceof Error ? err.message : '未知'}`)
+      return
+    }
+    if (ids.length === 0) {
+      setMessage('ℹ️ 目前沒有可更新的商品')
+      setCategoryModalOpen(false)
+      return
+    }
+
+    const category = categories.find((item) => item.id === selectedCategoryId)
+    const categoryName = category?.name || selectedCategoryId
+
+    if (!window.confirm(`將把 ${ids.length} 筆商品分類改成「${categoryName}」，確定？`)) {
+      return
+    }
+
+    setBusy(true)
+    setMessage('')
+    setCategoryModalOpen(false)
+    try {
+      const query = ids
+        .map((id, index) => `where[id][in][${index}]=${encodeURIComponent(id)}`)
+        .join('&')
+
+      const res = await fetch(`/api/products?${query}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: selectedCategoryId }),
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        docs?: unknown[]
+        message?: string
+        errors?: Array<{ message?: string }>
+      }
+      if (!res.ok) {
+        throw new Error(data.errors?.[0]?.message || data.message || `HTTP ${res.status}`)
+      }
+      setMessage(`✅ 已把 ${data.docs?.length ?? ids.length} 筆商品改成「${categoryName}」`)
+    } catch (err) {
+      setMessage(`❌ 改分類失敗：${err instanceof Error ? err.message : '未知'}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const bulkChangePrice = async () => {
+    if (busy) return
+    if (selectedCount === 0) {
+      setMessage('ℹ️ 請先勾選要改價的商品')
+      return
+    }
+
+    const modeInput = window.prompt(
+      '請選模式：\na) 全部設為 N\nb) 全部 +N%\nc) 全部 -N%',
+      'c',
+    )
+    if (!modeInput) return
+    const mode = modeInput.trim().toLowerCase()
+    if (!['a', 'b', 'c'].includes(mode)) {
+      setMessage('❌ 模式無效，請輸入 a / b / c')
+      return
+    }
+
+    const nInput = window.prompt('請輸入 N（a=價格、b/c=百分比）', '10')
+    if (!nInput) return
+    const n = Number(nInput)
+    if (!Number.isFinite(n) || n < 0) {
+      setMessage('❌ N 必須是大於等於 0 的數字')
+      return
+    }
+
+    let ids: string[] = []
+    try {
+      ids = await getSelectedProductIDs()
+    } catch (err) {
+      setMessage(`❌ 讀取勾選商品失敗：${err instanceof Error ? err.message : '未知'}`)
+      return
+    }
+    if (ids.length === 0) {
+      setMessage('ℹ️ 目前沒有可更新的商品')
+      return
+    }
+
+    const calcPrice = (base: number): number => {
+      if (mode === 'a') return Math.round(n)
+      if (mode === 'b') return Math.round(base * (1 + n / 100))
+      return Math.max(0, Math.round(base * (1 - n / 100)))
+    }
+
+    try {
+      const previewRows = await Promise.all(
+        ids.slice(0, 3).map(async (id) => {
+          const product = await fetchProductById(id)
+          return `${product.name || product.productSku || id}: ${product.price} → ${calcPrice(product.price)}`
+        }),
+      )
+
+      const modeLabel =
+        mode === 'a' ? `全部設為 ${n}` : mode === 'b' ? `全部 +${n}%` : `全部 -${n}%`
+      if (
+        !window.confirm(
+          `將對 ${ids.length} 筆商品執行「${modeLabel}」。\n\n樣本：\n${previewRows.join('\n')}\n\n確定繼續？`,
+        )
+      ) {
+        setMessage('已取消')
+        return
+      }
+    } catch (err) {
+      setMessage(`❌ 產生改價預覽失敗：${err instanceof Error ? err.message : '未知'}`)
+      return
+    }
+
+    setBusy(true)
+    setMessage('')
+
+    let done = 0
+    const failures: string[] = []
+    const chunks = chunkArray(ids, 5)
+
+    for (const chunk of chunks) {
+      // 並行上限 5，避免一次打爆 API
+      await Promise.all(
+        chunk.map(async (id) => {
+          let product: ProductLite | null = null
+          try {
+            product = await fetchProductById(id)
+            const nextPrice = calcPrice(product.price)
+            await patchProductById(id, { price: nextPrice })
+          } catch (err) {
+            const label = product?.productSku || product?.name || id
+            failures.push(`${label}: ${err instanceof Error ? err.message : '未知錯誤'}`)
+          } finally {
+            done += 1
+            setMessage(`⏳ 改價進度：已更新 ${done} / ${ids.length}`)
+          }
+        }),
+      )
+    }
+
+    setBusy(false)
+    if (failures.length > 0) {
+      setMessage(
+        `⚠️ 改價完成 ${done}/${ids.length}，失敗 ${failures.length} 筆：${failures.slice(0, 5).join(' | ')}`,
+      )
+    } else {
+      setMessage(`✅ 改價完成，共更新 ${ids.length} 筆`)
+    }
+  }
+
+  const bulkAddTags = async () => {
+    if (busy) return
+    if (selectedCount === 0) {
+      setMessage('ℹ️ 請先勾選要加標籤的商品')
+      return
+    }
+
+    const raw = window.prompt('請輸入要加的標籤（逗號分隔，例如：標籤A,標籤B）', '')
+    if (raw == null) return
+    const tagsToAdd = splitTagInput(raw)
+    if (tagsToAdd.length === 0) {
+      setMessage('❌ 沒有可加入的標籤')
+      return
+    }
+
+    let ids: string[] = []
+    try {
+      ids = await getSelectedProductIDs()
+    } catch (err) {
+      setMessage(`❌ 讀取勾選商品失敗：${err instanceof Error ? err.message : '未知'}`)
+      return
+    }
+    if (ids.length === 0) {
+      setMessage('ℹ️ 目前沒有可更新的商品')
+      return
+    }
+
+    if (!window.confirm(`將對 ${ids.length} 筆商品加入標籤：${tagsToAdd.join('、')}，確定？`)) {
+      setMessage('已取消')
+      return
+    }
+
+    setBusy(true)
+    setMessage('')
+    let done = 0
+    const failures: string[] = []
+
+    for (const chunk of chunkArray(ids, 5)) {
+      await Promise.all(
+        chunk.map(async (id) => {
+          let product: ProductLite | null = null
+          try {
+            product = await fetchProductById(id)
+            const existing = (product.tags ?? [])
+              .map((row) => (typeof row?.tag === 'string' ? row.tag.trim() : ''))
+              .filter(Boolean)
+            const merged = Array.from(new Set([...existing, ...tagsToAdd]))
+            await patchProductById(id, {
+              tags: merged.map((tag) => ({ tag })),
+            })
+          } catch (err) {
+            const label = product?.productSku || product?.name || id
+            failures.push(`${label}: ${err instanceof Error ? err.message : '未知錯誤'}`)
+          } finally {
+            done += 1
+            setMessage(`⏳ 加標籤進度：已更新 ${done} / ${ids.length}`)
+          }
+        }),
+      )
+    }
+
+    setBusy(false)
+    if (failures.length > 0) {
+      setMessage(
+        `⚠️ 加標籤完成 ${done}/${ids.length}，失敗 ${failures.length} 筆：${failures.slice(0, 5).join(' | ')}`,
+      )
+    } else {
+      setMessage(`✅ 已為 ${ids.length} 筆商品加入標籤：${tagsToAdd.join('、')}`)
     }
   }
 
@@ -470,6 +828,30 @@ const ProductBulkActions: React.FC = () => {
     borderColor: '#fecaca',
     color: '#b91c1c',
   }
+  const btnFeature: React.CSSProperties = {
+    ...btn,
+    background: 'var(--theme-elevation-100, #f5f5f7)',
+    borderColor: 'var(--theme-elevation-250, #c9c9cf)',
+  }
+  const modalBackdrop: React.CSSProperties = {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0, 0, 0, 0.35)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 70,
+    padding: 16,
+  }
+  const modalCard: React.CSSProperties = {
+    width: '100%',
+    maxWidth: 460,
+    borderRadius: 10,
+    border: '1px solid var(--theme-elevation-200, #d4d4d8)',
+    background: 'var(--theme-elevation-0, #ffffff)',
+    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.22)',
+    padding: 16,
+  }
 
   const dimWhenIdle: React.CSSProperties = selectedCount === 0 ? { opacity: 0.5 } : {}
 
@@ -561,6 +943,81 @@ const ProductBulkActions: React.FC = () => {
           🗑️ 刪除選定 {selectedCount > 0 ? `(${selectedCount})` : ''}
         </button>
       </div>
+      <div style={{ ...btnRow, marginTop: 8 }}>
+        <button
+          type="button"
+          style={{ ...btnFeature, ...dimWhenIdle }}
+          onClick={openCategoryModal}
+          disabled={busy || selectedCount === 0}
+        >
+          📁 改分類 {selectedCount > 0 ? `(${selectedCount})` : ''}
+        </button>
+        <button
+          type="button"
+          style={{ ...btnFeature, ...dimWhenIdle }}
+          onClick={bulkChangePrice}
+          disabled={busy || selectedCount === 0}
+        >
+          💰 改價 {selectedCount > 0 ? `(${selectedCount})` : ''}
+        </button>
+        <button
+          type="button"
+          style={{ ...btnFeature, ...dimWhenIdle }}
+          onClick={bulkAddTags}
+          disabled={busy || selectedCount === 0}
+        >
+          🏷️ 加標籤 {selectedCount > 0 ? `(${selectedCount})` : ''}
+        </button>
+      </div>
+
+      {categoryModalOpen && (
+        <div
+          style={modalBackdrop}
+          onClick={() => {
+            if (!busy) setCategoryModalOpen(false)
+          }}
+        >
+          <div
+            style={modalCard}
+            onClick={(event) => {
+              event.stopPropagation()
+            }}
+          >
+            <h5 style={{ margin: 0, marginBottom: 12, fontSize: 16, fontWeight: 600 }}>📁 批次改分類</h5>
+            <p style={{ marginTop: 0, marginBottom: 8, fontSize: 13, color: '#555' }}>
+              即將影響 {selectedCount} 筆商品，請先選擇目標分類。
+            </p>
+            <select
+              value={selectedCategoryId}
+              onChange={(event) => setSelectedCategoryId(event.target.value)}
+              style={{
+                width: '100%',
+                marginBottom: 12,
+                borderRadius: 6,
+                border: '1px solid var(--theme-elevation-250, #c9c9cf)',
+                background: 'var(--theme-elevation-0, #ffffff)',
+                color: 'var(--theme-text, #222222)',
+                padding: '8px 10px',
+                fontSize: 14,
+              }}
+            >
+              {categories.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+            <div style={{ ...btnRow, justifyContent: 'flex-end' }}>
+              <button type="button" style={btn} onClick={() => setCategoryModalOpen(false)} disabled={busy}>
+                取消
+              </button>
+              <button type="button" style={btnFeature} onClick={applyCategoryChange} disabled={busy}>
+                套用分類
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {message && (
         <div
