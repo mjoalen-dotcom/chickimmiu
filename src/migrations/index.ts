@@ -47,6 +47,8 @@ import * as migration_20260506_120000_rename_utm_campaign_columns from './202605
 import * as migration_20260506_140000_add_product_list_settings from './20260506_140000_add_product_list_settings';
 import * as migration_20260506_160000_add_product_alias_slugs from './20260506_160000_add_product_alias_slugs';
 import * as migration_20260508_100000_add_product_listing_schedule_image_category_material_images from './20260508_100000_add_product_listing_schedule_image_category_material_images';
+import * as migration_20260508_120000_add_product_additional_categories from './20260508_120000_add_product_additional_categories';
+import * as migration_20260508_140000_add_pricing_formula_and_auto_pricing from './20260508_140000_add_pricing_formula_and_auto_pricing';
 
 export const migrations = [
   {
@@ -293,5 +295,15 @@ export const migrations = [
     up: migration_20260508_100000_add_product_listing_schedule_image_category_material_images.up,
     down: migration_20260508_100000_add_product_listing_schedule_image_category_material_images.down,
     name: '20260508_100000_add_product_listing_schedule_image_category_material_images',
+  },
+  {
+    up: migration_20260508_120000_add_product_additional_categories.up,
+    down: migration_20260508_120000_add_product_additional_categories.down,
+    name: '20260508_120000_add_product_additional_categories',
+  },
+  {
+    up: migration_20260508_140000_add_pricing_formula_and_auto_pricing.up,
+    down: migration_20260508_140000_add_pricing_formula_and_auto_pricing.down,
+    name: '20260508_140000_add_pricing_formula_and_auto_pricing',
   },
 ];

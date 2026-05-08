@@ -68,9 +68,15 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   })
   const familyIds = [category.id as number, ...childRes.docs.map((d) => d.id as number)]
 
+  // 主分類（category）OR 其他分類（additionalCategories hasMany）任一命中即列入
   const where: Where = {
     and: [
-      { category: { in: familyIds } },
+      {
+        or: [
+          { category: { in: familyIds } },
+          { additionalCategories: { in: familyIds } },
+        ],
+      },
       { status: { equals: 'published' } },
     ],
   }
