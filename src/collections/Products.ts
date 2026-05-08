@@ -6,6 +6,7 @@ import { createExportEndpoint, createImportEndpoint, type FieldMapping } from '.
 import { revalidateAllEndpoint } from '../endpoints/revalidateAll'
 import { shoplineXlsxImportEndpoint } from '../endpoints/shoplineXlsxImport'
 import { linkIntegrityScanEndpoint } from '../endpoints/linkIntegrityScan'
+import { applyProductSchedulesEndpoint } from '../endpoints/applyProductSchedules'
 import { revalidateProduct } from '../lib/revalidate'
 import { suggestPersonalityTypes } from '../lib/games/mbtiAutoRecommend'
 import { bumpCategoryCount, getCategoryId } from '../lib/categoryCount'
@@ -107,6 +108,7 @@ export const Products: CollectionConfig = {
     revalidateAllEndpoint,
     shoplineXlsxImportEndpoint,
     linkIntegrityScanEndpoint,
+    applyProductSchedulesEndpoint,
   ],
   hooks: {
     /* ── 1. 驗證前：自動 slug + 資料正規化 ── */
@@ -301,8 +303,37 @@ export const Products: CollectionConfig = {
       ],
       admin: {
         position: 'sidebar',
-        description: '僅「已上架」的商品會出現在前台',
+        description: '僅「已上架」的商品會出現在前台。列表頁可一鍵切換。',
+        components: {
+          Cell: '@/components/admin/ProductStatusCell',
+        },
       },
+    },
+    {
+      type: 'row',
+      admin: { position: 'sidebar' },
+      fields: [
+        {
+          name: 'publishAt',
+          label: '預定上架時間',
+          type: 'date',
+          admin: {
+            width: '50%',
+            date: { pickerAppearance: 'dayAndTime', timeFormat: 'HH:mm' },
+            description: '到時自動由「草稿」轉「已上架」（每 10 分鐘掃一次）',
+          },
+        },
+        {
+          name: 'unpublishAt',
+          label: '預定下架時間',
+          type: 'date',
+          admin: {
+            width: '50%',
+            date: { pickerAppearance: 'dayAndTime', timeFormat: 'HH:mm' },
+            description: '到時自動由「已上架」轉「已下架」',
+          },
+        },
+      ],
     },
     {
       name: 'isNew',
@@ -705,10 +736,39 @@ export const Products: CollectionConfig = {
                   required: true,
                 },
                 {
-                  name: 'caption',
-                  label: '圖說（選填）',
-                  type: 'text',
-                  admin: { description: '例如：背面細節、模特兒身高 168cm 穿 M' },
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'category',
+                      label: '圖片類型',
+                      type: 'select',
+                      defaultValue: 'detail',
+                      options: [
+                        { label: '封面', value: 'cover' },
+                        { label: '正面', value: 'front' },
+                        { label: '背面', value: 'back' },
+                        { label: '側面', value: 'side' },
+                        { label: '細節', value: 'detail' },
+                        { label: '模特兒', value: 'model' },
+                        { label: '搭配示意', value: 'styling' },
+                        { label: '尺寸表', value: 'size_chart' },
+                        { label: '其他', value: 'other' },
+                      ],
+                      admin: {
+                        width: '40%',
+                        description: '前台 PDP 可依此分類過濾顯示',
+                      },
+                    },
+                    {
+                      name: 'caption',
+                      label: '圖說（選填）',
+                      type: 'text',
+                      admin: {
+                        width: '60%',
+                        description: '例如：背面細節、模特兒身高 168cm 穿 M',
+                      },
+                    },
+                  ],
                 },
               ],
             },
@@ -894,6 +954,40 @@ export const Products: CollectionConfig = {
                 description:
                   '例如「棉 60% / 聚酯纖維 40%」。與採購區的 fabric.material 不同，這個是要顯示在前台的。',
               },
+            },
+            {
+              name: 'materialDescription',
+              label: '材質詳細說明',
+              type: 'textarea',
+              admin: {
+                description:
+                  '材質手感、織法、保暖度、適合季節等補充說明，會顯示在前台「商品資訊」區塊。',
+              },
+            },
+            {
+              name: 'materialImages',
+              label: '材質說明圖片',
+              type: 'array',
+              admin: {
+                description:
+                  '材質特寫、織法圖、洗標、吊牌等補充圖；會顯示在前台「商品資訊」區塊。建議 1-4 張。',
+                initCollapsed: true,
+              },
+              fields: [
+                {
+                  name: 'image',
+                  label: '圖片',
+                  type: 'upload',
+                  relationTo: 'media',
+                  required: true,
+                },
+                {
+                  name: 'caption',
+                  label: '圖說（選填）',
+                  type: 'text',
+                  admin: { description: '例如：100% 純棉特寫、洗標說明' },
+                },
+              ],
             },
             {
               name: 'careInstructions',
