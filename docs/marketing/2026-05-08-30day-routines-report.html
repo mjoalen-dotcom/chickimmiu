@@ -1,0 +1,1033 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CHIC KIM & MIU — 30-Day Sprint Report · 2026.05.08</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream-50: #FAF7F2;
+    --cream-100: #F2EDE3;
+    --cream-200: #E8DFCB;
+    --cream-300: #D9CDB1;
+    --gold-300: #D9BC85;
+    --gold-400: #C9A96E;
+    --gold-500: #B8975A;
+    --gold-600: #9A7C45;
+    --gold-700: #7A6235;
+    --black: #1A1A1A;
+    --gray-700: #4A4A4A;
+    --gray-500: #6B6B6B;
+    --gray-300: #B0B0B0;
+    --gray-100: #E5E5E5;
+    --green: #4A8B6F;
+    --red: #C5503D;
+    --blue: #4A6F8B;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+    background: var(--cream-50);
+    color: var(--black);
+    line-height: 1.65;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 1120px; margin: 0 auto; padding: 0 32px; }
+
+  /* Top progress bar */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(250, 247, 242, 0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--cream-200);
+    padding: 12px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+  }
+  .topbar .brand { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+  .topbar .brand svg { width: 20px; height: 20px; color: var(--gold-500); }
+  .topbar nav a { color: var(--gray-700); text-decoration: none; margin-left: 20px; }
+  .topbar nav a:hover { color: var(--gold-600); }
+
+  /* Hero */
+  .hero {
+    padding: 96px 0 72px;
+    text-align: center;
+    border-bottom: 1px solid var(--cream-200);
+    background:
+      radial-gradient(circle at 30% 20%, rgba(201, 169, 110, 0.08), transparent 60%),
+      radial-gradient(circle at 70% 80%, rgba(201, 169, 110, 0.06), transparent 60%);
+  }
+  .hero-button-svg {
+    width: 80px; height: 80px;
+    margin: 0 auto 28px;
+    color: var(--gold-500);
+    animation: rotate 32s linear infinite;
+  }
+  @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .hero h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 56px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    margin-bottom: 8px;
+    color: var(--black);
+  }
+  .hero .zh-title {
+    font-size: 22px;
+    color: var(--gray-700);
+    font-weight: 300;
+    margin-bottom: 24px;
+    letter-spacing: 0.05em;
+  }
+  .hero .tagline {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 18px;
+    color: var(--gold-600);
+    margin-bottom: 32px;
+  }
+  .hero .meta {
+    font-size: 11px;
+    color: var(--gray-500);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+  }
+  .hero .meta span::before {
+    content: '○';
+    margin-right: 8px;
+    color: var(--gold-400);
+  }
+
+  /* KPI strip */
+  .kpi-section { padding: 48px 0; }
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--cream-200);
+    border: 1px solid var(--cream-200);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .kpi-cell {
+    background: white;
+    padding: 28px 20px;
+    text-align: center;
+    transition: background 0.2s;
+  }
+  .kpi-cell:hover { background: var(--cream-50); }
+  .kpi-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 44px;
+    font-weight: 500;
+    color: var(--gold-500);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .kpi-label {
+    font-size: 11px;
+    color: var(--gray-500);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Sections */
+  section {
+    padding: 80px 0;
+    border-bottom: 1px solid var(--cream-200);
+  }
+  .section-header { text-align: center; margin-bottom: 48px; }
+  .section-tag {
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    color: var(--gold-500);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 42px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    line-height: 1.15;
+  }
+  .section-zh {
+    font-size: 17px;
+    color: var(--gray-700);
+    font-weight: 300;
+  }
+
+  /* Routines grid */
+  .routines-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  .routine-card {
+    background: white;
+    border: 1px solid var(--cream-200);
+    border-radius: 10px;
+    padding: 24px 28px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .routine-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -16px rgba(0,0,0,0.15);
+  }
+  .routine-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px; height: 100%;
+    background: linear-gradient(180deg, var(--gold-300), var(--gold-500));
+  }
+  .routine-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--cream-200);
+  }
+  .routine-icon {
+    width: 40px; height: 40px;
+    flex-shrink: 0;
+    color: var(--gold-500);
+  }
+  .routine-titles { flex: 1; min-width: 0; }
+  .routine-name {
+    font-size: 17px;
+    font-weight: 500;
+    margin-bottom: 2px;
+    color: var(--black);
+  }
+  .routine-sub {
+    font-size: 12px;
+    color: var(--gray-500);
+    letter-spacing: 0.05em;
+  }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    color: var(--green);
+    font-weight: 500;
+    padding: 3px 10px;
+    background: rgba(74,139,111,0.1);
+    border-radius: 999px;
+    letter-spacing: 0.08em;
+  }
+  .status-pill .dot {
+    width: 6px; height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .routine-meta {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 8px 14px;
+    font-size: 13px;
+    margin-bottom: 18px;
+  }
+  .routine-meta .label { color: var(--gray-500); font-weight: 400; }
+  .routine-meta .value { color: var(--black); }
+  .routine-meta code {
+    font-family: 'SF Mono', Consolas, Monaco, monospace;
+    font-size: 11px;
+    background: var(--cream-100);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--gold-700);
+    word-break: break-all;
+  }
+  .routine-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 18px;
+    background: var(--black);
+    color: white;
+    text-decoration: none;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+  .routine-cta:hover { background: var(--gold-600); }
+
+  /* 30-day plan timeline */
+  .timeline {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .week-card {
+    background: white;
+    border: 1px solid var(--cream-200);
+    border-radius: 10px;
+    padding: 24px 20px;
+    position: relative;
+  }
+  .week-card .week-label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .week-card .week-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px;
+    font-weight: 500;
+    color: var(--gold-500);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .week-card .week-theme {
+    font-size: 13px;
+    color: var(--gray-700);
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px dashed var(--cream-300);
+    font-weight: 500;
+  }
+  .week-card ul { list-style: none; }
+  .week-card li {
+    font-size: 12.5px;
+    line-height: 1.55;
+    margin-bottom: 12px;
+    padding-left: 22px;
+    position: relative;
+    color: var(--gray-700);
+  }
+  .week-card li:last-child { margin-bottom: 0; }
+  .week-card li .item-id {
+    font-weight: 600;
+    color: var(--gold-600);
+    font-size: 11.5px;
+  }
+  .week-card li::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 5px;
+    width: 14px; height: 14px;
+    border: 1.5px solid var(--gold-400);
+    border-radius: 50%;
+  }
+  .week-card.w1::before {}
+  .priority-row {
+    display: flex; gap: 8px; align-items: center; justify-content: center;
+    margin-top: 24px;
+    font-size: 11px;
+    color: var(--gray-500);
+    letter-spacing: 0.05em;
+  }
+  .priority-row .marker { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid; }
+  .priority-row .h { border-color: var(--red); background: rgba(197,80,61,0.15); }
+  .priority-row .m { border-color: var(--gold-500); background: rgba(184,151,90,0.15); }
+  .priority-row .l { border-color: var(--gray-300); background: rgba(176,176,176,0.15); }
+
+  /* SWOT */
+  .swot-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .swot-quadrant {
+    background: white;
+    border: 1px solid var(--cream-200);
+    border-radius: 10px;
+    padding: 28px;
+    border-top-width: 4px;
+  }
+  .swot-quadrant.S { border-top-color: var(--green); }
+  .swot-quadrant.W { border-top-color: var(--red); }
+  .swot-quadrant.O { border-top-color: var(--gold-500); }
+  .swot-quadrant.T { border-top-color: var(--gray-700); }
+  .swot-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--cream-200); }
+  .swot-letter {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 44px;
+    font-weight: 500;
+    line-height: 1;
+  }
+  .swot-quadrant.S .swot-letter { color: var(--green); }
+  .swot-quadrant.W .swot-letter { color: var(--red); }
+  .swot-quadrant.O .swot-letter { color: var(--gold-500); }
+  .swot-quadrant.T .swot-letter { color: var(--gray-700); }
+  .swot-titles { flex: 1; }
+  .swot-titles h3 {
+    font-size: 17px;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+  .swot-titles .swot-zh {
+    font-size: 12px;
+    color: var(--gray-500);
+    letter-spacing: 0.05em;
+  }
+  .swot-quadrant ul { list-style: none; }
+  .swot-quadrant li {
+    font-size: 13px;
+    line-height: 1.6;
+    margin-bottom: 10px;
+    padding-left: 18px;
+    position: relative;
+    color: var(--gray-700);
+  }
+  .swot-quadrant li:last-child { margin-bottom: 0; }
+  .swot-quadrant li::before {
+    content: '—';
+    position: absolute;
+    left: 0; top: 0;
+    color: var(--gray-300);
+  }
+  .swot-quadrant li strong { color: var(--black); font-weight: 500; }
+
+  /* Operations */
+  .ops-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .ops-card {
+    background: white;
+    border: 1px solid var(--cream-200);
+    border-radius: 10px;
+    padding: 28px;
+  }
+  .ops-card h3 {
+    font-size: 16px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--cream-200);
+    font-weight: 500;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .ops-card h3 .num {
+    width: 26px; height: 26px;
+    background: var(--gold-500);
+    color: white;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-family: 'Cormorant Garamond', serif;
+  }
+  .ops-card p {
+    font-size: 13px;
+    color: var(--gray-700);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  .ops-card code {
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 12px;
+    background: var(--cream-100);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--gold-700);
+  }
+  .ops-card ul { list-style: none; padding-left: 0; margin-top: 8px; }
+  .ops-card li {
+    padding-left: 18px;
+    position: relative;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--gray-700);
+    line-height: 1.55;
+  }
+  .ops-card li::before {
+    content: '›';
+    position: absolute;
+    left: 0;
+    color: var(--gold-500);
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  /* File tree */
+  .file-tree {
+    font-family: 'SF Mono', Consolas, Monaco, monospace;
+    font-size: 12.5px;
+    background: var(--cream-100);
+    border: 1px solid var(--cream-200);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-top: 16px;
+    color: var(--gray-700);
+    line-height: 1.85;
+  }
+  .file-tree .dim { color: var(--gray-300); }
+  .file-tree .key { color: var(--gold-700); }
+  .file-tree .comment { color: var(--gray-500); font-style: italic; }
+
+  /* Brand promise */
+  .brand-promise {
+    background: linear-gradient(180deg, #1A1A1A 0%, #0A0A0A 100%);
+    color: white;
+    padding: 96px 32px;
+    text-align: center;
+    margin: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .brand-promise::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 800px; height: 800px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(201, 169, 110, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .brand-promise .container { position: relative; z-index: 1; }
+  .brand-promise .button-icon {
+    width: 48px; height: 48px;
+    color: var(--gold-400);
+    margin: 0 auto 32px;
+    opacity: 0.9;
+  }
+  .brand-promise blockquote {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 30px;
+    font-style: italic;
+    max-width: 760px;
+    margin: 0 auto 20px;
+    line-height: 1.5;
+    color: var(--cream-50);
+    font-weight: 400;
+  }
+  .brand-promise cite {
+    font-size: 12px;
+    color: var(--gold-400);
+    font-style: normal;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  /* Footer */
+  footer {
+    padding: 48px 0 72px;
+    text-align: center;
+    color: var(--gray-500);
+    font-size: 12px;
+  }
+  footer .button-icon {
+    width: 28px; height: 28px;
+    color: var(--gold-500);
+    opacity: 0.6;
+    margin: 0 auto 14px;
+  }
+  footer .lines { line-height: 1.85; }
+  footer a { color: var(--gold-600); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* Responsive */
+  @media (max-width: 920px) {
+    .container { padding: 0 20px; }
+    .topbar { padding: 12px 20px; }
+    .hero { padding: 64px 0 56px; }
+    .hero h1 { font-size: 40px; }
+    .hero .meta { flex-direction: column; gap: 6px; }
+    section { padding: 56px 0; }
+    .section-title { font-size: 32px; }
+    .timeline, .routines-grid, .swot-grid, .ops-grid {
+      grid-template-columns: 1fr;
+    }
+    .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+    .kpi-num { font-size: 36px; }
+    .topbar nav { display: none; }
+    .brand-promise { padding: 64px 24px; }
+    .brand-promise blockquote { font-size: 22px; }
+  }
+
+  /* Print */
+  @media print {
+    body { background: white; }
+    .topbar { position: static; }
+    section { page-break-inside: avoid; padding: 32px 0; }
+    .brand-promise { background: var(--cream-100); color: var(--black); }
+    .brand-promise blockquote { color: var(--black); }
+    .routine-cta { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3">
+      <circle cx="50" cy="50" r="42" />
+      <circle cx="40" cy="42" r="3" fill="currentColor" stroke="none" />
+      <circle cx="60" cy="42" r="3" fill="currentColor" stroke="none" />
+      <circle cx="40" cy="58" r="3" fill="currentColor" stroke="none" />
+      <circle cx="60" cy="58" r="3" fill="currentColor" stroke="none" />
+    </svg>
+    <span>CHIC KIM &amp; MIU · Sprint Report</span>
+  </div>
+  <nav>
+    <a href="#routines">Routines</a>
+    <a href="#plan">30-Day Plan</a>
+    <a href="#swot">SWOT</a>
+    <a href="#ops">操作指南</a>
+  </nav>
+</div>
+
+<!-- Hero -->
+<header class="hero">
+  <div class="container">
+    <svg class="hero-button-svg" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="50" cy="50" r="46" />
+      <circle cx="50" cy="50" r="28" stroke-width="1" stroke-dasharray="2 4" />
+      <circle cx="40" cy="42" r="2.5" fill="currentColor" stroke="none" />
+      <circle cx="60" cy="42" r="2.5" fill="currentColor" stroke="none" />
+      <circle cx="40" cy="58" r="2.5" fill="currentColor" stroke="none" />
+      <circle cx="60" cy="58" r="2.5" fill="currentColor" stroke="none" />
+    </svg>
+    <h1>30-Day Sprint Report</h1>
+    <div class="zh-title">封測優化作戰報告 · Routines 啟用</div>
+    <div class="tagline">「連結布料兩端，形成保暖、美觀、優雅氣質的經典」</div>
+    <div class="meta">
+      <span>REPORT · 2026.05.08</span>
+      <span>SCOPE · pre.chickimmiu.com</span>
+      <span>STATUS · 4 ROUTINES ACTIVE</span>
+    </div>
+  </div>
+</header>
+
+<!-- KPI strip -->
+<section class="kpi-section" style="border-bottom: none;">
+  <div class="container">
+    <div class="kpi-strip">
+      <div class="kpi-cell"><div class="kpi-num">4</div><div class="kpi-label">已啟用 Routines</div></div>
+      <div class="kpi-cell"><div class="kpi-num">14</div><div class="kpi-label">30 天計畫項目</div></div>
+      <div class="kpi-cell"><div class="kpi-num">6</div><div class="kpi-label">商品主分類建議</div></div>
+      <div class="kpi-cell"><div class="kpi-num">+25%</div><div class="kpi-label">預估首購轉換</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Routines -->
+<section id="routines">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-tag">AUTOMATED PIPELINE</div>
+      <div class="section-title">Routines</div>
+      <div class="section-zh">每日 / 每週自動排程的工作節奏 · 跑在 Anthropic 雲端 · 自動 commit 到 main</div>
+    </div>
+
+    <div class="routines-grid">
+
+      <!-- Routine 1: Daily Morning Standup -->
+      <article class="routine-card">
+        <div class="routine-top">
+          <svg class="routine-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6">
+            <circle cx="20" cy="20" r="17" />
+            <circle cx="16" cy="17" r="1.2" fill="currentColor" stroke="none" />
+            <circle cx="24" cy="17" r="1.2" fill="currentColor" stroke="none" />
+            <circle cx="16" cy="23" r="1.2" fill="currentColor" stroke="none" />
+            <circle cx="24" cy="23" r="1.2" fill="currentColor" stroke="none" />
+            <path d="M20 8 L20 13" stroke-linecap="round" />
+          </svg>
+          <div class="routine-titles">
+            <div class="routine-name">Daily Morning Standup</div>
+            <div class="routine-sub">每日早晨任務站立會</div>
+          </div>
+          <span class="status-pill"><span class="dot"></span>ACTIVE</span>
+        </div>
+        <div class="routine-meta">
+          <div class="label">執行時間</div><div class="value">工作日 09:00 (Asia/Taipei)</div>
+          <div class="label">Cron (UTC)</div><div class="value"><code>0 1 * * 1-5</code></div>
+          <div class="label">下次執行</div><div class="value">2026-05-11 (週一) 09:08</div>
+          <div class="label">產出</div><div class="value"><code>docs/standups/{date}.md</code></div>
+          <div class="label">Routine ID</div><div class="value"><code>trig_01SzMwC44CqgqCpZrm8SGGgF</code></div>
+        </div>
+        <a class="routine-cta" href="https://claude.ai/code/routines/trig_01SzMwC44CqgqCpZrm8SGGgF" target="_blank">
+          OPEN IN CLAUDE →
+        </a>
+      </article>
+
+      <!-- Routine 2: Daily Evening Recap -->
+      <article class="routine-card">
+        <div class="routine-top">
+          <svg class="routine-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6">
+            <circle cx="20" cy="20" r="17" />
+            <circle cx="16" cy="17" r="1.2" fill="currentColor" stroke="none" />
+            <circle cx="24" cy="17" r="1.2" fill="currentColor" stroke="none" />
+            <circle cx="16" cy="23" r="1.2" fill="currentColor" stroke="none" />
+            <circle cx="24" cy="23" r="1.2" fill="currentColor" stroke="none" />
+            <path d="M20 27 L20 32" stroke-linecap="round" />
+          </svg>
+          <div class="routine-titles">
+            <div class="routine-name">Daily Evening Recap</div>
+            <div class="routine-sub">每日晚間進度總結</div>
+          </div>
+          <span class="status-pill"><span class="dot"></span>ACTIVE</span>
+        </div>
+        <div class="routine-meta">
+          <div class="label">執行時間</div><div class="value">工作日 18:00 (Asia/Taipei)</div>
+          <div class="label">Cron (UTC)</div><div class="value"><code>0 10 * * 1-5</code></div>
+          <div class="label">下次執行</div><div class="value">2026-05-11 (週一) 18:00</div>
+          <div class="label">產出</div><div class="value"><code>docs/recaps/{date}.md</code></div>
+          <div class="label">Routine ID</div><div class="value"><code>trig_01KpuH25ybbNWKtmYgdB2Y5s</code></div>
+        </div>
+        <a class="routine-cta" href="https://claude.ai/code/routines/trig_01KpuH25ybbNWKtmYgdB2Y5s" target="_blank">
+          OPEN IN CLAUDE →
+        </a>
+      </article>
+
+      <!-- Routine 3: Weekly Monday Plan -->
+      <article class="routine-card">
+        <div class="routine-top">
+          <svg class="routine-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6">
+            <circle cx="20" cy="20" r="17" />
+            <circle cx="20" cy="20" r="9" stroke-dasharray="2 3" />
+            <circle cx="20" cy="20" r="2" fill="currentColor" stroke="none" />
+          </svg>
+          <div class="routine-titles">
+            <div class="routine-name">Weekly Monday Plan</div>
+            <div class="routine-sub">每週開工計畫</div>
+          </div>
+          <span class="status-pill"><span class="dot"></span>ACTIVE</span>
+        </div>
+        <div class="routine-meta">
+          <div class="label">執行時間</div><div class="value">每週一 08:30 (Asia/Taipei)</div>
+          <div class="label">Cron (UTC)</div><div class="value"><code>30 0 * * 1</code></div>
+          <div class="label">下次執行</div><div class="value">2026-05-11 (週一) 08:31</div>
+          <div class="label">產出</div><div class="value"><code>docs/weekly/W{n}.md</code></div>
+          <div class="label">Routine ID</div><div class="value"><code>trig_019yiXGF7qwnPdzrV6QrTEmj</code></div>
+        </div>
+        <a class="routine-cta" href="https://claude.ai/code/routines/trig_019yiXGF7qwnPdzrV6QrTEmj" target="_blank">
+          OPEN IN CLAUDE →
+        </a>
+      </article>
+
+      <!-- Routine 4: Weekly Friday Review -->
+      <article class="routine-card">
+        <div class="routine-top">
+          <svg class="routine-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6">
+            <circle cx="20" cy="20" r="17" />
+            <path d="M14 20 L18 24 L26 16" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <div class="routine-titles">
+            <div class="routine-name">Weekly Friday Review</div>
+            <div class="routine-sub">每週收工回顧</div>
+          </div>
+          <span class="status-pill"><span class="dot"></span>ACTIVE</span>
+        </div>
+        <div class="routine-meta">
+          <div class="label">執行時間</div><div class="value">每週五 17:00 (Asia/Taipei)</div>
+          <div class="label">Cron (UTC)</div><div class="value"><code>0 9 * * 5</code></div>
+          <div class="label">下次執行</div><div class="value">2026-05-15 (週五) 17:02</div>
+          <div class="label">產出</div><div class="value"><code>docs/weekly/W{n}-review.md</code></div>
+          <div class="label">Routine ID</div><div class="value"><code>trig_01Nbq7APQPDLhNY1jCPxVFPM</code></div>
+        </div>
+        <a class="routine-cta" href="https://claude.ai/code/routines/trig_01Nbq7APQPDLhNY1jCPxVFPM" target="_blank">
+          OPEN IN CLAUDE →
+        </a>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- 30-day plan -->
+<section id="plan">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-tag">FOUR-WEEK SPRINT</div>
+      <div class="section-title">30-Day Plan</div>
+      <div class="section-zh">分四週的優化路徑 · 每週 3-4 件重點 · Routines 會自動追蹤進度</div>
+    </div>
+
+    <div class="timeline">
+      <article class="week-card w1">
+        <div class="week-label">WEEK 01</div>
+        <div class="week-num">01</div>
+        <div class="week-theme">工程修復 + 內容露出</div>
+        <ul>
+          <li><span class="item-id">W1.1</span> Podcast 露出：Navbar/Footer 加 /podcast，建 /journal aggregator 頁</li>
+          <li><span class="item-id">W1.2</span> Footer 補 5 社群（IG/FB/Line/YT/TikTok/Threads）+ follower 數</li>
+          <li><span class="item-id">W1.3</span> 商品分類重整：6 主 / 30 子 / 10 風格 tag</li>
+          <li><span class="item-id">W1.4</span> PDP 套用 5 段式內容模板（top 20 SKU）</li>
+        </ul>
+      </article>
+
+      <article class="week-card w2">
+        <div class="week-label">WEEK 02</div>
+        <div class="week-num">02</div>
+        <div class="week-theme">轉換漏斗 + 品牌視覺</div>
+        <ul>
+          <li><span class="item-id">W2.1</span> Guest checkout 確認 + 強登 fallback 移除</li>
+          <li><span class="item-id">W2.2</span> 顏色 swatch filter + 尺寸庫存灰階</li>
+          <li><span class="item-id">W2.3</span> Mobile sticky add-to-cart CTA</li>
+          <li><span class="item-id">W2.4</span> 結帳成功頁鈕扣動畫 + Add-to-cart 鈕扣化 + Email header</li>
+        </ul>
+      </article>
+
+      <article class="week-card w3">
+        <div class="week-label">WEEK 03</div>
+        <div class="week-num">03</div>
+        <div class="week-theme">會員復購 + Podcast Ep2</div>
+        <ul>
+          <li><span class="item-id">W3.1</span> D+3 / D+14 / D+30 三條 LINE/Email automation</li>
+          <li><span class="item-id">W3.2</span> Podcast Ep2 上線（東大門採購實戰）+ 5 SKU CTA</li>
+          <li><span class="item-id">W3.3</span> /about 加 60 秒鈕扣故事短片 + timeline</li>
+        </ul>
+      </article>
+
+      <article class="week-card w4">
+        <div class="week-label">WEEK 04</div>
+        <div class="week-num">04</div>
+        <div class="week-theme">內容資產 + SEO 長尾</div>
+        <ul>
+          <li><span class="item-id">W4.1</span> 韓系風格詞典 5 篇（올드머니 / 클린걸 / Y2K / 펨코어 / 발레코어）</li>
+          <li><span class="item-id">W4.2</span> Size chart 視覺化（3 身材區間試穿照）</li>
+          <li><span class="item-id">W4.3</span> 首頁 brandBanner 換鈕扣意象 hero video</li>
+        </ul>
+      </article>
+    </div>
+
+    <div class="priority-row">
+      <span class="marker h"></span>HIGH 優先（直接影響 GMV）
+      <span style="width:24px"></span>
+      <span class="marker m"></span>MEDIUM（半年內影響復購）
+      <span style="width:24px"></span>
+      <span class="marker l"></span>LOW（長期 SEO / 品牌資產）
+    </div>
+  </div>
+</section>
+
+<!-- SWOT -->
+<section id="swot">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-tag">STRATEGIC POSITIONING</div>
+      <div class="section-title">SWOT Analysis</div>
+      <div class="section-zh">優勢 / 劣勢 / 機會 / 威脅 · 客觀盤點不美化</div>
+    </div>
+
+    <div class="swot-grid">
+
+      <div class="swot-quadrant S">
+        <div class="swot-head">
+          <div class="swot-letter">S</div>
+          <div class="swot-titles">
+            <h3>Strengths · 優勢</h3>
+            <div class="swot-zh">必須保留並擴大利用</div>
+          </div>
+        </div>
+        <ul>
+          <li><strong>Schema 完整度頂尖</strong>：60+ collections 從 Coupons 到 MBTI64 全有，Musinsa / 21st 等級</li>
+          <li><strong>AI stack 領先</strong>：NotebookLM Podcast pipeline + 變體色碼滴管 + MBTI64 配對</li>
+          <li><strong>金老佛爺 KOL 50k+ 粉絲</strong>，IG 既有信任資產</li>
+          <li><strong>東大門採購直送</strong>（Sinsang Market 80-90%），供應鏈獨立</li>
+          <li><strong>廣告 CTR 4.56%</strong>（act_441158936893428），遠高於台灣女裝 1.5-2%</li>
+          <li><strong>品牌敘事鉤子明確</strong>：圓形鈕扣 = 連結 + 經典</li>
+          <li><strong>Pixel/CAPI 雙線去重 + UTM 歸因 + Catalog real-time push</strong> 全 ready</li>
+        </ul>
+      </div>
+
+      <div class="swot-quadrant W">
+        <div class="swot-head">
+          <div class="swot-letter">W</div>
+          <div class="swot-titles">
+            <h3>Weaknesses · 劣勢</h3>
+            <div class="swot-zh">30 天必須補完的缺口</div>
+          </div>
+        </div>
+        <ul>
+          <li><strong>Podcast 後台齊全但前台 nav 不通</strong>，內容資產 0 露出</li>
+          <li><strong>商品分類未展開</strong>，3-level 樹狀架構搭好但資料未填</li>
+          <li><strong>鈕扣品牌概念視覺化不足</strong>，全站只在 Footer logo 出現一次</li>
+          <li><strong>品牌 vs 競品定位未公開</strong>：Musinsa（廣度）還是 Mardi（深度）未答</li>
+          <li><strong>商品數可能尚未到 50 SKU</strong>，分類無法支撐</li>
+          <li><strong>首頁太「電商」不夠「韓系沉浸」</strong>，缺 video hero / lookbook / story-grid</li>
+          <li><strong>socialLinks 後台 5 欄前台只 render 3 個</strong>，YT / TikTok 流失</li>
+        </ul>
+      </div>
+
+      <div class="swot-quadrant O">
+        <div class="swot-head">
+          <div class="swot-letter">O</div>
+          <div class="swot-titles">
+            <h3>Opportunities · 機會</h3>
+            <div class="swot-zh">紅利期不抓會被同業搶走</div>
+          </div>
+        </div>
+        <ul>
+          <li><strong>韓國 SS/FW 同步檔期</strong>：台灣女裝獨家做的話 1-2 季先行</li>
+          <li><strong>東大門採購 vlog 內容化</strong>：同業沒人做、UGC 燃料充足</li>
+          <li><strong>Subscription Box 處女地</strong>：Diamond 月配 1 件 = 月經常性收入</li>
+          <li><strong>韓系風格詞典 SEO 紅利</strong>（올드머니 / 클린걸）尚未被中文站佔據</li>
+          <li><strong>太太 KOL 50k 流量轉電商</strong>，目前轉化率推估 &lt; 5%，可衝到 15-25%</li>
+          <li><strong>AI Style Assistant</strong>：技術 stack 全 ready，前台 chat agent 未上</li>
+          <li><strong>Google Ads dev token 申請中</strong>，下個月解鎖再行銷 + Customer Match</li>
+        </ul>
+      </div>
+
+      <div class="swot-quadrant T">
+        <div class="swot-head">
+          <div class="swot-letter">T</div>
+          <div class="swot-titles">
+            <h3>Threats · 威脅</h3>
+            <div class="swot-zh">必須監控、不能忽視</div>
+          </div>
+        </div>
+        <ul>
+          <li><strong>Shopline / Shopify 持續 catch up</strong>：subscription、loyalty 同質化</li>
+          <li><strong>IG Shop + Threads commerce 直購</strong>：流量沒進站直接成交</li>
+          <li><strong>Mardi / Stand Oil / Matin Kim 等韓國品牌</strong>官方台灣店進場</li>
+          <li><strong>Z 世代偏好 TikTok Shop 衝動消費</strong>：陣地戰未打入</li>
+          <li><strong>東大門採購無 moat</strong>：同業可學的 sourcing 等於 commodity</li>
+          <li><strong>GA4 / Meta CAPI 隱私規範收緊</strong>：measurement 持續變難</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Operations -->
+<section id="ops">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-tag">HOW TO OPERATE</div>
+      <div class="section-title">操作指南</div>
+      <div class="section-zh">啟動後 routines 自動跑 · 你只需要管理 3 件事</div>
+    </div>
+
+    <div class="ops-grid">
+      <div class="ops-card">
+        <h3><span class="num">1</span> 看每日產出</h3>
+        <p>Routines 會把 markdown commit 到你的 GitHub repo <code>main</code> branch。直接去看：</p>
+        <ul>
+          <li><a href="https://github.com/mjoalen-dotcom/chickimmiu/tree/main/docs/standups" target="_blank">docs/standups/</a> — 每日早晨 standup</li>
+          <li><a href="https://github.com/mjoalen-dotcom/chickimmiu/tree/main/docs/recaps" target="_blank">docs/recaps/</a> — 每日晚間 recap</li>
+          <li><a href="https://github.com/mjoalen-dotcom/chickimmiu/tree/main/docs/weekly" target="_blank">docs/weekly/</a> — 週一 plan / 週五 review</li>
+          <li><a href="https://github.com/mjoalen-dotcom/chickimmiu/blob/main/docs/ROADMAP_30D.md" target="_blank">docs/ROADMAP_30D.md</a> — 30 天計畫總覽</li>
+        </ul>
+        <p style="margin-top:14px;font-size:12px;color:var(--gray-500)">
+          首次跑（2026-05-11 週一）會自動建立 <code>ROADMAP_30D.md</code>。
+        </p>
+      </div>
+
+      <div class="ops-card">
+        <h3><span class="num">2</span> 暫停 / 修改 / 立即跑</h3>
+        <p>兩種方式：</p>
+        <ul>
+          <li><strong>Web UI</strong>：<a href="https://claude.ai/code/routines" target="_blank">claude.ai/code/routines</a>（可暫停、改 cron、Run now、刪除）</li>
+          <li><strong>跟我講</strong>：「列出 routines」/「暫停 X」/「立刻跑 Y」/「把 X 改成 19:00」</li>
+        </ul>
+        <p style="margin-top:14px;font-size:12px;color:var(--gray-500)">
+          注意：<strong>routines 無法用 CLI 刪除</strong>，只能在 web UI 刪。
+        </p>
+      </div>
+
+      <div class="ops-card">
+        <h3><span class="num">3</span> Push 權限設定</h3>
+        <p>Routines 跑完會試 <code>git push origin main</code>。預設只有 read 權限可能會卡。</p>
+        <ul>
+          <li>裝 <a href="https://github.com/apps/claude-code" target="_blank">Claude Code GitHub App</a> 到 chickimmiu repo</li>
+          <li>授予 <code>contents: write</code> 權限</li>
+          <li>下週一第一次跑時看 routine 詳情頁的 logs</li>
+          <li>如果還是失敗，跟我講改 PR 模式</li>
+        </ul>
+      </div>
+
+      <div class="ops-card">
+        <h3><span class="num">4</span> 30 天後處理</h3>
+        <p>計畫跑完（約 2026-06-08 前後）：</p>
+        <ul>
+          <li>暫停 4 個 routines（不要刪，保留 prompt 模板）</li>
+          <li>更新 <code>ROADMAP_30D.md</code> 為下個 30/60 天計畫</li>
+          <li>重新啟用 routines，prompt 會自動讀新計畫</li>
+          <li>或者決定不需要每日 standup 直接刪除</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="file-tree">
+      <div><span class="dim">chickimmiu/</span></div>
+      <div>├── <span class="dim">docs/</span></div>
+      <div>│   ├── <span class="key">ROADMAP_30D.md</span>          <span class="comment"># 30 天計畫總覽（首次跑時自動建立）</span></div>
+      <div>│   ├── <span class="dim">standups/</span></div>
+      <div>│   │   ├── <span class="key">2026-05-11.md</span>       <span class="comment"># 每日早晨</span></div>
+      <div>│   │   └── <span class="key">2026-05-12.md</span></div>
+      <div>│   ├── <span class="dim">recaps/</span></div>
+      <div>│   │   └── <span class="key">2026-05-11.md</span>       <span class="comment"># 每日晚間</span></div>
+      <div>│   └── <span class="dim">weekly/</span></div>
+      <div>│       ├── <span class="key">W1.md</span>               <span class="comment"># 週一 plan</span></div>
+      <div>│       └── <span class="key">W1-review.md</span>        <span class="comment"># 週五 review</span></div>
+      <div>└── <span class="dim">...</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Brand promise -->
+<div class="brand-promise">
+  <div class="container">
+    <svg class="button-icon" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="50" cy="50" r="44" />
+      <circle cx="40" cy="42" r="3" fill="currentColor" stroke="none" />
+      <circle cx="60" cy="42" r="3" fill="currentColor" stroke="none" />
+      <circle cx="40" cy="58" r="3" fill="currentColor" stroke="none" />
+      <circle cx="60" cy="58" r="3" fill="currentColor" stroke="none" />
+    </svg>
+    <blockquote>
+      "Stories that Stay Classic — 一顆鈕扣，連結布料兩端，<br />
+      也連結你的時尚日常與每一個經典時刻。"
+    </blockquote>
+    <cite>CHIC KIM &amp; MIU · BRAND PROMISE</cite>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <svg class="button-icon" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3">
+      <circle cx="50" cy="50" r="42" />
+      <circle cx="40" cy="42" r="3" fill="currentColor" stroke="none" />
+      <circle cx="60" cy="42" r="3" fill="currentColor" stroke="none" />
+      <circle cx="40" cy="58" r="3" fill="currentColor" stroke="none" />
+      <circle cx="60" cy="58" r="3" fill="currentColor" stroke="none" />
+    </svg>
+    <div class="lines">
+      <div>Sprint Report · Generated 2026-05-08 · Asia/Taipei</div>
+      <div>Routines pipeline · 4 active · next run 2026-05-11</div>
+      <div style="margin-top:12px">
+        <a href="https://claude.ai/code/routines" target="_blank">claude.ai/code/routines</a>
+        ·
+        <a href="https://github.com/mjoalen-dotcom/chickimmiu" target="_blank">github.com/mjoalen-dotcom/chickimmiu</a>
+        ·
+        <a href="https://pre.chickimmiu.com" target="_blank">pre.chickimmiu.com</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
