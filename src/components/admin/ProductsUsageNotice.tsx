@@ -9,6 +9,7 @@ import React from 'react'
  *
  * 注意：標題文字與 emoji 必須與各 panel 自家標題一致，
  * 否則 admin 找不到對應 panel。標題對照來源：
+ *   - ProductMissingImagePanel.tsx  🖼️ 缺圖商品快查
  *   - ProductBulkActions.tsx        ⚡ 批次操作
  *   - ShoplineXlsxImporter.tsx      📥 SHOPLINE BulkUpdateForm 匯入（.xlsx）
  *   - SinsangImporter.tsx           📦 從 Sinsang Market 匯入
@@ -67,6 +68,15 @@ const ProductsUsageNotice: React.FC = () => {
         完整圖文教學請看左側「<strong>⓪ 數據儀表 → 使用說明</strong>」或{' '}
         <a href="/admin/help" style={linkStyle}>/admin/help</a>。
       </p>
+
+      <div style={rowStyle}>
+        <div style={labelStyle}>🖼️ 缺圖商品快查</div>
+        <div>
+          一鍵掃出「封面主圖 + 商品圖庫」皆為空的商品。
+          判定邏輯與前台 / Meta feed 對齊（缺圖會被 ad feed 排除）。
+          清單上的商品名可直接點到該商品編輯頁補圖。
+        </div>
+      </div>
 
       <div style={rowStyle}>
         <div style={labelStyle}>⚡ 批次操作</div>
