@@ -1,30 +1,30 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface Props { settings: Record<string, unknown> }
 
 /**
- * 刮刮樂 — 3 格刮版
- * ───────────────────
- * 後端 `/api/games` POST { action:'play', gameType:'scratch_card' } 回單一獎項，
- * UI 用 3 個獨立 canvas cell 視覺化「三格相符」的傳統刮刮樂體驗。
+ * 刮刮樂 — 單張卡片 + 三連線判定
+ * ─────────────────────────────────
+ * 後端 `/api/games` POST { action:'play', gameType:'scratch_card' } 回
+ * `{ prize, cells:[icon1,icon2,icon3], won }`：
+ *   - won=true  → cells 三個一致（= prize 對應 icon）= BINGO 中獎
+ *   - won=false → cells 兩同一異（差一點）或三全異（完全 miss），prize.type='none'
  *
- * 流程：
- *   - Mount → GET /api/games 取 dailyStatus.scratch_card + prizeTable
- *   - 第一次刮任一格時 → POST /api/games 建 record + 扣點 + 發獎
- *   - 後端確認後 3 格皆 unlock 開放刮，獎項 icon 在 3 格 reveal 同一個（相符）
- *   - 任一格刮滿 45% 即自動揭曉該格；3 格皆揭曉 → 顯示完整結果 + 入帳訊息
+ * UX：
+ *   - 單張大卡片，底層三個 icon 並排，上層 canvas 金色刮層
+ *   - 任意位置刮 → 整張畫布通用，刮到 55% 自動全揭曉
+ *   - 中獎時三個 icon 同步 scale-up + 金色發光動畫
+ *   - 未中時提示「差一點 — 再接再厲」
  *
- * 錯誤態：未登入 / 點數不足 / 今日上限 → 不允許刮、顯示訊息。
+ * 風險揭露：UI 顯示中獎機率（後續 Phase E 從 GameSettings 拉真實數字）。
  */
 
 const POINTS_COST = 30
-const REVEAL_THRESHOLD = 0.45
-const CELL_COUNT = 3
+const REVEAL_THRESHOLD = 0.55
 
-type PrizeEntry = { prize: string; type: string; amount: number }
 type DailyStatus = {
   played: number
   remaining: number
@@ -34,14 +34,17 @@ type DailyStatus = {
 }
 type PrizeResp = {
   prize: { prize: string; type: string; amount: number }
+  cells?: string[]
+  won?: boolean
   pointsSpent: number
 }
 
-const PRIZE_ICONS: Record<string, string> = {
-  points: '🎯',
-  credit: '💰',
-  coupon: '🏷️',
-  badge: '🏅',
+const PRIZE_TYPE_LABELS: Record<string, string> = {
+  points: '會員點數',
+  credit: '購物金',
+  coupon: '優惠券',
+  badge: '專屬徽章',
+  none: '銘謝惠顧',
 }
 
 export function ScratchCardGame({}: Props) {
@@ -51,54 +54,33 @@ export function ScratchCardGame({}: Props) {
   const [playError, setPlayError] = useState<string | null>(null)
 
   const [result, setResult] = useState<PrizeResp | null>(null)
-  const [revealedCells, setRevealedCells] = useState<boolean[]>(() =>
-    Array(CELL_COUNT).fill(false),
-  )
-  const [progressPerCell, setProgressPerCell] = useState<number[]>(() =>
-    Array(CELL_COUNT).fill(0),
-  )
+  const [progress, setProgress] = useState(0)
+  const [revealed, setRevealed] = useState(false)
   const [committing, setCommitting] = useState(false)
   const [committed, setCommitted] = useState(false)
 
-  const canvasRefs = useRef<Array<HTMLCanvasElement | null>>(Array(CELL_COUNT).fill(null))
-  const drawingCellRef = useRef<number | null>(null)
-  const prizeTable = useRef<PrizeEntry[]>([])
-
-  const allRevealed = revealedCells.every(Boolean)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const drawingRef = useRef(false)
 
   const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch('/api/games', { credentials: 'include' })
-      if (res.status === 401) {
-        setAuthError(true)
-        return
-      }
-      if (!res.ok) {
-        setLoadError(`無法載入遊戲狀態（HTTP ${res.status}）`)
-        return
-      }
+      if (res.status === 401) { setAuthError(true); return }
+      if (!res.ok) { setLoadError(`無法載入遊戲狀態（HTTP ${res.status}）`); return }
       const json = (await res.json()) as {
         success: boolean
-        data?: {
-          configs?: Record<string, { prizeTable?: PrizeEntry[] }>
-          dailyStatus?: Record<string, DailyStatus>
-        }
+        data?: { dailyStatus?: Record<string, DailyStatus> }
       }
       setAuthError(false)
       setLoadError(null)
-      const cfg = json.data?.configs?.scratch_card
-      if (cfg?.prizeTable) prizeTable.current = cfg.prizeTable
       if (json.data?.dailyStatus?.scratch_card) setDailyStatus(json.data.dailyStatus.scratch_card)
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : '載入失敗')
     }
   }, [])
 
-  useEffect(() => {
-    fetchStatus()
-  }, [fetchStatus])
+  useEffect(() => { fetchStatus() }, [fetchStatus])
 
-  // 第一次刮任一格時 commit play
   const commitPlay = useCallback(async () => {
     if (committed || committing) return false
     if (!dailyStatus?.canPlay) return false
@@ -133,128 +115,114 @@ export function ScratchCardGame({}: Props) {
     }
   }, [committed, committing, dailyStatus, fetchStatus])
 
-  const initCanvas = useCallback((index: number, canvas: HTMLCanvasElement | null) => {
-    if (!canvas) {
-      canvasRefs.current[index] = null
-      return
-    }
-    canvasRefs.current[index] = canvas
-
-    const dpr = 1
+  const initCanvas = useCallback((canvas: HTMLCanvasElement | null) => {
+    if (!canvas) { canvasRef.current = null; return }
+    canvasRef.current = canvas
     if (canvas.width === 0) {
-      canvas.width = canvas.offsetWidth * dpr
-      canvas.height = canvas.offsetHeight * dpr
+      canvas.width = canvas.offsetWidth
+      canvas.height = canvas.offsetHeight
     }
-
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    ctx.fillStyle = '#C19A5B'
+    // 金色刮層 + 漸層
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
+    gradient.addColorStop(0, '#D4A968')
+    gradient.addColorStop(0.5, '#C19A5B')
+    gradient.addColorStop(1, '#A8814A')
+    ctx.fillStyle = gradient
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    ctx.fillStyle = 'rgba(255,255,255,0.12)'
-    ctx.font = `bold ${10 * dpr}px serif`
-    for (let y = 18 * dpr; y < canvas.height; y += 22 * dpr) {
-      for (let x = 0; x < canvas.width; x += 50 * dpr) {
-        ctx.fillText('CKMU', x, y)
+    // CKMU 浮水印 — 對角排列
+    ctx.fillStyle = 'rgba(255,255,255,0.13)'
+    ctx.font = 'bold 11px serif'
+    for (let y = 22; y < canvas.height; y += 28) {
+      const offsetX = (Math.floor(y / 28) % 2) * 30
+      for (let x = -20 + offsetX; x < canvas.width; x += 70) {
+        ctx.fillText('CHIC KIM & MIU', x, y)
       }
     }
 
-    ctx.font = `bold ${12 * dpr}px serif`
-    ctx.fillStyle = 'rgba(255,255,255,0.75)'
+    // 中央提示
     ctx.textAlign = 'center'
-    ctx.fillText('刮開', canvas.width / 2, canvas.height / 2)
+    ctx.fillStyle = 'rgba(255,255,255,0.95)'
+    ctx.font = 'bold 18px "Noto Serif TC", serif'
+    ctx.fillText('用手指刮開', canvas.width / 2, canvas.height / 2 - 6)
+    ctx.font = '12px sans-serif'
+    ctx.fillStyle = 'rgba(255,255,255,0.75)'
+    ctx.fillText('三個圖案相符即中獎', canvas.width / 2, canvas.height / 2 + 18)
   }, [])
 
-  const checkProgress = useCallback((cellIndex: number) => {
-    const canvas = canvasRefs.current[cellIndex]
-    if (!canvas) return
-    if (revealedCells[cellIndex]) return
+  const checkProgress = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas || revealed) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    const data = imageData.data
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
     let transparent = 0
     for (let i = 3; i < data.length; i += 16) {
       if (data[i] < 128) transparent++
     }
-    const sampledTotal = Math.ceil(data.length / 16)
-    const progress = transparent / sampledTotal
+    const total = Math.ceil(data.length / 16)
+    const p = transparent / total
+    setProgress(p)
 
-    setProgressPerCell((prev) => {
-      const next = [...prev]
-      next[cellIndex] = progress
-      return next
-    })
-
-    if (progress >= REVEAL_THRESHOLD && committed) {
-      setRevealedCells((prev) => {
-        if (prev[cellIndex]) return prev
-        const next = [...prev]
-        next[cellIndex] = true
-        // 全 reveal 時重新拉一次狀態（剩餘次數會更新）
-        if (next.every(Boolean)) fetchStatus()
-        return next
-      })
+    if (p >= REVEAL_THRESHOLD && committed) {
+      setRevealed(true)
+      // 一鼓作氣清掉整張畫布，露出全部結果
+      ctx.globalCompositeOperation = 'destination-out'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      fetchStatus()
     }
-  }, [revealedCells, committed, fetchStatus])
+  }, [revealed, committed, fetchStatus])
 
-  const scratchAt = useCallback((cellIndex: number, e: React.MouseEvent | React.TouchEvent) => {
-    if (drawingCellRef.current !== cellIndex) return
-    if (revealedCells[cellIndex]) return
-    if (!committed) return
-    const canvas = canvasRefs.current[cellIndex]
+  const scratchAt = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (!drawingRef.current || revealed || !committed) return
+    const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-
     const rect = canvas.getBoundingClientRect()
     const scaleX = canvas.width / rect.width
     const scaleY = canvas.height / rect.height
-
-    let clientX: number, clientY: number
+    let cx: number, cy: number
     if ('touches' in e) {
-      clientX = e.touches[0].clientX
-      clientY = e.touches[0].clientY
+      cx = e.touches[0].clientX
+      cy = e.touches[0].clientY
     } else {
-      clientX = e.clientX
-      clientY = e.clientY
+      cx = e.clientX
+      cy = e.clientY
     }
-
-    const x = (clientX - rect.left) * scaleX
-    const y = (clientY - rect.top) * scaleY
-
+    const x = (cx - rect.left) * scaleX
+    const y = (cy - rect.top) * scaleY
     ctx.globalCompositeOperation = 'destination-out'
     ctx.beginPath()
-    ctx.arc(x, y, 18 * scaleX, 0, Math.PI * 2)
+    ctx.arc(x, y, 24 * scaleX, 0, Math.PI * 2)
     ctx.fill()
+    checkProgress()
+  }, [revealed, committed, checkProgress])
 
-    checkProgress(cellIndex)
-  }, [revealedCells, committed, checkProgress])
-
-  const handleStart = useCallback(async (cellIndex: number, e: React.MouseEvent | React.TouchEvent) => {
+  const handleStart = useCallback(async (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault()
-    if (revealedCells[cellIndex]) return
+    if (revealed) return
     if (!committed) {
       const ok = await commitPlay()
       if (!ok) return
     }
-    drawingCellRef.current = cellIndex
-  }, [revealedCells, committed, commitPlay])
+    drawingRef.current = true
+  }, [revealed, committed, commitPlay])
 
-  const handleEnd = useCallback((cellIndex: number) => {
-    if (drawingCellRef.current === cellIndex) {
-      drawingCellRef.current = null
-    }
-    checkProgress(cellIndex)
+  const handleEnd = useCallback(() => {
+    drawingRef.current = false
+    checkProgress()
   }, [checkProgress])
 
   const remaining = dailyStatus?.remaining ?? 0
   const freePlaysLeft = dailyStatus?.freePlaysLeft ?? 0
   const requiresPoints = dailyStatus?.requiresPoints ?? false
+  const canScratch = dailyStatus?.canPlay ?? false
 
-  // ── 未登入 ──
   if (authError) {
     return (
       <div className="max-w-sm mx-auto text-center py-12">
@@ -283,11 +251,12 @@ export function ScratchCardGame({}: Props) {
     )
   }
 
-  const canScratch = dailyStatus?.canPlay ?? false
-  const prizeIcon = result ? (PRIZE_ICONS[result.prize.type] || '🎁') : '🎁'
+  const cells = result?.cells ?? ['🎁', '🎁', '🎁']
+  const won = Boolean(result?.won)
+  const prize = result?.prize
 
   return (
-    <div className="max-w-sm mx-auto text-center">
+    <div className="max-w-md mx-auto text-center px-4">
       {/* Header */}
       <div className="mb-6 p-4 bg-cream-100 rounded-xl border border-cream-200 text-left">
         <div className="flex items-start justify-between mb-2 gap-3">
@@ -298,9 +267,10 @@ export function ScratchCardGame({}: Props) {
           </p>
         </div>
         <ul className="text-xs text-muted-foreground space-y-1">
-          <li>• 刮開三格金色區域揭曉獎項</li>
-          <li>• 每格刮滿 <span className="text-gold-600 font-medium">45%</span> 自動揭曉</li>
-          <li>• 三格圖案相符即代表中獎，獎項已自動入帳</li>
+          <li>• 用手指或滑鼠刮開金色區域</li>
+          <li>• 刮到 <span className="text-gold-600 font-medium">55%</span> 自動全揭曉</li>
+          <li>• 三個圖案相符即中獎，獎品自動入帳</li>
+          <li>• <a href="/games/terms" className="underline text-gold-600">查看中獎機率與遊戲規範</a></li>
         </ul>
         {requiresPoints && freePlaysLeft === 0 && remaining > 0 && (
           <p className="text-xs text-amber-600 mt-2">
@@ -312,70 +282,78 @@ export function ScratchCardGame({}: Props) {
         )}
       </div>
 
-      {/* 3-cell scratch row */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        {Array.from({ length: CELL_COUNT }).map((_, i) => {
-          const cellRevealed = revealedCells[i]
-          return (
-            <div
-              key={i}
-              className="relative aspect-square bg-white rounded-2xl border-2 border-gold-400 overflow-hidden shadow-sm"
-            >
-              {/* Prize reveal layer */}
-              <div className="absolute inset-0 flex items-center justify-center p-2">
-                {!committed ? (
-                  <div className="text-center text-muted-foreground">
-                    <p className="text-xl">🎁</p>
-                  </div>
-                ) : (
-                  <div
-                    className={`w-full h-full rounded-xl flex items-center justify-center text-center transition-all duration-500 ${
-                      cellRevealed
-                        ? 'bg-gradient-to-br from-gold-400 to-amber-500 text-white scale-105'
-                        : 'bg-cream-100'
-                    }`}
-                  >
-                    <p className="text-3xl">{prizeIcon}</p>
-                  </div>
-                )}
-              </div>
+      {/* 單張大卡片 — 底層 3 icon + 上層 canvas 刮層 */}
+      <div className="relative w-full aspect-[3/2] rounded-3xl border-4 border-gold-500 bg-white overflow-hidden shadow-2xl mb-4">
+        {/* 底層內容 */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-cream-50 via-white to-cream-100 p-5">
+          <p className="text-[10px] tracking-[0.4em] text-gold-600 mb-1">SCRATCH &amp; WIN</p>
+          <p className="text-[9px] text-muted-foreground mb-3">CHIC KIM &amp; MIU 限定</p>
 
-              {/* Canvas scratch layer */}
-              {!cellRevealed && canScratch && (
-                <canvas
-                  ref={(el) => initCanvas(i, el)}
-                  className="absolute inset-0 w-full h-full cursor-crosshair touch-none"
-                  onMouseDown={(e) => handleStart(i, e)}
-                  onMouseUp={() => handleEnd(i)}
-                  onMouseLeave={() => handleEnd(i)}
-                  onMouseMove={(e) => scratchAt(i, e)}
-                  onTouchStart={(e) => handleStart(i, e)}
-                  onTouchEnd={() => handleEnd(i)}
-                  onTouchMove={(e) => scratchAt(i, e)}
-                />
-              )}
-            </div>
-          )
-        })}
+          <div className="grid grid-cols-3 gap-2 w-full max-w-[280px]">
+            {cells.map((icon, i) => (
+              <motion.div
+                key={`${i}-${icon}`}
+                initial={{ scale: 1 }}
+                animate={revealed && won ? { scale: [1, 1.15, 1.08], rotate: [0, -5, 5, 0] } : {}}
+                transition={{ duration: 0.6, delay: i * 0.15, repeat: revealed && won ? Infinity : 0, repeatDelay: 1.5 }}
+                className={`aspect-square rounded-2xl flex items-center justify-center text-4xl md:text-5xl border-2 transition-all duration-700 ${
+                  revealed && won
+                    ? 'bg-gradient-to-br from-amber-200 via-gold-300 to-amber-400 border-gold-500 shadow-lg ring-2 ring-gold-300'
+                    : revealed
+                      ? 'bg-cream-100 border-cream-200'
+                      : 'bg-white/80 border-cream-200'
+                }`}
+              >
+                {icon}
+              </motion.div>
+            ))}
+          </div>
+
+          <AnimatePresence>
+            {revealed && (
+              <motion.p
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-3 text-sm font-medium"
+              >
+                {won ? (
+                  <span className="text-gold-600">🎉 三連線中獎！</span>
+                ) : (
+                  <span className="text-muted-foreground">差一點 — 再接再厲</span>
+                )}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* 上層 canvas 刮層 */}
+        {!revealed && canScratch && (
+          <canvas
+            ref={initCanvas}
+            className="absolute inset-0 w-full h-full cursor-crosshair touch-none"
+            onMouseDown={handleStart}
+            onMouseUp={handleEnd}
+            onMouseLeave={handleEnd}
+            onMouseMove={scratchAt}
+            onTouchStart={handleStart}
+            onTouchEnd={handleEnd}
+            onTouchMove={scratchAt}
+          />
+        )}
       </div>
 
-      {/* Aggregate progress bar */}
-      {committed && !allRevealed && (
+      {/* 進度條 */}
+      {committed && !revealed && (
         <div className="mb-4">
           <div className="h-2 bg-cream-200 rounded-full overflow-hidden">
             <motion.div
               className="h-full bg-gradient-to-r from-gold-400 to-gold-600 rounded-full"
-              animate={{
-                width: `${Math.min(
-                  (progressPerCell.reduce((a, b) => a + b, 0) / CELL_COUNT) * 100 / REVEAL_THRESHOLD,
-                  100,
-                )}%`,
-              }}
+              animate={{ width: `${Math.min((progress / REVEAL_THRESHOLD) * 100, 100)}%` }}
               transition={{ duration: 0.2 }}
             />
           </div>
           <p className="text-xs text-muted-foreground mt-1.5">
-            已揭曉 {revealedCells.filter(Boolean).length} / {CELL_COUNT} 格
+            刮開進度 {Math.round((progress / REVEAL_THRESHOLD) * 100)}%
           </p>
         </div>
       )}
@@ -388,23 +366,36 @@ export function ScratchCardGame({}: Props) {
         <p className="text-sm text-rose-600 mb-3">{playError}</p>
       )}
 
-      {/* Result */}
-      {allRevealed && result && (
+      {/* 結果 */}
+      {revealed && prize && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="p-5 rounded-2xl border bg-gold-500/10 border-gold-500/30"
+          className={`p-5 rounded-2xl border ${
+            won
+              ? 'bg-gold-500/10 border-gold-500/30'
+              : 'bg-cream-100 border-cream-200'
+          }`}
         >
-          <p className="font-serif text-xl mb-2">🎉 {result.prize.prize}</p>
-          <p className="text-xs text-muted-foreground">
-            {result.prize.type === 'points' && `已加入點數（+${result.prize.amount}）`}
-            {result.prize.type === 'credit' && `已加入購物金（+NT$${result.prize.amount}）`}
-            {result.prize.type === 'coupon' && '已進寶物箱，可於「我的寶物箱」查詢'}
-            {result.prize.type === 'badge' && '已取得徽章'}
-            {result.pointsSpent > 0 && (
-              <span className="block mt-1 text-amber-600">（扣 {result.pointsSpent} 點）</span>
-            )}
+          <p className="font-serif text-xl mb-2">
+            {won ? '🎉' : '🍂'} {prize.prize}
           </p>
+          {won && (
+            <p className="text-xs text-muted-foreground">
+              {prize.type === 'points' && `已加入點數（+${prize.amount}）`}
+              {prize.type === 'credit' && `已加入購物金（+NT$${prize.amount}）`}
+              {prize.type === 'coupon' && '已進寶物箱，可於「我的寶物箱」查詢'}
+              {prize.type === 'badge' && '已取得徽章'}
+            </p>
+          )}
+          {!won && (
+            <p className="text-xs text-muted-foreground">
+              {PRIZE_TYPE_LABELS.none} — 中獎機率公示請見遊戲規範頁
+            </p>
+          )}
+          {result?.pointsSpent && result.pointsSpent > 0 && (
+            <p className="text-xs text-amber-600 mt-1">（扣 {result.pointsSpent} 點）</p>
+          )}
           <button
             onClick={() => window.location.reload()}
             disabled={remaining <= 0}

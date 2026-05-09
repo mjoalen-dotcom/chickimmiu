@@ -4,9 +4,15 @@ import type { Where } from 'payload'
 
 // ── Types ──
 
-interface PrizeEntry {
+/**
+ * 'none' = 銘謝惠顧（未中獎）。實體刮刮樂/轉盤都有「沒中」格子，
+ * 加進來讓 admin 能設真實中獎率（法規要求公示）+ 給玩家「差一點」的刺激感。
+ */
+export type PrizeType = 'points' | 'credit' | 'coupon' | 'none'
+
+export interface PrizeEntry {
   prize: string
-  type: 'points' | 'credit' | 'coupon'
+  type: PrizeType
   amount: number
   weight: number
 }
@@ -28,15 +34,23 @@ interface DailyPlaysResult {
 
 interface DrawnPrize {
   prize: string
-  type: 'points' | 'credit' | 'coupon'
+  type: PrizeType
   amount: number
+  /** 若來自 PrizePool collection，記下 ID 讓呼叫端可扣 inventoryRemaining */
+  sourcePoolId?: number
+  /** PrizePool.deliveryMethod，給後續 UserRewards 出貨流判斷用 */
+  deliveryMethod?: 'instant_credit' | 'digital_coupon' | 'physical_shipping' | 'manual_contact'
+  /** PrizePool.expiryDays，給 UserRewards expiresAt 計算用 */
+  expiryDays?: number
+  /** PrizePool.couponCode（type=coupon 時可能有） */
+  couponCode?: string
 }
 
 interface RecordGamePlayParams {
   userId: string
   gameType: string
   outcome: 'win' | 'lose' | 'draw' | 'completed'
-  prizeType?: 'points' | 'credit' | 'coupon' | 'badge' | 'none'
+  prizeType?: PrizeType | 'badge'
   prizeAmount?: number
   prizeDescription?: string
   couponCode?: string
@@ -76,14 +90,17 @@ export const GAME_CONFIGS: Record<string, GameConfig> = {
   scratch_card: {
     freePlaysPerDay: { ordinary: 1, bronze: 1, silver: 2, gold: 2, platinum: 3, diamond: 4 },
     pointsCost: 30,
+    // 三連線中獎模式：'none' 銘謝惠顧 weight 50 → 整體中獎率約 50%
+    // Phase B PrizePool 上線後 admin 可從後台調整任一 entry 的 weight
     prizeTable: [
-      { prize: '5 點數', type: 'points', amount: 5, weight: 40 },
-      { prize: '15 點數', type: 'points', amount: 15, weight: 25 },
-      { prize: '30 點數', type: 'points', amount: 30, weight: 15 },
-      { prize: '80 點數', type: 'points', amount: 80, weight: 5 },
-      { prize: 'NT$5 購物金', type: 'credit', amount: 5, weight: 10 },
-      { prize: 'NT$30 購物金', type: 'credit', amount: 30, weight: 3 },
-      { prize: '95 折優惠券', type: 'coupon', amount: 5, weight: 2 },
+      { prize: '銘謝惠顧', type: 'none', amount: 0, weight: 50 },
+      { prize: '5 點數', type: 'points', amount: 5, weight: 22 },
+      { prize: '15 點數', type: 'points', amount: 15, weight: 13 },
+      { prize: '30 點數', type: 'points', amount: 30, weight: 7 },
+      { prize: '80 點數', type: 'points', amount: 80, weight: 2 },
+      { prize: 'NT$5 購物金', type: 'credit', amount: 5, weight: 4 },
+      { prize: 'NT$30 購物金', type: 'credit', amount: 30, weight: 1.5 },
+      { prize: '95 折優惠券', type: 'coupon', amount: 5, weight: 0.5 },
     ],
     dailyLimit: 8,
   },
@@ -245,34 +262,169 @@ export async function checkDailyPlays(
 
 // ── 2. drawPrize ──
 
-export function drawPrize(
+const TIER_BONUS_MAP: Record<string, number> = {
+  ordinary: 0,
+  bronze: 0.02,
+  silver: 0.04,
+  gold: 0.06,
+  platinum: 0.08,
+  diamond: 0.1,
+}
+
+interface PoolPrize {
+  id: number
+  name: string
+  prizeType: PrizeType
+  amount: number
+  weight: number
+  couponCode?: string
+  deliveryMethod?: DrawnPrize['deliveryMethod']
+  expiryDays?: number
+  tierBoost?: Record<string, number>
+}
+
+/**
+ * 從 PrizePools collection 撈所有「對該遊戲有效」的獎品。
+ * 過濾條件：
+ *   - active=true
+ *   - eligibleGames includes gameType
+ *   - inventoryUnlimited OR inventoryRemaining > 0
+ *   - 在 startsAt..endsAt 時間區間內（任一未設則該邊不限）
+ * 回傳空陣列代表該遊戲尚未在 PrizePool 設定 → 呼叫端應 fallback 到 GAME_CONFIGS
+ */
+async function loadPoolPrizes(gameType: string): Promise<PoolPrize[]> {
+  const payload = await getPayload({ config })
+  const now = new Date().toISOString()
+
+  let res: { docs: unknown[] }
+  try {
+    res = await payload.find({
+      collection: 'prize-pools',
+      where: {
+        and: [
+          { active: { equals: true } },
+          { eligibleGames: { contains: gameType } },
+          {
+            or: [
+              { inventoryUnlimited: { equals: true } },
+              { inventoryRemaining: { greater_than: 0 } },
+            ],
+          },
+          { or: [{ startsAt: { exists: false } }, { startsAt: { less_than_equal: now } }] },
+          { or: [{ endsAt: { exists: false } }, { endsAt: { greater_than_equal: now } }] },
+        ],
+      } as never,
+      limit: 200,
+      depth: 0,
+    })
+  } catch {
+    // PrizePools table 還沒 migrate 或 query 失敗 — fallback 到 hardcoded
+    return []
+  }
+
+  return res.docs.map((d) => {
+    const r = d as Record<string, unknown>
+    const tierBoost = (r.tierBoost as Record<string, number> | undefined) || undefined
+    return {
+      id: Number(r.id),
+      name: String(r.name || '獎品'),
+      prizeType: (r.prizeType as PrizeType) || 'none',
+      amount: Number(r.amount || 0),
+      weight: Number(r.weight || 0),
+      couponCode: typeof r.couponCode === 'string' ? r.couponCode : undefined,
+      deliveryMethod: r.deliveryMethod as DrawnPrize['deliveryMethod'],
+      expiryDays: typeof r.expiryDays === 'number' ? r.expiryDays : undefined,
+      tierBoost,
+    }
+  }).filter((p) => p.weight > 0)
+}
+
+/**
+ * 中獎後扣 PrizePool.inventoryRemaining。Fire-and-forget — 失敗不擋發獎流程。
+ * 限量獎品 race condition 風險可接受（同時搶最後一個可能 oversell 1-2 個，可由
+ * admin 後台手動修正；Phase E 之後可加 row-level lock）。
+ */
+async function decrementPoolInventory(poolId: number): Promise<void> {
+  try {
+    const payload = await getPayload({ config })
+    const doc = await payload.findByID({ collection: 'prize-pools', id: poolId, depth: 0 })
+    const data = doc as unknown as Record<string, unknown>
+    if (data.inventoryUnlimited === true) return
+    const remaining = Number(data.inventoryRemaining || 0)
+    if (remaining <= 0) return
+    await (payload.update as Function)({
+      collection: 'prize-pools',
+      id: poolId,
+      data: { inventoryRemaining: Math.max(0, remaining - 1) } as never,
+    })
+  } catch (err) {
+    console.error('decrementPoolInventory failed', { poolId, err })
+  }
+}
+
+export async function drawPrize(
   gameType: string,
   tierSlug: string,
   creditScore: number = 100,
-): DrawnPrize | null {
+): Promise<DrawnPrize | null> {
+  const tierBonus = TIER_BONUS_MAP[tierSlug] ?? 0
+  const creditBonus = (creditScore / 100) * 0.05
+
+  // 1) 優先嘗試從 PrizePools 撈 admin 設定的獎品
+  const poolPrizes = await loadPoolPrizes(gameType)
+  if (poolPrizes.length > 0) {
+    const maxAmount = Math.max(...poolPrizes.map((p) => p.amount), 1)
+    const adjusted = poolPrizes.map((p) => {
+      const tierMultiplier = p.tierBoost?.[tierSlug] ?? 1
+      if (p.prizeType === 'none') {
+        return { ...p, adjustedWeight: p.weight * tierMultiplier }
+      }
+      const relativeValue = p.amount / maxAmount
+      const boost = 1 + relativeValue * (tierBonus + creditBonus)
+      return { ...p, adjustedWeight: p.weight * boost * tierMultiplier }
+    })
+    const total = adjusted.reduce((s, e) => s + e.adjustedWeight, 0)
+    if (total > 0) {
+      let r = Math.random() * total
+      for (const e of adjusted) {
+        r -= e.adjustedWeight
+        if (r <= 0) {
+          return {
+            prize: e.name,
+            type: e.prizeType,
+            amount: e.amount,
+            sourcePoolId: e.id,
+            deliveryMethod: e.deliveryMethod,
+            expiryDays: e.expiryDays,
+            couponCode: e.couponCode,
+          }
+        }
+      }
+      const last = adjusted[adjusted.length - 1]
+      return {
+        prize: last.name,
+        type: last.prizeType,
+        amount: last.amount,
+        sourcePoolId: last.id,
+        deliveryMethod: last.deliveryMethod,
+        expiryDays: last.expiryDays,
+        couponCode: last.couponCode,
+      }
+    }
+  }
+
+  // 2) Fallback: 用 GAME_CONFIGS 寫死的 prizeTable（admin 還沒 setup PrizePool 時的兜底）
   const gameConfig = GAME_CONFIGS[gameType]
   if (!gameConfig || gameConfig.prizeTable.length === 0) return null
 
-  // Higher tiers and credit scores get slight weight boosts to better prizes
-  // Tier bonus: ordinary=0, bronze=0.02, silver=0.04, gold=0.06, platinum=0.08, diamond=0.1
-  const tierBonusMap: Record<string, number> = {
-    ordinary: 0,
-    bronze: 0.02,
-    silver: 0.04,
-    gold: 0.06,
-    platinum: 0.08,
-    diamond: 0.1,
-  }
-  const tierBonus = tierBonusMap[tierSlug] ?? 0
-  // Credit score bonus: max 0.05 extra at 100 credit score
-  const creditBonus = (creditScore / 100) * 0.05
-
-  // Adjust weights: better prizes (higher amount) get a small boost
   const sortedByAmount = [...gameConfig.prizeTable].sort((a, b) => a.amount - b.amount)
   const maxAmount = sortedByAmount[sortedByAmount.length - 1]?.amount ?? 1
 
   const adjustedEntries = gameConfig.prizeTable.map((entry) => {
-    const relativeValue = entry.amount / maxAmount // 0-1, higher = better prize
+    if (entry.type === 'none') {
+      return { ...entry, adjustedWeight: entry.weight }
+    }
+    const relativeValue = entry.amount / maxAmount
     const boost = 1 + relativeValue * (tierBonus + creditBonus)
     return { ...entry, adjustedWeight: entry.weight * boost }
   })
@@ -287,9 +439,64 @@ export function drawPrize(
     }
   }
 
-  // Fallback to last entry
   const last = adjustedEntries[adjustedEntries.length - 1]
   return { prize: last.prize, type: last.type, amount: last.amount }
+}
+
+/** 對外 export 給 API route 中獎後 fire-and-forget 扣庫存用 */
+export { decrementPoolInventory }
+
+// ── 2.5 generateScratchCells ──
+/**
+ * 給定中獎/未中獎結果，產生「三連線刮刮樂」要顯示的三個 icon。
+ *
+ * 中獎時：三 icon 一致（= prize.icon）→ 視覺 BINGO 三連線
+ * 未中獎時：50% 機率產出「兩同一異」（差一點，最大化心理刺激），
+ *           50% 機率產出「三全異」（完全 miss）
+ *
+ * Pure 函數無副作用，方便單元測試 + 由 admin 後台 preview 用。
+ */
+export const SCRATCH_PRIZE_ICONS: Record<PrizeType | 'badge', string> = {
+  points: '🎯',
+  credit: '💰',
+  coupon: '🏷️',
+  none: '🍂',
+  badge: '🏅',
+}
+
+const SCRATCH_DISTRACTOR_POOL = ['🎯', '💰', '🏷️', '🏅', '🌸', '🦋', '⭐']
+
+export function generateScratchCells(opts: {
+  won: boolean
+  prizeIcon: string | null
+  closeMissChance?: number // 預設 0.5；未中獎時「兩同一異」的機率
+}): string[] {
+  const { won, prizeIcon } = opts
+  const closeMissChance = opts.closeMissChance ?? 0.5
+
+  if (won && prizeIcon) {
+    return [prizeIcon, prizeIcon, prizeIcon]
+  }
+
+  // 未中獎：先決定要不要「兩同一異」
+  const closeMiss = Math.random() < closeMissChance
+  const pool = SCRATCH_DISTRACTOR_POOL.filter((i) => i !== prizeIcon)
+
+  if (closeMiss && prizeIcon) {
+    // 兩個 prizeIcon + 一個 distractor，三個位置打散
+    const distractor = pool[Math.floor(Math.random() * pool.length)] || '🌸'
+    const cells = [prizeIcon, prizeIcon, distractor]
+    // Fisher-Yates shuffle
+    for (let i = cells.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[cells[i], cells[j]] = [cells[j], cells[i]]
+    }
+    return cells
+  }
+
+  // 完全 miss：三個都不同
+  const shuffled = [...pool].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, 3)
 }
 
 // ── 3. recordGamePlay ──

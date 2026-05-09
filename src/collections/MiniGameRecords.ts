@@ -100,6 +100,10 @@ export const MiniGameRecords: CollectionConfig = {
             { label: '購物金', value: 'credit' },
             { label: '優惠券', value: 'coupon' },
             { label: '徽章', value: 'badge' },
+            // Phase B PrizePool 新增的類型
+            { label: '電影票', value: 'movie_ticket' },
+            { label: '免運券', value: 'free_shipping' },
+            { label: '實體贈品', value: 'physical_gift' },
             { label: '無', value: 'none' },
           ],
         },
@@ -182,27 +186,45 @@ export const MiniGameRecords: CollectionConfig = {
       // 規則：
       //   - 只在 create 時觸發（update 不重複建）
       //   - result.outcome === 'win' 才算中獎
-      //   - prizeType ∈ {coupon, badge} → 建 UserRewards
+      //   - prizeType ∈ {coupon, badge, movie_ticket, free_shipping, physical_gift} → 建 UserRewards
       //   - prizeType ∈ {points, credit} → 跳過（已直接寫入 user.points / user.shoppingCredit）
       //   - prizeType = 'none' 或未設 → 跳過
-      // 新獎項（電影券 / 免運券 / 實體贈品）之後擴充 MiniGameRecords.prizeType 時同步補到 map。
+      //
+      // Phase D 接通 PrizePool.deliveryMethod：
+      //   - metadata.deliveryMethod = 'physical_shipping' → requiresPhysicalShipping=true
+      //     （隨下次訂單寄出，wave 會自動 attach 到 checkout）
+      //   - metadata.deliveryMethod = 'digital_coupon' / 'instant_credit' → requiresPhysicalShipping=false
+      //   - metadata.expiryDays / couponCode 也由 PrizePool 帶過來
       async ({ doc, operation, req }) => {
         if (operation !== 'create') return doc
         const result = (doc as { result?: Record<string, unknown> }).result
         if (!result || result.outcome !== 'win') return doc
 
+        const metadata = (doc as { metadata?: Record<string, unknown> }).metadata || {}
+        const deliveryMethod = (metadata.deliveryMethod as string | undefined) || 'instant_credit'
+        const expiryDays = typeof metadata.expiryDays === 'number' ? metadata.expiryDays : 365
+        const isPhysicalDelivery = deliveryMethod === 'physical_shipping'
+
+        const prizeType = typeof result.prizeType === 'string' ? result.prizeType : undefined
+
+        // PrizePool prizeType → UserRewards.rewardType mapping。
+        // movie_ticket 依 deliveryMethod 分流到 physical / digital。
         const rewardTypeMap: Record<string, RewardType> = {
           coupon: 'coupon',
           badge: 'badge',
+          movie_ticket: isPhysicalDelivery ? 'movie_ticket_physical' : 'movie_ticket_digital',
+          free_shipping: 'free_shipping_coupon',
+          physical_gift: 'gift_physical',
         }
-        const prizeType = typeof result.prizeType === 'string' ? result.prizeType : undefined
         const rewardType: RewardType | undefined = prizeType ? rewardTypeMap[prizeType] : undefined
         if (!rewardType) return doc
 
-        // 預設 365 天有效期；admin 後續可手動調整
-        const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-        // badge / coupon 不需實體寄出；之後的 physical / gift_physical 類型再開回 true
-        const requiresPhysicalShipping = false
+        const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString()
+        // physical_gift / movie_ticket_physical 一律需出貨；其他依 deliveryMethod
+        const requiresPhysicalShipping =
+          isPhysicalDelivery ||
+          rewardType === 'gift_physical' ||
+          rewardType === 'movie_ticket_physical'
 
         const playerId = (doc as { player?: unknown }).player
         const displayName =

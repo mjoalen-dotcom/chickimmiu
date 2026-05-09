@@ -12,7 +12,11 @@ import {
   performDailyCheckin,
   getTpeDateString,
   drawMovieTicket,
+  generateScratchCells,
+  SCRATCH_PRIZE_ICONS,
+  decrementPoolInventory,
 } from '@/lib/games/gameEngine'
+import { checkMonthlyValueCap, detectAbuse, estimatePrizeValueTwd } from '@/lib/games/abuseDetection'
 import { startChallenge, submitChallenge } from '@/lib/games/fashionChallengeEngine'
 
 /**
@@ -53,6 +57,23 @@ export async function GET(req: NextRequest) {
       consecutiveCheckIns: (userData.consecutiveCheckIns as number) || 0,
       lastCheckInDate,
       alreadyCheckedToday: Boolean(lastCheckInDate) && lastCheckInDate === todayTpe,
+    }
+
+    // Phase C：遊戲規範同意書狀態
+    const gameSettings = (await payload.findGlobal({ slug: 'game-settings' })) as unknown as Record<string, unknown>
+    const termsCfg = (gameSettings.terms as Record<string, unknown> | undefined) || {}
+    const complianceCfg = (gameSettings.compliance as Record<string, unknown> | undefined) || {}
+    const acceptance = (userData.gameTermsAcceptance as Record<string, unknown> | undefined) || {}
+    const currentTermsVersion = (termsCfg.version as string) || '0'
+    const userAcceptedVersion = (acceptance.acceptedVersion as string) || ''
+    const termsEnabled = termsCfg.enabled !== false
+    const termsState = {
+      enabled: termsEnabled,
+      currentVersion: currentTermsVersion,
+      userAcceptedVersion: userAcceptedVersion || null,
+      requiresAcceptance: termsEnabled && userAcceptedVersion !== currentTermsVersion,
+      shortSummary: (termsCfg.shortSummary as string) || '',
+      requireAdultConfirmation: complianceCfg.requireAdultConfirmation !== false,
     }
 
     // Get top 5 for leaderboard summary (all-time)
@@ -124,6 +145,7 @@ export async function GET(req: NextRequest) {
         playerStats: stats,
         leaderboard: topPlayers,
         checkinState,
+        termsState,
       },
     })
   } catch (error) {
@@ -156,6 +178,26 @@ export async function POST(req: NextRequest) {
         { success: false, error: 'Missing action' },
         { status: 400 },
       )
+    }
+
+    // Phase C：後端 guard — 沒同意遊戲規範就擋（防 client modal 被 bypass）
+    const settingsForTerms = (await payload.findGlobal({ slug: 'game-settings' })) as unknown as Record<string, unknown>
+    const termsCfg = (settingsForTerms.terms as Record<string, unknown> | undefined) || {}
+    if (termsCfg.enabled !== false) {
+      const currentTermsVersion = (termsCfg.version as string) || '0'
+      const acceptance = (userData.gameTermsAcceptance as Record<string, unknown> | undefined) || {}
+      const userAcceptedVersion = (acceptance.acceptedVersion as string) || ''
+      if (userAcceptedVersion !== currentTermsVersion) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: '請先閱讀並同意遊戲規範',
+            requiresTermsAcceptance: true,
+            currentVersion: currentTermsVersion,
+          },
+          { status: 403 },
+        )
+      }
     }
 
     // ── Action: checkin ──
@@ -319,7 +361,12 @@ export async function POST(req: NextRequest) {
       }
       const creditScore = (userData.creditScore as number) || 100
 
-      const prize = drawPrize(gameType, tierSlug, creditScore)
+      // Phase E：月度獎品總值上限 — 達上限強制中銘謝惠顧
+      const complianceCfg = (settingsForTerms.compliance as Record<string, unknown> | undefined) || {}
+      const monthlyCap = Number(complianceCfg.monthlyMaxValuePerUser || 0)
+      const capCheck = await checkMonthlyValueCap(userId, monthlyCap)
+
+      let prize = await drawPrize(gameType, tierSlug, creditScore)
       if (!prize) {
         return NextResponse.json(
           { success: false, error: 'No prizes available' },
@@ -327,18 +374,60 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      const isWin = prize.amount > gameConfig.pointsCost
+      // 上限已達 → 強制改為銘謝惠顧
+      if (capCheck.exceeded && prize.type !== 'none') {
+        prize = { prize: '銘謝惠顧（已達月度獎品上限）', type: 'none', amount: 0 }
+      }
+
+      // 'none' = 銘謝惠顧 → won=false（即使原本 prize.amount > pointsCost 也不算贏）
+      const won = prize.type !== 'none'
+      const isWin = won && prize.amount > gameConfig.pointsCost
+
+      // 刮刮樂三連線 UI：產生 3 個 icon — 中獎時三同、未中時兩同一異或全異
+      const cells =
+        gameType === 'scratch_card'
+          ? generateScratchCells({
+              won,
+              prizeIcon: won
+                ? SCRATCH_PRIZE_ICONS[prize.type as keyof typeof SCRATCH_PRIZE_ICONS] || SCRATCH_PRIZE_ICONS.coupon
+                : SCRATCH_PRIZE_ICONS.coupon,
+            })
+          : undefined
+
+      // Phase E：異常偵測 — 短時間中獎過多標記 record 給 admin 查
+      const abnormalThreshold = Number(complianceCfg.abnormalThresholdPerHour || 0)
+      const abuseCheck = won
+        ? await detectAbuse(userId, abnormalThreshold)
+        : { abnormal: false, winsLastHour: 0, threshold: abnormalThreshold }
+
       const record = await recordGamePlay({
         userId,
         gameType,
-        outcome: isWin ? 'win' : 'completed',
+        outcome: won ? (isWin ? 'win' : 'completed') : 'lose',
         prizeType: prize.type,
         prizeAmount: prize.amount,
         prizeDescription: prize.prize,
+        couponCode: prize.couponCode,
         pointsSpent,
         tierSlug,
         creditScore,
+        metadata: {
+          ...(cells ? { cells, won } : {}),
+          ...(prize.sourcePoolId ? { sourcePoolId: prize.sourcePoolId } : {}),
+          ...(prize.deliveryMethod ? { deliveryMethod: prize.deliveryMethod } : {}),
+          ...(prize.expiryDays ? { expiryDays: prize.expiryDays } : {}),
+          ...(capCheck.exceeded ? { monthlyCapExceeded: true, capRemaining: 0 } : {}),
+          ...(abuseCheck.abnormal
+            ? { abuseFlag: true, winsLastHour: abuseCheck.winsLastHour, abuseThreshold: abuseCheck.threshold }
+            : {}),
+          prizeValueTwd: estimatePrizeValueTwd(prize.type, prize.amount),
+        },
       })
+
+      // 中獎且來自 PrizePool 限量獎品 → fire-and-forget 扣庫存
+      if (won && prize.sourcePoolId) {
+        void decrementPoolInventory(prize.sourcePoolId)
+      }
 
       await updateLeaderboard(userId, prize.amount, isWin)
       const newBadges = await checkAndAwardBadges(userId)
@@ -350,6 +439,7 @@ export async function POST(req: NextRequest) {
           pointsSpent,
           record,
           newBadges,
+          ...(cells ? { cells, won } : {}),
         },
       })
     }
