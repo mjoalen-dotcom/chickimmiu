@@ -40,7 +40,12 @@ export const recountCategoriesEndpoint: Endpoint = {
 
       const { totalDocs } = await req.payload.count({
         collection: 'products',
-        where: { category: { equals: id } },
+        where: {
+          and: [
+            { category: { equals: id } },
+            { status: { equals: 'published' } },
+          ],
+        },
       })
 
       const beforeRaw = catRecord.productCount

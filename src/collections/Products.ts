@@ -363,18 +363,23 @@ export const Products: CollectionConfig = {
             console.warn('[Products.afterChange] catalog push failed (non-fatal):', err)
           })
       },
-      // PR-γ: 同步 categories.productCount
+      // PR-γ: 同步 categories.productCount（語意 = published 數量）
+      // 用 (category, isPublished) 兩維度算貢獻：舊 -1、新 +1，差異才動 DB。
+      // status 從 published ↔ draft/archived 切換也要正確 bump。
       // 任何 hook 失敗都不能擋商品存檔（包在 try/catch、log warn）。
       async ({ doc, previousDoc, req, operation }) => {
         try {
-          const oldId = getCategoryId((previousDoc as Record<string, unknown> | undefined)?.category)
-          const newId = getCategoryId((doc as Record<string, unknown> | undefined)?.category)
-          if (operation === 'create') {
-            if (newId) await bumpCategoryCount(req.payload, newId, +1)
-          } else if (operation === 'update' && oldId !== newId) {
-            if (oldId) await bumpCategoryCount(req.payload, oldId, -1)
-            if (newId) await bumpCategoryCount(req.payload, newId, +1)
-          }
+          const prev = previousDoc as Record<string, unknown> | undefined
+          const next = doc as Record<string, unknown> | undefined
+          const oldCat = operation === 'create' ? null : getCategoryId(prev?.category)
+          const newCat = getCategoryId(next?.category)
+          const wasPublished = operation !== 'create' && prev?.status === 'published'
+          const isPublished = next?.status === 'published'
+          const oldKey = wasPublished && oldCat ? oldCat : null
+          const newKey = isPublished && newCat ? newCat : null
+          if (oldKey === newKey) return
+          if (oldKey) await bumpCategoryCount(req.payload, oldKey, -1)
+          if (newKey) await bumpCategoryCount(req.payload, newKey, +1)
         } catch (e) {
           req.payload.logger?.warn?.(
             `[Products.afterChange] category count bump failed: ${(e as Error).message}`,
@@ -401,10 +406,12 @@ export const Products: CollectionConfig = {
             console.warn('[Products.afterDelete] catalog delete failed (non-fatal):', err)
           })
       },
-      // PR-γ: 同步 categories.productCount -1
+      // PR-γ: 同步 categories.productCount -1（只有 published 才扣，draft/archived 從不在計數中）
       async ({ doc, req }) => {
         try {
-          const id = getCategoryId((doc as Record<string, unknown> | undefined)?.category)
+          const d = doc as Record<string, unknown> | undefined
+          if (d?.status !== 'published') return
+          const id = getCategoryId(d?.category)
           if (id) await bumpCategoryCount(req.payload, id, -1)
         } catch (e) {
           req.payload.logger?.warn?.(
