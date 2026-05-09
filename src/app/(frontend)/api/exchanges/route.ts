@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { parsePayloadListQuery } from '@/lib/payloadRestShim'
 
 /**
+ * GET /api/exchanges?limit=...&where[...]=...
+ * ───────────────────────────────────────────
+ * 同 /api/returns GET — file-based route 攔截了 Payload catch-all 的 list endpoint，
+ * 這裡委派到 `payload.find()`，read access 由 Exchanges.access.read 套用。
+ *
  * POST /api/exchanges
  *   body: {
  *     orderId: number | string,
@@ -36,6 +42,34 @@ type IncomingItem = {
   newVariant?: unknown
   quantity?: unknown
   reason?: unknown
+}
+
+export async function GET(request: Request): Promise<Response> {
+  const payload = await getPayload({ config })
+  const { user } = await payload.auth({ headers: request.headers })
+  if (!user) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
+  const url = new URL(request.url)
+  const { limit, page, depth, sort, where } = parsePayloadListQuery(url)
+
+  try {
+    const result = await payload.find({
+      collection: 'exchanges',
+      limit,
+      page,
+      depth,
+      ...(sort ? { sort } : {}),
+      ...(where ? { where } : {}),
+      user,
+      overrideAccess: false,
+    })
+    return NextResponse.json(result)
+  } catch (err) {
+    console.error('[api/exchanges GET] failed:', err)
+    return NextResponse.json({ error: 'internal' }, { status: 500 })
+  }
 }
 
 export async function POST(request: Request): Promise<Response> {
