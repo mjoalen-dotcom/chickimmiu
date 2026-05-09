@@ -46,6 +46,9 @@ export const Users: CollectionConfig = {
     components: {
       beforeListTable: [
         {
+          path: '@/components/admin/ShoplineCustomerImporter',
+        },
+        {
           path: '@/components/admin/ImportExportButtons',
           clientProps: { collectionSlug: 'users' },
         },

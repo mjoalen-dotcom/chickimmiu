@@ -50,6 +50,7 @@ import { default as default_da45625f08d6c78051d9389e2ef13996 } from '@/component
 import { default as default_75a69f86e8fd1756deda3bb508c9e126 } from '@/components/admin/ProductSaveToast'
 import { default as default_dad6df07f5ce6091043bf2907b451c8b } from '@/components/admin/ProductDuplicateButton'
 import { default as default_2155efc8584149395a6a7408e7342b75 } from '@/components/admin/MemberTreasureBoxPanel'
+import { default as default_f9f3bd50e8c71daeaf79c761e8047d29 } from '@/components/admin/ShoplineCustomerImporter'
 import { default as default_7daf04b168de0230737ba8fdd5db8d46 } from '@/components/admin/MediaUploadRulesNotice'
 import { FolderTableCell as FolderTableCell_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 import { FolderField as FolderField_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
@@ -130,6 +131,7 @@ export const importMap = {
   "@/components/admin/ProductSaveToast#default": default_75a69f86e8fd1756deda3bb508c9e126,
   "@/components/admin/ProductDuplicateButton#default": default_dad6df07f5ce6091043bf2907b451c8b,
   "@/components/admin/MemberTreasureBoxPanel#default": default_2155efc8584149395a6a7408e7342b75,
+  "@/components/admin/ShoplineCustomerImporter#default": default_f9f3bd50e8c71daeaf79c761e8047d29,
   "@/components/admin/MediaUploadRulesNotice#default": default_7daf04b168de0230737ba8fdd5db8d46,
   "@payloadcms/next/rsc#FolderTableCell": FolderTableCell_f9c02e79a4aed9a3924487c0cd4cafb1,
   "@payloadcms/next/rsc#FolderField": FolderField_f9c02e79a4aed9a3924487c0cd4cafb1,
