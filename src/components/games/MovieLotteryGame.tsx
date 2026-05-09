@@ -193,11 +193,7 @@ export function MovieLotteryGame({ settings }: Props) {
         <div className="absolute inset-0 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
           <AnimatePresence mode="wait">
             {drawing ? (
-              <motion.div
-                key="drawing"
-                animate={{ rotateY: [0, 180, 360, 540, 720] }}
-                transition={{ duration: 2.5, ease: 'easeInOut' }}
-              >
+              <motion.div key="drawing" className="animate-movie-lottery-spin">
                 <Ticket size={64} className="text-white" />
               </motion.div>
             ) : result?.won ? (
