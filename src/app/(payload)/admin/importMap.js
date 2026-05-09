@@ -36,6 +36,7 @@ import { default as default_5c3d166f438f19c8fb2f98618e6617ec } from '@/component
 import { default as default_e96600431ff221191298fd821860e529 } from '@/components/admin/ColorEyedropperField'
 import { default as default_59cc8ca8a29697d2ab08eacf91828a68 } from '@/components/admin/MBTIAutoRecommendField'
 import { default as default_b2c226491d0a75ead0fc7b037ffcfa6f } from '@/components/admin/ProductsUsageNotice'
+import { default as default_8d40dda01b6bebf3396716da20bdcd98 } from '@/components/admin/ProductMissingImagePanel'
 import { default as default_4ae243489190f3c0d72c150aec1cbca3 } from '@/components/admin/ProductBulkActions'
 import { default as default_5bac33fcb1b79c680fc9b0258f0347a3 } from '@/components/admin/ShoplineXlsxImporter'
 import { default as default_e668e9854d72bcea32f70845627cdf0d } from '@/components/admin/SinsangImporter'
@@ -61,6 +62,7 @@ import { default as default_6935afc6ffc87a7d434a45937e35c56e } from '@/component
 import { default as default_340cf3538fa47d0416e0abd461790ca4 } from '@/components/admin/AdminStyles'
 import { default as default_550b036f5ba594f02403b10f8dc4b8c7 } from '@/components/admin/NavScrollPersist'
 import { default as default_c4734b417dd2f37db2adf0e6ec330b48 } from '@/components/admin/AdminUserMenu'
+import { default as default_365d92937231ef8e59f225db1998a642 } from '@/components/admin/AdminBackButton'
 import { default as default_b49611ccd828469519fd79e264a9eb51 } from '@/components/admin/HelpView'
 import { default as default_b3d544e796f2e72482a7e1ca06c557a3 } from '@/components/admin/MemberAnalyticsView'
 import { default as default_ff00d70a4277286e7d2a45db4d136e59 } from '@/components/admin/RepeatPurchaseView'
@@ -109,6 +111,7 @@ export const importMap = {
   "@/components/admin/ColorEyedropperField#default": default_e96600431ff221191298fd821860e529,
   "@/components/admin/MBTIAutoRecommendField#default": default_59cc8ca8a29697d2ab08eacf91828a68,
   "@/components/admin/ProductsUsageNotice#default": default_b2c226491d0a75ead0fc7b037ffcfa6f,
+  "@/components/admin/ProductMissingImagePanel#default": default_8d40dda01b6bebf3396716da20bdcd98,
   "@/components/admin/ProductBulkActions#default": default_4ae243489190f3c0d72c150aec1cbca3,
   "@/components/admin/ShoplineXlsxImporter#default": default_5bac33fcb1b79c680fc9b0258f0347a3,
   "@/components/admin/SinsangImporter#default": default_e668e9854d72bcea32f70845627cdf0d,
@@ -134,6 +137,7 @@ export const importMap = {
   "@/components/admin/AdminStyles#default": default_340cf3538fa47d0416e0abd461790ca4,
   "@/components/admin/NavScrollPersist#default": default_550b036f5ba594f02403b10f8dc4b8c7,
   "@/components/admin/AdminUserMenu#default": default_c4734b417dd2f37db2adf0e6ec330b48,
+  "@/components/admin/AdminBackButton#default": default_365d92937231ef8e59f225db1998a642,
   "@/components/admin/HelpView#default": default_b49611ccd828469519fd79e264a9eb51,
   "@/components/admin/MemberAnalyticsView#default": default_b3d544e796f2e72482a7e1ca06c557a3,
   "@/components/admin/RepeatPurchaseView#default": default_ff00d70a4277286e7d2a45db4d136e59,

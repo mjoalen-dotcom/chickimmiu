@@ -229,6 +229,7 @@ export default buildConfig({
         '@/components/admin/AdminStyles',
         '@/components/admin/NavScrollPersist',
         '@/components/admin/AdminUserMenu',
+        '@/components/admin/AdminBackButton',
       ],
       views: {
         help: {

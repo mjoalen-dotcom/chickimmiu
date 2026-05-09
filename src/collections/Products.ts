@@ -72,6 +72,9 @@ export const Products: CollectionConfig = {
           path: '@/components/admin/ProductsUsageNotice',
         },
         {
+          path: '@/components/admin/ProductMissingImagePanel',
+        },
+        {
           path: '@/components/admin/ProductBulkActions',
         },
         {
