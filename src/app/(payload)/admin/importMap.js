@@ -7,6 +7,8 @@ import { default as default_7b3334ccab91a8bc2d541f847ce2c885 } from '@/component
 import { default as default_2d9516e76c36d74134ebee4f781829f6 } from '@/components/admin/CategoryRecountButton'
 import { default as default_ebf9d2025b92d97c921799c47cf282d1 } from '@/components/admin/CategoryTreeView'
 import { default as default_cb040906944cedc20f0a1dc81a047b38 } from '@/components/admin/ProductStatusCell'
+import { default as default_9b57c43980e97d4b56c8d7a919923508 } from '@/components/admin/ProductMarginInsight'
+import { default as default_9eb65d1e13a161fff630e7bf785e9dc3 } from '@/components/admin/ProductWizardLauncher'
 import { RscEntryLexicalCell as RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
 import { RscEntryLexicalField as RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
 import { LexicalDiffComponent as LexicalDiffComponent_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
@@ -34,6 +36,7 @@ import { default as default_699dba4f26b8b856c306de3bbc7388c9 } from '@/component
 import { default as default_a3aa3dfb1277ec9c02ef061f872a6dd6 } from '@/components/admin/ProductCategoryTreePicker'
 import { default as default_5c3d166f438f19c8fb2f98618e6617ec } from '@/components/admin/VariantMatrixGenerator'
 import { default as default_e96600431ff221191298fd821860e529 } from '@/components/admin/ColorEyedropperField'
+import { default as default_6b97c5f29a2c85a9ddb09965adcfe949 } from '@/components/admin/VariantInlineTable'
 import { default as default_59cc8ca8a29697d2ab08eacf91828a68 } from '@/components/admin/MBTIAutoRecommendField'
 import { default as default_b2c226491d0a75ead0fc7b037ffcfa6f } from '@/components/admin/ProductsUsageNotice'
 import { default as default_4ae243489190f3c0d72c150aec1cbca3 } from '@/components/admin/ProductBulkActions'
@@ -42,6 +45,10 @@ import { default as default_e668e9854d72bcea32f70845627cdf0d } from '@/component
 import { default as default_99d8a7df13704a09eb2683c564fe3977 } from '@/components/admin/ShoplineImportPanel'
 import { default as default_235ae141af0ae2ee10377f179570df1f } from '@/components/admin/ImageMigrationPanel'
 import { default as default_131a3f06e1429f7f0173fc5b4da87663 } from '@/components/admin/ImportExportButtons'
+import { default as default_e8d6ffb15fc46072823f2ab09538bb28 } from '@/components/admin/ProductCreateWizard'
+import { default as default_da45625f08d6c78051d9389e2ef13996 } from '@/components/admin/ProductTabBadges'
+import { default as default_75a69f86e8fd1756deda3bb508c9e126 } from '@/components/admin/ProductSaveToast'
+import { default as default_dad6df07f5ce6091043bf2907b451c8b } from '@/components/admin/ProductDuplicateButton'
 import { default as default_2155efc8584149395a6a7408e7342b75 } from '@/components/admin/MemberTreasureBoxPanel'
 import { default as default_7daf04b168de0230737ba8fdd5db8d46 } from '@/components/admin/MediaUploadRulesNotice'
 import { FolderTableCell as FolderTableCell_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
@@ -80,6 +87,8 @@ export const importMap = {
   "@/components/admin/CategoryRecountButton#default": default_2d9516e76c36d74134ebee4f781829f6,
   "@/components/admin/CategoryTreeView#default": default_ebf9d2025b92d97c921799c47cf282d1,
   "@/components/admin/ProductStatusCell#default": default_cb040906944cedc20f0a1dc81a047b38,
+  "@/components/admin/ProductMarginInsight#default": default_9b57c43980e97d4b56c8d7a919923508,
+  "@/components/admin/ProductWizardLauncher#default": default_9eb65d1e13a161fff630e7bf785e9dc3,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalField": RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#LexicalDiffComponent": LexicalDiffComponent_44fe37237e0ebf4470c9990d8cb7b07e,
@@ -107,6 +116,7 @@ export const importMap = {
   "@/components/admin/ProductCategoryTreePicker#default": default_a3aa3dfb1277ec9c02ef061f872a6dd6,
   "@/components/admin/VariantMatrixGenerator#default": default_5c3d166f438f19c8fb2f98618e6617ec,
   "@/components/admin/ColorEyedropperField#default": default_e96600431ff221191298fd821860e529,
+  "@/components/admin/VariantInlineTable#default": default_6b97c5f29a2c85a9ddb09965adcfe949,
   "@/components/admin/MBTIAutoRecommendField#default": default_59cc8ca8a29697d2ab08eacf91828a68,
   "@/components/admin/ProductsUsageNotice#default": default_b2c226491d0a75ead0fc7b037ffcfa6f,
   "@/components/admin/ProductBulkActions#default": default_4ae243489190f3c0d72c150aec1cbca3,
@@ -115,6 +125,10 @@ export const importMap = {
   "@/components/admin/ShoplineImportPanel#default": default_99d8a7df13704a09eb2683c564fe3977,
   "@/components/admin/ImageMigrationPanel#default": default_235ae141af0ae2ee10377f179570df1f,
   "@/components/admin/ImportExportButtons#default": default_131a3f06e1429f7f0173fc5b4da87663,
+  "@/components/admin/ProductCreateWizard#default": default_e8d6ffb15fc46072823f2ab09538bb28,
+  "@/components/admin/ProductTabBadges#default": default_da45625f08d6c78051d9389e2ef13996,
+  "@/components/admin/ProductSaveToast#default": default_75a69f86e8fd1756deda3bb508c9e126,
+  "@/components/admin/ProductDuplicateButton#default": default_dad6df07f5ce6091043bf2907b451c8b,
   "@/components/admin/MemberTreasureBoxPanel#default": default_2155efc8584149395a6a7408e7342b75,
   "@/components/admin/MediaUploadRulesNotice#default": default_7daf04b168de0230737ba8fdd5db8d46,
   "@payloadcms/next/rsc#FolderTableCell": FolderTableCell_f9c02e79a4aed9a3924487c0cd4cafb1,

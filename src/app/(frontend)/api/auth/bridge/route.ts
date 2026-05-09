@@ -84,9 +84,9 @@ export async function GET(request: Request) {
   // 使用者看到的是中性的「跳回登入」沒有原因。捕捉後主動清掉所有 NextAuth 相關 cookie
   // （含 chunk 變體 `.0` `.1`），導去 /login?error=session_invalid 並把原 redirect 帶回，
   // 使用者重新點 OAuth 即可拿到全新乾淨的 session。
-  let session: Awaited<ReturnType<typeof nextAuth>> = null
+  let session: { user?: { email?: string | null } } | null = null
   try {
-    session = await nextAuth()
+    session = (await nextAuth()) as { user?: { email?: string | null } } | null
   } catch (err) {
     console.error('[auth/bridge] nextAuth() threw — clearing stale cookies', err)
     return clearStaleAuthCookies(

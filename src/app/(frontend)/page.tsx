@@ -208,7 +208,7 @@ export default async function HomePage() {
     image: string; caption?: string; likes: number; comments: number
     externalUrl?: string; taggedProducts?: UGCProductRef[]
   }
-  const ugcPosts: UGCItemProp[] = ugcDocs.map((d) => {
+  const ugcPosts = ugcDocs.map<UGCItemProp | null>((d) => {
     const mediaItems = d.mediaItems as Array<Record<string, unknown>> | null
     const firstMedia = mediaItems?.[0]
     const fileDoc = firstMedia?.file as Record<string, unknown> | null
@@ -250,7 +250,7 @@ export default async function HomePage() {
       comments: (d.comments as number) ?? 0,
       externalUrl: (d.externalUrl as string | null) ?? undefined,
       taggedProducts: taggedProducts.length > 0 ? taggedProducts : undefined,
-    } satisfies UGCItemProp
+    }
   }).filter((p): p is UGCItemProp => p !== null)
 
   // ── Section configs ──

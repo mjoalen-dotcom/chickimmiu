@@ -47,7 +47,7 @@ export default async function ReviewsPage() {
 
     const images = (product?.images as { image?: { url?: string } }[] | undefined) ?? []
     const rawImageUrl = images[0]?.image?.url ?? null
-    const productImage = rawImageUrl ? normalizeMediaUrl(rawImageUrl) : null
+    const productImage = rawImageUrl ? (normalizeMediaUrl(rawImageUrl) ?? null) : null
 
     return {
       id: String(doc.id),
