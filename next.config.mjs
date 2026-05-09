@@ -40,17 +40,27 @@ const nextConfig = {
     //   - www.facebook.com / *.facebook.com：Pixel 1x1 beacon 圖、事件 POST、Messenger iframe
     //   - GlobalSettings.tracking.metaPixelId 有值時 GTMScript.tsx 會注入這支腳本；
     //     CSP 擋住的話瀏覽器 console 會噴 Refused to load，Pixel 完全失效
+    // cdn.jsdelivr.net：Payload admin 的 `code` field（MessageTemplates 等）走 Monaco
+    //   editor，從 jsdelivr 載 loader.js + worker。沒放會 console 噴
+    //   "Refused to load https://cdn.jsdelivr.net/npm/monaco-editor@..."
+    //   接著編輯頁所有 code field 卡 init error。
+    // worker-src + blob:：Monaco 的語法 worker 走 blob URL（content hash 不固定，
+    //   不能 allowlist 具體 URL；blob: 是必要 origin）。沒明示 worker-src 時瀏覽器
+    //   fallback 到 script-src，但 script-src 加 blob: 會被全站共用降低安全性，
+    //   獨立 directive 較佳。
     const csp = [
       "default-src 'self'",
       // gravatar.com：Payload admin 內建用 gravatar 顯示使用者頭像（UserChip、navbar）
       // www.facebook.com：Meta Pixel 1x1 beacon 追蹤像素
       "img-src 'self' data: blob: https://shoplineimg.com https://*.r2.cloudflarestorage.com https://pre.chickimmiu.com https://www.gravatar.com https://secure.gravatar.com https://www.facebook.com",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net",
-      "style-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://cdn.jsdelivr.net",
+      "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+      "worker-src 'self' blob:",
       // *.facebook.com 涵蓋 graph.facebook.com（CAPI、若瀏覽器端實作）+ www.facebook.com
       //   （Pixel 事件 POST）+ 其他 Meta 子網域
-      "connect-src 'self' https://www.google-analytics.com https://*.ecpay.com.tw https://sandbox-api-pay.line.me https://api-pay.line.me https://ccore.newebpay.com https://*.facebook.com",
-      "font-src 'self' data:",
+      // cdn.jsdelivr.net：Monaco worker 啟動後會 fetch language services
+      "connect-src 'self' https://www.google-analytics.com https://*.ecpay.com.tw https://sandbox-api-pay.line.me https://api-pay.line.me https://ccore.newebpay.com https://*.facebook.com https://cdn.jsdelivr.net",
+      "font-src 'self' data: https://cdn.jsdelivr.net",
       // Messenger chat plugin iframe 嵌入 www.facebook.com
       "frame-src https://*.ecpay.com.tw https://www.facebook.com",
       "frame-ancestors 'self'",

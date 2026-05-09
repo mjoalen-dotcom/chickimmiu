@@ -42,7 +42,7 @@
 #   ssh root@5.223.85.14 /root/deploy-ckmu.sh --update-lockfile
 #
 # Exit codes: 0 ok, 1 health check failed, 2 build failed, 3 migrate failed,
-#             4 generate:importmap failed.
+#             4 generate:importmap failed, 5 nginx snippet apply failed.
 
 set -euo pipefail
 
@@ -65,8 +65,28 @@ log "== deploy start =="
 BEFORE_SHA=$(git rev-parse HEAD)
 log "BEFORE HEAD: $BEFORE_SHA"
 
+# 0. Sync nginx upload-limit snippet so admin imports don't 413.
+#    nginx default client_max_body_size 1M退 admin /api/users/import (Shopline
+#    全會員匯入動輒 5-15MB)。Snippet 是冪等的：內容相同則不動 + 不 reload。
+#    放在 step 1 (git pull) 前執行，避免 git reset 把 ops/nginx/ 改掉後又 reload
+#    舊 snippet。
+NGINX_SRC="$APP_DIR/ops/nginx/ckmu-uploads.conf"
+NGINX_DEST="/etc/nginx/conf.d/ckmu-uploads.conf"
+if [[ -f "$NGINX_SRC" ]]; then
+  if [[ ! -f "$NGINX_DEST" ]] || ! cmp -s "$NGINX_SRC" "$NGINX_DEST"; then
+    log "step 0/7: install nginx snippet $NGINX_DEST"
+    cp "$NGINX_SRC" "$NGINX_DEST"
+    if nginx -t > /dev/null 2>&1; then
+      systemctl reload nginx
+      log "  nginx reloaded"
+    else
+      fail "nginx -t failed after installing $NGINX_DEST" 5
+    fi
+  fi
+fi
+
 # 1. Pull latest main
-log "step 1/6: git fetch + reset --hard origin/main"
+log "step 1/7: git fetch + reset --hard origin/main"
 git fetch origin --prune
 git reset --hard origin/main
 AFTER_SHA=$(git rev-parse HEAD)
@@ -80,7 +100,7 @@ else
 fi
 
 # 2. Install deps
-log "step 2/6: pnpm install $INSTALL_FLAG"
+log "step 2/7: pnpm install $INSTALL_FLAG"
 # shellcheck disable=SC2086
 pnpm install $INSTALL_FLAG
 
@@ -97,7 +117,7 @@ pnpm install $INSTALL_FLAG
 #    yes receives SIGPIPE the moment pnpm closes stdin and exits 141, which
 #    would otherwise make a successful migrate look failed. `set +e` around
 #    the pipeline lets us capture PIPESTATUS before `-e` trips on the 141.
-log "step 3/6: pnpm payload migrate (auto-accepting dev-mode prompt)"
+log "step 3/7: pnpm payload migrate (auto-accepting dev-mode prompt)"
 set +e
 yes y | pnpm payload migrate
 MIGRATE_STATUSES=("${PIPESTATUS[@]}")
@@ -116,7 +136,7 @@ set -e
 #     impossible — the script always writes the canonical importMap from
 #     the current source tree, regardless of what main has committed.
 #     Cheap (~3-5s); safe to re-run; produces no diff if nothing changed.
-log "step 3b/6: pnpm payload generate:importmap"
+log "step 3b/7: pnpm payload generate:importmap"
 pnpm payload generate:importmap || fail "generate:importmap failed" 4
 
 # 4. Build — NO `rm -rf .next` (live chunks). But .next/cache (webpack
@@ -124,12 +144,12 @@ pnpm payload generate:importmap || fail "generate:importmap failed" 4
 #    table in .next/cache caused Cannot find module ./chunks/NNNN.js on
 #    2026-04-27 (after 6 PRs accumulated without deploy). Clearing only
 #    cache costs ~10-20s build time and leaves runtime chunks intact.
-log "step 4/6: pnpm build (clearing .next/cache, runtime .next/server intact)"
+log "step 4/7: pnpm build (clearing .next/cache, runtime .next/server intact)"
 rm -rf .next/cache
 pnpm build || fail "pnpm build failed" 2
 
 # 5. Restart pm2
-log "step 5/6: pm2 restart $PM2_APP"
+log "step 5/7: pm2 restart $PM2_APP"
 pm2 restart "$PM2_APP" --update-env
 # give Node + Next + Payload time to accept traffic
 sleep 4
@@ -151,7 +171,7 @@ if [[ -n "$ORPHANS" ]]; then
 fi
 
 # 6. Health check — any non-200 on the critical paths aborts
-log "step 6/6: health check"
+log "step 6/7: health check"
 for URL in "${HEALTH_PATHS[@]}"; do
   code=""
   for attempt in 1 2 3; do
