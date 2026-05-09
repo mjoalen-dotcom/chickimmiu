@@ -49,6 +49,7 @@ import * as migration_20260506_160000_add_product_alias_slugs from './20260506_1
 import * as migration_20260508_100000_add_product_listing_schedule_image_category_material_images from './20260508_100000_add_product_listing_schedule_image_category_material_images';
 import * as migration_20260508_120000_add_product_additional_categories from './20260508_120000_add_product_additional_categories';
 import * as migration_20260508_140000_add_pricing_formula_and_auto_pricing from './20260508_140000_add_pricing_formula_and_auto_pricing';
+import * as migration_20260509_140000_add_loyalty_signup_reward from './20260509_140000_add_loyalty_signup_reward';
 
 export const migrations = [
   {
@@ -305,5 +306,10 @@ export const migrations = [
     up: migration_20260508_140000_add_pricing_formula_and_auto_pricing.up,
     down: migration_20260508_140000_add_pricing_formula_and_auto_pricing.down,
     name: '20260508_140000_add_pricing_formula_and_auto_pricing',
+  },
+  {
+    up: migration_20260509_140000_add_loyalty_signup_reward.up,
+    down: migration_20260509_140000_add_loyalty_signup_reward.down,
+    name: '20260509_140000_add_loyalty_signup_reward',
   },
 ];
