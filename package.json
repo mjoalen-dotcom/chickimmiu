@@ -26,9 +26,12 @@
     "seed:demo:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedDemoData.ts -- --dry-run",
     "seed:journeys": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedAutomationJourneys.ts",
     "seed:journeys:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedAutomationJourneys.ts -- --dry-run",
+    "migrate:media:r2": "cross-env NODE_OPTIONS=--no-deprecation payload run scripts/migrate-media-to-r2.ts",
+    "migrate:media:r2:dry": "cross-env MIGRATE_DRY_RUN=1 NODE_OPTIONS=--no-deprecation payload run scripts/migrate-media-to-r2.ts",
     "smoke:storefront": "node --import tsx/esm scripts/smoke-storefront.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.614.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -38,6 +41,7 @@
     "@payloadcms/email-resend": "^3.83.0",
     "@payloadcms/next": "^3.83.0",
     "@payloadcms/richtext-lexical": "^3.83.0",
+    "@payloadcms/storage-s3": "^3.83.0",
     "@payloadcms/ui": "^3.83.0",
     "@paypal/react-paypal-js": "^9.1.1",
     "@radix-ui/react-slot": "^1.1.0",
