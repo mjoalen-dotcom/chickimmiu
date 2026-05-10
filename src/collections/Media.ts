@@ -13,8 +13,12 @@ const dirname = path.dirname(filename)
  * Media Collection
  * ----------------
  * 所有圖片與檔案上傳的統一入口。
- * - staticDir 存放在專案根目錄的 public/media
- * - 自動產生多種尺寸（thumbnail / card / tablet / desktop）
+ * - 預設走 Cloudflare R2（payload.config.ts 的 s3Storage plugin 在 R2_* env
+ *   全有值時自動接管，把上傳寫到 bucket、admin URL 改 GET /api/media/file/<filename>）
+ * - 若 R2 env 不全或 DISABLE_R2=1，fallback 到 staticDir 的 public/media
+ *   （local dev / 緊急斷網都能用）
+ * - 自動產生多種尺寸（thumbnail / card / tablet / desktop），sharp 處理完
+ *   每個 size 也會跟著上 R2
  * - 只有管理員可以刪除，全站可讀取
  *
  * 相簿管理：
@@ -122,6 +126,9 @@ export const Media: CollectionConfig = {
     afterDelete: [() => revalidateMedia()],
   },
   upload: {
+    // R2 啟用時 plugin 會 override 寫入路徑（disableLocalStorage:true 預設）；
+    // 沒啟用 R2 才實際寫到 staticDir。兩條路徑前台讀取都走 /api/media/file/<filename>，
+    // 內部由 Payload 對接到 R2 GET 或本地 fs.readFile。
     staticDir: path.resolve(dirname, '../../public/media'),
     adminThumbnail: 'thumbnail',
     // 去掉 image/* 萬用字元（image/svg+xml 是 XSS 向量）

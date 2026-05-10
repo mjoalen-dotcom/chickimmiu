@@ -1,8 +1,9 @@
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
 import { resendAdapter } from '@payloadcms/email-resend'
 import { lexicalEditor, UploadFeature } from '@payloadcms/richtext-lexical'
+import { s3Storage } from '@payloadcms/storage-s3'
 import path from 'path'
-import { buildConfig, type EmailAdapter } from 'payload'
+import { buildConfig, type EmailAdapter, type Plugin } from 'payload'
 import { fileURLToPath } from 'url'
 import sharp from 'sharp'
 
@@ -138,6 +139,59 @@ const emailAdapter = process.env.RESEND_API_KEY
       apiKey: process.env.RESEND_API_KEY,
     })
   : consoleFallbackEmailAdapter
+
+/**
+ * Cloudflare R2 媒體儲存（S3-compatible）
+ * ──────────────────────────────────────
+ * 啟用條件：四個必填 R2_* env 全有值，且 DISABLE_R2 ≠ '1'
+ *   - 任一空 → plugin 不掛載 → fallback 到 Media.ts staticDir 的 public/media
+ *   - DISABLE_R2=1 → 強制本機路徑（local dev / hot-reload 不打 R2 配額）
+ *
+ * 上線檢查清單：
+ *   1. R2_ACCOUNT_ID（Cloudflare dashboard → R2 → API tokens 上方那串 hex）
+ *   2. R2_ACCESS_KEY_ID + R2_SECRET_ACCESS_KEY（建 token 時記下，secret 只顯示一次）
+ *   3. R2_BUCKET_NAME（先在 R2 建 bucket，命名照 AWS S3 規則：小寫 + 連字號）
+ *   4. R2_PUBLIC_URL（選填，custom domain 或 pub-*.r2.dev；前台 <Image> 的 src 由
+ *      Payload 內部處理透過 /api/media/file/<filename>，所以這個只是給 migration
+ *      script 對外顯示的 base URL，不影響 plugin 運作）
+ *   5. CSP 已預先 allow `*.r2.cloudflarestorage.com`（next.config.mjs:55）— 若改
+ *      用 custom domain 要在 next.config 對應 directives 增列。
+ *
+ * acl: 'public-read' = bucket 物件公開可讀（前台 PDP 圖直接 GET）。若要做 signed
+ * URL（敏感檔案）改用 collection-level signedDownloads。
+ *
+ * disableLocalStorage 預設 true → upload 不再寫入 public/media；本地若還有歷史檔
+ * 也不會干擾，但要遷移上去請跑 scripts/migrate-media-to-r2.ts。
+ */
+const r2Configured =
+  !!process.env.R2_ACCOUNT_ID &&
+  !!process.env.R2_ACCESS_KEY_ID &&
+  !!process.env.R2_SECRET_ACCESS_KEY &&
+  !!process.env.R2_BUCKET_NAME &&
+  process.env.DISABLE_R2 !== '1'
+
+const plugins: Plugin[] = []
+
+if (r2Configured) {
+  plugins.push(
+    s3Storage({
+      collections: {
+        media: true,
+      },
+      bucket: process.env.R2_BUCKET_NAME!,
+      acl: 'public-read',
+      config: {
+        endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        region: 'auto',
+        credentials: {
+          accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+        },
+        forcePathStyle: false,
+      },
+    }),
+  )
+}
 
 /**
  * CHIC KIM & MIU — Payload CMS v3 主設定
@@ -398,4 +452,5 @@ export default buildConfig({
   }),
   email: emailAdapter,
   sharp,
+  plugins,
 })

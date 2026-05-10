@@ -28,6 +28,21 @@ const nextConfig = {
     reactCompiler: false,
   },
   async headers() {
+    // R2 圖床公開 URL（custom domain 或 pub-*.r2.dev）— 沒設就跳過。
+    //   - 若設了會額外 allow 這個 origin 進 img-src + connect-src
+    //   - *.r2.cloudflarestorage.com 已經 hardcode，那是 S3 API endpoint；
+    //     R2_PUBLIC_URL 是「公開讀取」用的另一個 host，兩者不一定相同
+    const r2PublicOrigin = (() => {
+      const raw = process.env.R2_PUBLIC_URL || ''
+      if (!raw) return ''
+      try {
+        return new URL(raw).origin
+      } catch {
+        return ''
+      }
+    })()
+    const r2ImgSrc = r2PublicOrigin ? ` ${r2PublicOrigin}` : ''
+
     // Content-Security-Policy — 封測期 baseline
     //   - 'unsafe-inline' 是 Next 15 hydration boot script + Payload admin 必須
     //   - 'unsafe-eval' 是 Next dev webpack module loading 需要（prod 其實可拿掉，
@@ -52,7 +67,7 @@ const nextConfig = {
       "default-src 'self'",
       // gravatar.com：Payload admin 內建用 gravatar 顯示使用者頭像（UserChip、navbar）
       // www.facebook.com：Meta Pixel 1x1 beacon 追蹤像素
-      "img-src 'self' data: blob: https://shoplineimg.com https://*.r2.cloudflarestorage.com https://pre.chickimmiu.com https://www.gravatar.com https://secure.gravatar.com https://www.facebook.com",
+      `img-src 'self' data: blob: https://shoplineimg.com https://*.r2.cloudflarestorage.com https://pre.chickimmiu.com https://www.gravatar.com https://secure.gravatar.com https://www.facebook.com${r2ImgSrc}`,
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://cdn.jsdelivr.net",
       "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
       "worker-src 'self' blob:",
