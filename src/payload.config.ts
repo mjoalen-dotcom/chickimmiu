@@ -281,11 +281,15 @@ export default buildConfig({
       },
       beforeDashboard: ['@/components/admin/Dashboard'],
       beforeNavLinks: [
+        // AdminBackButton 必須在最前面：它在 sidebar 真實 DOM 渲染（不是
+        // portal），擺最後會卡在 ⓪ 數據儀表 group 與 ① 訂單與物流 group
+        // 中間，看起來像孤兒。放第一位才會出現在整個 sidebar 最頂端。
+        '@/components/admin/AdminBackButton',
         '@/components/admin/CKMUDashboardNavGroup',
+        // 以下三個都是 portal / style / script-only，排序不影響視覺。
         '@/components/admin/AdminStyles',
         '@/components/admin/NavScrollPersist',
         '@/components/admin/AdminUserMenu',
-        '@/components/admin/AdminBackButton',
       ],
       views: {
         help: {

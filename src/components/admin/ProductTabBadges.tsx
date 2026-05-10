@@ -6,29 +6,32 @@ import { reduceFieldsToValues } from 'payload/shared'
 
 import { evaluateProduct, type TabStatus } from '@/lib/admin/productCompleteness'
 
+// 注意：早期版本用 `position:fixed; top:60; right:16` 把 4 個 badge 釘在
+// 視窗右上角，結果與 admin user menu / 麵包屑 / document control bar 重疊。
+// 現在改成 inline flex group：依賴 Payload v3 把 beforeDocumentControls slot
+// 渲染進 `.doc-controls__controls` 這條 flex row（同列的還有 Save / Preview
+// / 複製此商品），所以拿掉 position 後 badge 會自然排在 Save 按鈕之前，
+// 不再跟 header 元素打架。
 const containerStyle: React.CSSProperties = {
-  position: 'fixed',
-  top: 60,
-  right: 16,
-  zIndex: 50,
-  display: 'flex',
-  gap: 8,
+  display: 'inline-flex',
+  gap: 6,
   alignItems: 'center',
   flexWrap: 'wrap',
-  maxWidth: 360,
+  marginRight: 8,
 }
 
 const badgeStyle: React.CSSProperties = {
   border: '1px solid var(--theme-elevation-200, #d4d4d8)',
   borderRadius: 999,
   background: 'var(--theme-elevation-0, #ffffff)',
-  padding: '4px 8px',
+  padding: '3px 8px',
   fontSize: 12,
   fontWeight: 600,
   color: 'var(--theme-elevation-800, #18181b)',
   cursor: 'default',
   position: 'relative',
   whiteSpace: 'nowrap',
+  lineHeight: 1.4,
 }
 
 function iconByState(state: TabStatus['state']): string {
