@@ -9,8 +9,12 @@
  * 判定邏輯與前台 / Meta feed (src/lib/ads/feedBuilder.ts) 對齊：
  *   featuredImageUrl = featuredImage || images[0]?.image
  *
- * 面板：折疊預設展開、顯示缺圖總數、列出商品名（連到該商品編輯頁）、
- * 一顆重新整理按鈕。商品數量大於 50 時截斷顯示。
+ * 面板：折疊預設收合（避免跟 ProductsUsageNotice、ProductBulkActions 一起把
+ * 列表往下推到 viewport 外）。Mount 時仍會自動掃描一次，掃完直接把
+ * 結果（⚠️ N 件 / ✅ 全部 OK / ❌ 載入失敗）寫進 summary 的 badge，
+ * 使用者不展開也能秒看狀態。需要看清單再點 summary 展開。
+ *
+ * 商品數量大於 50 時截斷顯示。
  */
 
 import React, { useCallback, useEffect, useState } from 'react'
@@ -49,12 +53,48 @@ const summaryStyle: React.CSSProperties = {
   cursor: 'pointer',
   fontSize: 14,
   fontWeight: 600,
-  marginBottom: 12,
   listStyle: 'revert',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
   gap: 12,
+}
+
+const badgeBase: React.CSSProperties = {
+  display: 'inline-block',
+  padding: '2px 10px',
+  borderRadius: 999,
+  fontSize: 12,
+  fontWeight: 600,
+  marginLeft: 8,
+}
+
+const badgeOk: React.CSSProperties = {
+  ...badgeBase,
+  background: '#dcfce7',
+  color: '#166534',
+  border: '1px solid #86efac',
+}
+
+const badgeWarn: React.CSSProperties = {
+  ...badgeBase,
+  background: '#fef3c7',
+  color: '#92400e',
+  border: '1px solid #fcd34d',
+}
+
+const badgeError: React.CSSProperties = {
+  ...badgeBase,
+  background: '#fee2e2',
+  color: '#991b1b',
+  border: '1px solid #fca5a5',
+}
+
+const badgeIdle: React.CSSProperties = {
+  ...badgeBase,
+  background: 'var(--theme-elevation-100, #f4f4f5)',
+  color: 'var(--theme-elevation-600, #666)',
+  border: '1px solid var(--theme-elevation-200, #d4d4d8)',
 }
 
 const headlineStyle: React.CSSProperties = {
@@ -147,10 +187,27 @@ const ProductMissingImagePanel: React.FC = () => {
     ? ` 注意：本工具一次最多掃 ${PAGE_SIZE} 筆，若商品超過此數須改成分頁掃描。`
     : ''
 
+  // 把目前狀態做成 summary 的 badge，預設收合時也能秒看結果
+  const summaryBadge = (() => {
+    if (loading && items === null) {
+      return <span style={badgeIdle}>掃描中…</span>
+    }
+    if (error) {
+      return <span style={badgeError}>❌ 載入失敗</span>
+    }
+    if (missingCount === 0) {
+      return <span style={badgeOk}>✅ 全部都有圖（{scanned}）</span>
+    }
+    return <span style={badgeWarn}>⚠️ {missingCount} 件待補圖</span>
+  })()
+
   return (
-    <details style={cardStyle} open>
+    <details style={cardStyle}>
       <summary style={summaryStyle}>
-        <span>🖼️ 缺圖商品快查（點擊收合）</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+          <span>🖼️ 缺圖商品快查</span>
+          {summaryBadge}
+        </span>
         <button
           type="button"
           style={btn}
@@ -164,7 +221,7 @@ const ProductMissingImagePanel: React.FC = () => {
         </button>
       </summary>
 
-      <p style={headlineStyle}>{headline}{truncated}</p>
+      <p style={{ ...headlineStyle, marginTop: 12 }}>{headline}{truncated}</p>
 
       {missingCount > 0 && (
         <>
