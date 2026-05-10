@@ -41,6 +41,7 @@ import { default as default_59cc8ca8a29697d2ab08eacf91828a68 } from '@/component
 import { default as default_b2c226491d0a75ead0fc7b037ffcfa6f } from '@/components/admin/ProductsUsageNotice'
 import { default as default_8d40dda01b6bebf3396716da20bdcd98 } from '@/components/admin/ProductMissingImagePanel'
 import { default as default_4ae243489190f3c0d72c150aec1cbca3 } from '@/components/admin/ProductBulkActions'
+import { default as default_f7a5c3e486d33ceaae3c5d93546d54a4 } from '@/components/admin/ProductBulkCategoryChanger'
 import { default as default_5bac33fcb1b79c680fc9b0258f0347a3 } from '@/components/admin/ShoplineXlsxImporter'
 import { default as default_e668e9854d72bcea32f70845627cdf0d } from '@/components/admin/SinsangImporter'
 import { default as default_99d8a7df13704a09eb2683c564fe3977 } from '@/components/admin/ShoplineImportPanel'
@@ -126,6 +127,7 @@ export const importMap = {
   "@/components/admin/ProductsUsageNotice#default": default_b2c226491d0a75ead0fc7b037ffcfa6f,
   "@/components/admin/ProductMissingImagePanel#default": default_8d40dda01b6bebf3396716da20bdcd98,
   "@/components/admin/ProductBulkActions#default": default_4ae243489190f3c0d72c150aec1cbca3,
+  "@/components/admin/ProductBulkCategoryChanger#default": default_f7a5c3e486d33ceaae3c5d93546d54a4,
   "@/components/admin/ShoplineXlsxImporter#default": default_5bac33fcb1b79c680fc9b0258f0347a3,
   "@/components/admin/SinsangImporter#default": default_e668e9854d72bcea32f70845627cdf0d,
   "@/components/admin/ShoplineImportPanel#default": default_99d8a7df13704a09eb2683c564fe3977,

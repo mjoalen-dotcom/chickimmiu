@@ -46,6 +46,7 @@ import * as migration_20260506_015839_add_collections_page_settings from './2026
 import * as migration_20260506_120000_rename_utm_campaign_columns from './20260506_120000_rename_utm_campaign_columns';
 import * as migration_20260506_140000_add_product_list_settings from './20260506_140000_add_product_list_settings';
 import * as migration_20260506_160000_add_product_alias_slugs from './20260506_160000_add_product_alias_slugs';
+import * as migration_20260507_120000_add_product_cost from './20260507_120000_add_product_cost';
 import * as migration_20260508_100000_add_product_listing_schedule_image_category_material_images from './20260508_100000_add_product_listing_schedule_image_category_material_images';
 import * as migration_20260508_120000_add_product_additional_categories from './20260508_120000_add_product_additional_categories';
 import * as migration_20260508_140000_add_pricing_formula_and_auto_pricing from './20260508_140000_add_pricing_formula_and_auto_pricing';
@@ -297,6 +298,11 @@ export const migrations = [
     name: '20260506_160000_add_product_alias_slugs',
   },
   {
+    up: migration_20260507_120000_add_product_cost.up,
+    down: migration_20260507_120000_add_product_cost.down,
+    name: '20260507_120000_add_product_cost',
+  },
+  {
     up: migration_20260508_100000_add_product_listing_schedule_image_category_material_images.up,
     down: migration_20260508_100000_add_product_listing_schedule_image_category_material_images.down,
     name: '20260508_100000_add_product_listing_schedule_image_category_material_images',
@@ -311,6 +317,7 @@ export const migrations = [
     down: migration_20260508_140000_add_pricing_formula_and_auto_pricing.down,
     name: '20260508_140000_add_pricing_formula_and_auto_pricing',
   },
+  {
     up: migration_20260508_160000_add_product_purchase_limit_dimensions_hs_video.up,
     down: migration_20260508_160000_add_product_purchase_limit_dimensions_hs_video.down,
     name: '20260508_160000_add_product_purchase_limit_dimensions_hs_video',
