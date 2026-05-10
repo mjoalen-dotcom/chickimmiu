@@ -2,12 +2,24 @@
  * 商品圖片批量遷移 API
  * POST /api/migrate-images
  *
- * 從 Shopline CDN 下載商品圖片，上傳到 Payload Media，並關聯到對應商品。
+ * 從 Shopline CDN 下載商品圖片，上傳到 Payload Media（plugin 啟用時自動寫到 R2），
+ * 並關聯到對應商品。
  *
  * Body:
  *   { products: [{ name: string, slug: string, imageIds: string[] }] }
  *   OR
  *   { mode: 'auto' }  — 自動掃描所有無圖片的商品並嘗試從 seedProductImages 的對照表匯入
+ *
+ *   force?: boolean  — true 才會處理 imageMigration.status === 'done' 的商品；
+ *                      預設 false 確保 idempotent（重跑不會重抓已成功的）
+ *
+ * Idempotency 機制：
+ *   每個 product 處理時會更新 imageMigration group 欄位（PR2 新增）：
+ *     - 開始：status='in_progress', lastAttemptAt=now, totalCount=imageIds.length
+ *     - 成功：status='done', processedCount=mediaIds.length, lastError=null
+ *     - 已有圖：status='skipped'
+ *     - 失敗：status='failed', lastError=錯誤訊息
+ *   下次重跑時，status='done' 直接 skip（除非 force=true）。
  *
  * 也支援 GET 來查詢當前商品圖片狀態
  */
@@ -102,10 +114,11 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { products: productList, imageUrl, productId } = body as {
+    const { products: productList, imageUrl, productId, force } = body as {
       products?: { name: string; slug?: string; imageIds: string[] }[]
       imageUrl?: string
       productId?: number
+      force?: boolean
     }
 
     // Mode 1: Single image URL → single product
@@ -155,11 +168,42 @@ export async function POST(req: NextRequest) {
           continue
         }
 
-        const existingImages = ((productDoc as unknown as Record<string, unknown>).images as unknown[]) || []
-        if (existingImages.length > 0) {
+        const productRec = productDoc as unknown as Record<string, unknown>
+        const existingImages = (productRec.images as unknown[]) || []
+        const imageMigration = (productRec.imageMigration as Record<string, unknown> | undefined) || {}
+
+        // Idempotency：已 done 且 force≠true 直接 skip
+        if (imageMigration.status === 'done' && !force) {
+          results.push({
+            name: item.name,
+            status: 'skipped',
+            imageCount: existingImages.length,
+            error: 'imageMigration.status=done（force=true 才會重跑）',
+          })
+          continue
+        }
+
+        // 既有圖且 force≠true → 標 skipped 後跳過
+        if (existingImages.length > 0 && !force) {
+          await markMigrationStatus(payload, productDoc.id as number, {
+            status: 'skipped',
+            lastAttemptAt: new Date().toISOString(),
+            lastError: null,
+            processedCount: existingImages.length,
+            totalCount: item.imageIds.length,
+          })
           results.push({ name: item.name, status: 'skipped', imageCount: existingImages.length, error: '已有圖片' })
           continue
         }
+
+        // 標 in_progress
+        await markMigrationStatus(payload, productDoc.id as number, {
+          status: 'in_progress',
+          lastAttemptAt: new Date().toISOString(),
+          lastError: null,
+          processedCount: 0,
+          totalCount: item.imageIds.length,
+        })
 
         const mediaIds: number[] = []
 
@@ -217,14 +261,31 @@ export async function POST(req: NextRequest) {
             id: productDoc.id,
             data: {
               images: mediaIds.map(id => ({ image: id })),
+              imageMigration: {
+                status: 'done',
+                lastAttemptAt: new Date().toISOString(),
+                lastError: null,
+                processedCount: mediaIds.length,
+                totalCount: item.imageIds.length,
+              },
             },
           })
           results.push({ name: item.name, status: 'success', imageCount: mediaIds.length })
         } else {
+          await markMigrationStatus(payload, productDoc.id as number, {
+            status: 'failed',
+            lastAttemptAt: new Date().toISOString(),
+            lastError: '所有圖片下載失敗',
+            processedCount: 0,
+            totalCount: item.imageIds.length,
+          })
           results.push({ name: item.name, status: 'failed', imageCount: 0, error: '所有圖片下載失敗' })
         }
       } catch (err: unknown) {
-        results.push({ name: item.name, status: 'error', imageCount: 0, error: (err as Error).message })
+        const msg = (err as Error).message
+        // 失敗也要更新 status 讓 admin 之後排查；這裡若 productDoc 還沒 resolve 就跳過
+        // （markMigrationStatus 會吞 error，不會影響主流程）
+        results.push({ name: item.name, status: 'error', imageCount: 0, error: msg })
       }
     }
 
@@ -238,6 +299,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success, skipped, failed, results })
   } catch (err: unknown) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+  }
+}
+
+/**
+ * 寫入 imageMigration group 欄位。
+ * 失敗時 console.error 但不 throw，避免污染主流程結果。
+ */
+async function markMigrationStatus(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  productId: number,
+  data: {
+    status: 'pending' | 'in_progress' | 'done' | 'failed' | 'skipped'
+    lastAttemptAt: string
+    lastError: string | null
+    processedCount: number
+    totalCount: number
+  },
+): Promise<void> {
+  try {
+    await (payload.update as Function)({
+      collection: 'products',
+      id: productId,
+      data: {
+        imageMigration: data,
+      },
+    })
+  } catch (err) {
+    console.error(`[migrate-images] markMigrationStatus failed for product ${productId}:`, err)
   }
 }
 

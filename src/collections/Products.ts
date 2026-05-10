@@ -597,6 +597,65 @@ export const Products: CollectionConfig = {
       ],
     },
     {
+      name: 'imageMigration',
+      label: '圖片遷移狀態',
+      type: 'group',
+      admin: {
+        description:
+          '⚠️ 內部欄位 — 記錄此商品圖片從 Shopline / Sinsang 等外部來源搬到 R2 的進度。' +
+          'Idempotent 用：批次匯入腳本會檢查 status，已 done 的就跳過不重做。' +
+          '前台完全隱藏，只在後台 sidebar 顯示給人工排查失敗用。',
+        position: 'sidebar',
+      },
+      fields: [
+        {
+          name: 'status',
+          label: '遷移狀態',
+          type: 'select',
+          defaultValue: 'pending',
+          options: [
+            { label: '待處理 pending', value: 'pending' },
+            { label: '處理中 in progress', value: 'in_progress' },
+            { label: '已完成 done', value: 'done' },
+            { label: '失敗 failed', value: 'failed' },
+            { label: '跳過（已有圖）skipped', value: 'skipped' },
+          ],
+          admin: { readOnly: true },
+        },
+        {
+          name: 'lastAttemptAt',
+          label: '最後嘗試時間',
+          type: 'date',
+          admin: {
+            readOnly: true,
+            date: { displayFormat: 'yyyy-MM-dd HH:mm' },
+          },
+        },
+        {
+          name: 'lastError',
+          label: '最後錯誤訊息',
+          type: 'text',
+          admin: { readOnly: true },
+        },
+        {
+          name: 'processedCount',
+          label: '已處理圖數',
+          type: 'number',
+          defaultValue: 0,
+          min: 0,
+          admin: { readOnly: true },
+        },
+        {
+          name: 'totalCount',
+          label: '總目標圖數',
+          type: 'number',
+          defaultValue: 0,
+          min: 0,
+          admin: { readOnly: true },
+        },
+      ],
+    },
+    {
       name: 'marginInsight',
       label: '毛利洞察',
       type: 'ui',

@@ -126,11 +126,13 @@ export const shoplineXlsxImportEndpoint: Endpoint = {
       action: 'created' | 'updated' | 'skipped' | 'error'
       id?: number
       message?: string
+      matchedBy?: 'sourceId' | 'productSku' | 'variantSku'
     }[] = []
 
     let created = 0
     let updated = 0
     let failed = 0
+    const matchTierStats = { sourceId: 0, productSku: 0, variantSku: 0, none: 0 }
 
     for (const p of batch) {
       if (p.errors.length > 0) {
@@ -145,13 +147,56 @@ export const shoplineXlsxImportEndpoint: Endpoint = {
       }
 
       try {
-        // 以 sourcing.sourceId 找既有商品
-        const existing = await req.payload.find({
+        /* ── 3-tier upsert match：sourceId → productSku → variants.sku → create ── */
+        // Tier 1: sourcing.sourceId（Shopline canonical key — 最穩，不會撞）
+        let existing = await req.payload.find({
           collection: 'products',
           where: { 'sourcing.sourceId': { equals: p.shoplineProductId } },
           limit: 1,
           depth: 0,
         })
+        let matchedBy: 'sourceId' | 'productSku' | 'variantSku' | undefined = undefined
+        if (existing.docs.length > 0) {
+          matchedBy = 'sourceId'
+          matchTierStats.sourceId++
+        }
+
+        // Tier 2: productSku（手動建立、沒有 Shopline ID 的舊 product）
+        if (existing.docs.length === 0 && p.productSku) {
+          existing = await req.payload.find({
+            collection: 'products',
+            where: { productSku: { equals: p.productSku } },
+            limit: 1,
+            depth: 0,
+          })
+          if (existing.docs.length > 0) {
+            matchedBy = 'productSku'
+            matchTierStats.productSku++
+          }
+        }
+
+        // Tier 3: variants.sku（top-level SKU 空但變體有，用任一變體 SKU 找回母商品）
+        if (existing.docs.length === 0 && p.variants.length > 0) {
+          const incomingVariantSkus = p.variants
+            .map((v) => v.sku)
+            .filter((s): s is string => Boolean(s && s.trim()))
+          if (incomingVariantSkus.length > 0) {
+            existing = await req.payload.find({
+              collection: 'products',
+              where: { 'variants.sku': { in: incomingVariantSkus } },
+              limit: 1,
+              depth: 0,
+            })
+            if (existing.docs.length > 0) {
+              matchedBy = 'variantSku'
+              matchTierStats.variantSku++
+            }
+          }
+        }
+
+        if (existing.docs.length === 0) {
+          matchTierStats.none++
+        }
 
         const categoryId = p.categorySlug
           ? catBySlug.get(p.categorySlug) || fallbackCatId
@@ -209,6 +254,7 @@ export const shoplineXlsxImportEndpoint: Endpoint = {
             name: p.name,
             action: 'updated',
             id: (updatedDoc as unknown as { id: number }).id,
+            matchedBy,
           })
         } else {
           const createdDoc = await req.payload.create({
@@ -246,6 +292,10 @@ export const shoplineXlsxImportEndpoint: Endpoint = {
       created,
       updated,
       failed,
+      // matchTierStats：updated 的細項，看 fallback 鏈打到哪一層
+      //   sourceId（理想）→ productSku（fallback 1）→ variantSku（fallback 2）→ none（create 新商品）
+      //   sourceId 數量遠少於總數時代表很多舊商品沒寫 Shopline Product ID — 這次匯入後會補上
+      matchTierStats,
       unmappedCategories: report.unmappedCategories,
       results,
     })
