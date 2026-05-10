@@ -311,6 +311,7 @@ export const migrations = [
     down: migration_20260508_140000_add_pricing_formula_and_auto_pricing.down,
     name: '20260508_140000_add_pricing_formula_and_auto_pricing',
   },
+  {
     up: migration_20260508_160000_add_product_purchase_limit_dimensions_hs_video.up,
     down: migration_20260508_160000_add_product_purchase_limit_dimensions_hs_video.down,
     name: '20260508_160000_add_product_purchase_limit_dimensions_hs_video',
