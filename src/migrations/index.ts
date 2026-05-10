@@ -50,6 +50,7 @@ import * as migration_20260508_100000_add_product_listing_schedule_image_categor
 import * as migration_20260508_120000_add_product_additional_categories from './20260508_120000_add_product_additional_categories';
 import * as migration_20260508_140000_add_pricing_formula_and_auto_pricing from './20260508_140000_add_pricing_formula_and_auto_pricing';
 import * as migration_20260508_160000_add_product_purchase_limit_dimensions_hs_video from './20260508_160000_add_product_purchase_limit_dimensions_hs_video';
+import * as migration_20260510_120000_add_behavior_events from './20260510_120000_add_behavior_events';
 
 export const migrations = [
   {
@@ -311,5 +312,10 @@ export const migrations = [
     up: migration_20260508_160000_add_product_purchase_limit_dimensions_hs_video.up,
     down: migration_20260508_160000_add_product_purchase_limit_dimensions_hs_video.down,
     name: '20260508_160000_add_product_purchase_limit_dimensions_hs_video',
+  },
+  {
+    up: migration_20260510_120000_add_behavior_events.up,
+    down: migration_20260510_120000_add_behavior_events.down,
+    name: '20260510_120000_add_behavior_events',
   },
 ];

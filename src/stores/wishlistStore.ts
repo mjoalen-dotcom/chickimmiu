@@ -3,6 +3,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { safeLocalStorage } from '@/lib/safe-storage'
+import { trackBehaviorWishlist } from '@/lib/behaviorTracking'
 
 export interface WishlistItem {
   productId: string
@@ -30,14 +31,19 @@ export const useWishlistStore = create<WishlistState>()(
       addItem: (item) => {
         set((state) => {
           if (state.items.some((i) => i.productId === item.productId)) return state
+          trackBehaviorWishlist({ productId: item.productId, action: 'add' })
           return { items: [...state.items, item] }
         })
       },
 
       removeItem: (productId) => {
-        set((state) => ({
-          items: state.items.filter((i) => i.productId !== productId),
-        }))
+        set((state) => {
+          if (!state.items.some((i) => i.productId === productId)) return state
+          trackBehaviorWishlist({ productId, action: 'remove' })
+          return {
+            items: state.items.filter((i) => i.productId !== productId),
+          }
+        })
       },
 
       toggleItem: (item) => {

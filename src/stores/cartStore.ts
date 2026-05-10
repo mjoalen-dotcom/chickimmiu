@@ -3,6 +3,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { trackAddToCart } from '@/lib/tracking'
+import {
+  trackBehaviorAddToCart,
+  trackBehaviorRemoveFromCart,
+} from '@/lib/behaviorTracking'
 import { safeLocalStorage } from '@/lib/safe-storage'
 
 export interface CartVariant {
@@ -115,6 +119,15 @@ export const useCartStore = create<CartState>()(
             : undefined,
         })
 
+        trackBehaviorAddToCart({
+          productId: item.productId,
+          unitPrice: item.salePrice ?? item.price,
+          quantity: safeQty,
+          variant: item.variant
+            ? `${item.variant.colorName} / ${item.variant.size}`
+            : undefined,
+        })
+
         set((state) => {
           const key = item.variant?.sku || item.productId
           const existing = state.items.find(
@@ -144,6 +157,15 @@ export const useCartStore = create<CartState>()(
       },
 
       removeItem: (productId, sku) => {
+        const removing = get().items.find(
+          (i) => (sku ? i.variant?.sku : i.productId) === (sku || productId),
+        )
+        if (removing) {
+          trackBehaviorRemoveFromCart({
+            productId: removing.productId,
+            quantity: removing.quantity,
+          })
+        }
         set((state) => ({
           items: state.items.filter(
             (i) => (sku ? i.variant?.sku : i.productId) !== (sku || productId),

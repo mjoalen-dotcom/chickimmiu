@@ -74,6 +74,7 @@ import { default as default_365d92937231ef8e59f225db1998a642 } from '@/component
 import { default as default_b49611ccd828469519fd79e264a9eb51 } from '@/components/admin/HelpView'
 import { default as default_b3d544e796f2e72482a7e1ca06c557a3 } from '@/components/admin/MemberAnalyticsView'
 import { default as default_ff00d70a4277286e7d2a45db4d136e59 } from '@/components/admin/RepeatPurchaseView'
+import { default as default_228bc0748acd5f4d29b08ed7f8ad4ffb } from '@/components/admin/ConsumerInsightsView'
 import { default as default_beee283113db1e6274b4a3261d86c622 } from '@/components/admin/UTMAttributionView'
 import { default as default_b49617f71656f29a998f7c5995ee1da4 } from '@/components/admin/UTMBuilderView'
 import { default as default_8b5bf0e9243e2c5e54db7bd0ca2ab3d1 } from '@/components/admin/LinkIntegrityView'
@@ -157,6 +158,7 @@ export const importMap = {
   "@/components/admin/HelpView#default": default_b49611ccd828469519fd79e264a9eb51,
   "@/components/admin/MemberAnalyticsView#default": default_b3d544e796f2e72482a7e1ca06c557a3,
   "@/components/admin/RepeatPurchaseView#default": default_ff00d70a4277286e7d2a45db4d136e59,
+  "@/components/admin/ConsumerInsightsView#default": default_228bc0748acd5f4d29b08ed7f8ad4ffb,
   "@/components/admin/UTMAttributionView#default": default_beee283113db1e6274b4a3261d86c622,
   "@/components/admin/UTMBuilderView#default": default_b49617f71656f29a998f7c5995ee1da4,
   "@/components/admin/LinkIntegrityView#default": default_8b5bf0e9243e2c5e54db7bd0ca2ab3d1,

@@ -161,6 +161,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
               onClick={() => setIsSearchOpen(!isSearchOpen)}
               className="p-2 text-foreground/70 hover:text-gold-600 transition-colors"
               aria-label={t('search')}
+              data-track="navbar-search"
             >
               <Search size={20} />
             </button>
@@ -168,6 +169,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
               href="/wishlist"
               className="hidden md:flex p-2 text-foreground/70 hover:text-gold-600 transition-colors relative"
               aria-label={t('wishlist')}
+              data-track="navbar-wishlist"
             >
               <Heart size={20} />
               {wishlistCount > 0 && (
@@ -250,6 +252,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
                 href="/login"
                 className="p-2 text-foreground/70 hover:text-gold-600 transition-colors"
                 aria-label={t('login')}
+                data-track="navbar-login"
               >
                 <User size={20} />
               </Link>
@@ -258,6 +261,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
               onClick={openCartDrawer}
               className="p-2 text-foreground/70 hover:text-gold-600 transition-colors relative"
               aria-label={t('cart')}
+              data-track="navbar-cart"
             >
               <ShoppingBag size={20} />
               {cartCount > 0 && (
@@ -340,6 +344,15 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
                   e.preventDefault()
                   const q = new FormData(e.currentTarget).get('q') as string
                   if (q.trim()) {
+                    try {
+                      // 行為追蹤：搜尋字（cookie consent 沒同意 → no-op）
+                      // dynamic import 避免在 SSR / 拒絕 consent 時也載這支
+                      import('@/lib/behaviorTracking').then((m) =>
+                        m.trackBehaviorSearch(q.trim()),
+                      )
+                    } catch {
+                      // ignore
+                    }
                     window.location.href = `/products?q=${encodeURIComponent(q.trim())}`
                   }
                 }}
