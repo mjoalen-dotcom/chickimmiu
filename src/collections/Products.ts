@@ -8,6 +8,7 @@ import { shoplineXlsxImportEndpoint } from '../endpoints/shoplineXlsxImport'
 import { r2PilotEndpoint } from '../endpoints/r2Pilot'
 import { linkIntegrityScanEndpoint } from '../endpoints/linkIntegrityScan'
 import { applyProductSchedulesEndpoint } from '../endpoints/applyProductSchedules'
+import { bulkFixLinksEndpoint } from '../endpoints/bulkFixLinks'
 import { revalidateProduct } from '../lib/revalidate'
 import { suggestPersonalityTypes } from '../lib/games/mbtiAutoRecommend'
 import { bumpCategoryCount, getCategoryId } from '../lib/categoryCount'
@@ -19,6 +20,7 @@ const productFieldMappings: FieldMapping[] = [
   { key: 'brand', label: '品牌' },
   { key: 'price', label: '原價' },
   { key: 'salePrice', label: '特價' },
+  { key: 'cost', label: '成本' },
   { key: 'stock', label: '庫存' },
   { key: 'status', label: '狀態' },
   { key: 'isNew', label: '新品' },
@@ -123,6 +125,9 @@ export const Products: CollectionConfig = {
           path: '@/components/admin/ProductBulkActions',
         },
         {
+          path: '@/components/admin/ProductBulkCategoryChanger',
+        },
+        {
           path: '@/components/admin/ShoplineXlsxImporter',
         },
         {
@@ -169,6 +174,7 @@ export const Products: CollectionConfig = {
     r2PilotEndpoint,
     linkIntegrityScanEndpoint,
     applyProductSchedulesEndpoint,
+    bulkFixLinksEndpoint,
   ],
   hooks: {
     ...productBeforeDuplicateHook,
@@ -854,7 +860,7 @@ export const Products: CollectionConfig = {
                 },
               ],
             },
-            /* 價格 */
+            /* 價格 + 成本 */
             {
               type: 'row',
               fields: [
@@ -865,7 +871,7 @@ export const Products: CollectionConfig = {
                   required: true,
                   min: 0,
                   admin: {
-                    width: '50%',
+                    width: '33%',
                     description:
                       '勾上方「使用自動計價」時存檔自動覆寫；不勾則手填',
                   },
@@ -876,8 +882,19 @@ export const Products: CollectionConfig = {
                   type: 'number',
                   min: 0,
                   admin: {
-                    width: '50%',
-                    description: '留空表示無特價。系統會擋下「特價 ≥ 原價」',
+                    width: '33%',
+                    description: '留空 = 無特價。系統會擋「特價 ≥ 原價」',
+                  },
+                },
+                {
+                  name: 'cost',
+                  label: '商品成本（新台幣）',
+                  type: 'number',
+                  min: 0,
+                  admin: {
+                    width: '34%',
+                    description:
+                      '採購進貨成本（內部欄位，前台不顯示）。用於營運獲利統計，毛利 = (售價 − 成本) / 售價。可在變體層級覆寫。',
                   },
                 },
               ],
@@ -1245,13 +1262,29 @@ export const Products: CollectionConfig = {
                   ],
                 },
                 {
-                  name: 'gtin',
-                  label: 'GTIN / 條碼',
-                  type: 'text',
-                  admin: {
-                    description:
-                      '此變體（SKU）的 GTIN / EAN / UPC / ISBN。Meta / Google Shopping 動態廣告匹配商品時使用，沒有可留空但會降低廣告投放精準度。',
-                  },
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'costOverride',
+                      label: '此變體成本',
+                      type: 'number',
+                      min: 0,
+                      admin: {
+                        width: '50%',
+                        description: '採購成本。留空 = 用商品 cost',
+                      },
+                    },
+                    {
+                      name: 'gtin',
+                      label: 'GTIN / 條碼',
+                      type: 'text',
+                      admin: {
+                        width: '50%',
+                        description:
+                          'GTIN / EAN / UPC / ISBN。Meta / Google Shopping 動態廣告比對商品用。沒有可留空但會降低投放精準度。',
+                      },
+                    },
+                  ],
                 },
               ],
             },
