@@ -30,7 +30,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     })
     const cat = docs[0]
     if (!cat) return { title: '分類不存在' }
-    const seo = (cat as Record<string, unknown>).seo as Record<string, unknown> | undefined
+    const seo = (cat as unknown as Record<string, unknown>).seo as
+      | Record<string, unknown>
+      | undefined
     return {
       title: (seo?.metaTitle as string) || `${cat.name} | CHIC KIM & MIU`,
       description:
@@ -57,7 +59,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     limit: 1,
     depth: 1,
   })
-  const category = catRes.docs[0] as Record<string, unknown> | undefined
+  const category = catRes.docs[0] as unknown as Record<string, unknown> | undefined
   if (!category) notFound()
 
   const childRes = await payload.find({
@@ -101,12 +103,14 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       limit: 1,
       depth: 0,
     })
-    parent = (parentRes.docs[0] as Record<string, unknown>) ?? null
+    parent = (parentRes.docs[0] as unknown as Record<string, unknown>) ?? null
   }
 
   const heroImg = normalizeMediaUrl(
     (category.image as { url?: string } | undefined)?.url,
   )
+  const categoryDescription =
+    typeof category.description === 'string' ? category.description : ''
 
   return (
     <>
@@ -137,9 +141,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
               {category.name as string}
             </h1>
             <div className="mt-4 w-12 h-[2px] bg-[#C19A5B] mx-auto" />
-            {category.description && (
+            {categoryDescription && (
               <p className="mt-4 text-white/70 text-sm md:text-base max-w-lg mx-auto">
-                {category.description as string}
+                {categoryDescription}
               </p>
             )}
           </div>

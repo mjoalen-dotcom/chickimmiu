@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { parsePayloadListQuery } from '@/lib/payloadRestShim'
 
 /**
+ * GET /api/returns?limit=...&where[...]=...
+ * ─────────────────────────────────────────
+ * Admin dashboard / 後台列表透過 Payload qs-style 拉 list。本 file-based route 一旦
+ * 匹配 `/api/returns`，會擋掉 Payload 的 catch-all（內建 list endpoint），所以這裡
+ * 必須自行委派到 `payload.find()`。access control 不 override — 由 Returns.access.read
+ * 自動套用「admin 看全 / 會員看自己」。
+ *
  * POST /api/returns
  *   body: {
  *     orderId: number | string,
@@ -48,6 +56,34 @@ type IncomingItem = {
 
 type IncomingPhoto = {
   image?: unknown
+}
+
+export async function GET(request: Request): Promise<Response> {
+  const payload = await getPayload({ config })
+  const { user } = await payload.auth({ headers: request.headers })
+  if (!user) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
+  const url = new URL(request.url)
+  const { limit, page, depth, sort, where } = parsePayloadListQuery(url)
+
+  try {
+    const result = await payload.find({
+      collection: 'returns',
+      limit,
+      page,
+      depth,
+      ...(sort ? { sort } : {}),
+      ...(where ? { where } : {}),
+      user,
+      overrideAccess: false,
+    })
+    return NextResponse.json(result)
+  } catch (err) {
+    console.error('[api/returns GET] failed:', err)
+    return NextResponse.json({ error: 'internal' }, { status: 500 })
+  }
 }
 
 export async function POST(request: Request): Promise<Response> {

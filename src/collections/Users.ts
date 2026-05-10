@@ -7,6 +7,7 @@ import { customerRegisterEndpoint } from '../endpoints/customerRegister'
 import { customerLogoutEndpoint } from '../endpoints/customerLogout'
 import { memberAnalyticsEndpoint } from '../endpoints/memberAnalytics'
 import { repeatPurchaseEndpoint } from '../endpoints/repeatPurchaseAnalytics'
+import { consumerInsightsEndpoint } from '../endpoints/consumerInsights'
 import { shoplineCustomerImportEndpoint } from '../endpoints/shoplineCustomerImport'
 import { generateUniqueReferralCode } from '../lib/referralCode'
 
@@ -45,6 +46,9 @@ export const Users: CollectionConfig = {
     description: '系統使用者（管理員、合作夥伴、一般會員）— 分區管理介面',
     components: {
       beforeListTable: [
+        {
+          path: '@/components/admin/ShoplineCustomerImporter',
+        },
         {
           path: '@/components/admin/ImportExportButtons',
           clientProps: { collectionSlug: 'users' },
@@ -127,6 +131,7 @@ export const Users: CollectionConfig = {
     customerLogoutEndpoint,
     memberAnalyticsEndpoint,
     repeatPurchaseEndpoint,
+    consumerInsightsEndpoint,
     shoplineCustomerImportEndpoint,
   ],
   hooks: {

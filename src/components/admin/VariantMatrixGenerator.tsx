@@ -86,6 +86,24 @@ const primaryBtn: React.CSSProperties = {
   cursor: 'pointer',
 }
 
+const presetBtn: React.CSSProperties = {
+  padding: '4px 10px',
+  border: '1px solid var(--theme-elevation-200, #d4d4d8)',
+  background: 'var(--theme-elevation-0, #fff)',
+  borderRadius: 999,
+  fontSize: 12,
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+}
+
+const SIZE_PRESETS: Array<{ label: string; value: string }> = [
+  { label: '上衣 S/M/L', value: 'S,M,L' },
+  { label: '洋裝 S/M/L/XL', value: 'S,M,L,XL' },
+  { label: '褲子 26/28/30', value: '26,28,30' },
+  { label: 'F (均碼)', value: 'F' },
+  { label: '童裝 90/100/110/120', value: '90,100,110,120' },
+]
+
 function slugify(s: string): string {
   return (
     s
@@ -227,6 +245,19 @@ const VariantMatrixGenerator: React.FC = () => {
 
       {/* 顏色列 */}
       <div style={{ marginBottom: 12 }}>
+        <div style={{ ...rowGap, marginBottom: 10 }}>
+          {SIZE_PRESETS.map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              style={presetBtn}
+              onClick={() => setSizesText(preset.value)}
+              title={`快速套用：${preset.value}`}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
         <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>顏色</div>
         {colors.map((c, i) => (
           <div key={i} style={rowGap}>

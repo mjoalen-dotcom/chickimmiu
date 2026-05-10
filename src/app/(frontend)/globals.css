@@ -112,3 +112,12 @@ body.admin-tool-page [data-component="floating-chat"],
 body.admin-tool-page [data-component="floating-menu"] {
   display: none !important;
 }
+
+@keyframes movie-lottery-spin {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(720deg); }
+}
+.animate-movie-lottery-spin {
+  animation: movie-lottery-spin 2.5s ease-in-out;
+  transform-style: preserve-3d;
+}

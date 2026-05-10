@@ -70,6 +70,17 @@ export function createImportEndpoint(collectionSlug: string, fieldMappings: Fiel
           return Response.json({ error: '請上傳檔案' }, { status: 400 })
         }
 
+        // 50MB 上限：xlsx + 全會員匯入經驗約 5-15MB，給寬一點防 Shopline
+        // 全 history 一次性匯入。注意 nginx `client_max_body_size` 也要 ≥ 50m，
+        // 否則 reverse proxy 早於 Node 退 413（見 ops/nginx/ckmu-uploads.conf）。
+        const MAX_BYTES = 50 * 1024 * 1024
+        if (file.size > MAX_BYTES) {
+          return Response.json(
+            { error: `檔案過大（${(file.size / 1024 / 1024).toFixed(1)}MB）— 上限 50MB，請拆批上傳` },
+            { status: 413 },
+          )
+        }
+
         const buffer = Buffer.from(await file.arrayBuffer())
         let rows: Record<string, unknown>[]
 

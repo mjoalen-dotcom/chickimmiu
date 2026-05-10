@@ -31,6 +31,7 @@ import {
 import { useCartStore } from '@/stores/cartStore'
 import { CheckoutLastChance } from '@/components/recommendation/CheckoutLastChance'
 import { PromoUpsellSection } from '@/components/cart/PromoUpsellSection'
+import { trackBehaviorCheckoutStart } from '@/lib/behaviorTracking'
 import {
   trackBeginCheckout,
   trackPurchase,
@@ -485,6 +486,10 @@ export default function CheckoutPage() {
         })),
         subtotal,
       )
+      trackBehaviorCheckoutStart({
+        cartValue: subtotal,
+        itemCount: items.reduce((s, i) => s + i.quantity, 0),
+      })
     }
   }, [items, subtotal])
 

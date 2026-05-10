@@ -5,6 +5,7 @@ import { isAdmin } from '../access/isAdmin'
 import { createExportEndpoint, createImportEndpoint, type FieldMapping } from '../endpoints/importExport'
 import { revalidateAllEndpoint } from '../endpoints/revalidateAll'
 import { shoplineXlsxImportEndpoint } from '../endpoints/shoplineXlsxImport'
+import { r2PilotEndpoint } from '../endpoints/r2Pilot'
 import { linkIntegrityScanEndpoint } from '../endpoints/linkIntegrityScan'
 import { applyProductSchedulesEndpoint } from '../endpoints/applyProductSchedules'
 import { revalidateProduct } from '../lib/revalidate'
@@ -28,6 +29,50 @@ const productFieldMappings: FieldMapping[] = [
   { key: 'variants', label: '變體（JSON）' },
   { key: 'tags', label: '標籤（JSON）' },
 ]
+
+const productBeforeDuplicateHook = {
+  beforeDuplicate: [
+    ({ data }: { data?: Record<string, unknown> | null }) => {
+      if (!data || typeof data !== 'object') return data
+      const ts = Date.now().toString(36)
+      const mutable = data as Record<string, unknown>
+
+      const baseSlug =
+        typeof mutable.slug === 'string' && mutable.slug.trim()
+          ? mutable.slug.trim()
+          : 'product'
+      const baseName =
+        typeof mutable.name === 'string' && mutable.name.trim()
+          ? mutable.name.trim()
+          : '未命名商品'
+
+      mutable.slug = `${baseSlug}-copy-${ts}`
+      mutable.name = `${baseName}（複本）`
+      mutable.status = 'draft'
+      mutable.totalSold = 0
+      mutable.publishAt = null
+      mutable.unpublishAt = null
+      mutable.aliasSlugs = []
+
+      if (Array.isArray(mutable.variants)) {
+        mutable.variants = mutable.variants.map((variant: unknown) => {
+          if (!variant || typeof variant !== 'object') return variant
+          const row = variant as Record<string, unknown>
+          const sku =
+            typeof row.sku === 'string' && row.sku.trim()
+              ? row.sku.trim()
+              : 'variant'
+          return {
+            ...row,
+            sku: `${sku}-copy-${ts}`,
+          }
+        })
+      }
+
+      return mutable
+    },
+  ],
+} as unknown as Partial<NonNullable<CollectionConfig['hooks']>>
 
 /**
  * Products Collection
@@ -72,6 +117,9 @@ export const Products: CollectionConfig = {
           path: '@/components/admin/ProductsUsageNotice',
         },
         {
+          path: '@/components/admin/ProductMissingImagePanel',
+        },
+        {
           path: '@/components/admin/ProductBulkActions',
         },
         {
@@ -87,10 +135,21 @@ export const Products: CollectionConfig = {
           path: '@/components/admin/ImageMigrationPanel',
         },
         {
+          path: '@/components/admin/R2PilotPanel',
+        },
+        {
           path: '@/components/admin/ImportExportButtons',
           clientProps: { collectionSlug: 'products' },
         },
       ],
+      edit: {
+        beforeDocumentControls: [
+          { path: '@/components/admin/ProductCreateWizard' },
+          { path: '@/components/admin/ProductTabBadges' },
+          { path: '@/components/admin/ProductSaveToast' },
+          { path: '@/components/admin/ProductDuplicateButton' },
+        ],
+      },
     },
   },
   access: {
@@ -107,10 +166,12 @@ export const Products: CollectionConfig = {
     createImportEndpoint('products', productFieldMappings),
     revalidateAllEndpoint,
     shoplineXlsxImportEndpoint,
+    r2PilotEndpoint,
     linkIntegrityScanEndpoint,
     applyProductSchedulesEndpoint,
   ],
   hooks: {
+    ...productBeforeDuplicateHook,
     /* ── 1. 驗證前：自動 slug + 資料正規化 ── */
     beforeValidate: [
       ({ data }) => {
@@ -283,7 +344,6 @@ export const Products: CollectionConfig = {
         return data
       },
     ],
-
     /* ── 3. 存檔後：revalidate 前台 + 推 Meta Catalog ── */
     afterChange: [
       ({ doc, previousDoc }) => {
@@ -311,18 +371,23 @@ export const Products: CollectionConfig = {
             console.warn('[Products.afterChange] catalog push failed (non-fatal):', err)
           })
       },
-      // PR-γ: 同步 categories.productCount
+      // PR-γ: 同步 categories.productCount（語意 = published 數量）
+      // 用 (category, isPublished) 兩維度算貢獻：舊 -1、新 +1，差異才動 DB。
+      // status 從 published ↔ draft/archived 切換也要正確 bump。
       // 任何 hook 失敗都不能擋商品存檔（包在 try/catch、log warn）。
       async ({ doc, previousDoc, req, operation }) => {
         try {
-          const oldId = getCategoryId((previousDoc as Record<string, unknown> | undefined)?.category)
-          const newId = getCategoryId((doc as Record<string, unknown> | undefined)?.category)
-          if (operation === 'create') {
-            if (newId) await bumpCategoryCount(req.payload, newId, +1)
-          } else if (operation === 'update' && oldId !== newId) {
-            if (oldId) await bumpCategoryCount(req.payload, oldId, -1)
-            if (newId) await bumpCategoryCount(req.payload, newId, +1)
-          }
+          const prev = previousDoc as Record<string, unknown> | undefined
+          const next = doc as Record<string, unknown> | undefined
+          const oldCat = operation === 'create' ? null : getCategoryId(prev?.category)
+          const newCat = getCategoryId(next?.category)
+          const wasPublished = operation !== 'create' && prev?.status === 'published'
+          const isPublished = next?.status === 'published'
+          const oldKey = wasPublished && oldCat ? oldCat : null
+          const newKey = isPublished && newCat ? newCat : null
+          if (oldKey === newKey) return
+          if (oldKey) await bumpCategoryCount(req.payload, oldKey, -1)
+          if (newKey) await bumpCategoryCount(req.payload, newKey, +1)
         } catch (e) {
           req.payload.logger?.warn?.(
             `[Products.afterChange] category count bump failed: ${(e as Error).message}`,
@@ -349,10 +414,12 @@ export const Products: CollectionConfig = {
             console.warn('[Products.afterDelete] catalog delete failed (non-fatal):', err)
           })
       },
-      // PR-γ: 同步 categories.productCount -1
+      // PR-γ: 同步 categories.productCount -1（只有 published 才扣，draft/archived 從不在計數中）
       async ({ doc, req }) => {
         try {
-          const id = getCategoryId((doc as Record<string, unknown> | undefined)?.category)
+          const d = doc as Record<string, unknown> | undefined
+          if (d?.status !== 'published') return
+          const id = getCategoryId(d?.category)
           if (id) await bumpCategoryCount(req.payload, id, -1)
         } catch (e) {
           req.payload.logger?.warn?.(
@@ -534,6 +601,28 @@ export const Products: CollectionConfig = {
         },
       ],
     },
+    {
+      name: 'marginInsight',
+      label: '毛利洞察',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        components: {
+          Field: '@/components/admin/ProductMarginInsight',
+        },
+      },
+    },
+    {
+      name: 'wizardLauncher',
+      label: '建立精靈',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        components: {
+          Field: '@/components/admin/ProductWizardLauncher',
+        },
+      },
+    },
 
     /* ════════════════════════════════════════════════
      *  TABS：主編輯區
@@ -541,10 +630,10 @@ export const Products: CollectionConfig = {
     {
       type: 'tabs',
       tabs: [
-        /* ── Tab 1：基本資訊 ── */
+        /* ── Tab 1：基本與價格 ── */
         {
-          label: '基本資訊',
-          description: '商品名稱、描述、價格、分類、標籤',
+          label: '① 基本與價格',
+          description: '商品名稱、價格、分類、標籤與基礎內容設定',
           fields: [
             {
               type: 'row',
@@ -847,21 +936,76 @@ export const Products: CollectionConfig = {
                 },
               ],
             },
-            /* 重量 */
+            /* 重量 + 尺寸（對應 dimensions_length/width/height） */
             {
-              name: 'weight',
-              label: '商品重量（公克）',
+              type: 'row',
+              fields: [
+                {
+                  name: 'weight',
+                  label: '商品重量（公克）',
+                  type: 'number',
+                  min: 0,
+                  admin: {
+                    width: '25%',
+                    description: '用於運費計算',
+                  },
+                },
+                {
+                  name: 'dimensions',
+                  label: '商品尺寸（cm）',
+                  type: 'group',
+                  admin: {
+                    width: '75%',
+                    description: '長 × 寬 × 高（公分）',
+                  },
+                  fields: [
+                    {
+                      type: 'row',
+                      fields: [
+                        {
+                          name: 'length',
+                          label: '長',
+                          type: 'number',
+                          min: 0,
+                          admin: { width: '33%' },
+                        },
+                        {
+                          name: 'width',
+                          label: '寬',
+                          type: 'number',
+                          min: 0,
+                          admin: { width: '33%' },
+                        },
+                        {
+                          name: 'height',
+                          label: '高',
+                          type: 'number',
+                          min: 0,
+                          admin: { width: '34%' },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              name: 'purchaseLimit',
+              label: '單人限購數量',
               type: 'number',
               min: 0,
-              admin: { description: '用於運費計算' },
+              defaultValue: 0,
+              admin: {
+                description: '單人單次最多購買數量。0 表示不限',
+              },
             },
           ],
         },
 
-        /* ── Tab 2：媒體與圖庫 ── */
+        /* ── Tab 2：媒體與變體 ── */
         {
-          label: '媒體與圖庫',
-          description: '封面圖、商品圖庫',
+          label: '② 媒體與變體',
+          description: '封面圖、圖庫、變體、庫存與預購設定',
           fields: [
             {
               name: 'featuredImage',
@@ -871,6 +1015,20 @@ export const Products: CollectionConfig = {
               admin: {
                 description:
                   '列表頁與首頁展示的主要圖片。若留空會使用下方圖庫第一張。',
+              },
+            },
+            {
+              name: 'introVideo',
+              label: '商品介紹影片',
+              type: 'upload',
+              relationTo: 'media',
+              filterOptions: {
+                mimeType: {
+                  contains: 'video',
+                },
+              },
+              admin: {
+                description: '可放在 PDP 主圖上方（建議 9:16 或 4:5 直式短影片）',
               },
             },
             {
@@ -927,14 +1085,6 @@ export const Products: CollectionConfig = {
                 },
               ],
             },
-          ],
-        },
-
-        /* ── Tab 3：變體與庫存 ── */
-        {
-          label: '變體與庫存',
-          description: '顏色、尺寸、每變體庫存、尺寸表、預購設定',
-          fields: [
             {
               name: 'variantMatrixTool',
               type: 'ui',
@@ -951,6 +1101,9 @@ export const Products: CollectionConfig = {
               admin: {
                 description:
                   '每一個變體 = 一個顏色 × 尺寸組合。若商品只有一個款式，可留空，改用下方「總庫存」欄位。',
+                components: {
+                  Field: '@/components/admin/VariantInlineTable',
+                },
               },
               fields: [
                 {
@@ -1100,10 +1253,10 @@ export const Products: CollectionConfig = {
           ],
         },
 
-        /* ── Tab 4：穿搭資訊 ── */
+        /* ── Tab 3：穿搭與 SEO ── */
         {
-          label: '穿搭資訊',
-          description: '材質、洗滌說明、模特兒資訊（會顯示在前台商品詳細頁）',
+          label: '③ 穿搭與 SEO',
+          description: '材質、模特資訊、穿搭建議與 SEO 設定',
           fields: [
             {
               name: 'material',
@@ -1234,14 +1387,43 @@ export const Products: CollectionConfig = {
                 },
               },
             },
+            {
+              name: 'seo',
+              label: 'SEO 設定',
+              type: 'group',
+              fields: [
+                {
+                  name: 'metaTitle',
+                  label: 'Meta 標題',
+                  type: 'text',
+                  admin: { description: '留空時使用商品名稱。建議 60 字以內。' },
+                },
+                {
+                  name: 'metaDescription',
+                  label: 'Meta 描述',
+                  type: 'textarea',
+                  admin: { description: '建議 155 字以內。' },
+                },
+                {
+                  name: 'metaImage',
+                  label: 'OG 分享圖',
+                  type: 'upload',
+                  relationTo: 'media',
+                  admin: {
+                    description:
+                      '社群分享時的預覽圖。留空時使用封面主圖。建議 1200×630。',
+                  },
+                },
+              ],
+            },
           ],
         },
 
-        /* ── Tab 5：廣告目錄 ── */
+        /* ── Tab 4：廣告與進階 ── */
         {
-          label: '廣告目錄',
+          label: '④ 廣告與進階',
           description:
-            'Meta / Google Shopping 動態廣告所需的目錄欄位。留空欄位會 fallback 到「廣告目錄設定」global 的預設值。',
+            'Meta / Google Shopping 動態廣告所需欄位與進階投放設定。留空欄位會 fallback 到「廣告目錄設定」global 的預設值。',
           fields: [
             {
               name: 'excludeFromAdsCatalog',
@@ -1328,7 +1510,7 @@ export const Products: CollectionConfig = {
                   label: 'GTIN / 條碼（商品層級）',
                   type: 'text',
                   admin: {
-                    width: '50%',
+                    width: '33%',
                     description: '商品共用 GTIN（每個 SKU 變體可在「變體與庫存」分別覆寫）',
                   },
                 },
@@ -1337,8 +1519,17 @@ export const Products: CollectionConfig = {
                   label: 'MPN 製造商料號',
                   type: 'text',
                   admin: {
-                    width: '50%',
+                    width: '33%',
                     description: '無 GTIN 時 Google 要求 brand + mpn 組合替代',
+                  },
+                },
+                {
+                  name: 'hsCode',
+                  label: 'HS Code',
+                  type: 'text',
+                  admin: {
+                    width: '34%',
+                    description: '海關 HS code，跨境運送用',
                   },
                 },
               ],
@@ -1364,44 +1555,7 @@ export const Products: CollectionConfig = {
               maxLength: 5000,
             },
           ],
-        },
-
-        /* ── Tab 6：SEO ── */
-        {
-          label: 'SEO',
-          description: '搜尋引擎顯示標題、描述、Open Graph 分享圖',
-          fields: [
-            {
-              name: 'seo',
-              label: 'SEO 設定',
-              type: 'group',
-              fields: [
-                {
-                  name: 'metaTitle',
-                  label: 'Meta 標題',
-                  type: 'text',
-                  admin: { description: '留空時使用商品名稱。建議 60 字以內。' },
-                },
-                {
-                  name: 'metaDescription',
-                  label: 'Meta 描述',
-                  type: 'textarea',
-                  admin: { description: '建議 155 字以內。' },
-                },
-                {
-                  name: 'metaImage',
-                  label: 'OG 分享圖',
-                  type: 'upload',
-                  relationTo: 'media',
-                  admin: {
-                    description:
-                      '社群分享時的預覽圖。留空時使用封面主圖。建議 1200×630。',
-                  },
-                },
-              ],
-            },
-          ],
-        },
+        }
       ],
     },
   ],

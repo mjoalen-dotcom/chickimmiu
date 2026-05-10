@@ -173,7 +173,7 @@ export default async function ProductDetailPage({ params }: Props) {
         limit: 1,
         depth: 0,
       })
-      const aliasMatch = docs[0] as Record<string, unknown> | undefined
+      const aliasMatch = docs[0] as unknown as Record<string, unknown> | undefined
       if (aliasMatch?.slug && aliasMatch.slug !== slug) {
         redirect(`/products/${aliasMatch.slug as string}`)
       }

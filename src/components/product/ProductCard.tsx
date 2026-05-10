@@ -22,6 +22,7 @@ export interface ProductCardProps {
   isHot?: boolean
   soldCount?: number
   memberPrice?: number | null
+  purchaseLimit?: number | null
   onQuickView?: () => void
 }
 
@@ -37,6 +38,7 @@ export function ProductCard({
   isHot,
   soldCount,
   memberPrice,
+  purchaseLimit,
   onQuickView,
 }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false)
@@ -61,6 +63,10 @@ export function ProductCard({
       image: image?.url,
       price,
       salePrice: salePrice ?? undefined,
+      purchaseLimit:
+        typeof purchaseLimit === 'number' && purchaseLimit > 0
+          ? Math.floor(purchaseLimit)
+          : undefined,
     })
   }
 

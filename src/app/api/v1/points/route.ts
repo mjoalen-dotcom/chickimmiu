@@ -327,8 +327,9 @@ export async function POST(req: NextRequest) {
       // balance 由我們指定為扣除後的餘額。
       const txnDescription =
         outcome.transactionDescription ?? `兌換：${redemption.name ?? '點數商城商品'}`
-      await payload.create({
+      await (payload.create as any)({
         collection: 'points-transactions',
+        draft: false,
         data: {
           user: sessionUser.id,
           type: 'redeem',
@@ -336,7 +337,7 @@ export async function POST(req: NextRequest) {
           balance: userPoints - cost,
           source: 'redemption',
           description: txnDescription,
-        } as LooseRecord,
+        },
         overrideAccess: true,
       })
 

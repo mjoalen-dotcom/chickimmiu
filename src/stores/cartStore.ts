@@ -3,6 +3,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { trackAddToCart } from '@/lib/tracking'
+import {
+  trackBehaviorAddToCart,
+  trackBehaviorRemoveFromCart,
+} from '@/lib/behaviorTracking'
 import { safeLocalStorage } from '@/lib/safe-storage'
 
 export interface CartVariant {
@@ -28,6 +32,12 @@ export interface CartItem {
   giftRuleRef?: string | number
   isAddOn?: boolean
   addOnRuleRef?: string | number
+  purchaseLimit?: number
+}
+
+type AddItemResult = {
+  ok: boolean
+  message?: string
 }
 
 export interface BundleLike {
@@ -53,7 +63,7 @@ interface CartState {
   items: CartItem[]
   isDrawerOpen: boolean
 
-  addItem: (item: Omit<CartItem, 'quantity'>, qty?: number) => void
+  addItem: (item: Omit<CartItem, 'quantity'>, qty?: number) => AddItemResult
   removeItem: (productId: string, sku?: string) => void
   updateQuantity: (productId: string, quantity: number, sku?: string) => void
   clearCart: () => void
@@ -78,13 +88,42 @@ export const useCartStore = create<CartState>()(
       isDrawerOpen: false,
 
       addItem: (item, qty = 1) => {
+        const safeQty = Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1
+        const purchaseLimit =
+          typeof item.purchaseLimit === 'number' && item.purchaseLimit > 0
+            ? Math.floor(item.purchaseLimit)
+            : 0
+
+        if (purchaseLimit > 0) {
+          const currentQty = get()
+            .items
+            .filter((line) => line.productId === item.productId && !line.isGift)
+            .reduce((sum, line) => sum + line.quantity, 0)
+
+          if (currentQty + safeQty > purchaseLimit) {
+            return {
+              ok: false,
+              message: `此商品每人限購 ${purchaseLimit} 件`,
+            }
+          }
+        }
+
         trackAddToCart({
           item_id: item.productId,
           item_name: item.name,
           price: item.salePrice ?? item.price,
-          quantity: qty,
+          quantity: safeQty,
           currency: 'TWD',
           item_variant: item.variant
+            ? `${item.variant.colorName} / ${item.variant.size}`
+            : undefined,
+        })
+
+        trackBehaviorAddToCart({
+          productId: item.productId,
+          unitPrice: item.salePrice ?? item.price,
+          quantity: safeQty,
+          variant: item.variant
             ? `${item.variant.colorName} / ${item.variant.size}`
             : undefined,
         })
@@ -98,20 +137,35 @@ export const useCartStore = create<CartState>()(
             return {
               items: state.items.map((i) =>
                 (i.variant?.sku || i.productId) === key && !i.bundleRef && !i.isGift
-                  ? { ...i, quantity: i.quantity + qty }
+                  ? {
+                      ...i,
+                      quantity: i.quantity + safeQty,
+                      purchaseLimit: i.purchaseLimit ?? item.purchaseLimit,
+                    }
                   : i,
               ),
               isDrawerOpen: true,
             }
           }
           return {
-            items: [...state.items, { ...item, quantity: qty }],
+            items: [...state.items, { ...item, quantity: safeQty }],
             isDrawerOpen: true,
           }
         })
+
+        return { ok: true }
       },
 
       removeItem: (productId, sku) => {
+        const removing = get().items.find(
+          (i) => (sku ? i.variant?.sku : i.productId) === (sku || productId),
+        )
+        if (removing) {
+          trackBehaviorRemoveFromCart({
+            productId: removing.productId,
+            quantity: removing.quantity,
+          })
+        }
         set((state) => ({
           items: state.items.filter(
             (i) => (sku ? i.variant?.sku : i.productId) !== (sku || productId),
