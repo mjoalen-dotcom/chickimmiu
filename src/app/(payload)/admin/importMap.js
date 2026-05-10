@@ -45,6 +45,7 @@ import { default as default_5bac33fcb1b79c680fc9b0258f0347a3 } from '@/component
 import { default as default_e668e9854d72bcea32f70845627cdf0d } from '@/components/admin/SinsangImporter'
 import { default as default_99d8a7df13704a09eb2683c564fe3977 } from '@/components/admin/ShoplineImportPanel'
 import { default as default_235ae141af0ae2ee10377f179570df1f } from '@/components/admin/ImageMigrationPanel'
+import { default as default_f5d7110ea69ee6cfa54ff2244f6e6443 } from '@/components/admin/R2PilotPanel'
 import { default as default_131a3f06e1429f7f0173fc5b4da87663 } from '@/components/admin/ImportExportButtons'
 import { default as default_e8d6ffb15fc46072823f2ab09538bb28 } from '@/components/admin/ProductCreateWizard'
 import { default as default_da45625f08d6c78051d9389e2ef13996 } from '@/components/admin/ProductTabBadges'
@@ -129,6 +130,7 @@ export const importMap = {
   "@/components/admin/SinsangImporter#default": default_e668e9854d72bcea32f70845627cdf0d,
   "@/components/admin/ShoplineImportPanel#default": default_99d8a7df13704a09eb2683c564fe3977,
   "@/components/admin/ImageMigrationPanel#default": default_235ae141af0ae2ee10377f179570df1f,
+  "@/components/admin/R2PilotPanel#default": default_f5d7110ea69ee6cfa54ff2244f6e6443,
   "@/components/admin/ImportExportButtons#default": default_131a3f06e1429f7f0173fc5b4da87663,
   "@/components/admin/ProductCreateWizard#default": default_e8d6ffb15fc46072823f2ab09538bb28,
   "@/components/admin/ProductTabBadges#default": default_da45625f08d6c78051d9389e2ef13996,

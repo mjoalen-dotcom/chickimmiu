@@ -5,6 +5,7 @@ import { isAdmin } from '../access/isAdmin'
 import { createExportEndpoint, createImportEndpoint, type FieldMapping } from '../endpoints/importExport'
 import { revalidateAllEndpoint } from '../endpoints/revalidateAll'
 import { shoplineXlsxImportEndpoint } from '../endpoints/shoplineXlsxImport'
+import { r2PilotEndpoint } from '../endpoints/r2Pilot'
 import { linkIntegrityScanEndpoint } from '../endpoints/linkIntegrityScan'
 import { applyProductSchedulesEndpoint } from '../endpoints/applyProductSchedules'
 import { revalidateProduct } from '../lib/revalidate'
@@ -134,6 +135,9 @@ export const Products: CollectionConfig = {
           path: '@/components/admin/ImageMigrationPanel',
         },
         {
+          path: '@/components/admin/R2PilotPanel',
+        },
+        {
           path: '@/components/admin/ImportExportButtons',
           clientProps: { collectionSlug: 'products' },
         },
@@ -162,6 +166,7 @@ export const Products: CollectionConfig = {
     createImportEndpoint('products', productFieldMappings),
     revalidateAllEndpoint,
     shoplineXlsxImportEndpoint,
+    r2PilotEndpoint,
     linkIntegrityScanEndpoint,
     applyProductSchedulesEndpoint,
   ],
