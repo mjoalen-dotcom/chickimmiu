@@ -105,7 +105,11 @@ async function processFile(
     }
 
     try {
-      const existing = await payload.find({
+      /* ── 3-tier upsert match：sourceId → productSku → variants.sku → create ──
+       * 與 src/endpoints/shoplineXlsxImport.ts 同步，邏輯重複但各自有 typing 需要
+       * 避免共用 helper（一個是 payload local API、一個是 PayloadRequest）。改了
+       * 這邊記得也改另一邊。 */
+      let existing = await payload.find({
         collection: 'products',
         where: { 'sourcing.sourceId': { equals: p.shoplineProductId } },
         limit: 1,
@@ -116,6 +120,31 @@ async function processFile(
         id: number
         slug?: string
         aliasSlugs?: { slug: string; source?: string }[]
+      }
+
+      // Tier 2: productSku
+      if (existing.docs.length === 0 && p.productSku) {
+        existing = await payload.find({
+          collection: 'products',
+          where: { productSku: { equals: p.productSku } },
+          limit: 1,
+          depth: 0,
+        })
+      }
+
+      // Tier 3: variants.sku
+      if (existing.docs.length === 0 && p.variants.length > 0) {
+        const incomingVariantSkus = p.variants
+          .map((v) => v.sku)
+          .filter((s): s is string => Boolean(s && s.trim()))
+        if (incomingVariantSkus.length > 0) {
+          existing = await payload.find({
+            collection: 'products',
+            where: { 'variants.sku': { in: incomingVariantSkus } },
+            limit: 1,
+            depth: 0,
+          })
+        }
       }
 
       const existingDoc = existing.docs[0] as unknown as ExistingDoc | undefined
