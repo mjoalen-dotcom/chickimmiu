@@ -49,6 +49,7 @@ import { CollectibleCardTemplates } from './collections/CollectibleCardTemplates
 import { CollectibleCards } from './collections/CollectibleCards'
 import { CollectibleCardEvents } from './collections/CollectibleCardEvents'
 import { SiteThemes } from './collections/SiteThemes'
+import { PrizePools } from './collections/PrizePools'
 
 import { CollectionsPageSettings } from './globals/CollectionsPageSettings'
 import { GlobalSettings } from './globals/GlobalSettings'
@@ -375,6 +376,7 @@ export default buildConfig({
     UGCPosts,
     CustomerServiceTickets,
     ConciergeServiceRequests,
+    PrizePools,
     MiniGameRecords,
     CardBattles,
     GameLeaderboard,

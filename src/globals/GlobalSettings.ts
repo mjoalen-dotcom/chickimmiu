@@ -434,5 +434,92 @@ export const GlobalSettings: GlobalConfig = {
         },
       ],
     },
+
+    // ── APP 下載連結（/app 頁面 + header/footer 入口）──
+    {
+      name: 'appLinks',
+      label: 'APP 下載設定',
+      type: 'group',
+      admin: {
+        description: '/app 下載頁顯示的 store link 與宣傳文案；前台 header/footer 入口同步顯示',
+      },
+      fields: [
+        {
+          name: 'enabled',
+          label: '啟用 APP 下載入口',
+          type: 'checkbox',
+          defaultValue: true,
+          admin: { description: '取消勾選 = /app 頁面 410；header/footer 不顯示「下載 APP」link' },
+        },
+        {
+          name: 'iosUrl',
+          label: 'iOS App Store 連結',
+          type: 'text',
+          defaultValue: 'https://apps.apple.com/us/app/ckmu-%E9%9F%93%E5%9C%8B%E6%9C%8D%E9%A3%BE/id6740013272',
+          admin: { description: '完整 https URL；留空則 iOS 區塊顯示「即將上線」' },
+        },
+        {
+          name: 'androidUrl',
+          label: 'Android Google Play 連結',
+          type: 'text',
+          admin: { description: '完整 https URL；留空則 Android 區塊顯示「即將上線」' },
+        },
+        {
+          name: 'apkUrl',
+          label: 'APK 直接下載連結（備用）',
+          type: 'text',
+          admin: { description: '若沒上 Play 商店可放 R2/S3 APK 連結；無則隱藏' },
+        },
+        {
+          name: 'tagline',
+          label: '主標',
+          type: 'text',
+          defaultValue: '下載 CKMU APP，韓國服飾隨身逛',
+        },
+        {
+          name: 'subtagline',
+          label: '副標',
+          type: 'textarea',
+          defaultValue:
+            '專屬 APP 限定優惠、推播通知新品到貨、互動小遊戲贏點數、訂單追蹤即時看 — 全方位掌握您的時尚生活。',
+        },
+        {
+          name: 'features',
+          label: '主打功能列表',
+          type: 'array',
+          maxRows: 8,
+          fields: [
+            { name: 'icon', label: 'Emoji 圖示', type: 'text', defaultValue: '✨' },
+            { name: 'title', label: '功能名稱', type: 'text', required: true },
+            { name: 'description', label: '功能說明', type: 'textarea' },
+          ],
+          defaultValue: [
+            { icon: '🎁', title: 'APP 限定每日優惠', description: '推播獨家 coupon code，僅限 APP 會員' },
+            { icon: '🎰', title: '互動小遊戲', description: '刮刮樂、轉盤、每日簽到，贏點數換購物金' },
+            { icon: '📦', title: '訂單即時追蹤', description: '物流狀態推播，第一時間掌握包裹位置' },
+            { icon: '👗', title: '韓國新品搶先看', description: '東大門新品上架推播，搭配每週風格挑戰' },
+            { icon: '⭐', title: '會員等級加倍', description: 'APP 開啟享 1.2x 點數加成（限定）' },
+          ],
+        },
+        {
+          name: 'qrCodeImage',
+          label: 'QR Code 圖片',
+          type: 'upload',
+          relationTo: 'media',
+          admin: {
+            description:
+              '可選；若上傳會在下載頁顯示 QR code（建議 300×300 PNG）。' +
+              '留空時系統自動用 iosUrl / androidUrl 即時 render QR code',
+          },
+        },
+        {
+          name: 'comingSoonNote',
+          label: '即將上線備註',
+          type: 'text',
+          defaultValue: '即將上線',
+          admin: { description: 'iOS / Android link 留空時顯示的提示文字' },
+        },
+      ],
+    },
   ],
 }

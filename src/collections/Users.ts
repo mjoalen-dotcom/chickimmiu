@@ -1141,6 +1141,52 @@ export const Users: CollectionConfig = {
                 },
               ],
             },
+            // ── 遊戲規範同意書 ──
+            {
+              name: 'gameTermsAcceptance',
+              label: '遊戲規範同意紀錄',
+              type: 'group',
+              admin: {
+                description: 'GameSettings.terms.version 變更時自動失效，會員下次進 /games 須重簽',
+              },
+              fields: [
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'acceptedAt',
+                      label: '同意時間',
+                      type: 'date',
+                      admin: { width: '50%', readOnly: true, date: { pickerAppearance: 'dayAndTime' } },
+                    },
+                    {
+                      name: 'acceptedVersion',
+                      label: '同意的版本號',
+                      type: 'text',
+                      admin: { width: '50%', readOnly: true, description: '對齊 GameSettings.terms.version' },
+                    },
+                  ],
+                },
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'adultConfirmed',
+                      label: '已確認年滿 20 歲',
+                      type: 'checkbox',
+                      defaultValue: false,
+                      admin: { width: '50%', readOnly: true },
+                    },
+                    {
+                      name: 'acceptanceIp',
+                      label: '同意時 IP',
+                      type: 'text',
+                      admin: { width: '50%', readOnly: true, description: '法律存證用' },
+                    },
+                  ],
+                },
+              ],
+            },
             // AI DM section
             {
               name: 'aiDmPreferences',

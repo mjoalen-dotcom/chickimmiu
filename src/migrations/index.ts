@@ -50,6 +50,9 @@ import * as migration_20260508_100000_add_product_listing_schedule_image_categor
 import * as migration_20260508_120000_add_product_additional_categories from './20260508_120000_add_product_additional_categories';
 import * as migration_20260508_140000_add_pricing_formula_and_auto_pricing from './20260508_140000_add_pricing_formula_and_auto_pricing';
 import * as migration_20260508_160000_add_product_purchase_limit_dimensions_hs_video from './20260508_160000_add_product_purchase_limit_dimensions_hs_video';
+import * as migration_20260509_100000_add_prize_pools from './20260509_100000_add_prize_pools';
+import * as migration_20260509_110000_add_game_terms_acceptance from './20260509_110000_add_game_terms_acceptance';
+import * as migration_20260509_120000_add_app_links from './20260509_120000_add_app_links';
 import * as migration_20260510_120000_add_behavior_events from './20260510_120000_add_behavior_events';
 
 export const migrations = [
@@ -308,10 +311,24 @@ export const migrations = [
     down: migration_20260508_140000_add_pricing_formula_and_auto_pricing.down,
     name: '20260508_140000_add_pricing_formula_and_auto_pricing',
   },
-  {
     up: migration_20260508_160000_add_product_purchase_limit_dimensions_hs_video.up,
     down: migration_20260508_160000_add_product_purchase_limit_dimensions_hs_video.down,
     name: '20260508_160000_add_product_purchase_limit_dimensions_hs_video',
+  },
+  {
+    up: migration_20260509_100000_add_prize_pools.up,
+    down: migration_20260509_100000_add_prize_pools.down,
+    name: '20260509_100000_add_prize_pools',
+  },
+  {
+    up: migration_20260509_110000_add_game_terms_acceptance.up,
+    down: migration_20260509_110000_add_game_terms_acceptance.down,
+    name: '20260509_110000_add_game_terms_acceptance',
+  },
+  {
+    up: migration_20260509_120000_add_app_links.up,
+    down: migration_20260509_120000_add_app_links.down,
+    name: '20260509_120000_add_app_links',
   },
   {
     up: migration_20260510_120000_add_behavior_events.up,

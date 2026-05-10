@@ -11,7 +11,12 @@ interface Props {
 }
 
 type DailyStatus = { remaining: number; canPlay: boolean; freePlaysLeft: number; requiresPoints: boolean }
-type PlayResult = { prize: { prize: string; type: string; amount: number }; pointsSpent: number }
+type PlayResult = {
+  prize: { prize: string; type: string; amount: number }
+  pointsSpent: number
+  cells?: string[]
+  won?: boolean
+}
 type Phase = 'loading' | 'auth' | 'limit' | 'ready' | 'submitting' | 'done' | 'error'
 
 export function ScratchCard({ open, onClose, onComplete }: Props) {
@@ -187,10 +192,17 @@ export function ScratchCard({ open, onClose, onComplete }: Props) {
                   <p className="text-sm text-muted-foreground">計算獎品⋯</p>
                 ) : result ? (
                   <>
-                    <Sparkles size={32} className="text-gold-500 mb-2" />
-                    <p className="text-2xl font-serif text-gold-600">{result.prize.prize}</p>
+                    <Sparkles size={32} className={result.won === false ? 'text-cream-300 mb-2' : 'text-gold-500 mb-2'} />
+                    <p className={`text-2xl font-serif ${result.won === false ? 'text-muted-foreground' : 'text-gold-600'}`}>
+                      {result.won === false ? '銘謝惠顧' : result.prize.prize}
+                    </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {result.prize.type === 'credit' ? '購物金' : result.prize.type === 'coupon' ? '優惠券' : '會員點數'}
+                      {result.won === false
+                        ? '差一點 — 再接再厲'
+                        : result.prize.type === 'credit' ? '購物金'
+                          : result.prize.type === 'coupon' ? '優惠券'
+                          : result.prize.type === 'badge' ? '專屬徽章'
+                          : '會員點數'}
                     </p>
                   </>
                 ) : (
@@ -222,15 +234,19 @@ export function ScratchCard({ open, onClose, onComplete }: Props) {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-center p-4 bg-gold-500/10 rounded-xl"
+                className={`text-center p-4 rounded-xl ${result.won === false ? 'bg-cream-100' : 'bg-gold-500/10'}`}
               >
                 <p className="text-sm font-medium">
-                  恭喜獲得 <span className="text-gold-600">{result.prize.prize}</span>！
+                  {result.won === false ? (
+                    <span className="text-muted-foreground">本次未中獎，明天再試試</span>
+                  ) : (
+                    <>恭喜獲得 <span className="text-gold-600">{result.prize.prize}</span>！</>
+                  )}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  {result.prize.type === 'points' && `已加入點數（+${result.prize.amount}）`}
-                  {result.prize.type === 'credit' && `已加入購物金（+NT$${result.prize.amount}）`}
-                  {result.prize.type === 'coupon' && '已進寶物箱，可於「我的寶物箱」查詢'}
+                  {result.won !== false && result.prize.type === 'points' && `已加入點數（+${result.prize.amount}）`}
+                  {result.won !== false && result.prize.type === 'credit' && `已加入購物金（+NT$${result.prize.amount}）`}
+                  {result.won !== false && result.prize.type === 'coupon' && '已進寶物箱，可於「我的寶物箱」查詢'}
                   {result.pointsSpent > 0 && (
                     <span className="block mt-1 text-amber-600">（扣 {result.pointsSpent} 點）</span>
                   )}
