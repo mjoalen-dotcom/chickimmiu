@@ -17,10 +17,17 @@ type ProductData = RequiredDataFromCollectionSlug<'products'>
  * 使用：
  *   multipart/form-data with field `file` = .xlsx
  *   query string:
- *     dryRun=1  → 僅回傳預覽（不寫入資料庫） ← 預設
- *     dryRun=0  → 實際寫入
- *     limit=N   → 最多處理 N 筆（測試用）
+ *     dryRun=1   → 僅回傳預覽（不寫入資料庫） ← 預設
+ *     dryRun=0   → 實際寫入
+ *     limit=N    → 最多處理 N 筆（測試用）
  *     status=draft|published|keep → 覆蓋匯入狀態；keep 沿用檔案
+ *     strict=1   → dryRun 模式下若有 unmappedCategories 直接 fail（強迫補完
+ *                 categoryMapping.ts 才能進到 commit）
+ *     fallback=uncategorized → commit 模式：未對應分類丟去「未分類」bucket
+ *                 （PR3 之前的舊行為，現在要顯式 opt-in）
+ *
+ * 預設 commit 模式（無 fallback flag）：未對應分類的商品該筆記成 `action:'error'`
+ * 不寫入 DB，回傳 unmappedCategories 給 admin 補對照表後重跑。
  *
  * 權限：僅 admin。
  *
@@ -39,6 +46,8 @@ export const shoplineXlsxImportEndpoint: Endpoint = {
     const limitRaw = url.searchParams.get('limit')
     const limit = limitRaw ? Math.max(1, parseInt(limitRaw, 10) || 0) : 0
     const statusOverride = url.searchParams.get('status') || 'keep'
+    const strict = url.searchParams.get('strict') === '1'
+    const allowFallback = url.searchParams.get('fallback') === 'uncategorized'
 
     /* ── 取得上傳的檔案 ── */
     let buffer: Buffer
@@ -71,9 +80,30 @@ export const shoplineXlsxImportEndpoint: Endpoint = {
 
     /* ── Dry-run：只回 parse report + 預覽 ── */
     if (dryRun) {
+      // strict 模式：有未對應分類就 fail，逼 admin 補完 categoryMapping.ts
+      // 才能進到 commit。設計動機是「分類 mapping 明確」P0 要求 — 不要默默丟
+      // 進「未分類」bucket 然後 7000 個商品都在那等人手動分。
+      if (strict && report.unmappedCategories.length > 0) {
+        return Response.json(
+          {
+            success: false,
+            mode: 'dry-run',
+            message:
+              `strict 模式啟用，且有 ${report.unmappedCategories.length} 個未對應分類。` +
+              '請補完 src/lib/shopline/categoryMapping.ts 的 CATEGORY_MAP 後重跑，' +
+              '或拿掉 ?strict=1 / 加 ?fallback=uncategorized 強制進到 commit。',
+            unmappedCategories: report.unmappedCategories,
+            totalRowsInFile: report.totalRows,
+            totalProductsParsed: report.totalProducts,
+          },
+          { status: 422 },
+        )
+      }
+
       return Response.json({
         success: true,
         mode: 'dry-run',
+        strict,
         totalRowsInFile: report.totalRows,
         totalProductsParsed: report.totalProducts,
         totalVariantsParsed: report.totalVariants,
@@ -108,10 +138,11 @@ export const shoplineXlsxImportEndpoint: Endpoint = {
       if (c.slug) catBySlug.set(c.slug, c.id)
     }
 
-    // 2) 如果缺少 fallback 分類「未分類」，建立一個。所有沒分類 /
-    // orphan category 的 Shopline 匯入商品都先收進這個 bucket。
-    let fallbackCatId = catBySlug.get('uncategorized')
-    if (!fallbackCatId) {
+    // 2) Fallback 分類處理（PR3 改：只在 ?fallback=uncategorized 才 auto-create）
+    //    - 無 fallback flag：未對應分類的商品該筆 → action='error' 不寫入 DB
+    //    - 有 fallback flag：恢復舊行為，缺 mapping 的丟「未分類」bucket
+    let fallbackCatId: number | undefined = catBySlug.get('uncategorized')
+    if (allowFallback && !fallbackCatId) {
       const created = await req.payload.create({
         collection: 'categories',
         data: { name: '未分類', slug: 'uncategorized' },
@@ -153,9 +184,38 @@ export const shoplineXlsxImportEndpoint: Endpoint = {
           depth: 0,
         })
 
-        const categoryId = p.categorySlug
-          ? catBySlug.get(p.categorySlug) || fallbackCatId
-          : fallbackCatId
+        // 分類解析：
+        //   - parser 給了 categorySlug 且 catBySlug 命中 → 用該 id
+        //   - parser 給了 categorySlug 但 DB 沒這條（mapping 表寫了、Categories
+        //     collection 還沒建）→ fail-loud 該筆，admin 去建分類
+        //   - parser 沒給 categorySlug（Shopline 該商品沒分類字串）→ 看 fallback flag
+        let categoryId: number | undefined
+        let categoryError: string | undefined
+        if (p.categorySlug) {
+          const found = catBySlug.get(p.categorySlug)
+          if (found) {
+            categoryId = found
+          } else if (fallbackCatId) {
+            categoryId = fallbackCatId
+          } else {
+            categoryError = `分類 slug "${p.categorySlug}" 在 Categories 找不到。請先建分類，或加 ?fallback=uncategorized 把這類丟進「未分類」bucket。`
+          }
+        } else if (fallbackCatId) {
+          categoryId = fallbackCatId
+        } else {
+          categoryError = '此商品在 Shopline 無分類，且未啟用 ?fallback=uncategorized。'
+        }
+
+        if (categoryError) {
+          failed++
+          results.push({
+            shoplineProductId: p.shoplineProductId,
+            name: p.name,
+            action: 'error',
+            message: categoryError,
+          })
+          continue
+        }
 
         const status =
           statusOverride === 'keep' ? p.status : (statusOverride as 'draft' | 'published')
@@ -240,6 +300,7 @@ export const shoplineXlsxImportEndpoint: Endpoint = {
     return Response.json({
       success: true,
       mode: 'commit',
+      strictFallback: allowFallback ? 'uncategorized' : 'error',
       totalRowsInFile: report.totalRows,
       totalProductsParsed: report.totalProducts,
       processed: batch.length,
