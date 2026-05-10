@@ -7,6 +7,7 @@ import { customerRegisterEndpoint } from '../endpoints/customerRegister'
 import { customerLogoutEndpoint } from '../endpoints/customerLogout'
 import { memberAnalyticsEndpoint } from '../endpoints/memberAnalytics'
 import { repeatPurchaseEndpoint } from '../endpoints/repeatPurchaseAnalytics'
+import { consumerInsightsEndpoint } from '../endpoints/consumerInsights'
 import { shoplineCustomerImportEndpoint } from '../endpoints/shoplineCustomerImport'
 import { generateUniqueReferralCode } from '../lib/referralCode'
 
@@ -130,6 +131,7 @@ export const Users: CollectionConfig = {
     customerLogoutEndpoint,
     memberAnalyticsEndpoint,
     repeatPurchaseEndpoint,
+    consumerInsightsEndpoint,
     shoplineCustomerImportEndpoint,
   ],
   hooks: {

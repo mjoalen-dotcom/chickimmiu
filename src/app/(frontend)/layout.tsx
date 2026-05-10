@@ -19,6 +19,7 @@ import { CartDrawer } from '@/components/cart/CartDrawer'
 import { ExitIntentPopup } from '@/components/recommendation/ExitIntentPopup'
 import { GTMScript } from '@/components/tracking/GTMScript'
 import { TrackingProvider } from '@/components/tracking/TrackingProvider'
+import { BehaviorTracker } from '@/components/tracking/BehaviorTracker'
 import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/seo/JsonLd'
 import { ThemeStyles } from '@/components/layout/ThemeStyles'
 import { NextIntlClientProvider } from 'next-intl'
@@ -342,6 +343,7 @@ export default async function FrontendLayout({
               this layout already declares `dynamic = 'force-dynamic'` at
               the top, so there's nothing to bail out from. */}
             <TrackingProvider>
+            <BehaviorTracker />
             {/* Global JSON-LD */}
             <OrganizationJsonLd
               name={siteName}

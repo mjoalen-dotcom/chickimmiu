@@ -76,6 +76,7 @@ import { AdAudiences } from './collections/AdAudiences'
 import { CreditScoreHistory } from './collections/CreditScoreHistory'
 import { PointsTransactions } from './collections/PointsTransactions'
 import { ProductViewEvents } from './collections/ProductViewEvents'
+import { BehaviorEvents } from './collections/BehaviorEvents'
 import { UTMCampaigns } from './collections/UTMCampaigns'
 import { AutomationJourneys } from './collections/AutomationJourneys'
 import { AutomationLogs } from './collections/AutomationLogs'
@@ -244,6 +245,10 @@ export default buildConfig({
           Component: '@/components/admin/RepeatPurchaseView',
           path: '/repeat-purchase',
         },
+        consumerInsights: {
+          Component: '@/components/admin/ConsumerInsightsView',
+          path: '/consumer-insights',
+        },
         // PR-B：UTM 商品歸因
         utmAttribution: {
           Component: '@/components/admin/UTMAttributionView',
@@ -294,6 +299,7 @@ export default buildConfig({
     MessageTags,
     ConversationActivities,
     ProductViewEvents, // PR-B：UTM 商品瀏覽事件流
+    BehaviorEvents, // 消費者分析：點擊 / 加購 / 瀏覽 / 停留
     // ④ 行銷推廣
     AutomationJourneys,
     AutomationLogs,
