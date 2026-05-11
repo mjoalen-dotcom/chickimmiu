@@ -37,6 +37,21 @@ const DEFAULT_NAV_CHILDREN = [
   { href: '/collections/celebrity-style', label: '藝人穿搭' },
 ]
 
+/**
+ * 預設「社群」下拉子項 — 對外連結 IG/FB/LINE/YouTube。當 CMS 沒設 mainMenu 時
+ * 直接顯示在 Navbar，比 Footer 角落的小圖示更容易發現。
+ *
+ * URL 與 Footer.tsx 預設 socialLinks 對齊，改 social handle 兩邊都要動。
+ * `external: true` 之後可在 Navbar 渲染時開新分頁（目前實作仍走 Link 內部跳轉，
+ * 外連 children 點下去瀏覽器會視 host 不同自動開新分頁，不致破版）。
+ */
+const DEFAULT_SOCIAL_CHILDREN = [
+  { href: 'https://www.instagram.com/chickimmiu/', label: 'Instagram' },
+  { href: 'https://www.facebook.com/chickimmiu/', label: 'Facebook' },
+  { href: 'https://page.line.me/nqo0262k?openQrModal=true', label: 'LINE 官方帳號' },
+  { href: '/podcast', label: 'Podcast 節目' },
+]
+
 const DEFAULT_LOGO = 'https://shoplineimg.com/559df3efe37ec64e9f000092/69ae37b56be0c5b5e4ceb2d9/1200x.webp?source_format=png'
 
 interface NavbarProps {
@@ -51,13 +66,19 @@ interface NavbarProps {
 export function Navbar({ announcementText, announcementLink, announcementStyle = 'default', menuItems, logoUrl, currentUser }: NavbarProps) {
   const t = useTranslations('navbar')
   // CMS 有資料用 CMS（admin 自管多語）；沒設才走 i18n 預設
+  // 新增 /podcast、/app、社群（IG/FB/LINE）— 之前 fallback 漏這幾個入口，
+  // 後台 NavigationSettings.mainMenu 又沒人設，導致明明 collection 跟頁面
+  // 都活著但前台找不到。社群子項 hardcoded 中文同既有 children pattern。
   const defaultNavLinks: MenuItem[] = [
     { href: '/products', label: t('navAllProducts') },
     { href: '/products?tag=new', label: t('navNewArrivals') },
     { href: '/products?tag=hot', label: t('navHotItems') },
     { href: '/products?tag=sale', label: t('navSale') },
     { href: '#', label: t('navCollections'), children: DEFAULT_NAV_CHILDREN },
-    { href: '/blog', label: t('navBlog') },
+    { href: '/blog', label: '最新消息' },
+    { href: '/podcast', label: 'Podcast' },
+    { href: '/app', label: '下載 APP' },
+    { href: '#', label: '社群', children: DEFAULT_SOCIAL_CHILDREN },
   ]
   const navLinks = menuItems && menuItems.length > 0 ? menuItems : defaultNavLinks
   const logo = logoUrl && logoUrl !== '/images/logo-ckmu.svg' ? logoUrl : DEFAULT_LOGO

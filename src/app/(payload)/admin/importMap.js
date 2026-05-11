@@ -54,19 +54,20 @@ import { default as default_75a69f86e8fd1756deda3bb508c9e126 } from '@/component
 import { default as default_dad6df07f5ce6091043bf2907b451c8b } from '@/components/admin/ProductDuplicateButton'
 import { default as default_2155efc8584149395a6a7408e7342b75 } from '@/components/admin/MemberTreasureBoxPanel'
 import { default as default_f9f3bd50e8c71daeaf79c761e8047d29 } from '@/components/admin/ShoplineCustomerImporter'
-import { default as default_7daf04b168de0230737ba8fdd5db8d46 } from '@/components/admin/MediaUploadRulesNotice'
-import { FolderTableCell as FolderTableCell_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
-import { FolderField as FolderField_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
+import { default as default_35c860dac7cd35087c887518997aff75 } from '@/components/admin/PageTemplatePicker'
 import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { TableFeatureClient as TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { FixedToolbarFeatureClient as FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
-import { default as default_35c860dac7cd35087c887518997aff75 } from '@/components/admin/PageTemplatePicker'
 import { default as default_2d3b6dcbebce75fc2ef5ac094f4218f0 } from '@/components/admin/ColorField'
+import { default as default_7daf04b168de0230737ba8fdd5db8d46 } from '@/components/admin/MediaUploadRulesNotice'
+import { FolderTableCell as FolderTableCell_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
+import { FolderField as FolderField_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 import { FolderTypeField as FolderTypeField_2b8867833a34864a02ddf429b0728a40 } from '@payloadcms/next/client'
 import { default as default_79570dded1e1ffe27a78eeea47302dcc } from '@/components/admin/PayloadFoldersListRedirect'
 import { default as default_6f27c4d8c2613c9dc60f5fcd3b7e600a } from '@/components/admin/SiteBrandPreview'
 import { default as default_d500ae2ad98a0a33d640ae0ac1a3417c } from '@/components/admin/AdminIcon'
 import { default as default_b80a86fce1072afc84cd6a430a965697 } from '@/components/admin/AdminLogo'
+import { default as default_37be21d5d30aaf368ac239b9d524d111 } from '@/components/admin/CKMUSystemToolsNavGroup'
 import { default as default_0e7b23c75ea046975e1784ba01f82886 } from '@/components/admin/Dashboard'
 import { default as default_6935afc6ffc87a7d434a45937e35c56e } from '@/components/admin/CKMUDashboardNavGroup'
 import { default as default_340cf3538fa47d0416e0abd461790ca4 } from '@/components/admin/AdminStyles'
@@ -80,6 +81,8 @@ import { default as default_228bc0748acd5f4d29b08ed7f8ad4ffb } from '@/component
 import { default as default_beee283113db1e6274b4a3261d86c622 } from '@/components/admin/UTMAttributionView'
 import { default as default_b49617f71656f29a998f7c5995ee1da4 } from '@/components/admin/UTMBuilderView'
 import { default as default_8b5bf0e9243e2c5e54db7bd0ca2ab3d1 } from '@/components/admin/LinkIntegrityView'
+import { default as default_92b9f9a324577ed05b0b278139afaf30 } from '@/components/admin/BlogAIDraftView'
+import { default as default_12cd2f2c8c14674f532037fc5db9c3d8 } from '@/components/admin/APIDocsView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -140,19 +143,20 @@ export const importMap = {
   "@/components/admin/ProductDuplicateButton#default": default_dad6df07f5ce6091043bf2907b451c8b,
   "@/components/admin/MemberTreasureBoxPanel#default": default_2155efc8584149395a6a7408e7342b75,
   "@/components/admin/ShoplineCustomerImporter#default": default_f9f3bd50e8c71daeaf79c761e8047d29,
-  "@/components/admin/MediaUploadRulesNotice#default": default_7daf04b168de0230737ba8fdd5db8d46,
-  "@payloadcms/next/rsc#FolderTableCell": FolderTableCell_f9c02e79a4aed9a3924487c0cd4cafb1,
-  "@payloadcms/next/rsc#FolderField": FolderField_f9c02e79a4aed9a3924487c0cd4cafb1,
+  "@/components/admin/PageTemplatePicker#default": default_35c860dac7cd35087c887518997aff75,
   "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#TableFeatureClient": TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#FixedToolbarFeatureClient": FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
-  "@/components/admin/PageTemplatePicker#default": default_35c860dac7cd35087c887518997aff75,
   "@/components/admin/ColorField#default": default_2d3b6dcbebce75fc2ef5ac094f4218f0,
+  "@/components/admin/MediaUploadRulesNotice#default": default_7daf04b168de0230737ba8fdd5db8d46,
+  "@payloadcms/next/rsc#FolderTableCell": FolderTableCell_f9c02e79a4aed9a3924487c0cd4cafb1,
+  "@payloadcms/next/rsc#FolderField": FolderField_f9c02e79a4aed9a3924487c0cd4cafb1,
   "@payloadcms/next/client#FolderTypeField": FolderTypeField_2b8867833a34864a02ddf429b0728a40,
   "@/components/admin/PayloadFoldersListRedirect#default": default_79570dded1e1ffe27a78eeea47302dcc,
   "@/components/admin/SiteBrandPreview#default": default_6f27c4d8c2613c9dc60f5fcd3b7e600a,
   "@/components/admin/AdminIcon#default": default_d500ae2ad98a0a33d640ae0ac1a3417c,
   "@/components/admin/AdminLogo#default": default_b80a86fce1072afc84cd6a430a965697,
+  "@/components/admin/CKMUSystemToolsNavGroup#default": default_37be21d5d30aaf368ac239b9d524d111,
   "@/components/admin/Dashboard#default": default_0e7b23c75ea046975e1784ba01f82886,
   "@/components/admin/CKMUDashboardNavGroup#default": default_6935afc6ffc87a7d434a45937e35c56e,
   "@/components/admin/AdminStyles#default": default_340cf3538fa47d0416e0abd461790ca4,
@@ -166,5 +170,7 @@ export const importMap = {
   "@/components/admin/UTMAttributionView#default": default_beee283113db1e6274b4a3261d86c622,
   "@/components/admin/UTMBuilderView#default": default_b49617f71656f29a998f7c5995ee1da4,
   "@/components/admin/LinkIntegrityView#default": default_8b5bf0e9243e2c5e54db7bd0ca2ab3d1,
+  "@/components/admin/BlogAIDraftView#default": default_92b9f9a324577ed05b0b278139afaf30,
+  "@/components/admin/APIDocsView#default": default_12cd2f2c8c14674f532037fc5db9c3d8,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }
