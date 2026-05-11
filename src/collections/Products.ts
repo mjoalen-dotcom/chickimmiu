@@ -489,14 +489,30 @@ export const Products: CollectionConfig = {
       label: '新品標記',
       type: 'checkbox',
       defaultValue: false,
-      admin: { position: 'sidebar' },
+      admin: {
+        position: 'sidebar',
+        components: {
+          Cell: {
+            path: '@/components/admin/ProductCheckboxToggleCell',
+            clientProps: { fieldName: 'isNew' },
+          },
+        },
+      },
     },
     {
       name: 'isHot',
       label: '熱銷標記',
       type: 'checkbox',
       defaultValue: false,
-      admin: { position: 'sidebar' },
+      admin: {
+        position: 'sidebar',
+        components: {
+          Cell: {
+            path: '@/components/admin/ProductCheckboxToggleCell',
+            clientProps: { fieldName: 'isHot' },
+          },
+        },
+      },
     },
     {
       name: 'productSku',
@@ -516,6 +532,12 @@ export const Products: CollectionConfig = {
         position: 'sidebar',
         readOnly: true,
         description: '系統自動判斷，無需手動修改',
+        components: {
+          Cell: {
+            path: '@/components/admin/ProductCheckboxToggleCell',
+            clientProps: { fieldName: 'isLowStock', readOnly: true },
+          },
+        },
       },
     },
     {
@@ -874,6 +896,12 @@ export const Products: CollectionConfig = {
                     width: '33%',
                     description:
                       '勾上方「使用自動計價」時存檔自動覆寫；不勾則手填',
+                    components: {
+                      Cell: {
+                        path: '@/components/admin/ProductInlineNumberCell',
+                        clientProps: { fieldName: 'price' },
+                      },
+                    },
                   },
                 },
                 {
@@ -884,6 +912,12 @@ export const Products: CollectionConfig = {
                   admin: {
                     width: '33%',
                     description: '留空 = 無特價。系統會擋「特價 ≥ 原價」',
+                    components: {
+                      Cell: {
+                        path: '@/components/admin/ProductInlineNumberCell',
+                        clientProps: { fieldName: 'salePrice', allowEmpty: true },
+                      },
+                    },
                   },
                 },
                 {
