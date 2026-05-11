@@ -86,9 +86,21 @@ if [[ -f "$NGINX_SRC" ]]; then
 fi
 
 # 1. Pull latest main
+#
+# SKIP_GIT_RESET=1 mode (2026-05-11 GitHub outage workaround):
+# When GitHub access is unavailable (org suspended / token revoked / outage),
+# `git fetch origin` 401s and this step would either fail or wipe in-flight
+# scp'd changes. Set SKIP_GIT_RESET=1 to use the current working tree as
+# source — typically used together with scripts/scp-deploy.sh which pre-scps
+# changed files. Restore default behavior (delete this env override usage)
+# once GitHub access returns and outstanding PRs are merged.
 log "step 1/7: git fetch + reset --hard origin/main"
-git fetch origin --prune
-git reset --hard origin/main
+if [[ "${SKIP_GIT_RESET:-0}" == "1" ]]; then
+  log "  SKIP_GIT_RESET=1 — using current working tree as source (GitHub-outage mode)"
+else
+  git fetch origin --prune
+  git reset --hard origin/main
+fi
 AFTER_SHA=$(git rev-parse HEAD)
 
 if [[ "$BEFORE_SHA" == "$AFTER_SHA" ]]; then

@@ -7,27 +7,37 @@ import { useRouter } from 'next/navigation'
 import { useSession, signOut as nextAuthSignOut } from 'next-auth/react'
 import { useTranslations } from 'next-intl'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Search, User, ShoppingBag, Heart, ChevronDown, LogOut, Gift, Package, UserCircle } from 'lucide-react'
+import { Menu, X, Search, User, ShoppingBag, Heart, ChevronDown, LogOut, Gift, Package, UserCircle, Instagram, Facebook, Youtube, MessageCircle, BookOpen, Headphones, Smartphone } from 'lucide-react'
 import { useCartStore } from '@/stores/cartStore'
 import { useWishlistStore } from '@/stores/wishlistStore'
 import type { CurrentUser } from '@/lib/auth/getCurrentUser'
 import { LanguageSwitcher, CurrencySwitcher } from './LanguageCurrencySwitcher'
 
+interface MenuGroupItem {
+  label: string
+  href: string
+  desc?: string
+  icon?: string
+  external?: boolean
+}
+
+interface MenuGroup {
+  title: string
+  items: MenuGroupItem[]
+}
+
 interface MenuItem {
   label: string
   href: string
   children?: { label: string; href: string }[]
+  groups?: MenuGroup[]
 }
 
 /**
- * 預設導航項目 — 當 CMS NavigationSettings.mainMenu 沒設時使用。
- * Top-level labels 走 i18n（從 useTranslations 動態組），主題精選的 children
- * 是品牌專屬名稱（金老佛爺 Live 等）暫不翻譯。
- *
- * Children 寫死保持中文是因為這些是品牌 IP 名稱，多語版本會讓識別性下降；
- * 若 PR 3+ 要翻可以加進 dictionary 的 navbar.collections.* namespace。
+ * 主題精選 dropdown — 品牌 IP 名稱，hardcoded 中文不翻譯（多語版會降識別性）。
+ * 若 PR 3+ 要翻可加到 dictionary 的 navbar.collections.* namespace。
  */
-const DEFAULT_NAV_CHILDREN = [
+const DEFAULT_COLLECTIONS_CHILDREN = [
   { href: '/collections/jin-live', label: '金老佛爺 Live' },
   { href: '/collections/jin-style', label: '金金同款專區' },
   { href: '/collections/host-style', label: '主播同款專區' },
@@ -38,19 +48,36 @@ const DEFAULT_NAV_CHILDREN = [
 ]
 
 /**
- * 預設「社群」下拉子項 — 對外連結 IG/FB/LINE/YouTube。當 CMS 沒設 mainMenu 時
- * 直接顯示在 Navbar，比 Footer 角落的小圖示更容易發現。
+ * 最新消息 mega-menu — 兩欄 (內容 + 社群)。
  *
- * URL 與 Footer.tsx 預設 socialLinks 對齊，改 social handle 兩邊都要動。
- * `external: true` 之後可在 Navbar 渲染時開新分頁（目前實作仍走 Link 內部跳轉，
- * 外連 children 點下去瀏覽器會視 host 不同自動開新分頁，不致破版）。
+ * 社群 URL 已 2026-05-11 對照真實官方帳號全面校正：
+ * - IG @chickimmiu_official (8K 粉)、FB chic.kmu (60K 粉)、LINE lin.ee/AYWzgKW、YouTube @CKMU_、iOS App
+ * - 改 social handle 兩邊 (Footer + 此處) 都要動。
  */
-const DEFAULT_SOCIAL_CHILDREN = [
-  { href: 'https://www.instagram.com/chickimmiu/', label: 'Instagram' },
-  { href: 'https://www.facebook.com/chickimmiu/', label: 'Facebook' },
-  { href: 'https://page.line.me/nqo0262k?openQrModal=true', label: 'LINE 官方帳號' },
-  { href: '/podcast', label: 'Podcast 節目' },
+const DEFAULT_NEWS_GROUPS: MenuGroup[] = [
+  {
+    title: '內容',
+    items: [
+      { href: '/blog', label: '穿搭誌', desc: '韓系穿搭靈感與時尚趨勢', icon: 'BookOpen' },
+      { href: '/podcast', label: 'Podcast', desc: '韓系穿衣間電台節目', icon: 'Headphones' },
+      { href: '/app', label: '下載 APP', desc: 'iOS / Android 雙版本', icon: 'Smartphone' },
+    ],
+  },
+  {
+    title: '社群',
+    items: [
+      { href: 'https://www.instagram.com/chickimmiu_official/', label: 'Instagram', desc: '官方帳號 @chickimmiu_official', icon: 'Instagram', external: true },
+      { href: 'https://www.instagram.com/kimlafayette/', label: '金老佛爺 IG', desc: 'KOL 主理人 @kimlafayette', icon: 'Instagram', external: true },
+      { href: 'https://www.facebook.com/chic.kmu/', label: 'Facebook', desc: '官方粉絲團', icon: 'Facebook', external: true },
+      { href: 'https://lin.ee/AYWzgKW', label: 'LINE 官方', desc: '客服與優惠通知', icon: 'MessageCircle', external: true },
+      { href: 'https://www.youtube.com/@CKMU_', label: 'YouTube', desc: '頻道 @CKMU_', icon: 'Youtube', external: true },
+    ],
+  },
 ]
+
+const GROUP_ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+  BookOpen, Headphones, Smartphone, Instagram, Facebook, Youtube, MessageCircle,
+}
 
 const DEFAULT_LOGO = 'https://shoplineimg.com/559df3efe37ec64e9f000092/69ae37b56be0c5b5e4ceb2d9/1200x.webp?source_format=png'
 
@@ -65,27 +92,25 @@ interface NavbarProps {
 
 export function Navbar({ announcementText, announcementLink, announcementStyle = 'default', menuItems, logoUrl, currentUser }: NavbarProps) {
   const t = useTranslations('navbar')
-  // CMS 有資料用 CMS（admin 自管多語）；沒設才走 i18n 預設
-  // 新增 /podcast、/app、社群（IG/FB/LINE）— 之前 fallback 漏這幾個入口，
-  // 後台 NavigationSettings.mainMenu 又沒人設，導致明明 collection 跟頁面
-  // 都活著但前台找不到。社群子項 hardcoded 中文同既有 children pattern。
+  // CMS 有資料用 CMS；沒設才走 i18n + hardcoded 預設。
+  // 2026-05-11：把「最新消息 / Podcast / 下載 APP / 社群」4 個 top-level 合併成
+  // 單一「最新消息」mega-menu (內容 + 社群兩欄)，降低 nav noise 從 9 項 → 6 項。
   const defaultNavLinks: MenuItem[] = [
     { href: '/products', label: t('navAllProducts') },
     { href: '/products?tag=new', label: t('navNewArrivals') },
     { href: '/products?tag=hot', label: t('navHotItems') },
     { href: '/products?tag=sale', label: t('navSale') },
-    { href: '#', label: t('navCollections'), children: DEFAULT_NAV_CHILDREN },
-    { href: '/blog', label: '最新消息' },
-    { href: '/podcast', label: 'Podcast' },
-    { href: '/app', label: '下載 APP' },
-    { href: '#', label: '社群', children: DEFAULT_SOCIAL_CHILDREN },
+    { href: '#', label: t('navCollections'), children: DEFAULT_COLLECTIONS_CHILDREN },
+    { href: '#', label: '最新消息', groups: DEFAULT_NEWS_GROUPS },
   ]
   const navLinks = menuItems && menuItems.length > 0 ? menuItems : defaultNavLinks
   const logo = logoUrl && logoUrl !== '/images/logo-ckmu.svg' ? logoUrl : DEFAULT_LOGO
   const [isOpen, setIsOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const [isCollectionsOpen, setIsCollectionsOpen] = useState(false)
-  const [isMobileCollectionsOpen, setIsMobileCollectionsOpen] = useState(false)
+  // 用 label 當 key 避免多 dropdown 共用同一 state（2026-05-11 修：原本 `isCollectionsOpen`
+  // 讓「主題精選」「社群」hover 任一就一起開）
+  const [openMenuLabel, setOpenMenuLabel] = useState<string | null>(null)
+  const [mobileExpandedLabel, setMobileExpandedLabel] = useState<string | null>(null)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   // TODO: 若未來確認 Payload session 永遠是真相（bridge 流程穩定），
@@ -125,6 +150,8 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
     router.push('/')
     router.refresh()
   }
+
+  const isMenuOpen = (label: string) => openMenuLabel === label
 
   return (
     <div data-component="navbar">
@@ -297,24 +324,106 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
         {/* Desktop nav links — below logo */}
         <nav className="hidden md:block border-t border-cream-200/50">
           <ul className="container flex items-center justify-center gap-8 h-10">
-            {navLinks.map((link) =>
-              link.children && link.children.length > 0 ? (
+            {navLinks.map((link) => {
+              const hasGroups = Boolean(link.groups && link.groups.length > 0)
+              const hasChildren = Boolean(link.children && link.children.length > 0)
+              if (!hasGroups && !hasChildren) {
+                return (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-base tracking-wide text-foreground/80 hover:text-gold-600 transition-colors relative group"
+                    >
+                      {link.label}
+                      <span className="absolute -bottom-1 left-0 w-0 h-px bg-gold-500 transition-all group-hover:w-full" />
+                    </Link>
+                  </li>
+                )
+              }
+              return (
                 <li
                   key={link.label}
                   className="relative"
-                  onMouseEnter={() => setIsCollectionsOpen(true)}
-                  onMouseLeave={() => setIsCollectionsOpen(false)}
+                  onMouseEnter={() => setOpenMenuLabel(link.label)}
+                  onMouseLeave={() => setOpenMenuLabel((cur) => (cur === link.label ? null : cur))}
                 >
                   <button
                     className="flex items-center gap-0.5 text-base tracking-wide text-foreground/80 hover:text-gold-600 transition-colors relative group"
-                    onClick={() => setIsCollectionsOpen(!isCollectionsOpen)}
+                    onClick={() => setOpenMenuLabel(isMenuOpen(link.label) ? null : link.label)}
                   >
                     {link.label}
-                    <ChevronDown size={14} className={`transition-transform ${isCollectionsOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown size={14} className={`transition-transform ${isMenuOpen(link.label) ? 'rotate-180' : ''}`} />
                     <span className="absolute -bottom-1 left-0 w-0 h-px bg-gold-500 transition-all group-hover:w-full" />
                   </button>
                   <AnimatePresence>
-                    {isCollectionsOpen && (
+                    {isMenuOpen(link.label) && hasGroups && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 4 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[640px] bg-white rounded-xl shadow-xl border border-cream-200 p-6 z-50"
+                      >
+                        <div className="grid grid-cols-2 gap-6">
+                          {link.groups!.map((group) => (
+                            <div key={group.title}>
+                              <p className="text-[10px] tracking-[0.3em] text-gold-500 uppercase mb-3 pb-2 border-b border-cream-100">
+                                {group.title}
+                              </p>
+                              <div className="space-y-1">
+                                {group.items.map((item) => {
+                                  const IconComp = item.icon ? GROUP_ICON_MAP[item.icon] : null
+                                  return item.external ? (
+                                    <a
+                                      key={item.href}
+                                      href={item.href}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-start gap-3 px-2 py-2 rounded-lg hover:bg-cream-50 transition-colors group/item"
+                                    >
+                                      {IconComp && (
+                                        <div className="w-9 h-9 rounded-lg bg-cream-50 group-hover/item:bg-gold-50 flex items-center justify-center text-gold-600 transition-colors shrink-0">
+                                          <IconComp size={16} />
+                                        </div>
+                                      )}
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-medium text-foreground/90 group-hover/item:text-gold-600 transition-colors truncate">
+                                          {item.label}
+                                        </p>
+                                        {item.desc && (
+                                          <p className="text-[11px] text-muted-foreground truncate">{item.desc}</p>
+                                        )}
+                                      </div>
+                                    </a>
+                                  ) : (
+                                    <Link
+                                      key={item.href}
+                                      href={item.href}
+                                      className="flex items-start gap-3 px-2 py-2 rounded-lg hover:bg-cream-50 transition-colors group/item"
+                                    >
+                                      {IconComp && (
+                                        <div className="w-9 h-9 rounded-lg bg-cream-50 group-hover/item:bg-gold-50 flex items-center justify-center text-gold-600 transition-colors shrink-0">
+                                          <IconComp size={16} />
+                                        </div>
+                                      )}
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-medium text-foreground/90 group-hover/item:text-gold-600 transition-colors truncate">
+                                          {item.label}
+                                        </p>
+                                        {item.desc && (
+                                          <p className="text-[11px] text-muted-foreground truncate">{item.desc}</p>
+                                        )}
+                                      </div>
+                                    </Link>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                    {isMenuOpen(link.label) && hasChildren && !hasGroups && (
                       <motion.div
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -322,7 +431,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
                         transition={{ duration: 0.15 }}
                         className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 bg-white rounded-xl shadow-lg border border-cream-200 py-2 z-50"
                       >
-                        {link.children.map((cl) => (
+                        {link.children!.map((cl) => (
                           <Link
                             key={cl.href}
                             href={cl.href}
@@ -335,18 +444,8 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
                     )}
                   </AnimatePresence>
                 </li>
-              ) : (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-base tracking-wide text-foreground/80 hover:text-gold-600 transition-colors relative group"
-                  >
-                    {link.label}
-                    <span className="absolute -bottom-1 left-0 w-0 h-px bg-gold-500 transition-all group-hover:w-full" />
-                  </Link>
-                </li>
-              ),
-            )}
+              )
+            })}
           </ul>
         </nav>
 
@@ -424,49 +523,88 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
                 />
               </div>
               <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-                {navLinks.map((link) =>
-                  link.children && link.children.length > 0 ? (
+                {navLinks.map((link) => {
+                  const hasGroups = Boolean(link.groups && link.groups.length > 0)
+                  const hasChildren = Boolean(link.children && link.children.length > 0)
+                  if (!hasGroups && !hasChildren) {
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setIsOpen(false)}
+                        className="block px-4 py-3 text-base tracking-wide text-foreground/80 hover:text-gold-600 hover:bg-cream-100 rounded-md transition-colors"
+                      >
+                        {link.label}
+                      </Link>
+                    )
+                  }
+                  const expanded = mobileExpandedLabel === link.label
+                  return (
                     <div key={link.label}>
                       <button
-                        onClick={() => setIsMobileCollectionsOpen(!isMobileCollectionsOpen)}
+                        onClick={() => setMobileExpandedLabel(expanded ? null : link.label)}
                         className="flex items-center justify-between w-full px-4 py-3 text-base tracking-wide text-foreground/80 hover:text-gold-600 hover:bg-cream-100 rounded-md transition-colors"
                       >
                         {link.label}
-                        <ChevronDown size={14} className={`transition-transform ${isMobileCollectionsOpen ? 'rotate-180' : ''}`} />
+                        <ChevronDown size={14} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
                       </button>
                       <AnimatePresence>
-                        {isMobileCollectionsOpen && (
+                        {expanded && (
                           <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
                             className="overflow-hidden"
                           >
-                            {link.children.map((cl) => (
-                              <Link
-                                key={cl.href}
-                                href={cl.href}
-                                onClick={() => setIsOpen(false)}
-                                className="block pl-8 pr-4 py-2.5 text-sm text-foreground/60 hover:text-gold-600 hover:bg-cream-100 rounded-md transition-colors"
-                              >
-                                {cl.label}
-                              </Link>
-                            ))}
+                            {hasGroups ? (
+                              link.groups!.map((group) => (
+                                <div key={group.title} className="py-1">
+                                  <p className="px-6 pt-2 pb-1 text-[10px] tracking-[0.3em] text-gold-500 uppercase">
+                                    {group.title}
+                                  </p>
+                                  {group.items.map((item) =>
+                                    item.external ? (
+                                      <a
+                                        key={item.href}
+                                        href={item.href}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={() => setIsOpen(false)}
+                                        className="block pl-8 pr-4 py-2 text-sm text-foreground/70 hover:text-gold-600 hover:bg-cream-100 rounded-md transition-colors"
+                                      >
+                                        {item.label}
+                                      </a>
+                                    ) : (
+                                      <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        onClick={() => setIsOpen(false)}
+                                        className="block pl-8 pr-4 py-2 text-sm text-foreground/70 hover:text-gold-600 hover:bg-cream-100 rounded-md transition-colors"
+                                      >
+                                        {item.label}
+                                      </Link>
+                                    ),
+                                  )}
+                                </div>
+                              ))
+                            ) : (
+                              link.children!.map((cl) => (
+                                <Link
+                                  key={cl.href}
+                                  href={cl.href}
+                                  onClick={() => setIsOpen(false)}
+                                  className="block pl-8 pr-4 py-2.5 text-sm text-foreground/60 hover:text-gold-600 hover:bg-cream-100 rounded-md transition-colors"
+                                >
+                                  {cl.label}
+                                </Link>
+                              ))
+                            )}
                           </motion.div>
                         )}
                       </AnimatePresence>
                     </div>
-                  ) : (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      onClick={() => setIsOpen(false)}
-                      className="block px-4 py-3 text-base tracking-wide text-foreground/80 hover:text-gold-600 hover:bg-cream-100 rounded-md transition-colors"
-                    >
-                      {link.label}
-                    </Link>
-                  ),
-                )}
+                  )
+                })}
               </nav>
               <div className="p-4 border-t border-cream-200 space-y-2">
                 {isLoggedIn ? (
