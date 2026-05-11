@@ -17,6 +17,7 @@ interface FooterProps {
     instagram?: string
     facebook?: string
     line?: string
+    youtube?: string
   }
   footerSections?: Array<{
     title: string
@@ -27,7 +28,14 @@ interface FooterProps {
 export function Footer({ businessInfo, socialLinks, footerSections }: FooterProps) {
   const t = useTranslations('footer')
   const biz = businessInfo || { legalName: '靚秀國際有限公司', taxId: '24540533', phone: '02-2718-9488', address: '台北市基隆路一段68號9樓', businessHours: '週一至週五 09:30-18:00' }
-  const social = socialLinks || { instagram: 'https://www.instagram.com/chickimmiu/', facebook: 'https://www.facebook.com/chickimmiu/', line: 'https://page.line.me/nqo0262k?openQrModal=true' }
+  // 2026-05-11 對照 chickimmiu.com 正式社群帳號全面校正：
+  // IG @chickimmiu_official、FB chic.kmu、LINE lin.ee/AYWzgKW、YouTube @CKMU_
+  const social = socialLinks || {
+    instagram: 'https://www.instagram.com/chickimmiu_official/',
+    facebook: 'https://www.facebook.com/chic.kmu/',
+    line: 'https://lin.ee/AYWzgKW',
+    youtube: 'https://www.youtube.com/@CKMU_',
+  }
 
   // CMS 沒設 footerSections 時用 i18n fallback
   const defaultHelpLinks = [
@@ -111,6 +119,11 @@ export function Footer({ businessInfo, socialLinks, footerSections }: FooterProp
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
                 </a>
               )}
+              {social.youtube && (
+                <a href={social.youtube} target="_blank" rel="noopener noreferrer" className="text-cream-300 hover:text-gold-400 transition-colors" aria-label="YouTube">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                </a>
+              )}
             </div>
           </div>
 
@@ -124,7 +137,7 @@ export function Footer({ businessInfo, socialLinks, footerSections }: FooterProp
               </li>
               <li>
                 <a
-                  href="https://page.line.me/nqo0262k?openQrModal=true"
+                  href="https://lin.ee/AYWzgKW"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 text-sm text-cream-300 hover:text-gold-400 transition-colors"
