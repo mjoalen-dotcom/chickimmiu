@@ -56,41 +56,70 @@ export default async function ProductsPage({
         // global may not be initialised yet
       }
 
-      // Fetch categories sorted by sortOrder (from DB), parent populated.
-      // isActive:not_equals:false keeps null/undefined rows too.
+      // Fetch ALL active categories (parent populated). 全部分類 nav 不能漏，
+      // 否則「未分類」「螞蟻腰超強顯瘦全系列」這種頂層分類整個從 chip bar 消失。
+      // 目前 prod 大約 110-140 個分類，pagination:false 直接全拉是安全的。
       const catResult = await payload.find({
         collection: 'categories',
         where: { isActive: { not_equals: false } },
-        limit: 100,
         sort: 'sortOrder',
         depth: 1,
+        pagination: false,
       })
       categories = catResult.docs as unknown as Record<string, unknown>[]
-
-      // Build where clause
-      const where: Where = {}
 
       const tag = typeof params.tag === 'string' ? params.tag : undefined
       const category = typeof params.category === 'string' ? params.category : undefined
 
-      if (tag === 'new') where.isNew = { equals: true }
-      if (tag === 'hot') where.isHot = { equals: true }
-      if (tag === 'sale') where.salePrice = { greater_than: 0 }
+      // 商品 where 條件：tag 篩選、分類篩選、僅顯示已上架。
+      // 注意 local API 不會套用 access control，所以 status 要自己加。
+      const andConditions: Where[] = [{ status: { equals: 'published' } }]
+
+      if (tag === 'new') andConditions.push({ isNew: { equals: true } })
+      if (tag === 'hot') andConditions.push({ isHot: { equals: true } })
+      if (tag === 'sale') andConditions.push({ salePrice: { greater_than: 0 } })
       if (tag === 'korean-celebrity') {
-        where.collectionTags = { in: ['korean-celebrity', 'celebrity-style'] }
+        andConditions.push({ collectionTags: { in: ['korean-celebrity', 'celebrity-style'] } })
       }
       if (tag === 'jin-style') {
-        where.collectionTags = { in: ['jin-style', 'jin-live'] }
-      }
-      if (category) where.category = { equals: category }
-      if (settings.hideOutOfStock) {
-        where.or = [{ stock: { greater_than: 0 } }]
+        andConditions.push({ collectionTags: { in: ['jin-style', 'jin-live'] } })
       }
 
+      // 分類篩選：mirror /category/[slug] 邏輯 — 把點到的分類展開成 family
+      // (該分類 + 它的子分類)，並且主分類 (category) 或其他分類 (additionalCategories)
+      // 任一命中都列入。否則點父分類 chip 會 0 筆，或漏掉只掛 additional 的商品。
+      if (category) {
+        const familyIds: (string | number)[] = [category]
+        try {
+          const childRes = await payload.find({
+            collection: 'categories',
+            where: { parent: { equals: category } },
+            limit: 200,
+            depth: 0,
+            pagination: false,
+          })
+          for (const c of childRes.docs) familyIds.push(c.id as number)
+        } catch {
+          // ignore — family stays as [category]
+        }
+        andConditions.push({
+          or: [
+            { category: { in: familyIds } },
+            { additionalCategories: { in: familyIds } },
+          ],
+        })
+      }
+
+      if (settings.hideOutOfStock) {
+        andConditions.push({ stock: { greater_than: 0 } })
+      }
+
+      // 拉全量已上架商品。prod 目前 ~1272 件，先 cap 在 2000 留 headroom。
+      // 之後若超過 2000 要改成真 server-side pagination。
       const result = await payload.find({
         collection: 'products',
-        where,
-        limit: 500,
+        where: { and: andConditions },
+        limit: 2000,
         sort: '-createdAt',
         depth: 2,
       })
