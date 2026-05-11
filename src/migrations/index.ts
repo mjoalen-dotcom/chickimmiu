@@ -58,6 +58,7 @@ import * as migration_20260509_120000_add_app_links from './20260509_120000_add_
 import * as migration_20260510_120000_add_behavior_events from './20260510_120000_add_behavior_events';
 import * as migration_20260510_140000_add_product_image_migration from './20260510_140000_add_product_image_migration';
 import * as migration_20260510_150000_fix_prize_pools_rels_columns from './20260510_150000_fix_prize_pools_rels_columns';
+import * as migration_20260511_010000_fix_game_settings_terms_compliance_leaderboard from './20260511_010000_fix_game_settings_terms_compliance_leaderboard';
 
 export const migrations = [
   {
@@ -359,5 +360,10 @@ export const migrations = [
     up: migration_20260510_150000_fix_prize_pools_rels_columns.up,
     down: migration_20260510_150000_fix_prize_pools_rels_columns.down,
     name: '20260510_150000_fix_prize_pools_rels_columns',
+  },
+  {
+    up: migration_20260511_010000_fix_game_settings_terms_compliance_leaderboard.up,
+    down: migration_20260511_010000_fix_game_settings_terms_compliance_leaderboard.down,
+    name: '20260511_010000_fix_game_settings_terms_compliance_leaderboard',
   },
 ];
