@@ -93,7 +93,8 @@ export async function POST(req: Request) {
       return Response.json({ error: '草稿缺少 title 或 contentMarkdown' }, { status: 400 })
     }
 
-    const slug = generateSlug(draft.title)
+    const baseSlug = generateBaseSlug(draft.title)
+    const slug = await reserveUniqueSlug(payload, baseSlug)
     const lexicalContent = markdownToBasicLexical(draft.contentMarkdown)
 
     try {
@@ -133,18 +134,39 @@ export async function POST(req: Request) {
 }
 
 /**
- * 從中文標題產生 slug：
+ * 從中文標題產生 base slug：
  *   - 取前 50 char 的中文字 + 數字 + 英文 + 連字號
- *   - 用 timestamp 後綴避免 unique 衝突（可由 admin 編輯後修改）
+ *   - 不附加 timestamp 後綴，讓 slug 乾淨可讀
  *
- * 不嘗試做完美的中文 → 拼音，因為 BlogPosts.slug 是給 URL 用，admin 通常會手動
- * 改成有意義的英文 / 拼音；這個 slug 只是初值，避免 create 時因為 unique 違反。
+ * 不嘗試做完美的中文 → 拼音，因為 BlogPosts.slug 是給 URL 用，admin 可後製改成英文/拼音。
  */
-function generateSlug(title: string): string {
-  const base = title
-    .toLowerCase()
-    .replace(/[^一-鿿\w぀-ゟ゠-ヿ-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 50) || 'ai-draft'
-  return `${base}-${Date.now().toString(36)}`
+function generateBaseSlug(title: string): string {
+  return (
+    title
+      .toLowerCase()
+      .replace(/[^一-鿿\w぀-ゟ゠-ヿ-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 50) || 'ai-draft'
+  )
+}
+
+/**
+ * 確保 slug unique：先試 base，撞名就 -2 / -3 / ... 最多 10 次；都撞就 fallback 加 timestamp。
+ * 用 Payload local API 預先查 collection，避免 create 時撞 unique constraint。
+ */
+async function reserveUniqueSlug(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  baseSlug: string,
+): Promise<string> {
+  const candidates = [baseSlug, ...Array.from({ length: 9 }, (_, i) => `${baseSlug}-${i + 2}`)]
+  for (const candidate of candidates) {
+    const { totalDocs } = await payload.find({
+      collection: 'blog-posts',
+      where: { slug: { equals: candidate } },
+      limit: 0,
+      depth: 0,
+    })
+    if (totalDocs === 0) return candidate
+  }
+  return `${baseSlug}-${Date.now().toString(36)}`
 }
