@@ -57,6 +57,7 @@ import * as migration_20260509_110000_add_game_terms_acceptance from './20260509
 import * as migration_20260509_120000_add_app_links from './20260509_120000_add_app_links';
 import * as migration_20260510_120000_add_behavior_events from './20260510_120000_add_behavior_events';
 import * as migration_20260510_140000_add_product_image_migration from './20260510_140000_add_product_image_migration';
+import * as migration_20260510_150000_fix_prize_pools_rels_columns from './20260510_150000_fix_prize_pools_rels_columns';
 
 export const migrations = [
   {
@@ -353,5 +354,10 @@ export const migrations = [
     up: migration_20260510_140000_add_product_image_migration.up,
     down: migration_20260510_140000_add_product_image_migration.down,
     name: '20260510_140000_add_product_image_migration',
+  },
+  {
+    up: migration_20260510_150000_fix_prize_pools_rels_columns.up,
+    down: migration_20260510_150000_fix_prize_pools_rels_columns.down,
+    name: '20260510_150000_fix_prize_pools_rels_columns',
   },
 ];
