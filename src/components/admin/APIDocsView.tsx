@@ -142,16 +142,7 @@ const APIDocsView: React.FC<AdminViewServerProps> = async ({
           }}
         >
           給 CKMU APP / 第三方串接工程師的 REST 端點目錄（從 Payload config 自動產生）。
-          需要互動式 explorer 請改用{' '}
-          <a
-            href="/api/graphql-playground"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: 'var(--theme-success-600, #16a34a)', textDecoration: 'underline' }}
-          >
-            GraphQL Playground
-          </a>
-          。Base URL：<code style={inlineCode}>{baseUrl}</code>
+          Base URL：<code style={inlineCode}>{baseUrl}</code>
         </p>
 
         {/* ── 認證 ── */}
@@ -391,9 +382,8 @@ curl '${baseUrl}/api/products?limit=10' \\
         </section>
 
         <p style={{ marginTop: 24, fontSize: 12, color: 'var(--theme-elevation-500, #888)' }}>
-          需要更多細節：欄位 schema 直接看 GraphQL Playground 的 Docs 面板（自動 introspection），
-          比手寫 markdown 完整。產品 / Order / User 等核心 collection 的 webhook 還沒架，
-          目前僅支援 polling。
+          欄位 schema 細節可直接從個別 collection 的 admin 編輯頁查看。
+          產品 / Order / User 等核心 collection 的 webhook 還沒架，目前僅支援 polling。
         </p>
       </div>
     </DefaultTemplate>

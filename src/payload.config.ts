@@ -295,9 +295,9 @@ export default buildConfig({
         '@/components/admin/NavScrollPersist',
         '@/components/admin/AdminUserMenu',
       ],
-      // afterNavLinks 走在所有 collection / global 群組後面，視覺上掛在側欄底部，
-      // 用來放跨 collection 的「工具型」入口 — 目前是給 APP / 第三方串接的 API
-      // 文件 + GraphQL Playground，工程師可從一個固定位置直達。
+      // afterNavLinks 掛 CKMUSystemToolsNavGroup — 該 component 本身不渲染獨立
+      // 群組，而是 DOM 注入兩個工具連結（AI 部落格草稿產生器 / REST API 文件）
+      // 進「⑦ 系統與安全」原生 group 的 nav 列表，視覺合而為一。
       afterNavLinks: ['@/components/admin/CKMUSystemToolsNavGroup'],
       views: {
         help: {
@@ -469,6 +469,10 @@ export default buildConfig({
       UploadFeature({ collections: { media: { fields: [] } } }),
     ],
   }),
+  // GraphQL 完全關閉：本專案沒有任何 client/app 在用 /api/graphql，
+  // Playground 也已從後台 nav 移除。關閉可省去 schema build 時間 +
+  // 縮小 prod build 體積 + 減少對外 attack surface。
+  graphQL: { disable: true },
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
