@@ -1,3 +1,4 @@
+import * as migration_20260414_000000_baseline from './20260414_000000_baseline';
 import * as migration_20260415_112142_add_size_charts from './20260415_112142_add_size_charts';
 import * as migration_20260416_140000_add_gender_and_male_tier_name from './20260416_140000_add_gender_and_male_tier_name';
 import * as migration_20260416_193835_add_daily_checkin_streak from './20260416_193835_add_daily_checkin_streak';
@@ -55,8 +56,15 @@ import * as migration_20260509_100000_add_prize_pools from './20260509_100000_ad
 import * as migration_20260509_110000_add_game_terms_acceptance from './20260509_110000_add_game_terms_acceptance';
 import * as migration_20260509_120000_add_app_links from './20260509_120000_add_app_links';
 import * as migration_20260510_120000_add_behavior_events from './20260510_120000_add_behavior_events';
+import * as migration_20260510_140000_add_product_image_migration from './20260510_140000_add_product_image_migration';
+import * as migration_20260510_150000_fix_prize_pools_rels_columns from './20260510_150000_fix_prize_pools_rels_columns';
 
 export const migrations = [
+  {
+    up: migration_20260414_000000_baseline.up,
+    down: migration_20260414_000000_baseline.down,
+    name: '20260414_000000_baseline',
+  },
   {
     up: migration_20260415_112142_add_size_charts.up,
     down: migration_20260415_112142_add_size_charts.down,
@@ -341,5 +349,15 @@ export const migrations = [
     up: migration_20260510_120000_add_behavior_events.up,
     down: migration_20260510_120000_add_behavior_events.down,
     name: '20260510_120000_add_behavior_events',
+  },
+  {
+    up: migration_20260510_140000_add_product_image_migration.up,
+    down: migration_20260510_140000_add_product_image_migration.down,
+    name: '20260510_140000_add_product_image_migration',
+  },
+  {
+    up: migration_20260510_150000_fix_prize_pools_rels_columns.up,
+    down: migration_20260510_150000_fix_prize_pools_rels_columns.down,
+    name: '20260510_150000_fix_prize_pools_rels_columns',
   },
 ];
