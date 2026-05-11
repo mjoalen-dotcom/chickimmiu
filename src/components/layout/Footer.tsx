@@ -44,6 +44,8 @@ export function Footer({ businessInfo, socialLinks, footerSections }: FooterProp
     { href: '/products?tag=new', label: t('shoppingNew') },
     { href: '/products?tag=hot', label: t('shoppingHot') },
     { href: '/blog', label: t('shoppingBlog') },
+    { href: '/podcast', label: 'Podcast 節目' },
+    { href: '/app', label: '下載 APP' },
     { href: '/games', label: t('shoppingGames') },
     { href: '/account', label: t('shoppingMember') },
     { href: '/account/orders', label: t('shoppingOrders') },

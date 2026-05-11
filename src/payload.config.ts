@@ -229,14 +229,16 @@ export default buildConfig({
   //     admin 列表多一個 grid / list toggle + drag-drop 移動圖片到資料夾
   //   - collectionSpecific:true（預設）= 每個資料夾用 folderType[] 鎖定可放的 collection；
   //     將來開放更多 collection 用 folder 時不需設定每個資料夾
-  //   - browseByFolder:false → 不在最上方 nav（會與「使用說明 / 會員分群分析 …」並排錯位）；
-  //     入口改成「媒體資料夾」這條 collection link，跟 Media 同 group。
-  //   - collectionOverrides → 把 auto-generated 的 payload-folders collection
-  //     從 admin.hidden 改成 visible、放進「媒體資源」group、改成中文標籤。
-  //     `views.list.Component` server-redirect 到 `/admin/collections/media/payload-folders`
-  //     視覺化樹狀瀏覽器（縮圖 + drag-drop），取代 Payload 預設的純文字表格列表，
-  //     讓「媒體資料夾」nav link 一鍵直達直覺版資料夾管理介面。
-  //     編輯個別資料夾走 views.edit（/admin/collections/payload-folders/<id>）不受影響。
+  //   - browseByFolder:false → 不在最上方 nav（會與「使用說明 / 會員分群分析 …」並排錯位）。
+  //   - collectionOverrides → 把 auto-generated 的 payload-folders collection 改中文 label
+  //     + 改 useAsTitle/defaultColumns + 設 group + 保留 views.list redirect，但
+  //     **保持 admin.hidden=true**（Payload 預設）讓側欄不再出現「媒體資料夾」項目。
+  //     原因：Media collection 開啟 `folders:true` 後內部已自帶「By Folder」tab，
+  //     兩條 nav link 並排會讓人誤以為功能重複。視覺化樹狀瀏覽器仍可從
+  //     Media list 內的 By Folder tab 進入；資料夾編輯 URL（views.edit、
+  //     /admin/collections/payload-folders/<id>）也照常運作；保留 list view 的
+  //     PayloadFoldersListRedirect 是給直連 /admin/collections/payload-folders 的
+  //     bookmark 仍會正常 redirect 到 Media By Folder。
   //   - 對應 Media.ts `folders: true` + migration `enable_payload_folders`
   //     + components/admin/PayloadFoldersListRedirect.tsx
   folders: {
@@ -248,10 +250,12 @@ export default buildConfig({
         admin: {
           ...collection.admin,
           group: '⑥ 內容與頁面',
-          hidden: false,
+          hidden: true,
           useAsTitle: 'name',
           defaultColumns: ['name', 'folder', 'updatedAt'],
-          description: '管理 Media 用的資料夾樹（巢狀、可拖拉）。也可從 Media → By Folder tab 直接拖圖。',
+          description:
+            '管理 Media 用的資料夾樹（巢狀、可拖拉）。Sidebar 已隱藏避免與 Media 重複；' +
+            '日常操作改從「Media → By Folder」tab 進入。直連此 URL 會 redirect 到視覺版。',
           components: {
             ...collection.admin?.components,
             views: {
@@ -291,6 +295,10 @@ export default buildConfig({
         '@/components/admin/NavScrollPersist',
         '@/components/admin/AdminUserMenu',
       ],
+      // afterNavLinks 走在所有 collection / global 群組後面，視覺上掛在側欄底部，
+      // 用來放跨 collection 的「工具型」入口 — 目前是給 APP / 第三方串接的 API
+      // 文件 + GraphQL Playground，工程師可從一個固定位置直達。
+      afterNavLinks: ['@/components/admin/CKMUSystemToolsNavGroup'],
       views: {
         help: {
           Component: '@/components/admin/HelpView',
@@ -321,6 +329,18 @@ export default buildConfig({
         linkIntegrity: {
           Component: '@/components/admin/LinkIntegrityView',
           path: '/diagnostics/link-integrity',
+        },
+        // ⑦ 系統工具：AI 部落格草稿產生器（Groq llama-3.3-70b-versatile）
+        // 入口在 CKMUSystemToolsNavGroup，URL 直連也可
+        blogAIDraft: {
+          Component: '@/components/admin/BlogAIDraftView',
+          path: '/tools/blog-ai-draft',
+        },
+        // ⑦ 系統工具：REST API 文件（自動從 payload config 產生 collection / global 端點表）
+        // 給 APP / 第三方串接工程師
+        apiDocs: {
+          Component: '@/components/admin/APIDocsView',
+          path: '/api-docs',
         },
       },
     },
@@ -393,11 +413,15 @@ export default buildConfig({
     CollectibleCardEvents,
     DailyHoroscopes,
     // ⑥ 內容與頁面
-    Media,
+    // 順序原則：核心內容（最常編輯）→ 樣式（少動）→ 資源池（最少動）。
+    // Pages 放第一個 = group order 也由它決定（仍排在 ⑤ 後面 / ⑦ 前面，因
+    // 整段位置沒移）；Media 移到最後因為 admin 通常透過 Products / BlogPosts
+    // 上傳介面間接用 Media，少直接點 Media collection；媒體資料夾已隱藏。
+    Pages,
     BlogPosts,
     Podcasts,
-    Pages,
     SiteThemes,
+    Media,
     // ⑦ 系統與安全
     LoginAttempts,
     Currencies, // 幣別與匯率（前台 CurrencySwitcher 資料源；TWD 結算實際值不受影響）
@@ -424,13 +448,17 @@ export default buildConfig({
     // ⑤ 互動體驗
     GameSettings,
     // ⑥ 內容與頁面
+    // 順序原則：全站最常動 → 各頁面設定 → 規範類靜態頁。NavigationSettings
+    // 涵蓋公告 bar / 主選單 / 頁尾，幾乎每週要動，放最上面；首頁 / 合集頁
+    // / 商品列表是次常動的版面設定；About / FAQ / Policy 屬內容頁面，多半
+    // 設一次就少改。
+    NavigationSettings,
     HomepageSettings,
+    CollectionsPageSettings,
     ProductListSettings,
     AboutPageSettings,
     FAQPageSettings,
     PolicyPagesSettings,
-    NavigationSettings,
-    CollectionsPageSettings,
     // ⑦ 系統與安全
     GlobalSettings,
     PricingFormulaSettings,
