@@ -342,6 +342,13 @@ export default buildConfig({
           Component: '@/components/admin/APIDocsView',
           path: '/api-docs',
         },
+        // ⑦ 系統工具：一鍵刪除未上架 / 草稿商品（內建 referrer 診斷）
+        // 對應 endpoint：POST /api/products/admin/bulk-delete-unpublished
+        bulkDeleteProducts: {
+          Component: '@/components/admin/BulkDeleteProductsView',
+          path: '/tools/bulk-delete-products',
+        },
+
       },
     },
   },

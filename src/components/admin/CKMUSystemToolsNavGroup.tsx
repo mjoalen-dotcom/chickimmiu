@@ -21,6 +21,7 @@ import React, { useEffect } from 'react'
  *
  * 目前條目（GraphQL Playground 已下架，2026-05-11）：
  *   - AI 部落格草稿產生器 (/admin/tools/blog-ai-draft)
+ *   - 一鍵刪除未上架商品 (/admin/tools/bulk-delete-products)
  *   - REST API 文件 (/admin/api-docs)
  *
  * 對應 src/payload.config.ts admin.components.afterNavLinks。
@@ -40,6 +41,11 @@ const items: Item[] = [
     href: '/admin/tools/blog-ai-draft',
     label: '✨ AI 部落格草稿產生器',
     id: 'nav-ckmu-blog-ai-draft',
+  },
+  {
+    href: '/admin/tools/bulk-delete-products',
+    label: '🗑️ 一鍵刪除未上架商品',
+    id: 'nav-ckmu-bulk-delete-products',
   },
   {
     href: '/admin/api-docs',

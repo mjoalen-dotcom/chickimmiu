@@ -7,6 +7,7 @@ import { default as default_7b3334ccab91a8bc2d541f847ce2c885 } from '@/component
 import { default as default_2d9516e76c36d74134ebee4f781829f6 } from '@/components/admin/CategoryRecountButton'
 import { default as default_ebf9d2025b92d97c921799c47cf282d1 } from '@/components/admin/CategoryTreeView'
 import { default as default_cb040906944cedc20f0a1dc81a047b38 } from '@/components/admin/ProductStatusCell'
+import { default as default_6b2c0a93bbeb350d6bcacee01a93fd01 } from '@/components/admin/ProductCheckboxToggleCell'
 import { default as default_9b57c43980e97d4b56c8d7a919923508 } from '@/components/admin/ProductMarginInsight'
 import { default as default_9eb65d1e13a161fff630e7bf785e9dc3 } from '@/components/admin/ProductWizardLauncher'
 import { RscEntryLexicalCell as RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
@@ -33,6 +34,7 @@ import { UnderlineFeatureClient as UnderlineFeatureClient_e70f5e05f09f93e00b997e
 import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { default as default_699dba4f26b8b856c306de3bbc7388c9 } from '@/components/admin/AutoPricingPreview'
+import { default as default_8c44d53910d53c8b62c9bbd9f4c07a57 } from '@/components/admin/ProductInlineNumberCell'
 import { default as default_a3aa3dfb1277ec9c02ef061f872a6dd6 } from '@/components/admin/ProductCategoryTreePicker'
 import { default as default_5c3d166f438f19c8fb2f98618e6617ec } from '@/components/admin/VariantMatrixGenerator'
 import { default as default_e96600431ff221191298fd821860e529 } from '@/components/admin/ColorEyedropperField'
@@ -69,11 +71,11 @@ import { default as default_d500ae2ad98a0a33d640ae0ac1a3417c } from '@/component
 import { default as default_b80a86fce1072afc84cd6a430a965697 } from '@/components/admin/AdminLogo'
 import { default as default_37be21d5d30aaf368ac239b9d524d111 } from '@/components/admin/CKMUSystemToolsNavGroup'
 import { default as default_0e7b23c75ea046975e1784ba01f82886 } from '@/components/admin/Dashboard'
+import { default as default_365d92937231ef8e59f225db1998a642 } from '@/components/admin/AdminBackButton'
 import { default as default_6935afc6ffc87a7d434a45937e35c56e } from '@/components/admin/CKMUDashboardNavGroup'
 import { default as default_340cf3538fa47d0416e0abd461790ca4 } from '@/components/admin/AdminStyles'
 import { default as default_550b036f5ba594f02403b10f8dc4b8c7 } from '@/components/admin/NavScrollPersist'
 import { default as default_c4734b417dd2f37db2adf0e6ec330b48 } from '@/components/admin/AdminUserMenu'
-import { default as default_365d92937231ef8e59f225db1998a642 } from '@/components/admin/AdminBackButton'
 import { default as default_b49611ccd828469519fd79e264a9eb51 } from '@/components/admin/HelpView'
 import { default as default_b3d544e796f2e72482a7e1ca06c557a3 } from '@/components/admin/MemberAnalyticsView'
 import { default as default_ff00d70a4277286e7d2a45db4d136e59 } from '@/components/admin/RepeatPurchaseView'
@@ -96,6 +98,7 @@ export const importMap = {
   "@/components/admin/CategoryRecountButton#default": default_2d9516e76c36d74134ebee4f781829f6,
   "@/components/admin/CategoryTreeView#default": default_ebf9d2025b92d97c921799c47cf282d1,
   "@/components/admin/ProductStatusCell#default": default_cb040906944cedc20f0a1dc81a047b38,
+  "@/components/admin/ProductCheckboxToggleCell#default": default_6b2c0a93bbeb350d6bcacee01a93fd01,
   "@/components/admin/ProductMarginInsight#default": default_9b57c43980e97d4b56c8d7a919923508,
   "@/components/admin/ProductWizardLauncher#default": default_9eb65d1e13a161fff630e7bf785e9dc3,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
@@ -122,6 +125,7 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#BoldFeatureClient": BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@/components/admin/AutoPricingPreview#default": default_699dba4f26b8b856c306de3bbc7388c9,
+  "@/components/admin/ProductInlineNumberCell#default": default_8c44d53910d53c8b62c9bbd9f4c07a57,
   "@/components/admin/ProductCategoryTreePicker#default": default_a3aa3dfb1277ec9c02ef061f872a6dd6,
   "@/components/admin/VariantMatrixGenerator#default": default_5c3d166f438f19c8fb2f98618e6617ec,
   "@/components/admin/ColorEyedropperField#default": default_e96600431ff221191298fd821860e529,
@@ -158,11 +162,11 @@ export const importMap = {
   "@/components/admin/AdminLogo#default": default_b80a86fce1072afc84cd6a430a965697,
   "@/components/admin/CKMUSystemToolsNavGroup#default": default_37be21d5d30aaf368ac239b9d524d111,
   "@/components/admin/Dashboard#default": default_0e7b23c75ea046975e1784ba01f82886,
+  "@/components/admin/AdminBackButton#default": default_365d92937231ef8e59f225db1998a642,
   "@/components/admin/CKMUDashboardNavGroup#default": default_6935afc6ffc87a7d434a45937e35c56e,
   "@/components/admin/AdminStyles#default": default_340cf3538fa47d0416e0abd461790ca4,
   "@/components/admin/NavScrollPersist#default": default_550b036f5ba594f02403b10f8dc4b8c7,
   "@/components/admin/AdminUserMenu#default": default_c4734b417dd2f37db2adf0e6ec330b48,
-  "@/components/admin/AdminBackButton#default": default_365d92937231ef8e59f225db1998a642,
   "@/components/admin/HelpView#default": default_b49611ccd828469519fd79e264a9eb51,
   "@/components/admin/MemberAnalyticsView#default": default_b3d544e796f2e72482a7e1ca06c557a3,
   "@/components/admin/RepeatPurchaseView#default": default_ff00d70a4277286e7d2a45db4d136e59,
