@@ -168,14 +168,29 @@ export function ProductListClient({
         return tags.includes('jin-style') || tags.includes('jin-live')
       })
 
-    // Category filter (includes children of parent categories)
+    // Category filter — 主分類 (category) 或其他分類 (additionalCategories) 任一命中即列入。
+    // family 包含父分類自己 + 全部子分類，跟 server / /category/[slug] 同步。
     if (activeCategory) {
       const familyIds = getCategoryFamily(activeCategory)
+      const familySet = new Set(familyIds)
       list = list.filter((p) => {
+        // 主分類
         const cat = p.category as unknown as Record<string, unknown> | string | number | undefined
-        if (!cat) return false
-        const catId = typeof cat === 'object' ? String(cat.id) : String(cat)
-        return familyIds.includes(catId)
+        if (cat) {
+          const catId = typeof cat === 'object' ? String(cat.id) : String(cat)
+          if (familySet.has(catId)) return true
+        }
+        // 其他分類 (hasMany)
+        const addl = p.additionalCategories as
+          | (Record<string, unknown> | string | number)[]
+          | undefined
+        if (Array.isArray(addl)) {
+          for (const a of addl) {
+            const aid = typeof a === 'object' && a !== null ? String((a as { id?: unknown }).id) : String(a)
+            if (familySet.has(aid)) return true
+          }
+        }
+        return false
       })
     }
 

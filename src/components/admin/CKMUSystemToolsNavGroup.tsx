@@ -1,40 +1,39 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
-import Link from 'next/link'
+import React, { useEffect } from 'react'
 
 /**
- * CKMUSystemToolsNavGroup — 後台側欄最下方的「⑦ 系統工具」群組。
+ * CKMUSystemToolsNavGroup — 把「AI 部落格草稿產生器」「REST API 文件」
+ * 兩個自訂 view 注入 Payload 原生「⑦ 系統與安全」group 的 nav 列表。
  *
- * 跟 CKMUDashboardNavGroup 同一套 markup pattern，但掛在 `afterNavLinks`
- * 而非 `beforeNavLinks`，所以視覺上會出現在 ⑦ 系統與安全 collections 後面。
+ * 為什麼用 DOM 注入而不再開一個獨立 group：
+ *   - 使用者體驗：「系統與安全」「系統工具」分兩個一前一後的群組視覺很碎；
+ *     工具 / 系統設定 / 安全 collections 都屬於同一個營運面向，合併成單一群組
+ *     更符合心智模型。
+ *   - Payload v3 sidebar group 由 collections/globals 的 `admin.group` 自動聚合，
+ *     沒有公開 API 讓自訂 view 直接掛進現有 group。所以走 DOM 注入：找到
+ *     `⑦ 系統與安全` 的 `.nav-group__content` 然後把工具連結 append 進去。
+ *   - 用 collection stub 假冒群組成員會在 DB 多一張無意義的表 + migration
+ *     成本太高；DOM 注入是最低破壞性的方案。
  *
- * 為什麼不直接塞進 ⑦ 系統與安全 group：
- *   - Payload v3 sidebar group 是從 collections/globals 的 `admin.group` 自動聚合，
- *     沒有公開 API 讓自訂 view 加進現有 group
- *   - 用 collection stub 假冒 ⑦ 群組成員會在 DB 多一張無意義的表 + migration
- *   - afterNavLinks 是最低破壞性的方案：自己畫一個 group block，視覺與 Payload
- *     原生 group 一致（套用相同 nav-group / nav-group__toggle / nav-group__content
- *     class），sessionStorage 記住折疊狀態
+ * 失效模式：Payload 重新渲染 sidebar 時注入會掉，所以掛 MutationObserver
+ * 監看 DOM 變動，每次都重做（會檢查是否已注入避免重複）。
  *
- * 目前條目：
- *   - GraphQL Playground (/api/graphql-playground) — 對外開新分頁，工程師最快上手
- *     的 API explorer，自帶 schema 自動補全 + 可寫 query / mutation 測試
- *   - REST API 文件 (/admin/api-docs) — 列出全部 collection / global 的 REST 端點 +
- *     auth 範例 + curl snippet（Phase E 提供）
+ * 目前條目（GraphQL Playground 已下架，2026-05-11）：
+ *   - AI 部落格草稿產生器 (/admin/tools/blog-ai-draft)
+ *   - REST API 文件 (/admin/api-docs)
  *
  * 對應 src/payload.config.ts admin.components.afterNavLinks。
  */
-
-const KEY = 'ckmu_admin_system_tools_collapsed'
 
 interface Item {
   href: string
   label: string
   id: string
-  /** true → 對外連結，target=_blank */
-  external?: boolean
 }
+
+const TARGET_GROUP_LABEL = '⑦ 系統與安全'
+const INJECTED_ATTR = 'data-ckmu-systools-injected'
 
 const items: Item[] = [
   {
@@ -47,68 +46,56 @@ const items: Item[] = [
     label: 'REST API 文件',
     id: 'nav-ckmu-api-docs',
   },
-  {
-    href: '/api/graphql-playground',
-    label: 'GraphQL Playground',
-    id: 'nav-ckmu-graphql-playground',
-    external: true,
-  },
 ]
 
-const CKMUSystemToolsNavGroup: React.FC = () => {
-  // SSR 預設展開；client mount 後從 sessionStorage 還原折疊狀態
-  const [collapsed, setCollapsed] = useState(false)
+function findGroupContent(): Element | null {
+  // Payload v3 sidebar 結構：每個 group 用 .nav-group / .nav-group__toggle
+  // / .nav-group__content 三層 class。找到 toggle 文字含 TARGET_GROUP_LABEL
+  // 的 group 然後抓它的 content 區塊。
+  const toggles = document.querySelectorAll('.nav-group__toggle')
+  for (const t of Array.from(toggles)) {
+    const text = (t.textContent || '').trim()
+    if (text === TARGET_GROUP_LABEL) {
+      const group = t.closest('.nav-group')
+      if (group) return group.querySelector('.nav-group__content')
+    }
+  }
+  return null
+}
 
+function injectItems() {
+  const content = findGroupContent()
+  if (!content) return
+  // 已經注入過就跳過（用 attribute 標記）
+  if (content.querySelector(`[${INJECTED_ATTR}]`)) return
+
+  for (const item of items) {
+    const a = document.createElement('a')
+    a.href = item.href
+    a.id = item.id
+    a.className = 'nav__link'
+    a.setAttribute(INJECTED_ATTR, '1')
+    const span = document.createElement('span')
+    span.className = 'nav__link-label'
+    span.textContent = item.label
+    a.appendChild(span)
+    content.appendChild(a)
+  }
+}
+
+const CKMUSystemToolsNavGroup: React.FC = () => {
   useEffect(() => {
-    try {
-      if (sessionStorage.getItem(KEY) === '1') setCollapsed(true)
-    } catch {}
+    injectItems()
+    // Payload 換頁 / 重渲染後 nav 會被替換掉；用 MutationObserver
+    // 確保每次 DOM 變動都重新嘗試注入。
+    const observer = new MutationObserver(() => {
+      injectItems()
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+    return () => observer.disconnect()
   }, [])
 
-  const toggle = () => {
-    setCollapsed((c) => {
-      const next = !c
-      try {
-        sessionStorage.setItem(KEY, next ? '1' : '0')
-      } catch {}
-      return next
-    })
-  }
-
-  return (
-    <div className={`nav-group ckmu-system-tools-group${collapsed ? ' nav-group--collapsed' : ''}`}>
-      <button
-        type="button"
-        className={`nav-group__toggle${collapsed ? ' nav-group__toggle--collapsed' : ''}`}
-        onClick={toggle}
-        aria-expanded={!collapsed}
-      >
-        ⑦ 系統工具
-      </button>
-      {!collapsed && (
-        <div className="nav-group__content">
-          {items.map((it) =>
-            it.external ? (
-              <a
-                key={it.id}
-                className="nav__link"
-                id={it.id}
-                href={it.href}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <span className="nav__link-label">{it.label}</span>
-              </a>
-            ) : (
-              <Link key={it.id} className="nav__link" id={it.id} href={it.href}>
-                <span className="nav__link-label">{it.label}</span>
-              </Link>
-            ),
-          )}
-        </div>
-      )}
-    </div>
-  )
+  return null
 }
 
 export default CKMUSystemToolsNavGroup
