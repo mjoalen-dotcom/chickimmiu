@@ -43,6 +43,11 @@ const items: Item[] = [
     id: 'nav-ckmu-blog-ai-draft',
   },
   {
+    href: '/admin/tools/whitehat-marketing',
+    label: '白帽自動化行銷中台',
+    id: 'nav-ckmu-whitehat-marketing',
+  },
+  {
     href: '/admin/api-docs',
     label: 'REST API 文件',
     id: 'nav-ckmu-api-docs',

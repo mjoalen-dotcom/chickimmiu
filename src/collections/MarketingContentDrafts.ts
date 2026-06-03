@@ -1,0 +1,96 @@
+import type { CollectionConfig } from 'payload'
+
+import { isAdmin } from '../access/isAdmin'
+
+export const MarketingContentDrafts: CollectionConfig = {
+  slug: 'marketing-content-drafts',
+  labels: { singular: '行銷內容草稿', plural: '行銷內容草稿' },
+  admin: {
+    group: '④ 行銷推廣',
+    useAsTitle: 'title',
+    defaultColumns: ['type', 'title', 'status', 'targetProduct', 'scheduledAt', 'updatedAt'],
+    description: '白帽自動化產出的 SEO、FAQ、文章、短影音、Email、營運摘要與採購建議草稿。',
+  },
+  access: {
+    read: isAdmin,
+    create: isAdmin,
+    update: isAdmin,
+    delete: isAdmin,
+  },
+  timestamps: true,
+  fields: [
+    {
+      name: 'type',
+      label: '草稿類型',
+      type: 'select',
+      required: true,
+      options: [
+        { label: '商品 SEO 建議', value: 'seo_product_meta' },
+        { label: '商品 FAQ', value: 'product_faq' },
+        { label: '每週品牌文章', value: 'weekly_article' },
+        { label: '短影音腳本', value: 'short_video_script' },
+        { label: 'Email 生命週期文案', value: 'email_lifecycle' },
+        { label: '每日營運摘要', value: 'ops_summary' },
+        { label: '客服 AI 回覆草稿', value: 'customer_reply' },
+        { label: '補貨 / 推廣建議', value: 'restock_advice' },
+        { label: '採購建議', value: 'purchase_recommendation' },
+      ],
+    },
+    { name: 'title', label: '標題', type: 'text', required: true },
+    {
+      name: 'status',
+      label: '狀態',
+      type: 'select',
+      defaultValue: 'draft',
+      options: [
+        { label: '草稿', value: 'draft' },
+        { label: '待人工確認', value: 'review' },
+        { label: '已核准', value: 'approved' },
+        { label: '已排程', value: 'scheduled' },
+        { label: '已發布', value: 'published' },
+        { label: '封存', value: 'archived' },
+      ],
+    },
+    {
+      name: 'targetProduct',
+      label: '對應商品',
+      type: 'relationship',
+      relationTo: 'products',
+    },
+    {
+      name: 'targetSegment',
+      label: '對應客群',
+      type: 'select',
+      defaultValue: 'all',
+      options: [
+        { label: '全部會員', value: 'all' },
+        { label: '新客', value: 'new_customer' },
+        { label: '回購客', value: 'repeat_customer' },
+        { label: 'VIP', value: 'vip' },
+        { label: '沉睡客', value: 'dormant' },
+        { label: '內部營運', value: 'internal' },
+      ],
+    },
+    {
+      name: 'channels',
+      label: '用途 / 通路',
+      type: 'select',
+      hasMany: true,
+      options: [
+        { label: 'Blog', value: 'blog' },
+        { label: '商品頁', value: 'product_page' },
+        { label: 'Email', value: 'email' },
+        { label: 'Reels', value: 'reels' },
+        { label: 'Shorts', value: 'shorts' },
+        { label: 'LINE', value: 'line' },
+        { label: '內部任務', value: 'internal' },
+      ],
+    },
+    { name: 'body', label: '內容', type: 'textarea', required: true },
+    { name: 'hashtags', label: 'Hashtag / 標籤 JSON', type: 'json' },
+    { name: 'metadata', label: '產生依據 / 結構化資料', type: 'json' },
+    { name: 'scheduledAt', label: '預定發布時間', type: 'date' },
+    { name: 'generatedBy', label: '產生器', type: 'text', defaultValue: 'whitehat-automation' },
+    { name: 'notes', label: '人工備註', type: 'textarea' },
+  ],
+}

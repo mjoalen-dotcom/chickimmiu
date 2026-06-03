@@ -69,11 +69,11 @@ import { default as default_d500ae2ad98a0a33d640ae0ac1a3417c } from '@/component
 import { default as default_b80a86fce1072afc84cd6a430a965697 } from '@/components/admin/AdminLogo'
 import { default as default_37be21d5d30aaf368ac239b9d524d111 } from '@/components/admin/CKMUSystemToolsNavGroup'
 import { default as default_0e7b23c75ea046975e1784ba01f82886 } from '@/components/admin/Dashboard'
+import { default as default_365d92937231ef8e59f225db1998a642 } from '@/components/admin/AdminBackButton'
 import { default as default_6935afc6ffc87a7d434a45937e35c56e } from '@/components/admin/CKMUDashboardNavGroup'
 import { default as default_340cf3538fa47d0416e0abd461790ca4 } from '@/components/admin/AdminStyles'
 import { default as default_550b036f5ba594f02403b10f8dc4b8c7 } from '@/components/admin/NavScrollPersist'
 import { default as default_c4734b417dd2f37db2adf0e6ec330b48 } from '@/components/admin/AdminUserMenu'
-import { default as default_365d92937231ef8e59f225db1998a642 } from '@/components/admin/AdminBackButton'
 import { default as default_b49611ccd828469519fd79e264a9eb51 } from '@/components/admin/HelpView'
 import { default as default_b3d544e796f2e72482a7e1ca06c557a3 } from '@/components/admin/MemberAnalyticsView'
 import { default as default_ff00d70a4277286e7d2a45db4d136e59 } from '@/components/admin/RepeatPurchaseView'
@@ -82,6 +82,7 @@ import { default as default_beee283113db1e6274b4a3261d86c622 } from '@/component
 import { default as default_b49617f71656f29a998f7c5995ee1da4 } from '@/components/admin/UTMBuilderView'
 import { default as default_8b5bf0e9243e2c5e54db7bd0ca2ab3d1 } from '@/components/admin/LinkIntegrityView'
 import { default as default_92b9f9a324577ed05b0b278139afaf30 } from '@/components/admin/BlogAIDraftView'
+import { default as default_70bb89d83a8e0bf2bdeb649c1841fd43 } from '@/components/admin/WhiteHatMarketingView'
 import { default as default_12cd2f2c8c14674f532037fc5db9c3d8 } from '@/components/admin/APIDocsView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
@@ -158,11 +159,11 @@ export const importMap = {
   "@/components/admin/AdminLogo#default": default_b80a86fce1072afc84cd6a430a965697,
   "@/components/admin/CKMUSystemToolsNavGroup#default": default_37be21d5d30aaf368ac239b9d524d111,
   "@/components/admin/Dashboard#default": default_0e7b23c75ea046975e1784ba01f82886,
+  "@/components/admin/AdminBackButton#default": default_365d92937231ef8e59f225db1998a642,
   "@/components/admin/CKMUDashboardNavGroup#default": default_6935afc6ffc87a7d434a45937e35c56e,
   "@/components/admin/AdminStyles#default": default_340cf3538fa47d0416e0abd461790ca4,
   "@/components/admin/NavScrollPersist#default": default_550b036f5ba594f02403b10f8dc4b8c7,
   "@/components/admin/AdminUserMenu#default": default_c4734b417dd2f37db2adf0e6ec330b48,
-  "@/components/admin/AdminBackButton#default": default_365d92937231ef8e59f225db1998a642,
   "@/components/admin/HelpView#default": default_b49611ccd828469519fd79e264a9eb51,
   "@/components/admin/MemberAnalyticsView#default": default_b3d544e796f2e72482a7e1ca06c557a3,
   "@/components/admin/RepeatPurchaseView#default": default_ff00d70a4277286e7d2a45db4d136e59,
@@ -171,6 +172,7 @@ export const importMap = {
   "@/components/admin/UTMBuilderView#default": default_b49617f71656f29a998f7c5995ee1da4,
   "@/components/admin/LinkIntegrityView#default": default_8b5bf0e9243e2c5e54db7bd0ca2ab3d1,
   "@/components/admin/BlogAIDraftView#default": default_92b9f9a324577ed05b0b278139afaf30,
+  "@/components/admin/WhiteHatMarketingView#default": default_70bb89d83a8e0bf2bdeb649c1841fd43,
   "@/components/admin/APIDocsView#default": default_12cd2f2c8c14674f532037fc5db9c3d8,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

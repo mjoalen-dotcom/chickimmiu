@@ -74,6 +74,9 @@ import { CheckoutSettings } from './globals/CheckoutSettings'
 import { OrderSettings } from './globals/OrderSettings'
 import { AdsCatalogSettings } from './globals/AdsCatalogSettings'
 import { AdAudiences } from './collections/AdAudiences'
+import { SearchConsoleKeywords } from './collections/SearchConsoleKeywords'
+import { CompetitorPriceRecords } from './collections/CompetitorPriceRecords'
+import { MarketingContentDrafts } from './collections/MarketingContentDrafts'
 
 import { CreditScoreHistory } from './collections/CreditScoreHistory'
 import { PointsTransactions } from './collections/PointsTransactions'
@@ -336,6 +339,10 @@ export default buildConfig({
           Component: '@/components/admin/BlogAIDraftView',
           path: '/tools/blog-ai-draft',
         },
+        whiteHatMarketing: {
+          Component: '@/components/admin/WhiteHatMarketingView',
+          path: '/tools/whitehat-marketing',
+        },
         // ⑦ 系統工具：REST API 文件（自動從 payload config 產生 collection / global 端點表）
         // 給 APP / 第三方串接工程師
         apiDocs: {
@@ -384,6 +391,9 @@ export default buildConfig({
     AutomationLogs,
     MarketingCampaigns,
     MessageTemplates,
+    SearchConsoleKeywords,
+    CompetitorPriceRecords,
+    MarketingContentDrafts,
     ABTests,
     MarketingExecutionLogs,
     FestivalTemplates,
