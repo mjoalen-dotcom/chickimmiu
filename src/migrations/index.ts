@@ -60,6 +60,7 @@ import * as migration_20260510_140000_add_product_image_migration from './202605
 import * as migration_20260510_150000_fix_prize_pools_rels_columns from './20260510_150000_fix_prize_pools_rels_columns';
 import * as migration_20260511_010000_fix_game_settings_terms_compliance_leaderboard from './20260511_010000_fix_game_settings_terms_compliance_leaderboard';
 import * as migration_20260514_090000_add_whitehat_marketing_automation from './20260514_090000_add_whitehat_marketing_automation';
+import * as migration_20260603_120000_add_newsletter_and_wishlist from './20260603_120000_add_newsletter_and_wishlist';
 
 export const migrations = [
   {
@@ -371,5 +372,10 @@ export const migrations = [
     up: migration_20260514_090000_add_whitehat_marketing_automation.up,
     down: migration_20260514_090000_add_whitehat_marketing_automation.down,
     name: '20260514_090000_add_whitehat_marketing_automation',
+  },
+  {
+    up: migration_20260603_120000_add_newsletter_and_wishlist.up,
+    down: migration_20260603_120000_add_newsletter_and_wishlist.down,
+    name: '20260603_120000_add_newsletter_and_wishlist',
   },
 ];

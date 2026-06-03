@@ -123,7 +123,7 @@
 | **推薦人獎勵發放** | 🔴 | `customerRegister.ts:27` | 「另案」未做 |
 | **推薦防濫用 IP/裝置** | 🔴 | `ReferralSettings.ts` | 設定齊全，register 端零實作 |
 | /account/subscription | 🟡 | `account/subscription` | 只展示，**無購買動作** |
-| /account/wishlist | 🟡 | `account/wishlist` | 只存 localStorage，無 DB |
+| /account/wishlist | ✅ | `account/wishlist`、`WishlistItems.ts`、`api/account/wishlist`、`WishlistSync.tsx` | **Phase 2 B**：DB 持久化（row-per-item）；登入時 localStorage→DB 合併、跨裝置、登出清本機 |
 | /account/segments、/analytics | 🟡 | `account/segments,analytics` | **DEMO 假資料** fetch 失敗 fallback |
 | 會員等級 + 年度重算 cron | ✅ | `MembershipTiers.ts`, `api/cron/annual-tier-reset` | gender-aware |
 | 購物金 shoppingCredit | 🟡 | `Users.ts:562` | 有欄位，**無交易帳本** |
@@ -201,7 +201,7 @@
 | Blog 分類 | 🟡 | `BlogPosts.ts:176` | 固定 5 個 select，無法後台新增 |
 | Podcast 列表/詳情 | ✅ | `podcast/*` | 缺 RSS feed 路由（無法上架 Apple/Spotify）|
 | 首頁 CMS 驅動 | ✅ | `page.tsx`, `HomepageSettings.ts` | |
-| **首頁電子報訂閱** | 🔴 | `page.tsx:578` | 死按鈕，無 API |
+| 首頁電子報訂閱 | ✅ | `NewsletterForm.tsx`、`NewsletterSubscribers.ts`、`api/newsletter/{subscribe,unsubscribe}` | **Phase 2 B**：接 API，upsert + 冪等 + 退訂 token；admin 名單在 ④ 行銷推廣 |
 | 導覽/公告/頁尾 CMS | ✅ | `NavigationSettings.ts`, `layout.tsx:369` | |
 | 關於/FAQ/政策×4 CMS | ✅ | `About/FAQ/PolicyPagesSettings` | 豐富 fallback |
 | SiteThemes 外觀主題 | 🟡 | `SiteThemes.ts`, `ThemeStyles.tsx` | 字型選項部分**假的（選了不載入）**；無 mobile 工具列/popup 廣告/IG feed/全站倒數 |
@@ -240,7 +240,7 @@
 - [ ] Affiliates 佣金自動累加 hook + 前台合作夥伴 dashboard
 - [ ] 缺的 cron：生日排程、排行榜 top3 bonus+重置、社交遊戲房間結算、wish 過期退點、星座預熱、商品排程上下架
 - [ ] 評價提交流程（已購商品下拉 + POST + 照片上傳）；PDP 撰寫評價帶 redirect
-- [ ] 首頁電子報訂閱 API；wishlist DB 持久化
+- [x] ✅ 首頁電子報訂閱 API（NewsletterSubscribers + subscribe/unsubscribe）；wishlist DB 持久化（WishlistItems + 登入合併同步）— **Phase 2 B 完成**
 - [ ] /account/segments、/analytics 移除 demo fallback
 - [ ] 預購 PDP 讀 allowPreOrder + 顯示 preOrderNote
 - [ ] blog/[slug] decodeURIComponent + notFound

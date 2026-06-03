@@ -8,6 +8,7 @@ import { HeroCarousel } from '@/components/home/HeroCarousel'
 import type { HeroSlide, HeroVariant } from '@/components/home/HeroCarousel'
 import { UGCGallery } from '@/components/ugc/UGCGallery'
 import { Price } from '@/components/common/Price'
+import { NewsletterForm } from '@/components/home/NewsletterForm'
 import { getPayload } from 'payload'
 import { getMediaUrl, normalizeMediaUrl } from '@/lib/media-url'
 import config from '@payload-config'
@@ -570,19 +571,11 @@ export default async function HomePage() {
             <p className="text-sm text-muted-foreground mb-8">
               {(newsletterSection.subtitle as string) || '搶先收到新品上市、限時優惠與專屬會員好禮通知'}
             </p>
-            <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-              <input
-                type="email"
-                placeholder={(newsletterSection.placeholder as string) || 'your@email.com'}
-                className="flex-1 px-5 py-3 rounded-full border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40 bg-white"
-              />
-              <button
-                type="button"
-                className="px-8 py-3 bg-foreground text-cream-50 rounded-full text-sm tracking-wide hover:bg-foreground/90 transition-colors"
-              >
-                {(newsletterSection.buttonText as string) || '訂閱'}
-              </button>
-            </form>
+            <NewsletterForm
+              placeholder={(newsletterSection.placeholder as string) || 'your@email.com'}
+              buttonText={(newsletterSection.buttonText as string) || '訂閱'}
+              source="homepage"
+            />
           </div>
         </section>
       )}

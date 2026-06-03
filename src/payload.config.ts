@@ -98,6 +98,8 @@ import { MessageTags } from './collections/MessageTags'
 import { ConversationActivities } from './collections/ConversationActivities'
 import { CustomerServiceSettings } from './globals/CustomerServiceSettings'
 import { Currencies } from './collections/Currencies'
+import { WishlistItems } from './collections/WishlistItems'
+import { NewsletterSubscribers } from './collections/NewsletterSubscribers'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -379,6 +381,7 @@ export default buildConfig({
     PointsTransactions,
     MemberSegments,
     UserRewards,
+    WishlistItems, // Phase 2 B：會員收藏清單 DB 持久化（跨裝置）
     // 客服中心 v1 Phase 1A — Conversations + Messages 是 ③ 會員 CRM 的延伸
     Conversations,
     Messages,
@@ -390,6 +393,7 @@ export default buildConfig({
     AutomationJourneys,
     AutomationLogs,
     MarketingCampaigns,
+    NewsletterSubscribers, // Phase 2 B：電子報訂閱名單（前台訂閱表單寫入）
     MessageTemplates,
     SearchConsoleKeywords,
     CompetitorPriceRecords,
