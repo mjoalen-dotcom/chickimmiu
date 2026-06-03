@@ -345,6 +345,12 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
 
   const canAddToCart = variants.length === 0 || (selectedColor && selectedSize)
 
+  // 預購：allowPreOrder=true 時，缺貨 (stock=0) 的款式仍可選取並加入購物車（視為預購）。
+  const allowPreOrder = Boolean(product.allowPreOrder)
+  const preOrderNote = (product.preOrderNote as string) || ''
+  const selectedVariantOutOfStock = Boolean(selectedVariant && selectedVariant.stock === 0)
+  const isPreorderItem = selectedVariantOutOfStock && allowPreOrder
+
   /* ─── Quick Win D2: 韓系電商 social proof + 韓星同款 + 金老佛爺穿過 三種徽章 ─── */
   const totalSold = (product.totalSold as number) ?? 0
   // 50/100/300/500/1000+ 階梯顯示，避免冷啟動 "5 件" 不夠氣勢
@@ -718,16 +724,19 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
                 <div className="flex flex-wrap gap-2">
                   {sizes.map((s) => {
                     const variant = variants.find((v) => v.colorName === selectedColor && v.size === s)
-                    const outOfStock = variant && variant.stock === 0
+                    const outOfStock = Boolean(variant && variant.stock === 0)
+                    // 缺貨且「不」開放預購才真正鎖住；開放預購時缺貨款式仍可選（預購）。
+                    const blocked = outOfStock && !allowPreOrder
+                    const preorderable = outOfStock && allowPreOrder
                     return (
                       <button
                         key={s}
-                        onClick={() => !outOfStock && setSelectedSize(s)}
-                        disabled={outOfStock}
+                        onClick={() => !blocked && setSelectedSize(s)}
+                        disabled={blocked}
                         className={`px-4 py-2 text-sm rounded-xl border transition-colors ${
                           selectedSize === s
                             ? 'border-gold-500 bg-gold-500/10 text-gold-600 font-medium'
-                            : outOfStock
+                            : blocked
                               ? 'border-cream-200 text-muted-foreground/30 line-through cursor-not-allowed'
                               : 'border-cream-200 hover:border-gold-400'
                         }`}
@@ -735,6 +744,9 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
                         {s}
                         {variant && variant.stock > 0 && variant.stock <= 3 && (
                           <span className="ml-1 text-[10px] text-red-500">僅剩{variant.stock}件</span>
+                        )}
+                        {preorderable && (
+                          <span className="ml-1 text-[10px] text-blue-500">預購</span>
                         )}
                       </button>
                     )
@@ -838,6 +850,11 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
                   每人限購 {purchaseLimit} 件
                 </div>
               )}
+              {allowPreOrder && (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                  🕒 本商品開放預購{preOrderNote ? `：${preOrderNote}` : '，下單後將依到貨時程為您安排出貨'}
+                </div>
+              )}
               {cartToast && (
                 <div className="rounded-xl border border-cream-200 bg-white px-3 py-2 text-sm text-foreground/80 shadow-sm">
                   {cartToast}
@@ -850,7 +867,7 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
                   className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-foreground text-cream-50 rounded-xl text-sm tracking-wide hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <ShoppingBag size={18} />
-                  加入購物車
+                  {isPreorderItem ? '預購加入購物車' : '加入購物車'}
                 </button>
                 <button
                   onClick={handleBuyNow}
@@ -858,7 +875,7 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
                   className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-[#f4aaa4] text-white rounded-xl text-sm tracking-wide hover:bg-[#e89d97] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Zap size={18} />
-                  立即購買
+                  {isPreorderItem ? '立即預購' : '立即購買'}
                 </button>
               </div>
 
@@ -870,12 +887,20 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
                 <Heart size={16} className={inWishlist ? 'fill-red-500 text-red-500' : ''} />
                 {inWishlist ? '已加入追蹤清單' : '加入追蹤清單'}
               </button>
+              <Link
+                href="https://page.line.me/nqo0262k"
+                className="flex items-center justify-center gap-2 w-full rounded-xl border border-cream-200 bg-white py-2.5 text-sm text-foreground/70 transition-colors hover:border-gold-300 hover:text-gold-700"
+              >
+                <MessageSquare size={16} />
+                LINE 詢問尺寸 / 現貨
+              </Link>
             </div>
 
             {/* Benefits */}
-            <div className="grid grid-cols-3 gap-3 pt-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
               {[
-                { icon: Truck, label: '滿千免運' },
+                { icon: Truck, label: '滿額免運' },
+                { icon: Clock, label: '現貨快出' },
                 { icon: RefreshCw, label: '14 天鑑賞期' },
                 { icon: Shield, label: '安全付款' },
               ].map((b) => (
@@ -1363,7 +1388,7 @@ function ProductReviewsSection({ reviews }: { reviews: ReviewLite[] }) {
           )}
         </div>
         <Link
-          href="/login"
+          href="/account/reviews"
           className="text-sm px-5 py-2 bg-gold-500 text-white rounded-xl hover:bg-gold-600 transition-colors flex items-center gap-2"
         >
           <MessageSquare size={14} />

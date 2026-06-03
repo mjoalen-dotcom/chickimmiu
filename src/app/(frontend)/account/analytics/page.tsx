@@ -39,56 +39,20 @@ interface AnalyticsData {
   }>
 }
 
-// ── Demo data ──
-const DEMO_DATA: AnalyticsData = {
+// ── Empty baseline（未有資料/分群前顯示 0；由 /api/crm/analytics 填入真實值，不用假資料）──
+const EMPTY_ANALYTICS: AnalyticsData = {
   overview: {
-    totalMembers: 2847,
-    avgLTV: 45200,
-    avgChurnScore: 32,
-    avgCreditScore: 82.5,
-    overallReturnRate: 8.2,
+    totalMembers: 0,
+    avgLTV: 0,
+    avgChurnScore: 0,
+    avgCreditScore: 0,
+    overallReturnRate: 0,
   },
-  segmentDistribution: [
-    { segment: '冠軍客群', count: 245, percentage: 8.6 },
-    { segment: '忠實客群', count: 520, percentage: 18.3 },
-    { segment: '潛力忠誠客', count: 380, percentage: 13.4 },
-    { segment: '優質新客', count: 612, percentage: 21.5 },
-    { segment: '價格敏感客', count: 340, percentage: 11.9 },
-    { segment: '流失高風險客', count: 420, percentage: 14.8 },
-    { segment: '退貨高風險客', count: 95, percentage: 3.3 },
-    { segment: '沉睡客', count: 235, percentage: 8.3 },
-  ],
-  churnDistribution: [
-    { risk: '低風險', count: 1580 },
-    { risk: '中風險', count: 720 },
-    { risk: '高風險', count: 380 },
-    { risk: '極高風險', count: 167 },
-  ],
-  ltvDistribution: [
-    { range: 'NT$0-10K', count: 890 },
-    { range: 'NT$10K-30K', count: 920 },
-    { range: 'NT$30K-60K', count: 580 },
-    { range: 'NT$60K-100K', count: 310 },
-    { range: 'NT$100K+', count: 147 },
-  ],
-  topTags: [
-    { tag: '韓系愛好者', count: 1245 },
-    { tag: '偏好洋裝', count: 980 },
-    { tag: '高回購客', count: 756 },
-    { tag: '職場穿搭', count: 623 },
-    { tag: '價格敏感', count: 540 },
-    { tag: '偏好 M 碼', count: 498 },
-    { tag: '高退貨風險', count: 312 },
-    { tag: '沉睡客', count: 235 },
-  ],
-  monthlyTrends: [
-    { month: '2025-11', newMembers: 156, churnedMembers: 23, avgSpend: 3200 },
-    { month: '2025-12', newMembers: 245, churnedMembers: 18, avgSpend: 4100 },
-    { month: '2026-01', newMembers: 189, churnedMembers: 31, avgSpend: 2800 },
-    { month: '2026-02', newMembers: 167, churnedMembers: 28, avgSpend: 3500 },
-    { month: '2026-03', newMembers: 198, churnedMembers: 22, avgSpend: 3900 },
-    { month: '2026-04', newMembers: 89, churnedMembers: 15, avgSpend: 3600 },
-  ],
+  segmentDistribution: [],
+  churnDistribution: [],
+  ltvDistribution: [],
+  topTags: [],
+  monthlyTrends: [],
 }
 
 // ── Segment colors ──
@@ -148,7 +112,7 @@ const staggerContainer = {
 }
 
 export default function AnalyticsDashboardPage() {
-  const [data, setData] = useState<AnalyticsData>(DEMO_DATA)
+  const [data, setData] = useState<AnalyticsData>(EMPTY_ANALYTICS)
   const [timeRange, setTimeRange] = useState('30d')
   const [loading, setLoading] = useState(false)
 
@@ -163,7 +127,7 @@ export default function AnalyticsDashboardPage() {
         }
       }
     } catch {
-      // keep demo data on error
+      // 出錯就維持目前資料（不顯示假資料）
     } finally {
       setLoading(false)
     }
@@ -219,6 +183,13 @@ export default function AnalyticsDashboardPage() {
           <div className="mb-4 flex items-center gap-2 text-sm text-gold-600">
             <Activity className="h-4 w-4 animate-spin" />
             <span>載入中...</span>
+          </div>
+        )}
+
+        {/* 無資料提示（取代先前的假資料）*/}
+        {!loading && data.overview.totalMembers === 0 && (
+          <div className="mb-6 rounded-2xl border border-cream-200 bg-white p-8 text-center text-sm text-muted-foreground">
+            目前尚無分析資料。需先有會員消費紀錄並執行分群計算後，數據才會出現。
           </div>
         )}
 

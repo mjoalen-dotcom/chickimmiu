@@ -53,72 +53,27 @@ function getTimeRangeDays(timeRange: string): number {
   }
 }
 
-// ── Demo / fallback data ──
-const DEMO_DATA = {
+// ── Empty baseline（不再使用 demo 假資料；無資料時回傳 0 / 空陣列）──
+const EMPTY_DATA = {
   overview: {
-    totalMembers: 2847,
-    avgLTV: 45200,
-    avgChurnScore: 32,
-    avgCreditScore: 82.5,
-    overallReturnRate: 8.2,
+    totalMembers: 0,
+    avgLTV: 0,
+    avgChurnScore: 0,
+    avgCreditScore: 0,
+    overallReturnRate: 0,
   },
-  segmentDistribution: [
-    { segment: '冠軍客群', count: 245, percentage: 8.6 },
-    { segment: '忠實客群', count: 520, percentage: 18.3 },
-    { segment: '潛力忠誠客', count: 380, percentage: 13.4 },
-    { segment: '優質新客', count: 612, percentage: 21.5 },
-    { segment: '價格敏感客', count: 340, percentage: 11.9 },
-    { segment: '流失高風險客', count: 420, percentage: 14.8 },
-    { segment: '退貨高風險客', count: 95, percentage: 3.3 },
-    { segment: '沉睡客', count: 235, percentage: 8.3 },
-  ],
-  churnDistribution: [
-    { risk: '低風險', count: 1580 },
-    { risk: '中風險', count: 720 },
-    { risk: '高風險', count: 380 },
-    { risk: '極高風險', count: 167 },
-  ],
-  ltvDistribution: [
-    { range: 'NT$0-10K', count: 890 },
-    { range: 'NT$10K-30K', count: 920 },
-    { range: 'NT$30K-60K', count: 580 },
-    { range: 'NT$60K-100K', count: 310 },
-    { range: 'NT$100K+', count: 147 },
-  ],
-  creditScoreDistribution: [
-    { range: '90-100 優質', count: 1580 },
-    { range: '60-89 一般', count: 820 },
-    { range: '40-59 觀察', count: 280 },
-    { range: '30-39 警示', count: 112 },
-    { range: '1-29 黑名單', count: 42 },
-    { range: '0 停權', count: 13 },
-  ],
-  topTags: [
-    { tag: '韓系愛好者', count: 1245 },
-    { tag: '偏好洋裝', count: 980 },
-    { tag: '高回購客', count: 756 },
-    { tag: '職場穿搭', count: 623 },
-    { tag: '價格敏感', count: 540 },
-    { tag: '偏好 M 碼', count: 498 },
-    { tag: '高退貨風險', count: 312 },
-    { tag: '沉睡客', count: 235 },
-  ],
-  monthlyTrends: [
-    { month: '2025-11', newMembers: 156, churnedMembers: 23, avgSpend: 3200 },
-    { month: '2025-12', newMembers: 245, churnedMembers: 18, avgSpend: 4100 },
-    { month: '2026-01', newMembers: 189, churnedMembers: 31, avgSpend: 2800 },
-    { month: '2026-02', newMembers: 167, churnedMembers: 28, avgSpend: 3500 },
-    { month: '2026-03', newMembers: 198, churnedMembers: 22, avgSpend: 3900 },
-    { month: '2026-04', newMembers: 89, churnedMembers: 15, avgSpend: 3600 },
-  ],
-  tierDistribution: {
-    '優雅初遇者': 1240,
-    '曦漾仙子': 820,
-    '優漾女神': 480,
-    '金曦女王': 195,
-    '星耀皇后': 78,
-    '璀璨天后': 34,
-  },
+  segmentDistribution: [] as Array<{ segment: string; count: number; percentage: number }>,
+  churnDistribution: [] as Array<{ risk: string; count: number }>,
+  ltvDistribution: [] as Array<{ range: string; count: number }>,
+  creditScoreDistribution: [] as Array<{ range: string; count: number }>,
+  topTags: [] as Array<{ tag: string; count: number }>,
+  monthlyTrends: [] as Array<{
+    month: string
+    newMembers: number
+    churnedMembers: number
+    avgSpend: number
+  }>,
+  tierDistribution: {} as Record<string, number>,
 }
 
 export async function GET(req: NextRequest) {
@@ -142,12 +97,12 @@ export async function GET(req: NextRequest) {
     })
     const totalMembers = allMembers.totalDocs
 
-    // If DB is essentially empty, return demo data
+    // 無會員資料時回傳空 baseline（不假資料）。
     if (totalMembers === 0) {
       return NextResponse.json({
         success: true,
-        data: DEMO_DATA,
-        meta: { source: 'demo', timeRange, tierFilter, segmentFilter },
+        data: EMPTY_DATA,
+        meta: { source: 'empty', timeRange, tierFilter, segmentFilter },
       })
     }
 
@@ -205,7 +160,7 @@ export async function GET(req: NextRequest) {
     const overallReturnRate =
       ordersInRange.totalDocs > 0
         ? Math.round((returnsInRange.totalDocs / ordersInRange.totalDocs) * 100 * 10) / 10
-        : DEMO_DATA.overview.overallReturnRate
+        : 0
 
     // Churn score approximation based on credit score distribution
     const avgChurnScore =
@@ -214,12 +169,11 @@ export async function GET(req: NextRequest) {
         : 32
 
     // ── 6. Segment distribution (RFM-based) ──
-    // In production this would come from a computed RFM field;
-    // for now we derive from spend/recency patterns or fall back to demo
-    const segmentDistribution =
-      totalMembers > 10
-        ? deriveSegmentDistribution(sampleMembers.docs as unknown as Record<string, unknown>[], totalMembers)
-        : DEMO_DATA.segmentDistribution
+    // 由實際 spend/recency 樣本推導；無樣本則自然得到空/零，不再 fallback 假資料。
+    const segmentDistribution = deriveSegmentDistribution(
+      sampleMembers.docs as unknown as Record<string, unknown>[],
+      totalMembers,
+    )
 
     // ── 7. Churn distribution ──
     const churnDistribution = deriveChurnDistribution(creditScores, totalMembers)
@@ -283,19 +237,19 @@ export async function GET(req: NextRequest) {
         churnDistribution,
         ltvDistribution,
         creditScoreDistribution,
-        topTags: topTags.length > 0 ? topTags : DEMO_DATA.topTags,
-        monthlyTrends: monthlyTrends.length > 0 ? monthlyTrends : DEMO_DATA.monthlyTrends,
+        topTags,
+        monthlyTrends,
         tierDistribution,
       },
       meta: { source: 'live', timeRange, tierFilter, segmentFilter },
     })
   } catch (error) {
     console.error('CRM Analytics GET error:', error)
-    // Fallback to demo data on error
+    // 出錯回傳空 baseline（不假資料）。
     return NextResponse.json({
       success: true,
-      data: DEMO_DATA,
-      meta: { source: 'demo-fallback', error: '伺服器錯誤，顯示示範數據' },
+      data: EMPTY_DATA,
+      meta: { source: 'error', error: '伺服器錯誤，暫無法取得分析數據' },
     })
   }
 }

@@ -6,6 +6,7 @@ import type { SerializedEditorState } from '@payloadcms/richtext-lexical/lexical
 
 import { normalizeMediaUrl } from '@/lib/media-url'
 import { ProductCard } from '@/components/product/ProductCard'
+import { CountdownTimer } from './CountdownTimer'
 
 /**
  * PageBlocks — shared renderer for the modular Page builder.
@@ -816,17 +817,7 @@ function Countdown({ section }: { section: PageBlock }) {
             {section.description as string}
           </p>
         )}
-        <div className="flex justify-center gap-3 md:gap-4 mb-8">
-          {['天', '時', '分', '秒'].map((unit) => (
-            <div
-              key={unit}
-              className={`rounded-xl p-4 w-16 md:w-20 shadow-sm ${bg?.url ? 'bg-white/95 text-foreground backdrop-blur-sm' : 'bg-white'}`}
-            >
-              <p className="text-2xl md:text-3xl font-medium">00</p>
-              <p className="text-[10px] text-muted-foreground tracking-wider">{unit}</p>
-            </div>
-          ))}
-        </div>
+        <CountdownTimer endDate={section.endDate as string} onBg={Boolean(bg?.url)} />
         {Boolean(section.ctaText) && (
           <Link
             href={(section.ctaLink as string) || '#'}

@@ -12,8 +12,22 @@ interface Props {
   params: Promise<{ slug: string }>
 }
 
+/**
+ * Next.js 15 prod（next start）不會自動 decode 動態段；中文 slug 會拿到
+ * percent-encoded 字串（如 2026-%E5%A4%8F…），但 DB 存的是 raw UTF-8。
+ * 不 decode → query 0 筆 → 之前會 silent fallback 到假文章。一律先 decode。
+ */
+function safeDecodeSlug(raw: string): string {
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return raw
+  }
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params
+  const { slug: rawSlug } = await params
+  const slug = safeDecodeSlug(rawSlug)
   if (!process.env.DATABASE_URI) return { title: slug }
   try {
     const payload = await getPayload({ config })
@@ -52,7 +66,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function BlogPostPage({ params }: Props) {
-  const { slug } = await params
+  const { slug: rawSlug } = await params
+  const slug = safeDecodeSlug(rawSlug)
   let post: Record<string, unknown> | null = null
   let relatedPosts: Record<string, unknown>[] = []
 
@@ -85,19 +100,9 @@ export default async function BlogPostPage({ params }: Props) {
     }
   }
 
-  // Demo fallback
+  // 找不到文章就回 404（不再 fallback 到假文章）。
   if (!post) {
-    post = {
-      id: 'demo',
-      slug,
-      title: '秋冬穿搭指南：5 個打造日常優雅的秘訣',
-      excerpt: '從基本款單品開始，學會混搭出高級感的秋冬造型。',
-      category: '穿搭教學',
-      publishedAt: '2024-12-01',
-      author: { name: 'CHIC KIM & MIU 編輯部' },
-      content: null,
-      featuredImage: null,
-    }
+    notFound()
   }
 
   const featuredImage = post.featuredImage as { url?: string; alt?: string } | null

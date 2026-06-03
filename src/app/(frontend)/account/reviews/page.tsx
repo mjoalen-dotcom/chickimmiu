@@ -5,7 +5,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { normalizeMediaUrl } from '@/lib/media-url'
 
-import ReviewsClient, { type AccountReviewLite } from './ReviewsClient'
+import ReviewsClient, { type AccountReviewLite, type PurchasableProduct } from './ReviewsClient'
 
 export const metadata: Metadata = {
   title: '我的評價',
@@ -61,5 +61,35 @@ export default async function ReviewsPage() {
     }
   })
 
-  return <ReviewsClient reviews={reviews} />
+  // 已購商品（撰寫評價下拉用）— 從訂單 items 收集 distinct product，排除已評價過的
+  const orderResult = await payload.find({
+    collection: 'orders',
+    where: { customer: { equals: sessionUser.id } },
+    sort: '-createdAt',
+    limit: 50,
+    depth: 1,
+  })
+  const reviewedProductIds = new Set(
+    (result.docs as unknown as LooseRecord[]).map((d) => {
+      const p = d.product as LooseRecord | string | null
+      return typeof p === 'object' && p ? String(p.id) : String(p ?? '')
+    }),
+  )
+  const purchasedMap = new Map<string, PurchasableProduct>()
+  for (const order of orderResult.docs as unknown as LooseRecord[]) {
+    const items = (order.items as LooseRecord[] | undefined) ?? []
+    for (const it of items) {
+      const prod = it.product as LooseRecord | string | null
+      const pid = typeof prod === 'object' && prod ? String(prod.id) : typeof prod === 'string' ? prod : ''
+      if (!pid || reviewedProductIds.has(pid)) continue
+      const pname =
+        (typeof prod === 'object' && prod ? (prod.name as string) : undefined) ||
+        (it.productName as string) ||
+        '商品'
+      if (!purchasedMap.has(pid)) purchasedMap.set(pid, { id: pid, name: pname })
+    }
+  }
+  const purchasable = [...purchasedMap.values()]
+
+  return <ReviewsClient reviews={reviews} purchasable={purchasable} />
 }

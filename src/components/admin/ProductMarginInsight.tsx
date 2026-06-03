@@ -28,11 +28,13 @@ const panelStyle: React.CSSProperties = {
 const ProductMarginInsight: React.FC = () => {
   const priceRaw = useFormFields(([fields]) => fields.price?.value as unknown)
   const salePriceRaw = useFormFields(([fields]) => fields.salePrice?.value as unknown)
-  const costRaw = useFormFields(([fields]) => fields['sourcing.costTWD']?.value as unknown)
+  // 優先讀通用 cost 欄位；Sinsang 匯入商品只有 sourcing.costTWD 時 fallback。
+  const costRaw = useFormFields(([fields]) => fields.cost?.value as unknown)
+  const sourcingCostRaw = useFormFields(([fields]) => fields['sourcing.costTWD']?.value as unknown)
 
   const price = toNumber(priceRaw)
   const salePrice = toNumber(salePriceRaw)
-  const cost = toNumber(costRaw)
+  const cost = toNumber(costRaw) ?? toNumber(sourcingCostRaw)
 
   const sellingPrice = useMemo(() => {
     if (salePrice != null && salePrice > 0) return salePrice
@@ -93,7 +95,7 @@ const ProductMarginInsight: React.FC = () => {
             lineHeight: 1.4,
           }}
         >
-          請填採購來源 → 進貨成本
+          請填寫「成本」欄位（或採購來源 → 進貨成本）
         </div>
       )}
     </div>
