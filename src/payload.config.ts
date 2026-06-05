@@ -100,6 +100,8 @@ import { CustomerServiceSettings } from './globals/CustomerServiceSettings'
 import { Currencies } from './collections/Currencies'
 import { WishlistItems } from './collections/WishlistItems'
 import { NewsletterSubscribers } from './collections/NewsletterSubscribers'
+import { WalletTransactions } from './collections/WalletTransactions'
+import { WalletWithdrawals } from './collections/WalletWithdrawals'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -382,6 +384,8 @@ export default buildConfig({
     MemberSegments,
     UserRewards,
     WishlistItems, // Phase 2 B：會員收藏清單 DB 持久化（跨裝置）
+    WalletTransactions, // Phase 2 C：購物金/儲值金帳本
+    WalletWithdrawals, // Phase 2 C：儲值金退現申請
     // 客服中心 v1 Phase 1A — Conversations + Messages 是 ③ 會員 CRM 的延伸
     Conversations,
     Messages,

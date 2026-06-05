@@ -1,4 +1,5 @@
 import type { Endpoint, PayloadRequest, RequiredDataFromCollectionSlug } from 'payload'
+import { recordWalletTxn } from '../lib/wallet/server'
 
 /**
  * POST /api/users/register
@@ -219,6 +220,18 @@ export const customerRegisterEndpoint: Endpoint = {
                 description: desc,
               } as unknown as RequiredDataFromCollectionSlug<'points-transactions'>,
               overrideAccess: true,
+            })
+          }
+          if (rewardCredit > 0) {
+            // 錢包帳本：新會員購物金註冊禮（新帳號 shoppingCredit 從 0 起，餘額即 rewardCredit）
+            await recordWalletTxn(req.payload, {
+              userId: newUser.id,
+              wallet: 'shoppingCredit',
+              amount: rewardCredit,
+              type: 'earn',
+              source: 'signup',
+              description: desc,
+              balanceOverride: rewardCredit,
             })
           }
         }

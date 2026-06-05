@@ -1,6 +1,7 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Where } from 'payload'
+import { recordWalletTxn } from '../wallet/server'
 
 // ── Types ──
 
@@ -567,9 +568,11 @@ export async function recordGamePlay(params: RecordGamePlayParams): Promise<Reco
     })
   }
 
-  // 3. Award credit prize (no ledger entry; credit is tracked separately)
+  // 3. Award credit prize (購物金，寫錢包帳本)
+  let creditAwarded = 0
   if (params.prizeType === 'credit' && params.prizeAmount && params.prizeAmount > 0) {
     creditBalance += params.prizeAmount
+    creditAwarded = params.prizeAmount
     userUpdates.shoppingCredit = creditBalance
   }
 
@@ -579,6 +582,19 @@ export async function recordGamePlay(params: RecordGamePlayParams): Promise<Reco
       collection: 'users',
       id: params.userId,
       data: userUpdates as never,
+    })
+  }
+
+  // 餘額已寫入 → 補錢包帳本一筆（local API，WalletTransactions hook 會跳過不重複加扣）
+  if (creditAwarded > 0) {
+    await recordWalletTxn(payload, {
+      userId: params.userId,
+      wallet: 'shoppingCredit',
+      amount: creditAwarded,
+      type: 'earn',
+      source: 'game',
+      description: params.prizeDescription || `[${params.gameType}] 遊戲購物金獎勵`,
+      balanceOverride: creditBalance,
     })
   }
 

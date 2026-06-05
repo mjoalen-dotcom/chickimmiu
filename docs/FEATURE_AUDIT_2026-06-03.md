@@ -126,8 +126,8 @@
 | /account/wishlist | ✅ | `account/wishlist`、`WishlistItems.ts`、`api/account/wishlist`、`WishlistSync.tsx` | **Phase 2 B**：DB 持久化（row-per-item）；登入時 localStorage→DB 合併、跨裝置、登出清本機 |
 | /account/segments、/analytics | 🟡 | `account/segments,analytics` | **DEMO 假資料** fetch 失敗 fallback |
 | 會員等級 + 年度重算 cron | ✅ | `MembershipTiers.ts`, `api/cron/annual-tier-reset` | gender-aware |
-| 購物金 shoppingCredit | 🟡 | `Users.ts:562` | 有欄位，**無交易帳本** |
-| 儲值金 storedValueBalance | 🔴 | `Users.ts:583` | 「退現流程尚未開通」|
+| 購物金 shoppingCredit | ✅ | `WalletTransactions.ts`、`lib/wallet/server.ts`、`account/wallet` | **Phase 2 C**：交易帳本（簽到/兌換/遊戲寫入流水）+ /account/wallet 餘額與流水 |
+| 儲值金 storedValueBalance | ✅ | `WalletWithdrawals.ts`、`api/account/wallet/withdraw` | **Phase 2 C**：退現流程（送出扣住→admin 核准/已匯款；拒絕/取消自動退回）|
 | 信用分數 | ✅ | `CreditScoreHistory.ts` | 雙路徑 hook |
 | **黑名單擋結帳** | 🔴 | `Users.ts:742` | 有欄位，**checkout 不讀，不擋下單** |
 | 會員分群引擎 + cron | ✅ | `lib/crm/segmentationEngine.ts`, `api/cron/segments` | RFM 加權完整 |
@@ -249,7 +249,7 @@
 - [ ] i18n 前台實際套用 + URL prefix + hreflang；首頁商品格改 `<Price>`
 - [ ] Countdown block client 化；SiteThemes 字型實載或移除假選項
 - [ ] AI 客服升級真 LLM + 寫新 Conversations；客服 inbox 客製 + 前台 web chat + SSE
-- [ ] 購物金交易帳本 collection；儲值金退現流程
+- [x] ✅ 購物金交易帳本 collection（WalletTransactions + lib/wallet）；儲值金退現流程（WalletWithdrawals + /account/wallet）— **Phase 2 C 完成**
 - [ ] 訂閱方案購買流程（接金流）
 - [ ] Concierge AI 初步回覆（Groq/Claude）+ 通知
 - [ ] 社交遊戲圖片改 file picker；刮刮樂機率接 GameSettings；StylePK 1v1 配對
