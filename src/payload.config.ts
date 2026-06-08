@@ -102,6 +102,9 @@ import { WishlistItems } from './collections/WishlistItems'
 import { NewsletterSubscribers } from './collections/NewsletterSubscribers'
 import { WalletTransactions } from './collections/WalletTransactions'
 import { WalletWithdrawals } from './collections/WalletWithdrawals'
+import { InventoryTransactions } from './collections/InventoryTransactions'
+import { PurchaseOrders } from './collections/PurchaseOrders'
+import { StockTakes } from './collections/StockTakes'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -381,6 +384,9 @@ export default buildConfig({
     SizeCharts,
     Products,
     ProductReviews,
+    InventoryTransactions, // 進銷存：庫存異動流水
+    PurchaseOrders, // 進銷存：進貨單
+    StockTakes, // 進銷存：盤點
     // ③ 會員與 CRM
     Users,
     MembershipTiers,

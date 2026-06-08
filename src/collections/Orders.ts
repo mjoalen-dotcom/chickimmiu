@@ -1,6 +1,7 @@
 import type { CollectionConfig, Access, Where } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
+import { recordInventory } from '../lib/inventory/server'
 import { createExportEndpoint, type FieldMapping } from '../endpoints/importExport'
 import { orderCreditScoreHook } from '../lib/crm/creditScoreHooks'
 import { autoIssueInvoiceForOrder } from '../lib/invoice/ecpayInvoiceEngine'
@@ -666,11 +667,13 @@ export const Orders: CollectionConfig = {
               const product = await payload.findByID({ collection: 'products', id: productId })
               const variants = product.variants as { sku?: string; stock?: number }[] | undefined
 
+              let newBal: number | null = null
               if (variants && variants.length > 0 && item.sku) {
                 // 扣減指定變體庫存
                 const updatedVariants = variants.map((v) => {
                   if (v.sku === item.sku) {
-                    return { ...v, stock: Math.max(0, (v.stock ?? 0) - item.quantity) }
+                    newBal = Math.max(0, (v.stock ?? 0) - item.quantity)
+                    return { ...v, stock: newBal }
                   }
                   return v
                 })
@@ -682,10 +685,24 @@ export const Orders: CollectionConfig = {
               } else {
                 // 扣減總庫存
                 const currentStock = (product.stock as number) ?? 0
+                newBal = Math.max(0, currentStock - item.quantity)
                 await (payload.update as Function)({
                   collection: 'products',
                   id: productId,
-                  data: { stock: Math.max(0, currentStock - item.quantity) },
+                  data: { stock: newBal },
+                })
+              }
+
+              // 進銷存：寫銷售出庫流水（best-effort；recordInventory 內含 try/catch，不影響下單）
+              if (newBal !== null && item.quantity) {
+                await recordInventory(payload, {
+                  productId,
+                  sku: item.sku,
+                  type: 'sale_out',
+                  quantityDelta: -item.quantity,
+                  balanceAfter: newBal,
+                  relatedOrder: doc.id as string | number,
+                  note: `訂單 ${(doc.orderNumber as string) || doc.id} 出庫`,
                 })
               }
             } catch (err) {

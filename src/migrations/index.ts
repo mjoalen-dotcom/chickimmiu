@@ -62,6 +62,7 @@ import * as migration_20260511_010000_fix_game_settings_terms_compliance_leaderb
 import * as migration_20260514_090000_add_whitehat_marketing_automation from './20260514_090000_add_whitehat_marketing_automation';
 import * as migration_20260603_120000_add_newsletter_and_wishlist from './20260603_120000_add_newsletter_and_wishlist';
 import * as migration_20260604_120000_add_wallet_ledger_and_withdrawals from './20260604_120000_add_wallet_ledger_and_withdrawals';
+import * as migration_20260608_114946_add_inventory_pos_stocktakes from './20260608_114946_add_inventory_pos_stocktakes';
 
 export const migrations = [
   {
@@ -297,7 +298,7 @@ export const migrations = [
   {
     up: migration_20260506_120000_rename_utm_campaign_columns.up,
     down: migration_20260506_120000_rename_utm_campaign_columns.down,
-    name: '20260506_120000_rename_utm_campaign_columns'
+    name: '20260506_120000_rename_utm_campaign_columns',
   },
   {
     up: migration_20260506_140000_add_product_list_settings.up,
@@ -383,5 +384,10 @@ export const migrations = [
     up: migration_20260604_120000_add_wallet_ledger_and_withdrawals.up,
     down: migration_20260604_120000_add_wallet_ledger_and_withdrawals.down,
     name: '20260604_120000_add_wallet_ledger_and_withdrawals',
+  },
+  {
+    up: migration_20260608_114946_add_inventory_pos_stocktakes.up,
+    down: migration_20260608_114946_add_inventory_pos_stocktakes.down,
+    name: '20260608_114946_add_inventory_pos_stocktakes'
   },
 ];
