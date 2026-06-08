@@ -21,7 +21,7 @@
 | **SMS 簡訊**（channelDispatcher SMS + 會員手機 OTP 驗證）| 簡訊供應商帳號 | 三竹 / Twilio 帳密 | 🔨 寫 env-gated，待帳號 |
 | **Google Ads offline conversion / Customer Match** | dev token 審核 | Google Ads dev token（MCC 申請中）| 待審核（見 memory）|
 
-| **✅ App cron 已復活（2026-06-08）** | 原本 GitHub Actions 停權 → 所有 cron 沒跑（已 dead 數週）| — | 已裝 prod crontab fallback：`/root/run-ckmu-crons.sh` + 4 條 `[ckmu-outage-cron]` 標記的 crontab（automations/segments 每 10 分、expire-points/streak-decay 每日）。**GitHub 恢復後要刪這些 crontab 行避免雙跑**。生日/排行榜 cron 端點尚未建（函式在，待建 route 後加排程）|
+| **✅ App cron 已復活（2026-06-08）** | 原本 GitHub Actions 停權 → 所有 cron 沒跑（已 dead 數週）| — | 已裝 prod crontab fallback：`/root/run-ckmu-crons.sh` + **11 條** `[ckmu-outage-cron]` crontab（含 2026-06-09 新增 5 條：apply-product-schedules/expire-wishes/settle-style-rooms/leaderboard-settle/preheat-horoscopes）。**GitHub 恢復後要刪這些 crontab 行避免雙跑**。生日/卡牌/排行榜/結算 cron 端點皆已建並實測 200。|
 
 > 原則：以上一律 **env 有值才啟用，缺值 no-op 不擋現有流程**（沿用 Meta CAPI token 的 pattern）。
 
@@ -41,6 +41,22 @@
 **重新稽核發現「已被平行 session 補完」（audit 已過時）**：festival-templates collection 已存在、點數兌換 redeem 已接 `/api/v1/points`、CSP connect.facebook.net 已在 script-src。
 
 **剩餘真正未做（無外部依賴，可續做）**：AI 客服升級真 LLM（Groq，目前關鍵字比對）+ 前台 web chat、推薦人註冊獎勵發放、Coupon 疊加/互斥、blog 分類獨立 collection、Podcast RSS、i18n 前台全面套用、社交遊戲房間結算 settleStyleRoom + 排行榜 top3 bonus（需先解 cron 排程器）。
+
+---
+
+## ★★ 第二輪施工（2026-06-09，全部已部署 prod，main 8c75632）
+
+**5 批全上線**（8 commits 89b142d..8c75632；3 次部署：B1-3 / B4 / B5）。每批乾淨 temp DB 驗證，結帳另做 preview 瀏覽器實測。**「無外部依賴」清單已全部清空。**
+
+- ✅ **Batch 1 — 5 個缺漏 cron**（25/25 PASS）：`settleStyleRoom`+`settleExpiredRooms`（房間依得票結算發獎/排名/標 winner）、`expireOpenWishes`（許願過期退 bountyPoints）、`settleDueLeaderboards`（每日/週/月 top3 發 GameSettings bonus，跨期自動偵測+冪等）、星座運勢預熱（抽共用 generateAndCacheHoroscope）、`applyProductSchedules` cron wrapper。MiniGameRecords 加 `leaderboard_*_bonus` 3 gameType。**5 條已註冊進 prod crontab `[ckmu-outage-cron]` + 實測 200**（preheat 生 48 筆）。
+- ✅ **Batch 2 — 推薦註冊獎勵**（14/14）：ReferralSettings.{referrerSignupReward/refereeSignupReward} 接通（先前只有 schema）。`grantRegistrationReferralReward`（冪等旗標 + email 驗證 gating + adjustWallet 雙方購物金）由 customerRegister + Users.afterLogin 兩處呼叫。**migration grandfather 既有 11 會員 → 不回溯發獎**。
+- ✅ **Batch 3 — CRM 自動化旅程執行器**（15/15）：add/remove_tag（users.tags）、assign_coupon→UserRewards、condition_check（JSON DSL + 旅程提早結束）、**持久化 wait**（automation_logs.resumeAt + /api/cron/automations resumeDueJourneys 續跑）。順手修 triggerJourney 的 String(id) relationship bug。send_line/email/sms 仍 stub（卡憑證）。
+- ✅ **Batch 4 — Podcast RSS（12/12）+ Blog 分類（8/8）**：`/feeds/podcast.xml`（RSS2.0+iTunes，channel metadata 取 GlobalSettings，零 migration）+ PodcastEpisode/Series JSON-LD；BlogCategories collection（保留 BlogPosts.category select，seed 5）+ **修好前台分類過濾 bug**（頁籤拿值比標籤永遠 0 match）。⚠️ podcast 上架前要放 ≥1400 方形封面到 ogImage。
+- ✅ **Batch 5 — Coupon 疊加/互斥**（11/11 + preview 結帳實測全過）：Coupons.{stackable, exclusiveGroup}；apply-coupon 驗證候選 vs 已套用（非疊加拒/同群組拒）；checkout 單券→多券（加總/封頂/任一免運/各別移除）；Orders.appliedCoupons（json 快照）+ redemption hook 每券一筆 → 各券 usageCount 正確。excludeSaleItems 留待後續（需 checkout 傳特價旗標）。
+
+**未動（需 user 拍板，別在 live 站 auto-pilot）**：AI 客服真 LLM(Groq)+前台 web chat（會直接對客人講話）、i18n 前台全面套用、POS 門市、直播購物。
+
+**⚠️ GitHub Actions 恢復後**：刪 prod crontab 11 條 `[ckmu-outage-cron]`（含本輪新增 5 條）避免雙跑：`crontab -l | grep -v '[ckmu-outage-cron]' | crontab -`。
 
 ---
 
