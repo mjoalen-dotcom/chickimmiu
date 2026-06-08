@@ -34,6 +34,9 @@
 - ✅ totalSold 付款自動累加（Orders hook）
 - ✅ **進銷存模組**：InventoryTransactions（流水）+ PurchaseOrders（進貨單收貨自動入庫）+ StockTakes（盤點自動校正）+ Orders 寫 sale_out 流水 — 端到端驗過
 - ✅ Affiliates 佣金付款自動累加（Orders paid hook → affiliate totalEarnings/pendingAmount，冪等）
+- ✅ 推薦首購獎勵發放（Orders paid hook，首筆訂單 → 推薦人+被推薦人購物金，寫錢包帳本）
+- ✅ 生日排程 + 卡牌房間過期 cron 端點（/api/cron/birthday + /expire-card-battles，接既有函式，已進 prod crontab）
+- ✅ App cron 全部復活並確認自動觸發（prod crontab `*/10` automations 實測有自己跑）
 
 **重新稽核發現「已被平行 session 補完」（audit 已過時）**：festival-templates collection 已存在、點數兌換 redeem 已接 `/api/v1/points`、CSP connect.facebook.net 已在 script-src。
 
