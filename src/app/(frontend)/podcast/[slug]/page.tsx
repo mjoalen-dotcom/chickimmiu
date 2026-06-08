@@ -120,8 +120,30 @@ export default async function PodcastEpisodePage({ params }: Props) {
   const aiGenerated = episode.aiGenerated as boolean | undefined
   const catLabel = CATEGORY_LABELS[episode.category as string] || ''
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://chickimmiu.com'
+  const absUrl = (u?: string) =>
+    !u ? undefined : u.startsWith('http') ? u : `${siteUrl}${u.startsWith('/') ? '' : '/'}${u}`
+  const podcastJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'PodcastEpisode',
+    url: `${siteUrl}/podcast/${slug}`,
+    name: episode.title as string,
+    ...(epNum ? { episodeNumber: epNum } : {}),
+    ...(episode.excerpt ? { description: episode.excerpt as string } : {}),
+    ...(episode.publishedAt ? { datePublished: episode.publishedAt as string } : {}),
+    ...(cover?.url ? { image: absUrl(cover.url) } : {}),
+    ...(audio?.url
+      ? { associatedMedia: { '@type': 'MediaObject', contentUrl: absUrl(audio.url) } }
+      : {}),
+    partOfSeries: { '@type': 'PodcastSeries', name: 'CHIC KIM & MIU Podcast', url: `${siteUrl}/podcast` },
+  }
+
   return (
     <main className="bg-cream-50 min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(podcastJsonLd) }}
+      />
       <div className="container py-8 md:py-12 max-w-3xl">
         {/* Back link */}
         <Link
