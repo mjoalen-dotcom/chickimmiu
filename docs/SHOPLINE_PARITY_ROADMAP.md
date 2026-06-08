@@ -21,7 +21,7 @@
 | **SMS 簡訊**（channelDispatcher SMS + 會員手機 OTP 驗證）| 簡訊供應商帳號 | 三竹 / Twilio 帳密 | 🔨 寫 env-gated，待帳號 |
 | **Google Ads offline conversion / Customer Match** | dev token 審核 | Google Ads dev token（MCC 申請中）| 待審核（見 memory）|
 
-| **🔴 所有 App cron 目前沒在跑** | GitHub Actions 停權（cron.yml 排程不執行）+ prod crontab 只有每日備份、無排程打 cron endpoint | (A) GitHub 帳號恢復，或 (B) 在 prod crontab 加 `*/10 * * * * curl -H "Authorization: Bearer $CRON_SECRET" .../api/cron/automations` 等 | 端點都在且可用；**只差排程器**。影響：automations / segments / expire-points / streak-decay / 生日 / 排行榜 全沒觸發 |
+| **✅ App cron 已復活（2026-06-08）** | 原本 GitHub Actions 停權 → 所有 cron 沒跑（已 dead 數週）| — | 已裝 prod crontab fallback：`/root/run-ckmu-crons.sh` + 4 條 `[ckmu-outage-cron]` 標記的 crontab（automations/segments 每 10 分、expire-points/streak-decay 每日）。**GitHub 恢復後要刪這些 crontab 行避免雙跑**。生日/排行榜 cron 端點尚未建（函式在，待建 route 後加排程）|
 
 > 原則：以上一律 **env 有值才啟用，缺值 no-op 不擋現有流程**（沿用 Meta CAPI token 的 pattern）。
 
