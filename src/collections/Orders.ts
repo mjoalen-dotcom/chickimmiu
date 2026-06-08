@@ -2,6 +2,7 @@ import type { CollectionConfig, Access, Where } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
 import { recordInventory } from '../lib/inventory/server'
+import { adjustWallet } from '../lib/wallet/server'
 import { createExportEndpoint, type FieldMapping } from '../endpoints/importExport'
 import { orderCreditScoreHook } from '../lib/crm/creditScoreHooks'
 import { autoIssueInvoiceForOrder } from '../lib/invoice/ecpayInvoiceEngine'
@@ -865,6 +866,51 @@ export const Orders: CollectionConfig = {
               console.log(
                 `[Orders Hook] 付款完成：${doc.orderNumber} 會員 ${customerId} +${pointsEarned} 點，累積消費 +NT$${orderTotal}`,
               )
+
+              // ── 推薦首購獎勵（首筆付款訂單觸發一次；發購物金給推薦人+被推薦人，寫錢包帳本）──
+              try {
+                if (currentOrderCount === 0) {
+                  const referredByRaw = customerData.referredBy
+                  const referrerId =
+                    typeof referredByRaw === 'object' && referredByRaw !== null
+                      ? (referredByRaw as { id: unknown }).id
+                      : referredByRaw
+                  if (referrerId) {
+                    const refSettings = (await payload.findGlobal({
+                      slug: 'referral-settings',
+                      depth: 0,
+                    })) as unknown as Record<string, unknown>
+                    const rewards = (refSettings.rewards as Record<string, unknown>) || {}
+                    const minAmount = Number(rewards.minPurchaseAmount) || 0
+                    if (rewards.enabled !== false && orderTotal >= minAmount) {
+                      const refereeReward = Number(rewards.refereePurchaseReward) || 0
+                      const referrerReward = Number(rewards.referrerPurchaseReward) || 0
+                      if (refereeReward > 0) {
+                        await adjustWallet(payload, {
+                          userId: customerId,
+                          wallet: 'shoppingCredit',
+                          amount: refereeReward,
+                          type: 'earn',
+                          source: 'referral',
+                          description: '推薦首購回饋（被推薦人）',
+                        })
+                      }
+                      if (referrerReward > 0 && String(referrerId) !== String(customerId)) {
+                        await adjustWallet(payload, {
+                          userId: referrerId as string | number,
+                          wallet: 'shoppingCredit',
+                          amount: referrerReward,
+                          type: 'earn',
+                          source: 'referral',
+                          description: `推薦首購回饋（您推薦的好友完成首購）`,
+                        })
+                      }
+                    }
+                  }
+                }
+              } catch (e) {
+                console.error('[Orders Hook] 推薦首購獎勵失敗:', e)
+              }
 
               // ── 自動升等（只升不降；降等由 /api/cron/annual-tier-reset 處理） ──
               try {
