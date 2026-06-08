@@ -50,57 +50,30 @@ interface DashboardData {
   recentAlerts: Array<{ type: string; message: string; userId: string; timestamp: string }>
 }
 
-// Demo data
-const DEMO_DATA: DashboardData = {
+// Empty baseline（不再使用 demo 假資料；由 /api/crm/dashboard 填入真實值，無資料則顯示 0/空）
+const EMPTY_DASHBOARD: DashboardData = {
   overview: {
-    totalMembers: 2847,
-    activeMembers30d: 1423,
-    newMembers7d: 89,
-    avgCreditScore: 82.5,
-    avgLifetimeSpend: 15680,
+    totalMembers: 0,
+    activeMembers30d: 0,
+    newMembers7d: 0,
+    avgCreditScore: 0,
+    avgLifetimeSpend: 0,
   },
-  tierDistribution: {
-    '優雅初遇者': 1240,
-    '曦漾仙子': 820,
-    '優漾女神': 480,
-    '金曦女王': 195,
-    '星耀皇后': 78,
-    '璀璨天后': 34,
-  },
-  creditDistribution: {
-    '優質好客人': 1580,
-    '一般': 820,
-    '觀察名單': 280,
-    '警示名單': 112,
-    '黑名單': 42,
-    '停權': 13,
-  },
+  tierDistribution: {},
+  creditDistribution: {},
   creditKPIs: {
-    avgScore: 82.5,
-    goodCustomerRate: 55.5,
-    blacklistRate: 1.9,
-    returnRateCorrelation: -0.72,
-    scoreDistributionChart: [
-      { range: '0-9', count: 13 },
-      { range: '10-29', count: 42 },
-      { range: '30-49', count: 112 },
-      { range: '50-69', count: 280 },
-      { range: '70-89', count: 820 },
-      { range: '90-100', count: 1580 },
-    ],
+    avgScore: 0,
+    goodCustomerRate: 0,
+    blacklistRate: 0,
+    returnRateCorrelation: 0,
+    scoreDistributionChart: [],
   },
   journeyStats: {
-    activeJourneys: 12,
-    triggeredToday: 156,
-    completionRate: 87.3,
+    activeJourneys: 0,
+    triggeredToday: 0,
+    completionRate: 0,
   },
-  recentAlerts: [
-    { type: 'credit_low', message: '會員 #1842 信用分數降至 28 分，已加入黑名單', userId: '1842', timestamp: '2026-04-11T09:15:00Z' },
-    { type: 'consecutive_return', message: '會員 #2156 連續 3 次無理由退貨', userId: '2156', timestamp: '2026-04-11T08:30:00Z' },
-    { type: 'vip_upgrade', message: '會員 #0923 升級為「星耀皇后」', userId: '0923', timestamp: '2026-04-10T22:10:00Z' },
-    { type: 'good_customer', message: '會員 #1105 信用分數達 95 分，已發送好客人表揚', userId: '1105', timestamp: '2026-04-10T18:45:00Z' },
-    { type: 'dormant', message: '387 位會員超過 30 天未登入，已觸發沉睡喚回', userId: '', timestamp: '2026-04-10T06:00:00Z' },
-  ],
+  recentAlerts: [],
 }
 
 const ALERT_ICONS: Record<string, { icon: typeof AlertTriangle; color: string }> = {
@@ -112,7 +85,7 @@ const ALERT_ICONS: Record<string, { icon: typeof AlertTriangle; color: string }>
 }
 
 export default function CRMDashboardPage() {
-  const [data, setData] = useState<DashboardData>(DEMO_DATA)
+  const [data, setData] = useState<DashboardData>(EMPTY_DASHBOARD)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {

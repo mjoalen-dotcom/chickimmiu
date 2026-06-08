@@ -84,6 +84,7 @@ import { default as default_beee283113db1e6274b4a3261d86c622 } from '@/component
 import { default as default_b49617f71656f29a998f7c5995ee1da4 } from '@/components/admin/UTMBuilderView'
 import { default as default_8b5bf0e9243e2c5e54db7bd0ca2ab3d1 } from '@/components/admin/LinkIntegrityView'
 import { default as default_92b9f9a324577ed05b0b278139afaf30 } from '@/components/admin/BlogAIDraftView'
+import { default as default_70bb89d83a8e0bf2bdeb649c1841fd43 } from '@/components/admin/WhiteHatMarketingView'
 import { default as default_12cd2f2c8c14674f532037fc5db9c3d8 } from '@/components/admin/APIDocsView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
@@ -175,6 +176,7 @@ export const importMap = {
   "@/components/admin/UTMBuilderView#default": default_b49617f71656f29a998f7c5995ee1da4,
   "@/components/admin/LinkIntegrityView#default": default_8b5bf0e9243e2c5e54db7bd0ca2ab3d1,
   "@/components/admin/BlogAIDraftView#default": default_92b9f9a324577ed05b0b278139afaf30,
+  "@/components/admin/WhiteHatMarketingView#default": default_70bb89d83a8e0bf2bdeb649c1841fd43,
   "@/components/admin/APIDocsView#default": default_12cd2f2c8c14674f532037fc5db9c3d8,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

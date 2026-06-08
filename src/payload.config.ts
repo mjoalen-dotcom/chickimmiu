@@ -74,6 +74,9 @@ import { CheckoutSettings } from './globals/CheckoutSettings'
 import { OrderSettings } from './globals/OrderSettings'
 import { AdsCatalogSettings } from './globals/AdsCatalogSettings'
 import { AdAudiences } from './collections/AdAudiences'
+import { SearchConsoleKeywords } from './collections/SearchConsoleKeywords'
+import { CompetitorPriceRecords } from './collections/CompetitorPriceRecords'
+import { MarketingContentDrafts } from './collections/MarketingContentDrafts'
 
 import { CreditScoreHistory } from './collections/CreditScoreHistory'
 import { PointsTransactions } from './collections/PointsTransactions'
@@ -95,6 +98,10 @@ import { MessageTags } from './collections/MessageTags'
 import { ConversationActivities } from './collections/ConversationActivities'
 import { CustomerServiceSettings } from './globals/CustomerServiceSettings'
 import { Currencies } from './collections/Currencies'
+import { WishlistItems } from './collections/WishlistItems'
+import { NewsletterSubscribers } from './collections/NewsletterSubscribers'
+import { WalletTransactions } from './collections/WalletTransactions'
+import { WalletWithdrawals } from './collections/WalletWithdrawals'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -336,6 +343,10 @@ export default buildConfig({
           Component: '@/components/admin/BlogAIDraftView',
           path: '/tools/blog-ai-draft',
         },
+        whiteHatMarketing: {
+          Component: '@/components/admin/WhiteHatMarketingView',
+          path: '/tools/whitehat-marketing',
+        },
         // ⑦ 系統工具：REST API 文件（自動從 payload config 產生 collection / global 端點表）
         // 給 APP / 第三方串接工程師
         apiDocs: {
@@ -379,6 +390,9 @@ export default buildConfig({
     PointsTransactions,
     MemberSegments,
     UserRewards,
+    WishlistItems, // Phase 2 B：會員收藏清單 DB 持久化（跨裝置）
+    WalletTransactions, // Phase 2 C：購物金/儲值金帳本
+    WalletWithdrawals, // Phase 2 C：儲值金退現申請
     // 客服中心 v1 Phase 1A — Conversations + Messages 是 ③ 會員 CRM 的延伸
     Conversations,
     Messages,
@@ -390,7 +404,11 @@ export default buildConfig({
     AutomationJourneys,
     AutomationLogs,
     MarketingCampaigns,
+    NewsletterSubscribers, // Phase 2 B：電子報訂閱名單（前台訂閱表單寫入）
     MessageTemplates,
+    SearchConsoleKeywords,
+    CompetitorPriceRecords,
+    MarketingContentDrafts,
     ABTests,
     MarketingExecutionLogs,
     FestivalTemplates,

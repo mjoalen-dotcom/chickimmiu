@@ -40,19 +40,19 @@ interface SegmentData {
   totalChanged: number
 }
 
-// ── Demo Data ──
+// ── Segment Catalog（10 種分群定義；count/percentage 由 /api/crm/segments 填入，未跑分群前為 0）──
 
-const DEMO_SEGMENTS: SegmentItem[] = [
-  { code: 'VIP1', label: '璀璨忠誠女王', color: '#9B59B6', count: 34, percentage: 1.2, description: '最高價值客群，高 RFM + 高信用分數' },
-  { code: 'VIP2', label: '金曦風格領袖', color: '#F1C40F', count: 156, percentage: 5.5, description: '高價值忠誠客，穩定消費且信用優良' },
-  { code: 'POT1', label: '潛力優雅新星', color: '#3498DB', count: 380, percentage: 13.4, description: '高潛力新客，有升級 VIP 潛力' },
-  { code: 'REG1', label: '穩定優雅會員', color: '#2ECC71', count: 820, percentage: 28.8, description: '穩定消費的主力客群' },
-  { code: 'REG2', label: '價格敏感優雅客', color: '#1ABC9C', count: 340, percentage: 11.9, description: '高頻但低客單價，對促銷敏感' },
-  { code: 'RISK1', label: '流失高風險客', color: '#E67E22', count: 420, percentage: 14.8, description: '消費減少或長時間未消費' },
-  { code: 'RISK2', label: '退貨觀察客', color: '#E74C3C', count: 95, percentage: 3.3, description: '退貨率偏高且信用分數較低' },
-  { code: 'NEW1', label: '優雅初遇新客', color: '#00BCD4', count: 312, percentage: 11.0, description: '30天內新註冊的會員' },
-  { code: 'SLP1', label: '沉睡復活客', color: '#95A5A6', count: 235, percentage: 8.3, description: '超過60天未消費' },
-  { code: 'BLK1', label: '高風險警示客', color: '#34495E', count: 55, percentage: 1.9, description: '信用分數極低或已進入黑名單' },
+const SEGMENT_CATALOG: SegmentItem[] = [
+  { code: 'VIP1', label: '璀璨忠誠女王', color: '#9B59B6', count: 0, percentage: 0, description: '最高價值客群，高 RFM + 高信用分數' },
+  { code: 'VIP2', label: '金曦風格領袖', color: '#F1C40F', count: 0, percentage: 0, description: '高價值忠誠客，穩定消費且信用優良' },
+  { code: 'POT1', label: '潛力優雅新星', color: '#3498DB', count: 0, percentage: 0, description: '高潛力新客，有升級 VIP 潛力' },
+  { code: 'REG1', label: '穩定優雅會員', color: '#2ECC71', count: 0, percentage: 0, description: '穩定消費的主力客群' },
+  { code: 'REG2', label: '價格敏感優雅客', color: '#1ABC9C', count: 0, percentage: 0, description: '高頻但低客單價，對促銷敏感' },
+  { code: 'RISK1', label: '流失高風險客', color: '#E67E22', count: 0, percentage: 0, description: '消費減少或長時間未消費' },
+  { code: 'RISK2', label: '退貨觀察客', color: '#E74C3C', count: 0, percentage: 0, description: '退貨率偏高且信用分數較低' },
+  { code: 'NEW1', label: '優雅初遇新客', color: '#00BCD4', count: 0, percentage: 0, description: '30天內新註冊的會員' },
+  { code: 'SLP1', label: '沉睡復活客', color: '#95A5A6', count: 0, percentage: 0, description: '超過60天未消費' },
+  { code: 'BLK1', label: '高風險警示客', color: '#34495E', count: 0, percentage: 0, description: '信用分數極低或已進入黑名單' },
 ]
 
 const SEGMENT_STRATEGIES: Record<string, {
@@ -116,9 +116,9 @@ function AnimatedNumber({ value, duration = 1200 }: { value: number; duration?: 
 
 export default function SegmentsPage() {
   const [data, setData] = useState<SegmentData>({
-    distribution: DEMO_SEGMENTS,
+    distribution: SEGMENT_CATALOG,
     lastRunAt: null,
-    totalProcessed: DEMO_SEGMENTS.reduce((s, d) => s + d.count, 0),
+    totalProcessed: 0,
     totalChanged: 0,
   })
   const [loading, setLoading] = useState(false)

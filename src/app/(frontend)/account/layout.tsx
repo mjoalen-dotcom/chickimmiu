@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { auth as nextAuth } from '@/auth'
-import { User, ShoppingBag, Heart, MapPin, Gift, Settings, Crown, Share2, RotateCcw, Star, FileText, Gamepad2, Sparkles, Brain } from 'lucide-react'
+import { User, ShoppingBag, Heart, MapPin, Gift, Settings, Crown, Share2, RotateCcw, Star, FileText, Gamepad2, Sparkles, Brain, Wallet } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { LogoutButton } from './LogoutButton'
 
@@ -29,6 +29,7 @@ const SIDEBAR_LINK_DEFS = [
   { href: '/account/reviews', key: 'reviews', icon: Star },
   { href: '/account/addresses', key: 'addresses', icon: MapPin },
   { href: '/account/points', key: 'points', icon: Gift },
+  { href: '/account/wallet', key: 'wallet', icon: Wallet },
   { href: '/account/settings', key: 'settings', icon: Settings },
 ] as const
 

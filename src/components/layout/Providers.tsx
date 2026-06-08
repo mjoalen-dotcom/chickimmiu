@@ -5,6 +5,7 @@ import { useEffect, type ReactNode } from 'react'
 import { useCartStore } from '@/stores/cartStore'
 import { useWishlistStore } from '@/stores/wishlistStore'
 import { useLocaleStore } from '@/stores/localeStore'
+import { WishlistSync } from '@/components/wishlist/WishlistSync'
 
 /**
  * 全域 Providers
@@ -30,6 +31,7 @@ export function Providers({ children }: { children: ReactNode }) {
       refetchOnWindowFocus={false}
       refetchWhenOffline={false}
     >
+      <WishlistSync />
       {children}
     </SessionProvider>
   )

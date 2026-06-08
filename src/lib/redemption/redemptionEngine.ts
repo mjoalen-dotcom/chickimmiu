@@ -27,6 +27,7 @@
  */
 
 import type { Payload } from 'payload'
+import { recordWalletTxn } from '../wallet/server'
 
 export type RedemptionType =
   | 'physical'
@@ -318,6 +319,16 @@ async function redeemStoreCredit(ctx: RedemptionContext): Promise<RedemptionOutc
     id: userId,
     data: { shoppingCredit: currentCredit + creditAmount } as never,
     overrideAccess: true,
+  })
+  // 錢包帳本（local API，WalletTransactions hook 會跳過不重複加扣）
+  await recordWalletTxn(payload, {
+    userId,
+    wallet: 'shoppingCredit',
+    amount: creditAmount,
+    type: 'redeem',
+    source: 'redemption',
+    description: '點數兌換購物金',
+    balanceOverride: currentCredit + creditAmount,
   })
 
   // 寶物箱也建一筆 audit voucher，方便會員追溯來源；state=consumed（餘額已生效）

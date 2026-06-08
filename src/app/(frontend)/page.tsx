@@ -2,11 +2,13 @@ import Link from 'next/link'
 import Image from 'next/image'
 import {
   ArrowRight, Sparkles, Truck, RefreshCw, Shield, Crown, Gamepad2, Gift, Users,
-  ShoppingBag, Heart, Tag, Flame, Star, Package, Clock, Globe,
+  ShoppingBag, Heart, Tag, Flame, Star, Package, Clock, Globe, MessageCircle,
 } from 'lucide-react'
 import { HeroCarousel } from '@/components/home/HeroCarousel'
 import type { HeroSlide, HeroVariant } from '@/components/home/HeroCarousel'
 import { UGCGallery } from '@/components/ugc/UGCGallery'
+import { Price } from '@/components/common/Price'
+import { NewsletterForm } from '@/components/home/NewsletterForm'
 import { getPayload } from 'payload'
 import { getMediaUrl, normalizeMediaUrl } from '@/lib/media-url'
 import config from '@payload-config'
@@ -14,7 +16,7 @@ import config from '@payload-config'
 /* ── Icon Map ── */
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   Sparkles, Truck, RefreshCw, Shield, Crown, Gamepad2, Gift, Users,
-  ShoppingBag, Heart, Tag, Flame, Star, Package, Clock, Globe,
+  ShoppingBag, Heart, Tag, Flame, Star, Package, Clock, Globe, MessageCircle,
 }
 
 /* ── Helper: extract first image URL from a product ── */
@@ -166,10 +168,10 @@ export default async function HomePage() {
         color: item.color as string || 'text-gold-500',
       }))
     : [
-        { icon: 'Sparkles', label: '新品上市', href: '/products?tag=new', color: 'text-gold-500' },
-        { icon: 'Crown', label: '訂閱方案', href: '/account/subscription', color: 'text-purple-500' },
-        { icon: 'Gamepad2', label: '好運遊戲', href: '/games', color: 'text-pink-500' },
-        { icon: 'Gift', label: '推薦好友', href: '/account/referrals', color: 'text-green-500' },
+        { icon: 'Clock', label: '新品現貨', href: '/products?tag=new', color: 'text-gold-500' },
+        { icon: 'Sparkles', label: '正式洋裝', href: '/category/formal-dresses', color: 'text-rose-500' },
+        { icon: 'Flame', label: '熱銷推薦', href: '/products?tag=hot', color: 'text-red-500' },
+        { icon: 'MessageCircle', label: 'LINE 尺寸', href: 'https://page.line.me/nqo0262k', color: 'text-green-600' },
       ]
 
   // ── Service Highlights ──
@@ -181,10 +183,10 @@ export default async function HomePage() {
         desc: item.desc as string || '',
       }))
     : [
-        { icon: 'Truck', label: '滿額免運', desc: '一般會員滿 $2,000 免運費' },
-        { icon: 'RefreshCw', label: '14 天鑑賞期', desc: '不滿意可退換貨' },
-        { icon: 'Shield', label: '安全付款', desc: '多元金流加密保護' },
-        { icon: 'Sparkles', label: '會員好禮', desc: '註冊即享專屬優惠' },
+        { icon: 'Truck', label: '滿額免運', desc: '依物流方式自動顯示門檻' },
+        { icon: 'Clock', label: '現貨快出', desc: '現貨付款後 1-3 個工作天出貨' },
+        { icon: 'Shield', label: '安全付款', desc: '信用卡、LINE Pay、貨到付款' },
+        { icon: 'MessageCircle', label: '尺寸協助', desc: 'LINE 提供身高體重可協助抓版' },
       ]
 
   // ── UGC tagged products (real Payload products) ──
@@ -311,6 +313,8 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <ConversionRescueBand />
+
       {/* ── 新品上市 ── */}
       {(newSection.visible !== false) && (
         <section className="py-16 md:py-24">
@@ -346,7 +350,7 @@ export default async function HomePage() {
                       {name}
                     </p>
                     <p className="text-sm text-gold-600 mt-1">
-                      NT$ {price.toLocaleString()}
+                      <Price twd={price} />
                     </p>
                   </Link>
                 )
@@ -398,11 +402,11 @@ export default async function HomePage() {
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-sm text-gold-600">
-                        NT$ {(salePrice ?? price).toLocaleString()}
+                        <Price twd={salePrice ?? price} />
                       </span>
                       {Boolean(salePrice) && (
                         <span className="text-xs text-muted-foreground line-through">
-                          NT$ {price.toLocaleString()}
+                          <Price twd={price} />
                         </span>
                       )}
                     </div>
@@ -567,19 +571,11 @@ export default async function HomePage() {
             <p className="text-sm text-muted-foreground mb-8">
               {(newsletterSection.subtitle as string) || '搶先收到新品上市、限時優惠與專屬會員好禮通知'}
             </p>
-            <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-              <input
-                type="email"
-                placeholder={(newsletterSection.placeholder as string) || 'your@email.com'}
-                className="flex-1 px-5 py-3 rounded-full border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40 bg-white"
-              />
-              <button
-                type="button"
-                className="px-8 py-3 bg-foreground text-cream-50 rounded-full text-sm tracking-wide hover:bg-foreground/90 transition-colors"
-              >
-                {(newsletterSection.buttonText as string) || '訂閱'}
-              </button>
-            </form>
+            <NewsletterForm
+              placeholder={(newsletterSection.placeholder as string) || 'your@email.com'}
+              buttonText={(newsletterSection.buttonText as string) || '訂閱'}
+              source="homepage"
+            />
           </div>
         </section>
       )}
@@ -588,6 +584,64 @@ export default async function HomePage() {
 }
 
 /* ── 共用元件 ── */
+
+function ConversionRescueBand() {
+  const entries = [
+    {
+      eyebrow: 'FAST PICK',
+      title: '現貨快出',
+      desc: '先看近期可快速出貨的新品與熱銷款。',
+      href: '/products?tag=new',
+      cta: '看新品',
+    },
+    {
+      eyebrow: 'OCCASION',
+      title: '婚禮正式洋裝',
+      desc: '聚餐、婚禮、正式場合先從這區選。',
+      href: '/category/formal-dresses',
+      cta: '看洋裝',
+    },
+    {
+      eyebrow: 'BEST MATCH',
+      title: '熱銷不失手',
+      desc: '從顧客最常下手的款式開始挑。',
+      href: '/products?tag=hot',
+      cta: '看熱銷',
+    },
+  ]
+
+  return (
+    <section className="bg-foreground text-cream-50">
+      <div className="container py-8 md:py-10">
+        <div className="grid gap-6 md:grid-cols-[0.85fr_2fr] md:items-center">
+          <div>
+            <p className="text-[11px] tracking-[0.32em] text-gold-300 mb-2">72H STYLE EDIT</p>
+            <h2 className="text-2xl md:text-3xl font-serif">今天先從好下手的款開始</h2>
+            <p className="mt-3 text-sm leading-6 text-cream-50/70">
+              現貨、正式場合、熱銷款先整理好；尺寸不確定可直接找 LINE 客服。
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {entries.map((entry) => (
+              <Link
+                key={entry.title}
+                href={entry.href}
+                className="group rounded-lg border border-cream-50/15 bg-white/[0.06] p-4 transition-colors hover:border-gold-300/70 hover:bg-white/[0.1]"
+              >
+                <p className="text-[10px] tracking-[0.24em] text-gold-300 mb-2">{entry.eyebrow}</p>
+                <h3 className="text-sm font-medium">{entry.title}</h3>
+                <p className="mt-2 min-h-10 text-xs leading-5 text-cream-50/65">{entry.desc}</p>
+                <span className="mt-4 inline-flex items-center gap-1 text-xs text-gold-200 group-hover:text-gold-100">
+                  {entry.cta} <ArrowRight size={12} />
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
 
 function SectionHeader({ tag, title, href }: { tag: string; title: string; href: string }) {
   return (

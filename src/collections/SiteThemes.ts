@@ -179,11 +179,11 @@ export const SiteThemes: CollectionConfig = {
               defaultValue: 'noto-serif-tc',
               options: [
                 { label: 'Noto Serif TC（思源宋體）', value: 'noto-serif-tc' },
-                { label: 'Playfair Display（雜誌風）', value: 'playfair-display' },
-                { label: 'Cormorant Garamond（古典）', value: 'cormorant' },
-                { label: 'DM Serif Display（粗體現代）', value: 'dm-serif' },
               ],
-              admin: { description: '需先在 layout.tsx 載入對應 font；目前僅 Noto Serif TC 已啟用，其他選項預留' },
+              admin: {
+                description:
+                  '目前已載入「思源宋體（Noto Serif TC）」。要新增雜誌風/古典等字型，需先在 layout.tsx 以 next/font 載入後再回來開放選項（否則選了不會生效），故先不列出未載入的字型避免誤導。',
+              },
             },
             {
               name: 'sansFont',
@@ -192,10 +192,11 @@ export const SiteThemes: CollectionConfig = {
               defaultValue: 'noto-sans-tc',
               options: [
                 { label: 'Noto Sans TC（思源黑體）', value: 'noto-sans-tc' },
-                { label: 'Inter', value: 'inter' },
-                { label: 'Manrope', value: 'manrope' },
               ],
-              admin: { description: '需先在 layout.tsx 載入對應 font；目前僅 Noto Sans TC 已啟用' },
+              admin: {
+                description:
+                  '目前已載入「思源黑體（Noto Sans TC）」。要新增 Inter/Manrope 等字型，需先在 layout.tsx 以 next/font 載入後再回來開放選項（否則選了不會生效），故先不列出未載入的字型避免誤導。',
+              },
             },
           ],
         },
