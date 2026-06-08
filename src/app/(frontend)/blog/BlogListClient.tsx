@@ -5,67 +5,81 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight, Calendar, BookOpen, Instagram, Sparkles } from 'lucide-react'
 
-const CATEGORIES = ['全部', '穿搭教學', '時尚趨勢', '新品開箱', '生活風格', '品牌故事']
+// 後備分類（DB blog-categories 為空時用）。value 對應 BlogPosts.category 的 select 值。
+const FALLBACK_CATEGORIES: Array<{ value: string; label: string }> = [
+  { value: 'styling', label: '穿搭教學' },
+  { value: 'trends', label: '時尚趨勢' },
+  { value: 'new-arrivals', label: '新品介紹' },
+  { value: 'brand-story', label: '品牌故事' },
+  { value: 'promotions', label: '優惠活動' },
+]
+
+/** 從 post.category 取分類「值」（字串值 or relationship 物件的 value/slug） */
+function categoryValue(p: Record<string, unknown>): string {
+  const cat = p.category
+  if (typeof cat === 'string') return cat
+  if (cat && typeof cat === 'object') {
+    const o = cat as Record<string, unknown>
+    return String(o.value ?? o.slug ?? '')
+  }
+  return ''
+}
 
 // Demo posts when DB has no data
 const DEMO_POSTS = [
   {
     id: '1', slug: 'autumn-style-guide', title: '秋冬穿搭指南：5 個打造日常優雅的秘訣',
     excerpt: '從基本款單品開始，學會混搭出高級感的秋冬造型，讓你每天都像走在時裝週。',
-    category: '穿搭教學', publishedAt: '2024-12-01', featuredImage: null,
+    category: 'styling', publishedAt: '2024-12-01', featuredImage: null,
   },
   {
     id: '2', slug: 'knit-collection-review', title: '本季必入手：韓系針織系列全開箱',
     excerpt: '從慵懶 oversize 到合身剪裁，每一款都讓你愛不釋手。',
-    category: '新品開箱', publishedAt: '2024-11-25', featuredImage: null,
+    category: 'new-arrivals', publishedAt: '2024-11-25', featuredImage: null,
   },
   {
     id: '3', slug: 'size-inclusive-fashion', title: '包容性尺碼的時尚革命：美麗沒有標準答案',
     excerpt: 'CHIC KIM & MIU 相信每位女性都值得穿上讓自己自信的衣服。',
-    category: '品牌故事', publishedAt: '2024-11-20', featuredImage: null,
+    category: 'brand-story', publishedAt: '2024-11-20', featuredImage: null,
   },
   {
     id: '4', slug: 'office-to-date-look', title: '辦公室到約會：一套衣服兩種風格',
     excerpt: '教你如何用最少的單品，從白天的幹練切換到晚上的甜美。',
-    category: '穿搭教學', publishedAt: '2024-11-15', featuredImage: null,
+    category: 'styling', publishedAt: '2024-11-15', featuredImage: null,
   },
   {
     id: '5', slug: 'winter-trends-2024', title: '2024 冬季時尚趨勢預覽',
     excerpt: '從巧克力棕到奶油白，今年冬季的色彩趨勢比你想像的更柔軟。',
-    category: '時尚趨勢', publishedAt: '2024-11-10', featuredImage: null,
+    category: 'trends', publishedAt: '2024-11-10', featuredImage: null,
   },
   {
     id: '6', slug: 'morning-routine', title: '晨間穿搭儀式感：從選衣服開始的美好一天',
     excerpt: '養成每天花 5 分鐘搭配衣服的習慣，為自己注入一整天的好心情。',
-    category: '生活風格', publishedAt: '2024-11-05', featuredImage: null,
+    category: 'styling', publishedAt: '2024-11-05', featuredImage: null,
   },
 ]
 
 interface Props {
   initialPosts: Record<string, unknown>[]
+  categories?: Array<{ value: string; label: string }>
 }
 
-export function BlogListClient({ initialPosts }: Props) {
+export function BlogListClient({ initialPosts, categories }: Props) {
   const posts = initialPosts.length > 0 ? initialPosts : DEMO_POSTS
-  const [activeCategory, setActiveCategory] = useState('全部')
+  const cats = categories && categories.length > 0 ? categories : FALLBACK_CATEGORIES
+  const labelByValue: Record<string, string> = Object.fromEntries(cats.map((c) => [c.value, c.label]))
+  const [activeCategory, setActiveCategory] = useState('all')
 
   const filtered = useMemo(() => {
-    if (activeCategory === '全部') return posts
-    return posts.filter((p) => {
-      const cat = p.category
-      if (typeof cat === 'string') return cat === activeCategory
-      if (typeof cat === 'object' && cat !== null) return (cat as Record<string, unknown>).name === activeCategory
-      return false
-    })
+    if (activeCategory === 'all') return posts
+    return posts.filter((p) => categoryValue(p) === activeCategory)
   }, [posts, activeCategory])
 
   const [featured, ...rest] = filtered
 
   function getCategoryLabel(p: Record<string, unknown>): string {
-    const cat = p.category
-    if (typeof cat === 'string') return cat
-    if (typeof cat === 'object' && cat !== null) return ((cat as Record<string, unknown>).name as string) || '穿搭教學'
-    return '穿搭教學'
+    const v = categoryValue(p)
+    return labelByValue[v] || v || '穿搭教學'
   }
 
   function getFeaturedImageUrl(p: Record<string, unknown>): string | null {
@@ -128,17 +142,17 @@ export function BlogListClient({ initialPosts }: Props) {
       <div className="container py-10 md:py-14">
         {/* Category tabs */}
         <div className="flex items-center gap-2 mb-10 overflow-x-auto scrollbar-hide">
-          {CATEGORIES.map((cat) => (
+          {[{ value: 'all', label: '全部' }, ...cats].map((cat) => (
             <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
+              key={cat.value}
+              onClick={() => setActiveCategory(cat.value)}
               className={`px-5 py-2 rounded-full text-sm whitespace-nowrap transition-all ${
-                activeCategory === cat
+                activeCategory === cat.value
                   ? 'bg-foreground text-cream-50 shadow-md'
                   : 'bg-white border border-cream-200 text-foreground/70 hover:border-gold-400 hover:text-gold-700'
               }`}
             >
-              {cat}
+              {cat.label}
             </button>
           ))}
         </div>

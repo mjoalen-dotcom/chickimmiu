@@ -16,6 +16,7 @@ import { SizeCharts } from './collections/SizeCharts'
 import { Orders } from './collections/Orders'
 import { Affiliates } from './collections/Affiliates'
 import { BlogPosts } from './collections/BlogPosts'
+import { BlogCategories } from './collections/BlogCategories'
 import { Podcasts } from './collections/Podcasts'
 import { Pages } from './collections/Pages'
 import { SubscriptionPlans } from './collections/SubscriptionPlans'
@@ -450,6 +451,7 @@ export default buildConfig({
     // 上傳介面間接用 Media，少直接點 Media collection；媒體資料夾已隱藏。
     Pages,
     BlogPosts,
+    BlogCategories,
     Podcasts,
     SiteThemes,
     Media,

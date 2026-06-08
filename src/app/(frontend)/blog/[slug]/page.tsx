@@ -29,6 +29,19 @@ function decodeSlug(raw: string): string {
   }
 }
 
+// BlogPosts.category 的 select 值 → 中文標籤（與 BlogCategories seed 一致）
+const CATEGORY_LABELS: Record<string, string> = {
+  styling: '穿搭教學',
+  'new-arrivals': '新品介紹',
+  'brand-story': '品牌故事',
+  promotions: '優惠活動',
+  trends: '時尚趨勢',
+}
+function catLabel(v: unknown): string {
+  const s = typeof v === 'string' ? v : ''
+  return CATEGORY_LABELS[s] || s
+}
+
 async function findPublishedPost(
   rawSlug: string,
 ): Promise<{ post: Record<string, unknown> | null; canonicalSlug: string | null }> {
@@ -187,7 +200,7 @@ export default async function BlogPostPage({ params }: Props) {
         {/* Meta */}
         <div className="flex items-center gap-3 mb-4">
           <span className="text-[10px] tracking-widest text-gold-500 uppercase">
-            {post.category as string}
+            {catLabel(post.category)}
           </span>
           <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
             <Calendar size={10} />
@@ -260,7 +273,7 @@ export default async function BlogPostPage({ params }: Props) {
                   href={`/blog/${rp.slug as string}`}
                   className="group bg-cream-50 rounded-xl p-4 hover:bg-cream-100 transition-colors"
                 >
-                  <p className="text-[10px] text-gold-500 tracking-wider mb-1">{rp.category as string}</p>
+                  <p className="text-[10px] text-gold-500 tracking-wider mb-1">{catLabel(rp.category)}</p>
                   <h3 className="text-xs font-medium group-hover:text-gold-600 line-clamp-2">
                     {rp.title as string}
                   </h3>
