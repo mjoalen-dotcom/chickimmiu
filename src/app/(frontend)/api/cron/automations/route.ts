@@ -4,7 +4,7 @@ import config from '@payload-config'
 import type { Where } from 'payload'
 
 import { verifyCronAuth } from '@/lib/cron/auth'
-import { triggerJourney } from '@/lib/crm/automationEngine'
+import { triggerJourney, resumeDueJourneys } from '@/lib/crm/automationEngine'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,6 +27,17 @@ export async function POST(request: Request) {
 
   const started = Date.now()
   const payload = await getPayload({ config })
+
+  // 先續跑「持久化等待」到期的旅程（delayMinutes 暫停的步驟）
+  let resumed = 0
+  const resumeErrors: Array<{ logId: string; error: string }> = []
+  try {
+    const r = await resumeDueJourneys()
+    resumed = r.resumed
+    resumeErrors.push(...r.errors)
+  } catch (err) {
+    resumeErrors.push({ logId: '-', error: err instanceof Error ? err.message : String(err) })
+  }
 
   // 受眾掃描上限，避免失控
   const USER_SCAN_LIMIT = 500
@@ -81,7 +92,8 @@ export async function POST(request: Request) {
     processed,
     skipped,
     triggered,
-    errors: errors.slice(0, 20),
+    resumed,
+    errors: [...resumeErrors, ...errors].slice(0, 20),
     duration_ms: Date.now() - started,
   })
 }

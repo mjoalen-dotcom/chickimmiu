@@ -64,6 +64,7 @@ import * as migration_20260603_120000_add_newsletter_and_wishlist from './202606
 import * as migration_20260604_120000_add_wallet_ledger_and_withdrawals from './20260604_120000_add_wallet_ledger_and_withdrawals';
 import * as migration_20260608_114946_add_inventory_pos_stocktakes from './20260608_114946_add_inventory_pos_stocktakes';
 import * as migration_20260608_150000_add_registration_referral_rewarded from './20260608_150000_add_registration_referral_rewarded';
+import * as migration_20260608_160000_add_automation_logs_resume_at from './20260608_160000_add_automation_logs_resume_at';
 
 export const migrations = [
   {
@@ -395,5 +396,10 @@ export const migrations = [
     up: migration_20260608_150000_add_registration_referral_rewarded.up,
     down: migration_20260608_150000_add_registration_referral_rewarded.down,
     name: '20260608_150000_add_registration_referral_rewarded',
+  },
+  {
+    up: migration_20260608_160000_add_automation_logs_resume_at.up,
+    down: migration_20260608_160000_add_automation_logs_resume_at.down,
+    name: '20260608_160000_add_automation_logs_resume_at',
   },
 ];

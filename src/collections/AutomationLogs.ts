@@ -65,5 +65,14 @@ export const AutomationLogs: CollectionConfig = {
       label: '完成時間',
       type: 'date',
     },
+    {
+      name: 'resumeAt',
+      label: '恢復執行時間',
+      type: 'date',
+      index: true,
+      admin: {
+        description: '持久化等待：到期後由 /api/cron/automations 續跑後續步驟（status=in_progress 時有效）',
+      },
+    },
   ],
 }
