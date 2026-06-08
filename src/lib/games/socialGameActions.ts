@@ -2,7 +2,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Where } from 'payload'
 
-import { getTpeDateString, recordGamePlay } from './gameEngine'
+import { getTpeDateString, recordGamePlay, updateLeaderboard } from './gameEngine'
 
 /**
  * 社交 / UGC 遊戲 server actions。
@@ -840,5 +840,325 @@ export async function pickWinningGrant(
   }
 }
 
-// ── 8. leaveStyleRoom / settleStyleRoom ──
-// 留給下一個 PR：需要配合 UI 流程設計（host vs member 權限、早期離開 penalty 等）
+// ── 8. settleStyleRoom（房間結算 — 由 cron 或 host 觸發）──
+
+/** 從 relationship 欄位（populated object 或 scalar id）取 id */
+function refId(v: unknown): string | number | undefined {
+  if (v === undefined || v === null) return undefined
+  if (typeof v === 'object') return (v as Record<string, unknown>).id as string | number | undefined
+  return v as string | number
+}
+
+/** 預設房間結算獎勵（保守 fallback；可由 room.settings.settleBonus 覆寫） */
+const DEFAULT_ROOM_SETTLE_BONUS = 50
+
+/**
+ * 結算單一穿搭房：
+ *   1. 撈房內所有作品（依 voteCount 高→低，同票數比 createdAt 早者勝）
+ *   2. 第一名 = winner → recordGamePlay 發點數 + 計入排行榜
+ *   3. 寫 submissions.rank、winner submission.status='winner'
+ *   4. room.status='settled' + settledAt + result(winner/totalSubmissions/totalVotes/summary)
+ *
+ * 冪等：status 已是 settled 直接回成功；無作品則標 expired（沒得結算）。
+ * 僅結算 active / voting 狀態的房；waiting（未開打）不在此處理。
+ */
+export async function settleStyleRoom(
+  roomId: string | number,
+): Promise<
+  ActionResult<{
+    roomId: string | number
+    winnerId?: string | number
+    totalSubmissions: number
+    totalVotes: number
+  }>
+> {
+  const payload = await getPayload({ config })
+
+  let room: Record<string, unknown>
+  try {
+    room = (await payload.findByID({
+      collection: 'style-game-rooms',
+      id: roomId,
+      depth: 0,
+    })) as unknown as Record<string, unknown>
+  } catch {
+    return { success: false, error: '房間不存在' }
+  }
+
+  const status = room.status as string
+  if (status === 'settled') {
+    const result = (room.result as Record<string, unknown> | undefined) ?? {}
+    return {
+      success: true,
+      data: {
+        roomId,
+        winnerId: refId(result.winner),
+        totalSubmissions: Number(result.totalSubmissions ?? 0),
+        totalVotes: Number(result.totalVotes ?? 0),
+      },
+    }
+  }
+  if (status !== 'active' && status !== 'voting') {
+    return { success: false, reason: 'not_settleable', error: `房間狀態 ${status}，無法結算` }
+  }
+
+  const now = new Date().toISOString()
+
+  // 撈房內已送出 / 已核可 / 得獎的作品
+  const subsRes = await payload.find({
+    collection: 'style-submissions',
+    where: {
+      and: [
+        { room: { equals: roomId } },
+        { status: { in: ['submitted', 'approved', 'winner'] } },
+      ],
+    } as Where,
+    limit: 1000,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const subs = (subsRes.docs as unknown as Array<Record<string, unknown>>)
+  const totalSubmissions = subs.length
+  const totalVotes = subs.reduce((s, d) => s + (Number(d.voteCount) || 0), 0)
+
+  // 無作品 → 標 expired（沒得結算）
+  if (totalSubmissions === 0) {
+    try {
+      await (payload.update as Function)({
+        collection: 'style-game-rooms',
+        id: roomId,
+        data: { status: 'expired', settledAt: now } as never,
+        overrideAccess: true,
+      })
+    } catch {
+      // 非關鍵
+    }
+    return { success: true, data: { roomId, totalSubmissions: 0, totalVotes: 0 } }
+  }
+
+  // 排序：票數高→低；同票數比 createdAt 早者勝
+  const sorted = [...subs].sort((a, b) => {
+    const vc = (Number(b.voteCount) || 0) - (Number(a.voteCount) || 0)
+    if (vc !== 0) return vc
+    return Date.parse(String(a.createdAt ?? 0)) - Date.parse(String(b.createdAt ?? 0))
+  })
+  const winnerSub = sorted[0]
+  const winnerId = refId(winnerSub.player)
+
+  // 結算獎勵
+  const roomSettings = (room.settings as Record<string, unknown> | undefined) ?? {}
+  const settleBonus =
+    typeof roomSettings.settleBonus === 'number' && roomSettings.settleBonus >= 0
+      ? roomSettings.settleBonus
+      : DEFAULT_ROOM_SETTLE_BONUS
+
+  if (winnerId !== undefined && settleBonus > 0) {
+    try {
+      // 注意：id 直接傳原型別（SQLite 為 integer PK）；String() 會讓 relationship 驗證失敗
+      await recordGamePlay({
+        userId: winnerId as unknown as string,
+        gameType: String(room.gameType ?? 'style_pk'),
+        outcome: 'win',
+        prizeType: 'points',
+        prizeAmount: settleBonus,
+        prizeDescription: `穿搭房獲勝（${room.roomCode ?? roomId}）`,
+        metadata: { roomId, roomCode: room.roomCode },
+      })
+      // 計入排行榜（餵 leaderboard-settle cron 的 top3 來源）
+      await updateLeaderboard(winnerId as unknown as string, settleBonus, true)
+    } catch (err) {
+      // 發獎失敗不擋結算（避免房間卡在未結算）
+      console.error('[settleStyleRoom] award failed', { roomId, winnerId, err })
+    }
+  }
+
+  // 標記排名 + winner submission
+  for (let i = 0; i < sorted.length; i++) {
+    const sub = sorted[i]
+    try {
+      await (payload.update as Function)({
+        collection: 'style-submissions',
+        id: sub.id as string | number,
+        data: { rank: i + 1, ...(i === 0 ? { status: 'winner' } : {}) } as never,
+        overrideAccess: true,
+      })
+    } catch {
+      // 非關鍵
+    }
+  }
+
+  // 更新房間
+  try {
+    await (payload.update as Function)({
+      collection: 'style-game-rooms',
+      id: roomId,
+      data: {
+        status: 'settled',
+        settledAt: now,
+        result: {
+          winner: winnerId,
+          totalSubmissions,
+          totalVotes,
+          summary: `共 ${totalSubmissions} 件作品、${totalVotes} 票，結算完成`,
+        },
+      } as never,
+      overrideAccess: true,
+    })
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : '房間結算寫入失敗',
+    }
+  }
+
+  return { success: true, data: { roomId, winnerId, totalSubmissions, totalVotes } }
+}
+
+/**
+ * 批次結算所有「過期且仍進行中」的房間（cron 入口）。
+ *   - active / voting 且 expiresAt <= now → settleStyleRoom
+ *   - waiting 且 expiresAt <= now → 標 expired（從未開打）
+ */
+export async function settleExpiredRooms(): Promise<{
+  settled: number
+  expired: number
+  errors: Array<{ roomId: string; error: string }>
+}> {
+  const payload = await getPayload({ config })
+  const now = new Date().toISOString()
+  const errors: Array<{ roomId: string; error: string }> = []
+
+  // 1. 過期且進行中 → 結算
+  const ripe = await payload.find({
+    collection: 'style-game-rooms',
+    where: {
+      and: [
+        { status: { in: ['active', 'voting'] } },
+        { expiresAt: { less_than_equal: now } },
+      ],
+    } as Where,
+    limit: 200,
+    depth: 0,
+    overrideAccess: true,
+  })
+  let settled = 0
+  for (const room of ripe.docs as unknown as Array<Record<string, unknown>>) {
+    const res = await settleStyleRoom(room.id as string | number)
+    if (res.success) settled++
+    else errors.push({ roomId: String(room.id), error: res.error ?? 'settle_failed' })
+  }
+
+  // 2. 過期但從未開打（waiting）→ 標 expired
+  const stale = await payload.find({
+    collection: 'style-game-rooms',
+    where: {
+      and: [
+        { status: { equals: 'waiting' } },
+        { expiresAt: { less_than_equal: now } },
+      ],
+    } as Where,
+    limit: 200,
+    depth: 0,
+    overrideAccess: true,
+  })
+  let expired = 0
+  for (const room of stale.docs as unknown as Array<Record<string, unknown>>) {
+    try {
+      await (payload.update as Function)({
+        collection: 'style-game-rooms',
+        id: room.id as string | number,
+        data: { status: 'expired' } as never,
+        overrideAccess: true,
+      })
+      expired++
+    } catch (err) {
+      errors.push({ roomId: String(room.id), error: err instanceof Error ? err.message : 'expire_failed' })
+    }
+  }
+
+  return { settled, expired, errors }
+}
+
+// ── 9. expireOpenWishes（許願過期退點 — 由 cron 觸發）──
+
+/**
+ * 掃描「已過期但仍 open」的許願，退還 seeker 當初預扣的 bountyPoints 並標 expired。
+ * 對稱於 createStyleWish 的預扣（type=redeem / source=game）。
+ * 冪等：status 翻成 expired 後不會再被掃到。
+ */
+export async function expireOpenWishes(): Promise<{
+  expired: number
+  refundedPoints: number
+  errors: Array<{ wishId: string; error: string }>
+}> {
+  const payload = await getPayload({ config })
+  const now = new Date().toISOString()
+  const errors: Array<{ wishId: string; error: string }> = []
+
+  const res = await payload.find({
+    collection: 'style-wishes',
+    where: {
+      and: [
+        { status: { equals: 'open' } },
+        { expiresAt: { less_than_equal: now } },
+      ],
+    } as Where,
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+  })
+
+  let expired = 0
+  let refundedPoints = 0
+
+  for (const w of res.docs as unknown as Array<Record<string, unknown>>) {
+    const wishId = w.id as string | number
+    try {
+      const bounty = Number(w.bountyPoints) || 0
+      const seekerId = refId(w.seeker)
+
+      if (bounty > 0 && seekerId !== undefined) {
+        const user = (await payload.findByID({
+          collection: 'users',
+          id: seekerId,
+          depth: 0,
+        })) as unknown as Record<string, unknown>
+        const current = Number(user.points) || 0
+        const newBalance = current + bounty
+
+        await (payload.create as Function)({
+          collection: 'points-transactions',
+          data: {
+            user: seekerId,
+            amount: bounty,
+            type: 'earn',
+            source: 'game',
+            description: `[wish_pool] 許願過期退還 ${bounty} 點`,
+            balance: newBalance,
+          } as never,
+        })
+        await (payload.update as Function)({
+          collection: 'users',
+          id: seekerId,
+          data: { points: newBalance } as never,
+        })
+        refundedPoints += bounty
+      }
+
+      await (payload.update as Function)({
+        collection: 'style-wishes',
+        id: wishId,
+        data: { status: 'expired' } as never,
+        overrideAccess: true,
+      })
+      expired++
+    } catch (err) {
+      errors.push({
+        wishId: String(wishId),
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+
+  return { expired, refundedPoints, errors }
+}

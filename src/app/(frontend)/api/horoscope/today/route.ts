@@ -3,9 +3,7 @@ import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 
-import { getSeedHoroscope } from '@/lib/horoscope/seed'
-import { generateViaGroq } from '@/lib/horoscope/groq'
-import type { HoroscopeContent } from '@/lib/horoscope/types'
+import { generateAndCacheHoroscope } from '@/lib/horoscope/generate'
 import { normalizeMediaUrl } from '@/lib/media-url'
 import {
   getZodiacFromBirthday,
@@ -109,61 +107,14 @@ export async function GET(): Promise<NextResponse<ApiResponse | { error: string 
   let entry = cached.docs[0] as unknown as Record<string, unknown> | undefined
 
   if (!entry) {
-    // 2. Generate
-    const wantsLLM = process.env.HOROSCOPE_LLM_PROVIDER === 'groq'
-    let content: HoroscopeContent
-    let generatedBy: 'seed' | 'groq' = 'seed'
-    if (wantsLLM) {
-      try {
-        content = await generateViaGroq({ sign, gender, date, birthTime })
-        generatedBy = 'groq'
-      } catch (err) {
-        // Graceful degradation — never let LLM failure black out the UI
-        // eslint-disable-next-line no-console
-        console.warn('[horoscope] Groq failed, falling back to seed:', err)
-        content = getSeedHoroscope({ sign, gender, date })
-      }
-    } else {
-      content = getSeedHoroscope({ sign, gender, date })
-    }
-
-    try {
-      const created = await payload.create({
-        collection: 'daily-horoscopes',
-        overrideAccess: true,
-        data: {
-          zodiacSign: sign,
-          date,
-          gender,
-          workFortune: content.workFortune,
-          relationshipFortune: content.relationshipFortune,
-          moneyFortune: content.moneyFortune,
-          cautionFortune: content.cautionFortune,
-          outfitAdvice: content.outfitAdvice,
-          luckyColors: content.luckyColors.join(','),
-          styleKeywords: content.styleKeywords.join(','),
-          generatedBy,
-        },
-      })
-      entry = created as unknown as Record<string, unknown>
-    } catch (err) {
-      // DB write failure — still serve fortune; another request will retry write
-      // eslint-disable-next-line no-console
-      console.warn('[horoscope] cache write failed:', err)
-      entry = {
-        zodiacSign: sign,
-        date,
-        gender,
-        workFortune: content.workFortune,
-        relationshipFortune: content.relationshipFortune,
-        moneyFortune: content.moneyFortune,
-        cautionFortune: content.cautionFortune,
-        outfitAdvice: content.outfitAdvice,
-        luckyColors: content.luckyColors.join(','),
-        styleKeywords: content.styleKeywords.join(','),
-        generatedBy,
-      }
-    }
+    // 2. Generate + cache（與 cron 預熱共用同一條路徑）
+    const { entry: generated } = await generateAndCacheHoroscope(payload, {
+      sign,
+      gender,
+      date,
+      birthTime,
+    })
+    entry = generated
   }
 
   const styleKeywords = parseList(entry?.styleKeywords)

@@ -72,6 +72,10 @@ export const MiniGameRecords: CollectionConfig = {
         { label: '[系統] 每週排行榜', value: 'leaderboard_weekly' },
         { label: '[系統] 每月排行榜', value: 'leaderboard_monthly' },
         { label: '[系統] 全時段排行榜', value: 'leaderboard_all_time' },
+        // ── 排行榜前三名結算獎勵紀錄（leaderboardSettle.ts 寫入）──
+        { label: '[系統] 每日排行榜獎勵', value: 'leaderboard_daily_bonus' },
+        { label: '[系統] 每週排行榜獎勵', value: 'leaderboard_weekly_bonus' },
+        { label: '[系統] 每月排行榜獎勵', value: 'leaderboard_monthly_bonus' },
       ],
     },
     {

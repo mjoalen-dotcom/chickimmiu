@@ -42,6 +42,13 @@ jobs:
             -H "Content-Type: application/json" \
             --max-time 300 \
             "${TARGET_HOST}/api/cron/segments"
+      - name: Run apply-product-schedules cron
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 120 \
+            "${TARGET_HOST}/api/cron/apply-product-schedules"
 
   expire-points:
     if: github.event.schedule == '0 3 * * *' || github.event_name == 'workflow_dispatch'
@@ -68,6 +75,13 @@ jobs:
             -H "Content-Type: application/json" \
             --max-time 120 \
             "${TARGET_HOST}/api/cron/expire-card-battles"
+      - name: Run expire-wishes cron
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 300 \
+            "${TARGET_HOST}/api/cron/expire-wishes"
 
   streak-decay:
     if: github.event.schedule == '0 16 * * *' || github.event_name == 'workflow_dispatch'
@@ -80,3 +94,24 @@ jobs:
             -H "Content-Type: application/json" \
             --max-time 300 \
             "${TARGET_HOST}/api/cron/streak-decay"
+      - name: Run settle-style-rooms cron
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 300 \
+            "${TARGET_HOST}/api/cron/settle-style-rooms"
+      - name: Run leaderboard-settle cron
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 300 \
+            "${TARGET_HOST}/api/cron/leaderboard-settle"
+      - name: Run preheat-horoscopes cron
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 300 \
+            "${TARGET_HOST}/api/cron/preheat-horoscopes"

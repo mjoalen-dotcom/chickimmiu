@@ -1,5 +1,5 @@
 import type { Endpoint, PayloadRequest } from 'payload'
-import { safeRevalidate } from '../lib/revalidate'
+import { runApplyProductSchedules } from '../lib/products/applySchedules'
 
 /**
  * POST /api/products/apply-schedules
@@ -37,84 +37,11 @@ export const applyProductSchedulesEndpoint: Endpoint = {
       )
     }
 
-    const now = new Date().toISOString()
-
-    /* ── 自動上架：draft + publishAt <= now ── */
-    const toPublish = await req.payload.find({
-      collection: 'products',
-      where: {
-        and: [
-          { status: { equals: 'draft' } },
-          { publishAt: { less_than_equal: now } },
-          { publishAt: { exists: true } },
-        ],
-      },
-      limit: 1000,
-      depth: 0,
-      pagination: false,
-      overrideAccess: true,
-    })
-
-    let publishedCount = 0
-    for (const doc of toPublish.docs) {
-      try {
-        await req.payload.update({
-          collection: 'products',
-          id: (doc as { id: string | number }).id,
-          data: { status: 'published' },
-          overrideAccess: true,
-        })
-        publishedCount++
-      } catch (e) {
-        req.payload.logger?.error?.(
-          `[apply-schedules] publish ${(doc as { id: string | number }).id} failed: ${(e as Error).message}`,
-        )
-      }
-    }
-
-    /* ── 自動下架：published + unpublishAt <= now ── */
-    const toArchive = await req.payload.find({
-      collection: 'products',
-      where: {
-        and: [
-          { status: { equals: 'published' } },
-          { unpublishAt: { less_than_equal: now } },
-          { unpublishAt: { exists: true } },
-        ],
-      },
-      limit: 1000,
-      depth: 0,
-      pagination: false,
-      overrideAccess: true,
-    })
-
-    let archivedCount = 0
-    for (const doc of toArchive.docs) {
-      try {
-        await req.payload.update({
-          collection: 'products',
-          id: (doc as { id: string | number }).id,
-          data: { status: 'archived' },
-          overrideAccess: true,
-        })
-        archivedCount++
-      } catch (e) {
-        req.payload.logger?.error?.(
-          `[apply-schedules] archive ${(doc as { id: string | number }).id} failed: ${(e as Error).message}`,
-        )
-      }
-    }
-
-    /* 有任何狀態變化才打 revalidate（products.afterChange 也會自己跑，但這裡保險） */
-    if (publishedCount > 0 || archivedCount > 0) {
-      safeRevalidate(['/', '/products'], ['products'])
-    }
+    const result = await runApplyProductSchedules(req.payload)
 
     return Response.json({
       success: true,
-      published: publishedCount,
-      archived: archivedCount,
-      scannedAt: now,
+      ...result,
     })
   },
 }
