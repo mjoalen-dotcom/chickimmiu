@@ -212,10 +212,19 @@ export const Orders: CollectionConfig = {
     },
     {
       name: 'coupon',
-      label: '優惠券',
+      label: '優惠券（主要 / 相容舊單）',
       type: 'relationship',
       relationTo: 'coupons',
       admin: { readOnly: true },
+    },
+    {
+      name: 'appliedCoupons',
+      label: '套用的優惠券（多張疊加）',
+      type: 'json',
+      admin: {
+        readOnly: true,
+        description: '多券疊加快照 [{coupon, couponCode, discountAmount}]；各券 usageCount 由 CouponRedemptions per-coupon 累加',
+      },
     },
     {
       name: 'shippingFee',
@@ -614,38 +623,54 @@ export const Orders: CollectionConfig = {
       // （該 collection 的 afterChange 會自動累加 coupons.usageCount）
       async ({ doc, operation, req }) => {
         if (operation !== 'create') return
-        const couponRel = doc.coupon as number | string | Record<string, unknown> | null | undefined
-        const discount = (doc.discountAmount as number) ?? 0
-        if (!couponRel || discount <= 0) return
-        const couponIdResolved =
-          typeof couponRel === 'number' || typeof couponRel === 'string'
-            ? couponRel
-            : ((couponRel as Record<string, unknown>).id as number | string | undefined)
-        if (couponIdResolved == null) return
         const customerId =
           typeof doc.customer === 'string' || typeof doc.customer === 'number'
             ? doc.customer
             : ((doc.customer as unknown as Record<string, unknown>)?.id as number | string | undefined)
-        try {
-          await (req.payload.create as Function)({
-            collection: 'coupon-redemptions',
-            data: {
-              coupon: couponIdResolved,
-              user: customerId,
-              order: doc.id,
-              discountAmount: discount,
-              redeemedAt: new Date().toISOString(),
-            },
-            overrideAccess: true,
-          })
-        } catch (err) {
-          req.payload.logger.error({
-            err,
-            msg: 'Orders afterChange: CouponRedemptions 建立失敗',
-            couponId: couponIdResolved,
-            orderId: doc.id,
-          })
+        const resolveRel = (v: unknown): number | string | undefined =>
+          typeof v === 'number' || typeof v === 'string'
+            ? v
+            : ((v as Record<string, unknown>)?.id as number | string | undefined)
+        const writeRedemption = async (couponId: number | string | undefined, discount: number) => {
+          if (couponId == null) return
+          try {
+            await (req.payload.create as Function)({
+              collection: 'coupon-redemptions',
+              data: {
+                coupon: couponId,
+                user: customerId,
+                order: doc.id,
+                discountAmount: discount,
+                redeemedAt: new Date().toISOString(),
+              },
+              overrideAccess: true,
+            })
+          } catch (err) {
+            req.payload.logger.error({
+              err,
+              msg: 'Orders afterChange: CouponRedemptions 建立失敗',
+              couponId,
+              orderId: doc.id,
+            })
+          }
         }
+
+        // 多券疊加：每張各寫一筆 redemption（各自累加 usageCount）。含免運券（discount 0）也記。
+        const applied = Array.isArray(doc.appliedCoupons)
+          ? (doc.appliedCoupons as Array<Record<string, unknown>>)
+          : []
+        if (applied.length > 0) {
+          for (const ac of applied) {
+            await writeRedemption(resolveRel(ac.coupon ?? ac.couponId), Number(ac.discountAmount) || 0)
+          }
+          return
+        }
+
+        // 後備（舊單 / 單券路徑）：用 doc.coupon + 總折扣
+        const couponRel = doc.coupon as number | string | Record<string, unknown> | null | undefined
+        const discount = (doc.discountAmount as number) ?? 0
+        if (!couponRel || discount <= 0) return
+        await writeRedemption(resolveRel(couponRel), discount)
       },
       async ({ doc, previousDoc, req, operation }) => {
         const payload = req.payload

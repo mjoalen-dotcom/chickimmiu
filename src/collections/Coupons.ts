@@ -114,6 +114,24 @@ export const Coupons: CollectionConfig = {
     },
     { name: 'isActive', label: '啟用', type: 'checkbox', defaultValue: true },
     {
+      type: 'row',
+      fields: [
+        {
+          name: 'stackable',
+          label: '可疊加',
+          type: 'checkbox',
+          defaultValue: false,
+          admin: { width: '50%', description: '可與其他優惠券同時使用；關閉=此券只能單獨使用' },
+        },
+        {
+          name: 'exclusiveGroup',
+          label: '互斥群組',
+          type: 'text',
+          admin: { width: '50%', description: '同群組的券彼此不可同用（例如填 welcome）；空=不限群組' },
+        },
+      ],
+    },
+    {
       name: 'conditions',
       label: '適用條件',
       type: 'group',

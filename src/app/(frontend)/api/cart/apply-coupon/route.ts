@@ -23,6 +23,8 @@ type ApplyBody = {
   code?: string
   subtotal?: number
   items?: { productId?: string | number; subtotal?: number }[]
+  /** 已套用的優惠券 id（用於疊加/互斥驗證） */
+  appliedCouponIds?: (string | number)[]
 }
 
 export async function POST(request: Request) {
@@ -114,6 +116,44 @@ export async function POST(request: Request) {
         // Guest 模式暫不擋（下單時仍會 recheck；封測會員 100% 登入）
       } catch {
         /* auth 失敗不擋，後續下單流程再驗證 */
+      }
+    }
+
+    // 5.5 疊加 / 互斥驗證（候選券 vs 已套用券）
+    const appliedIds = Array.isArray(body.appliedCouponIds)
+      ? body.appliedCouponIds.map((x) => String(x)).filter((x) => x && x !== String(coupon.id))
+      : []
+    if (appliedIds.length > 0) {
+      const candStackable = coupon.stackable === true
+      const candGroup =
+        typeof coupon.exclusiveGroup === 'string' ? coupon.exclusiveGroup.trim() : ''
+      if (!candStackable) {
+        return NextResponse.json({
+          valid: false,
+          reason: '此優惠券不可與其他優惠券疊加，請先移除已套用的優惠券',
+        })
+      }
+      const appliedRes = await payload.find({
+        collection: 'coupons',
+        where: { id: { in: appliedIds } } as Where,
+        limit: 50,
+        depth: 0,
+        overrideAccess: true,
+      })
+      for (const a of appliedRes.docs as unknown as Array<Record<string, unknown>>) {
+        if (a.stackable !== true) {
+          return NextResponse.json({
+            valid: false,
+            reason: '已套用的優惠券不可疊加，無法再加券',
+          })
+        }
+        const aGroup = typeof a.exclusiveGroup === 'string' ? a.exclusiveGroup.trim() : ''
+        if (candGroup && aGroup && candGroup === aGroup) {
+          return NextResponse.json({
+            valid: false,
+            reason: `此優惠券與已套用的優惠券互斥（群組：${candGroup}），不可同時使用`,
+          })
+        }
       }
     }
 

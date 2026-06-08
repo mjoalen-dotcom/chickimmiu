@@ -403,7 +403,7 @@ export default function CheckoutPage() {
   const [couponInput, setCouponInput] = useState('')
   const [couponLoading, setCouponLoading] = useState(false)
   const [couponError, setCouponError] = useState<string | null>(null)
-  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null)
+  const [appliedCoupons, setAppliedCoupons] = useState<AppliedCoupon[]>([])
 
   // 電子發票
   const [invoiceType, setInvoiceType] = useState<'b2c_personal' | 'b2c_carrier' | 'b2b' | 'donation'>('b2c_personal')
@@ -431,13 +431,17 @@ export default function CheckoutPage() {
   }
 
   const rawShippingFee = calcShippingFee()
-  // 免運優惠券：把運費歸零（仍保留原價於摘要顯示）
-  const shippingFee = appliedCoupon?.freeShipping ? 0 : rawShippingFee
+  // 免運優惠券：任一已套用券免運 → 運費歸零（仍保留原價於摘要顯示）
+  const hasFreeShippingCoupon = appliedCoupons.some((c) => c.freeShipping)
+  const shippingFee = hasFreeShippingCoupon ? 0 : rawShippingFee
 
   // COD 手續費：只有選 cash_cod 時才計入 total
   const codFee = selectedPayment === 'cash_cod' ? paymentSettings.codDefaultFee : 0
-  // 優惠券折扣（百分比 / 固定金額；free_shipping 走上方運費歸零路徑）
-  const couponDiscount = appliedCoupon && !appliedCoupon.freeShipping ? appliedCoupon.discountAmount : 0
+  // 優惠券折扣（百分比 / 固定金額加總；free_shipping 走上方運費歸零路徑）；上限為小計
+  const couponDiscount = Math.min(
+    subtotal,
+    appliedCoupons.reduce((sum, c) => sum + (c.freeShipping ? 0 : c.discountAmount), 0),
+  )
   const total = Math.max(0, subtotal + shippingFee + codFee - couponDiscount)
 
   // COD 上限檢查（不含 COD 手續費本身，避免 self-reference）
@@ -497,9 +501,13 @@ export default function CheckoutPage() {
     setForm((prev) => ({ ...prev, [key]: value }))
 
   const handleApplyCoupon = async () => {
-    const code = couponInput.trim()
+    const code = couponInput.trim().toUpperCase()
     if (!code) {
       setCouponError('請輸入優惠碼')
+      return
+    }
+    if (appliedCoupons.some((c) => c.couponCode === code)) {
+      setCouponError('此優惠碼已套用')
       return
     }
     setCouponLoading(true)
@@ -516,6 +524,7 @@ export default function CheckoutPage() {
             productId: i.productId,
             subtotal: (i.salePrice ?? i.price) * i.quantity,
           })),
+          appliedCouponIds: appliedCoupons.map((c) => c.couponId),
         }),
       })
       const body = (await res.json().catch(() => null)) as
@@ -531,18 +540,22 @@ export default function CheckoutPage() {
           }
         | null
       if (!body || !body.valid) {
-        setAppliedCoupon(null)
+        // 不清掉已套用的券，只報這次失敗原因
         setCouponError(body?.reason || '優惠碼無法使用')
         return
       }
-      setAppliedCoupon({
-        couponId: body.couponId!,
-        couponCode: body.couponCode!,
-        name: body.name || body.couponCode!,
-        discountType: body.discountType!,
-        discountAmount: body.discountAmount ?? 0,
-        freeShipping: Boolean(body.freeShipping),
-      })
+      setAppliedCoupons((prev) => [
+        ...prev,
+        {
+          couponId: body.couponId!,
+          couponCode: body.couponCode!,
+          name: body.name || body.couponCode!,
+          discountType: body.discountType!,
+          discountAmount: body.discountAmount ?? 0,
+          freeShipping: Boolean(body.freeShipping),
+        },
+      ])
+      setCouponInput('')
       setCouponError(null)
     } catch (err) {
       console.error('[Checkout] apply-coupon error:', err)
@@ -552,9 +565,8 @@ export default function CheckoutPage() {
     }
   }
 
-  const handleRemoveCoupon = () => {
-    setAppliedCoupon(null)
-    setCouponInput('')
+  const handleRemoveCoupon = (couponId: number | string) => {
+    setAppliedCoupons((prev) => prev.filter((c) => c.couponId !== couponId))
     setCouponError(null)
   }
 
@@ -630,11 +642,17 @@ export default function CheckoutPage() {
       codFee,
       total,
       discountAmount: couponDiscount,
-      discountReason: appliedCoupon
-        ? `優惠券 ${appliedCoupon.couponCode}${appliedCoupon.freeShipping ? '（免運）' : ''}`
-        : undefined,
-      couponCode: appliedCoupon?.couponCode,
-      coupon: appliedCoupon?.couponId,
+      discountReason:
+        appliedCoupons.length > 0
+          ? `優惠券 ${appliedCoupons.map((c) => `${c.couponCode}${c.freeShipping ? '（免運）' : ''}`).join('、')}`
+          : undefined,
+      couponCode: appliedCoupons[0]?.couponCode,
+      coupon: appliedCoupons[0]?.couponId,
+      appliedCoupons: appliedCoupons.map((c) => ({
+        coupon: c.couponId,
+        couponCode: c.couponCode,
+        discountAmount: c.freeShipping ? 0 : c.discountAmount,
+      })),
       paymentMethod: selectedPayment,
       paymentStatus: 'unpaid' as const,
       status: 'pending' as const,
@@ -1296,64 +1314,69 @@ export default function CheckoutPage() {
                   <Tag size={18} className="text-gold-500" />
                   優惠碼
                 </h2>
-                {appliedCoupon ? (
-                  <div className="flex items-start justify-between gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
-                    <div className="flex items-start gap-2 min-w-0">
-                      <Check size={16} className="mt-0.5 text-green-600 shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium">
-                          {appliedCoupon.couponCode}
-                          <span className="text-xs text-muted-foreground ml-2">
-                            {appliedCoupon.name}
-                          </span>
-                        </p>
-                        <p className="text-xs text-green-700 mt-0.5">
-                          {appliedCoupon.freeShipping
-                            ? '已套用免運優惠'
-                            : `已折抵 NT$ ${appliedCoupon.discountAmount.toLocaleString()}`}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleRemoveCoupon}
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground shrink-0"
-                      aria-label="移除優惠券"
-                    >
-                      <X size={14} />
-                      移除
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={couponInput}
-                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                        placeholder="輸入優惠碼，例如 WELCOME10"
-                        className="flex-1 px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40 uppercase tracking-wide"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            handleApplyCoupon()
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleApplyCoupon}
-                        disabled={couponLoading || !couponInput.trim()}
-                        className="px-5 py-3 bg-foreground text-cream-50 rounded-xl text-sm hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                {appliedCoupons.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {appliedCoupons.map((c) => (
+                      <div
+                        key={c.couponId}
+                        className="flex items-start justify-between gap-3 p-3 bg-green-50 border border-green-200 rounded-xl"
                       >
-                        {couponLoading ? '驗證中…' : '套用'}
-                      </button>
-                    </div>
-                    {couponError && (
-                      <p className="text-xs text-rose-600 mt-2">{couponError}</p>
-                    )}
+                        <div className="flex items-start gap-2 min-w-0">
+                          <Check size={16} className="mt-0.5 text-green-600 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">
+                              {c.couponCode}
+                              <span className="text-xs text-muted-foreground ml-2">{c.name}</span>
+                            </p>
+                            <p className="text-xs text-green-700 mt-0.5">
+                              {c.freeShipping
+                                ? '已套用免運優惠'
+                                : `已折抵 NT$ ${c.discountAmount.toLocaleString()}`}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCoupon(c.couponId)}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground shrink-0"
+                          aria-label="移除優惠券"
+                        >
+                          <X size={14} />
+                          移除
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
+                <div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                      placeholder="輸入優惠碼，例如 WELCOME10"
+                      className="flex-1 px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40 uppercase tracking-wide"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleApplyCoupon()
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading || !couponInput.trim()}
+                      className="px-5 py-3 bg-foreground text-cream-50 rounded-xl text-sm hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {couponLoading ? '驗證中…' : '套用'}
+                    </button>
+                  </div>
+                  {appliedCoupons.length > 0 && (
+                    <p className="text-[11px] text-muted-foreground mt-2">可繼續輸入其他可疊加的優惠碼</p>
+                  )}
+                  {couponError && <p className="text-xs text-rose-600 mt-2">{couponError}</p>}
+                </div>
               </div>
 
               {/* ── AI 智能推薦：最後加購 ── */}
@@ -1624,19 +1647,21 @@ export default function CheckoutPage() {
                       <Price twd={codFee} />
                     </div>
                   )}
-                  {appliedCoupon && (couponDiscount > 0 || appliedCoupon.freeShipping) && (
+                  {appliedCoupons.length > 0 && (couponDiscount > 0 || hasFreeShippingCoupon) && (
                     <div className="flex justify-between text-green-700">
                       <span className="flex items-center gap-1">
                         <Tag size={12} />
-                        {tCheckout('summaryCouponLabel', { code: appliedCoupon.couponCode })}
+                        {tCheckout('summaryCouponLabel', {
+                          code: appliedCoupons.map((c) => c.couponCode).join('、'),
+                        })}
                       </span>
                       <span>
-                        {appliedCoupon.freeShipping ? (
-                          tCheckout('summaryCouponFreeShipping')
-                        ) : (
+                        {couponDiscount > 0 ? (
                           <>
                             − <Price twd={couponDiscount} />
                           </>
+                        ) : (
+                          tCheckout('summaryCouponFreeShipping')
                         )}
                       </span>
                     </div>

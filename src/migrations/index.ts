@@ -66,6 +66,7 @@ import * as migration_20260608_114946_add_inventory_pos_stocktakes from './20260
 import * as migration_20260608_150000_add_registration_referral_rewarded from './20260608_150000_add_registration_referral_rewarded';
 import * as migration_20260608_160000_add_automation_logs_resume_at from './20260608_160000_add_automation_logs_resume_at';
 import * as migration_20260608_170000_add_blog_categories from './20260608_170000_add_blog_categories';
+import * as migration_20260609_100000_add_coupon_stacking from './20260609_100000_add_coupon_stacking';
 
 export const migrations = [
   {
@@ -407,5 +408,10 @@ export const migrations = [
     up: migration_20260608_170000_add_blog_categories.up,
     down: migration_20260608_170000_add_blog_categories.down,
     name: '20260608_170000_add_blog_categories',
+  },
+  {
+    up: migration_20260609_100000_add_coupon_stacking.up,
+    down: migration_20260609_100000_add_coupon_stacking.down,
+    name: '20260609_100000_add_coupon_stacking',
   },
 ];
