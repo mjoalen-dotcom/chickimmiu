@@ -703,6 +703,40 @@ export const Orders: CollectionConfig = {
         const paymentStatus = doc.paymentStatus as string
         const prevPaymentStatus = previousDoc?.paymentStatus as string | undefined
         if (paymentStatus === 'paid' && prevPaymentStatus !== 'paid') {
+          // ── totalSold 累加（付款當下；powers 熱銷排序 / 推薦 trending / 毛利洞察）──
+          // 依商品去重（同商品多變體 line item 合計）；贈品不計入真實銷量。
+          try {
+            const paidItems =
+              (doc.items as Array<{
+                product: string | { id: string }
+                quantity?: number
+                isGift?: boolean
+              }>) || []
+            const soldDelta = new Map<string, number>()
+            for (const it of paidItems) {
+              if (it.isGift) continue
+              const pid = typeof it.product === 'string' ? it.product : it.product?.id
+              const qty = Number(it.quantity) || 0
+              if (!pid || qty <= 0) continue
+              soldDelta.set(String(pid), (soldDelta.get(String(pid)) || 0) + qty)
+            }
+            for (const [pid, qty] of soldDelta) {
+              try {
+                const p = await payload.findByID({ collection: 'products', id: pid, depth: 0 })
+                const cur = Number((p as unknown as Record<string, unknown>).totalSold) || 0
+                await (payload.update as Function)({
+                  collection: 'products',
+                  id: pid,
+                  data: { totalSold: cur + qty },
+                })
+              } catch (e) {
+                console.error(`[Orders Hook] totalSold 累加失敗 (product ${pid}):`, e)
+              }
+            }
+          } catch (e) {
+            console.error('[Orders Hook] totalSold 累加整體失敗:', e)
+          }
+
           const customerId =
             typeof doc.customer === 'string'
               ? doc.customer

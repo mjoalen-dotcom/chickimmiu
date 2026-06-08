@@ -3,15 +3,34 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
 import { Plus, Sparkles, Gift, Tag, ShoppingBag } from 'lucide-react'
 import { useCartStore } from '@/stores/cartStore'
-import { getCartRecommendations } from '@/lib/recommendationEngine'
+import type { RecommendedItem } from '@/lib/recommendationEngine'
 
 export function CartCrossSell() {
   const { items } = useCartStore()
   const cartProductIds = items.map((i) => i.productId)
   const cartTotal = items.reduce((sum, i) => sum + (i.salePrice ?? i.price) * i.quantity, 0)
-  const { bundle, addon } = getCartRecommendations(cartProductIds, cartTotal)
+  const [bundle, setBundle] = useState<RecommendedItem[]>([])
+  const [addon, setAddon] = useState<RecommendedItem[]>([])
+
+  const cartKey = cartProductIds.join(',')
+  useEffect(() => {
+    const qs = new URLSearchParams({ stage: 'cart' })
+    if (cartKey) qs.set('cartIds', cartKey)
+    if (cartTotal) qs.set('total', String(cartTotal))
+    fetch(`/api/recommendations?${qs.toString()}`)
+      .then((r) => r.json())
+      .then((b) => {
+        if (b?.success) {
+          setBundle(Array.isArray(b.bundle) ? b.bundle : [])
+          setAddon(Array.isArray(b.addon) ? b.addon : [])
+        }
+      })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartKey])
 
   if (bundle.length === 0 && addon.length === 0) return null
 
@@ -66,7 +85,7 @@ export function CartCrossSell() {
   )
 }
 
-function BundleCard({ item }: { item: ReturnType<typeof getCartRecommendations>['bundle'][0] }) {
+function BundleCard({ item }: { item: RecommendedItem }) {
   const effectivePrice = item.salePrice || item.price
   const discountedPrice = item.bundleDiscount
     ? effectivePrice - item.bundleDiscount
@@ -119,7 +138,7 @@ function BundleCard({ item }: { item: ReturnType<typeof getCartRecommendations>[
   )
 }
 
-function AddonCard({ item }: { item: ReturnType<typeof getCartRecommendations>['addon'][0] }) {
+function AddonCard({ item }: { item: RecommendedItem }) {
   return (
     <Link
       href={`/products/${item.slug}`}

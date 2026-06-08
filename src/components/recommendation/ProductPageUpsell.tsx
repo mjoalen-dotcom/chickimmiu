@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowUpRight, Sparkles, ChevronRight } from 'lucide-react'
-import { getProductPageRecommendations, type RecommendedItem } from '@/lib/recommendationEngine'
+import { type RecommendedItem } from '@/lib/recommendationEngine'
 
 interface Props {
   currentProductId?: string
@@ -13,8 +13,24 @@ interface Props {
 }
 
 export function ProductPageUpsell({ currentProductId, currentPrice = 0 }: Props) {
-  const { crossSell, upsell } = getProductPageRecommendations(currentProductId, currentPrice)
+  const [crossSell, setCrossSell] = useState<RecommendedItem[]>([])
+  const [upsell, setUpsell] = useState<RecommendedItem[]>([])
   const [activeTab, setActiveTab] = useState<'crossSell' | 'upsell'>('crossSell')
+
+  useEffect(() => {
+    const qs = new URLSearchParams({ stage: 'product_page' })
+    if (currentProductId) qs.set('productId', currentProductId)
+    if (currentPrice) qs.set('price', String(currentPrice))
+    fetch(`/api/recommendations?${qs.toString()}`)
+      .then((r) => r.json())
+      .then((b) => {
+        if (b?.success) {
+          setCrossSell(Array.isArray(b.crossSell) ? b.crossSell : [])
+          setUpsell(Array.isArray(b.upsell) ? b.upsell : [])
+        }
+      })
+      .catch(() => {})
+  }, [currentProductId, currentPrice])
 
   if (crossSell.length === 0 && upsell.length === 0) return null
 

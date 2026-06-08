@@ -5,15 +5,26 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Gift, Sparkles, Timer, ArrowRight } from 'lucide-react'
-import { getThankYouRecommendations } from '@/lib/recommendationEngine'
+import type { RecommendedItem } from '@/lib/recommendationEngine'
 
 interface Props {
   purchasedProductIds?: string[]
 }
 
 export function ThankYouRecommendations({ purchasedProductIds = [] }: Props) {
-  const recommendations = getThankYouRecommendations(purchasedProductIds)
+  const [recommendations, setRecommendations] = useState<RecommendedItem[]>([])
   const [timeLeft, setTimeLeft] = useState(48 * 60 * 60) // 48 hours in seconds
+
+  const purchasedKey = purchasedProductIds.join(',')
+  useEffect(() => {
+    const qs = new URLSearchParams({ stage: 'thank_you' })
+    if (purchasedKey) qs.set('cartIds', purchasedKey)
+    fetch(`/api/recommendations?${qs.toString()}`)
+      .then((r) => r.json())
+      .then((b) => { if (b?.success) setRecommendations(Array.isArray(b.items) ? b.items : []) })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [purchasedKey])
 
   // Countdown timer
   useEffect(() => {

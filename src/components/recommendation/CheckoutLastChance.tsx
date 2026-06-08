@@ -3,15 +3,28 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
 import { Clock, Plus, Sparkles } from 'lucide-react'
 import { useCartStore } from '@/stores/cartStore'
-import { getCheckoutRecommendations } from '@/lib/recommendationEngine'
+import type { RecommendedItem } from '@/lib/recommendationEngine'
 
 export function CheckoutLastChance() {
   const { items } = useCartStore()
   const cartProductIds = items.map((i) => i.productId)
   const cartTotal = items.reduce((sum, i) => sum + (i.salePrice ?? i.price) * i.quantity, 0)
-  const recommendations = getCheckoutRecommendations(cartProductIds, cartTotal)
+  const [recommendations, setRecommendations] = useState<RecommendedItem[]>([])
+
+  const cartKey = cartProductIds.join(',')
+  useEffect(() => {
+    const qs = new URLSearchParams({ stage: 'checkout' })
+    if (cartKey) qs.set('cartIds', cartKey)
+    if (cartTotal) qs.set('total', String(cartTotal))
+    fetch(`/api/recommendations?${qs.toString()}`)
+      .then((r) => r.json())
+      .then((b) => { if (b?.success) setRecommendations(Array.isArray(b.items) ? b.items : []) })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartKey])
 
   if (recommendations.length === 0) return null
 

@@ -4,13 +4,20 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { X, Sparkles, Tag, ArrowRight } from 'lucide-react'
-import { getExitIntentRecommendations } from '@/lib/recommendationEngine'
+import type { RecommendedItem } from '@/lib/recommendationEngine'
 
 export function ExitIntentPopup() {
   const [isVisible, setIsVisible] = useState(false)
+  const [recommendations, setRecommendations] = useState<RecommendedItem[]>([])
   const hasShownRef = useRef(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const recommendations = getExitIntentRecommendations()
+
+  useEffect(() => {
+    fetch('/api/recommendations?stage=exit_intent')
+      .then((r) => r.json())
+      .then((b) => { if (b?.success) setRecommendations(Array.isArray(b.items) ? b.items : []) })
+      .catch(() => {})
+  }, [])
 
   const handleMouseLeave = useCallback((e: MouseEvent) => {
     if (e.clientY <= 5 && !hasShownRef.current) {
