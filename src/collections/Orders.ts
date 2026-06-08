@@ -754,6 +754,52 @@ export const Orders: CollectionConfig = {
             console.error('[Orders Hook] totalSold 累加整體失敗:', e)
           }
 
+          // ── 分潤：付款後累加合作夥伴佣金（event-driven；冪等靠 commissionStatus pending→confirmed）──
+          try {
+            const aff = (doc.affiliateInfo as Record<string, unknown> | undefined) || {}
+            const affUserRaw = aff.affiliateUser
+            const affUserId =
+              typeof affUserRaw === 'object' && affUserRaw !== null
+                ? (affUserRaw as { id: unknown }).id
+                : affUserRaw
+            const commission = Number(aff.commissionAmount) || 0
+            if (affUserId && commission > 0 && aff.commissionStatus === 'pending') {
+              const affRes = await payload.find({
+                collection: 'affiliates',
+                where: { user: { equals: affUserId } },
+                limit: 1,
+                depth: 0,
+              })
+              const affDoc = affRes.docs[0] as unknown as Record<string, unknown> | undefined
+              if (affDoc) {
+                await (payload.update as Function)({
+                  collection: 'affiliates',
+                  id: affDoc.id as string | number,
+                  data: {
+                    totalEarnings: (Number(affDoc.totalEarnings) || 0) + commission,
+                    pendingAmount: (Number(affDoc.pendingAmount) || 0) + commission,
+                  },
+                })
+                // 標記已入帳（冪等；nested update 的 paymentStatus 仍 paid→paid 不重觸發本區塊）
+                await (payload.update as Function)({
+                  collection: 'orders',
+                  id: doc.id,
+                  data: {
+                    affiliateInfo: {
+                      referralCode: aff.referralCode,
+                      affiliateUser: affUserId,
+                      commissionRate: aff.commissionRate,
+                      commissionAmount: commission,
+                      commissionStatus: 'confirmed',
+                    },
+                  },
+                })
+              }
+            }
+          } catch (e) {
+            console.error('[Orders Hook] 分潤佣金累加失敗:', e)
+          }
+
           const customerId =
             typeof doc.customer === 'string'
               ? doc.customer

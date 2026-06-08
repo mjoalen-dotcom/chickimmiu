@@ -21,7 +21,23 @@
 | **SMS 簡訊**（channelDispatcher SMS + 會員手機 OTP 驗證）| 簡訊供應商帳號 | 三竹 / Twilio 帳密 | 🔨 寫 env-gated，待帳號 |
 | **Google Ads offline conversion / Customer Match** | dev token 審核 | Google Ads dev token（MCC 申請中）| 待審核（見 memory）|
 
+| **🔴 所有 App cron 目前沒在跑** | GitHub Actions 停權（cron.yml 排程不執行）+ prod crontab 只有每日備份、無排程打 cron endpoint | (A) GitHub 帳號恢復，或 (B) 在 prod crontab 加 `*/10 * * * * curl -H "Authorization: Bearer $CRON_SECRET" .../api/cron/automations` 等 | 端點都在且可用；**只差排程器**。影響：automations / segments / expire-points / streak-decay / 生日 / 排行榜 全沒觸發 |
+
 > 原則：以上一律 **env 有值才啟用，缺值 no-op 不擋現有流程**（沿用 Meta CAPI token 的 pattern）。
+
+---
+
+## ★ 本輪施工進度（2026-06-08，已部署 prod）
+
+**已完成上線（main 8247d35 + 後續）**：
+- ✅ 推薦引擎接真實商品（serverRecommend + /api/recommendations，5 元件改 fetch）— 線上驗過回真商品
+- ✅ totalSold 付款自動累加（Orders hook）
+- ✅ **進銷存模組**：InventoryTransactions（流水）+ PurchaseOrders（進貨單收貨自動入庫）+ StockTakes（盤點自動校正）+ Orders 寫 sale_out 流水 — 端到端驗過
+- ✅ Affiliates 佣金付款自動累加（Orders paid hook → affiliate totalEarnings/pendingAmount，冪等）
+
+**重新稽核發現「已被平行 session 補完」（audit 已過時）**：festival-templates collection 已存在、點數兌換 redeem 已接 `/api/v1/points`、CSP connect.facebook.net 已在 script-src。
+
+**剩餘真正未做（無外部依賴，可續做）**：AI 客服升級真 LLM（Groq，目前關鍵字比對）+ 前台 web chat、推薦人註冊獎勵發放、Coupon 疊加/互斥、blog 分類獨立 collection、Podcast RSS、i18n 前台全面套用、社交遊戲房間結算 settleStyleRoom + 排行榜 top3 bonus（需先解 cron 排程器）。
 
 ---
 
