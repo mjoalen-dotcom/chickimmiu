@@ -1,5 +1,6 @@
 import type { Endpoint, PayloadRequest, RequiredDataFromCollectionSlug } from 'payload'
 import { recordWalletTxn } from '../lib/wallet/server'
+import { grantRegistrationReferralReward } from '../lib/referral/registrationReward'
 
 /**
  * POST /api/users/register
@@ -25,7 +26,7 @@ import { recordWalletTxn } from '../lib/wallet/server'
  *      points → 寫 users.points + PointsTransactions(source:'welcome',type:'earn')
  *      shoppingCredit → 加進 users.shoppingCredit（無對應 audit table）
  *      失敗不擋註冊（best-effort，記 console.error）
- *   7. 不觸發推薦人 referrer 獎勵 points-transaction —— 另案
+ *   7. 觸發推薦註冊獎勵 grantRegistrationReferralReward（雙方購物金；email 驗證 gating；冪等旗標）
  *   8. 不自動產生使用者本人的 referralCode —— 另案
  */
 export const customerRegisterEndpoint: Endpoint = {
@@ -238,6 +239,18 @@ export const customerRegisterEndpoint: Endpoint = {
       } catch (rewardErr) {
         const msg = rewardErr instanceof Error ? rewardErr.message : String(rewardErr)
         console.error('[customerRegister] signup reward failed:', msg)
+      }
+
+      // 推薦註冊獎勵（在 signup reward 之後呼叫 → adjustWallet 以增量入帳，不被絕對值覆蓋）。
+      // helper 內含冪等旗標 + email 驗證 gating：需驗證但尚未驗證時 defer，待首次登入由
+      // Users.afterLogin 補發。best-effort，失敗不擋註冊。
+      if (referredById !== undefined) {
+        try {
+          await grantRegistrationReferralReward(req.payload, newUser.id)
+        } catch (refErr) {
+          const msg = refErr instanceof Error ? refErr.message : String(refErr)
+          console.error('[customerRegister] registration referral reward failed:', msg)
+        }
       }
 
       if (requireVerification) {

@@ -10,6 +10,7 @@ import { repeatPurchaseEndpoint } from '../endpoints/repeatPurchaseAnalytics'
 import { consumerInsightsEndpoint } from '../endpoints/consumerInsights'
 import { shoplineCustomerImportEndpoint } from '../endpoints/shoplineCustomerImport'
 import { generateUniqueReferralCode } from '../lib/referralCode'
+import { grantRegistrationReferralReward } from '../lib/referral/registrationReward'
 
 const userFieldMappings: FieldMapping[] = [
   { key: 'name', label: '姓名' },
@@ -171,6 +172,21 @@ export const Users: CollectionConfig = {
           })
         } catch {
           // ignore
+        }
+      },
+      // 推薦註冊獎勵「先註冊後驗證」補發路徑：能登入即代表已通過 email 驗證
+      // （Payload 擋未驗證登入）。helper 內含冪等旗標 + referredBy / 設定 gating，
+      // 已發放或無推薦人時 early-return。失敗不擋登入。
+      async ({ req, user }) => {
+        try {
+          const u = user as unknown as Record<string, unknown>
+          if (!u?.referredBy || u.registrationReferralRewarded === true) return
+          await grantRegistrationReferralReward(req.payload, u.id as string | number)
+        } catch (e) {
+          console.error(
+            '[users.afterLogin] registration referral reward failed:',
+            e instanceof Error ? e.message : String(e),
+          )
         }
       },
     ],
@@ -687,6 +703,21 @@ export const Users: CollectionConfig = {
                   admin: { width: '50%', description: '註冊時使用的推薦碼所屬會員' },
                 },
               ],
+            },
+            {
+              name: 'registrationReferralRewarded',
+              label: '推薦註冊獎勵已發放',
+              type: 'checkbox',
+              defaultValue: false,
+              access: {
+                // 僅 admin 可手動改；系統發放走 overrideAccess 不受此限
+                update: ({ req }) =>
+                  (req.user as { role?: string } | undefined)?.role === 'admin',
+              },
+              admin: {
+                readOnly: true,
+                description: '防止重複發放推薦註冊獎勵；由系統自動標記',
+              },
             },
           ],
         },
