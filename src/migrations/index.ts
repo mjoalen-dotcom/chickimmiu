@@ -68,6 +68,8 @@ import * as migration_20260608_160000_add_automation_logs_resume_at from './2026
 import * as migration_20260608_170000_add_blog_categories from './20260608_170000_add_blog_categories';
 import * as migration_20260609_100000_add_coupon_stacking from './20260609_100000_add_coupon_stacking';
 import * as migration_20260609_120000_fix_competitor_price_columns from './20260609_120000_fix_competitor_price_columns';
+import * as migration_20260609_140000_add_email_templates from './20260609_140000_add_email_templates';
+import * as migration_20260609_150000_add_order_delivered_email_toggle from './20260609_150000_add_order_delivered_email_toggle';
 
 export const migrations = [
   {
@@ -419,5 +421,15 @@ export const migrations = [
     up: migration_20260609_120000_fix_competitor_price_columns.up,
     down: migration_20260609_120000_fix_competitor_price_columns.down,
     name: '20260609_120000_fix_competitor_price_columns',
+  },
+  {
+    up: migration_20260609_140000_add_email_templates.up,
+    down: migration_20260609_140000_add_email_templates.down,
+    name: '20260609_140000_add_email_templates',
+  },
+  {
+    up: migration_20260609_150000_add_order_delivered_email_toggle.up,
+    down: migration_20260609_150000_add_order_delivered_email_toggle.down,
+    name: '20260609_150000_add_order_delivered_email_toggle',
   },
 ];

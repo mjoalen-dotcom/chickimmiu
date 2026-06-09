@@ -424,9 +424,33 @@ export async function executeStep(
       }
 
       case 'send_email': {
-        // TODO: 整合 Email Service (Resend / SES)
-        console.log(`[AutomationEngine] Email → ${userId}: template=${step.templateKey}`)
-        return true
+        // templateKey 對應 message-templates id → generatePersonalizedContent 套個人化 +
+        // {{變數}}；無 templateKey 則用 step.content。透過 channelDispatcher.sendMessage
+        // 真寄（內含免打擾時段 + 行銷退訂 emailSubscribed gate；缺 RESEND_API_KEY
+        // 走 console-fallback 不誤寄）。dynamic import 避免載入期模組循環。
+        const { sendMessage } = await import('../marketing/channelDispatcher')
+        let subject = 'CHIC KIM & MIU'
+        let body = step.content || ''
+        const tk = (step.templateKey || '').trim()
+        if (tk) {
+          try {
+            const { generatePersonalizedContent } = await import('../marketing/personalizedContent')
+            const pc = await generatePersonalizedContent(tk, userId)
+            subject = pc.subject || subject
+            body = pc.content || body
+          } catch (e) {
+            console.warn(
+              `[AutomationEngine] send_email 載模板 ${tk} 失敗，改用 step.content:`,
+              e instanceof Error ? e.message : String(e),
+            )
+          }
+        }
+        if (!body) {
+          console.warn(`[AutomationEngine] send_email 無內容（userId=${userId}），跳過`)
+          return false
+        }
+        const r = await sendMessage(userId, 'email', { subject, body, htmlBody: body })
+        return r.success
       }
 
       case 'send_sms': {

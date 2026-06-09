@@ -16,6 +16,7 @@
 
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { emailWrapper } from '../email/_shared'
 
 // ══════════════════════════════════════════════════════════
 // Types
@@ -225,7 +226,6 @@ async function sendEmail(
   htmlBody: string,
 ): Promise<SendResult> {
   const payload = await getPayload({ config })
-  const settings = await loadCRMSettings()
 
   // 取得會員的 Email
   const userDoc = await payload.findByID({ collection: 'users', id: userId })
@@ -240,24 +240,33 @@ async function sendEmail(
     }
   }
 
-  const senderName = settings.emailSenderName ?? 'CHIC KIM & MIU'
-  const senderAddress = settings.emailSenderAddress ?? 'noreply@chickimmiu.com'
+  // 行銷信尊重退訂（交易信走各自 sender，不經此處）。
+  const sub = user.subscriptionStatus as { emailSubscribed?: boolean } | undefined
+  if (sub?.emailSubscribed === false) {
+    console.log(`[Marketing] 會員 ${userId} 已退訂行銷 email，跳過`)
+    return { success: false, channel: 'email', error: '會員已退訂行銷 email' }
+  }
 
-  // TODO: 整合 Email Service（Resend / SES）
-  // await resend.emails.send({
-  //   from: `${senderName} <${senderAddress}>`,
-  //   to: email,
-  //   subject,
-  //   html: htmlBody,
-  // })
+  // content 已是完整 HTML 文件 → 直送；否則用品牌外框包（純文字 / 片段皆可）。
+  const looksFull = /<(?:!doctype|html|body)\b/i.test(htmlBody)
+  const html = looksFull
+    ? htmlBody
+    : emailWrapper({ headline: subject || 'CHIC KIM & MIU', content: htmlBody })
+
+  try {
+    // payload.sendEmail 透過已掛的 Resend adapter 寄出；無 RESEND_API_KEY 時
+    // payload.config 的 console-fallback 只 log 不真寄、不 throw。
+    await payload.sendEmail({ to: email, subject, html })
+  } catch (err) {
+    return {
+      success: false,
+      channel: 'email',
+      error: err instanceof Error ? err.message : String(err),
+    }
+  }
 
   const messageId = generateMessageId('email')
-
-  console.log(
-    `[Marketing] Email 發送 → ${email}, ` +
-    `主旨: ${subject}, ` +
-    `寄件者: ${senderName} <${senderAddress}>`,
-  )
+  console.log(`[Marketing] Email 已送出 → ${email}, 主旨: ${subject}`)
 
   return {
     success: true,
@@ -431,11 +440,30 @@ async function sendEDM(
     }
   }
 
-  // TODO: 整合 EDM 服務（如 Mailchimp Transactional / SendGrid）
+  // EDM = 行銷電子報，尊重退訂。
+  const sub = user.subscriptionStatus as { emailSubscribed?: boolean } | undefined
+  if (sub?.emailSubscribed === false) {
+    console.log(`[Marketing] 會員 ${userId} 已退訂行銷 email，跳過 EDM`)
+    return { success: false, channel: 'edm', error: '會員已退訂行銷 email' }
+  }
+
+  const looksFull = /<(?:!doctype|html|body)\b/i.test(htmlBody)
+  const html = looksFull
+    ? htmlBody
+    : emailWrapper({ headline: subject || 'CHIC KIM & MIU', content: htmlBody })
+
+  try {
+    await payload.sendEmail({ to: email, subject, html })
+  } catch (err) {
+    return {
+      success: false,
+      channel: 'edm',
+      error: err instanceof Error ? err.message : String(err),
+    }
+  }
 
   const messageId = generateMessageId('edm')
-
-  console.log(`[Marketing] EDM 發送 → ${email}, 主旨: ${subject}`)
+  console.log(`[Marketing] EDM 已送出 → ${email}, 主旨: ${subject}`)
 
   return {
     success: true,

@@ -22,6 +22,7 @@ import React, { useEffect } from 'react'
  * 目前條目（GraphQL Playground 已下架，2026-05-11）：
  *   - AI 部落格草稿產生器 (/admin/tools/blog-ai-draft)
  *   - 一鍵刪除未上架商品 (/admin/tools/bulk-delete-products)
+ *   - Email 模板預覽 / 測試寄送 (/admin/tools/email-templates)
  *   - REST API 文件 (/admin/api-docs)
  *
  * 對應 src/payload.config.ts admin.components.afterNavLinks。
@@ -51,6 +52,11 @@ const items: Item[] = [
     href: '/admin/tools/whitehat-marketing',
     label: '白帽自動化行銷中台',
     id: 'nav-ckmu-whitehat-marketing',
+  },
+  {
+    href: '/admin/tools/email-templates',
+    label: '✉️ Email 模板預覽 / 測試',
+    id: 'nav-ckmu-email-templates',
   },
   {
     href: '/admin/api-docs',

@@ -1,6 +1,7 @@
 import type { Endpoint, PayloadRequest, RequiredDataFromCollectionSlug } from 'payload'
 import { recordWalletTxn } from '../lib/wallet/server'
 import { grantRegistrationReferralReward } from '../lib/referral/registrationReward'
+import { sendWelcomeEmail } from '../lib/email/welcome'
 
 /**
  * POST /api/users/register
@@ -252,6 +253,15 @@ export const customerRegisterEndpoint: Endpoint = {
           console.error('[customerRegister] registration referral reward failed:', msg)
         }
       }
+
+      // 會員歡迎信（best-effort，fire-and-forget，不擋註冊；兩種驗證分支都寄）。
+      // 缺 RESEND_API_KEY 時走 console-fallback，不會誤寄。
+      sendWelcomeEmail(req.payload, { id: newUser.id, email, name }).catch((e) =>
+        console.error(
+          '[customerRegister] welcome email failed:',
+          e instanceof Error ? e.message : String(e),
+        ),
+      )
 
       if (requireVerification) {
         // 不 auto-login（Payload 會因 _verified=false 擋 login）

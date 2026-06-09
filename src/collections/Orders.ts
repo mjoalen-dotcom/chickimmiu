@@ -8,6 +8,7 @@ import { orderCreditScoreHook } from '../lib/crm/creditScoreHooks'
 import { autoIssueInvoiceForOrder } from '../lib/invoice/ecpayInvoiceEngine'
 import { sendOrderConfirmationEmail } from '../lib/email/orderConfirmation'
 import { sendOrderShippedEmail } from '../lib/email/orderShipped'
+import { sendOrderDeliveredEmail } from '../lib/email/orderDelivered'
 import { sendOrderCancelledEmail } from '../lib/email/orderCancelled'
 import { sendOrderRefundedEmail } from '../lib/email/orderRefunded'
 import { sendAdminNewOrderAlert } from '../lib/email/adminNewOrderAlert'
@@ -1113,6 +1114,23 @@ export const Orders: CollectionConfig = {
         }
         sendOrderShippedEmail(req.payload, doc as unknown as Record<string, unknown>).catch(
           (err) => console.error('[Orders Hook] 出貨通知信寄送失敗:', err),
+        )
+      },
+      // ── status → delivered：寄送達通知信（OrderSettings.sendDeliveredEmail，預設寄） ──
+      async ({ doc, previousDoc, req }) => {
+        const status = doc.status as string
+        const prevStatus = previousDoc?.status as string | undefined
+        if (status !== 'delivered' || prevStatus === 'delivered') return
+        try {
+          const settings = (await req.payload.findGlobal({
+            slug: 'order-settings',
+          })) as unknown as { notifications?: { sendDeliveredEmail?: boolean } }
+          if (settings?.notifications?.sendDeliveredEmail === false) return
+        } catch {
+          // fall through — 預設寄
+        }
+        sendOrderDeliveredEmail(req.payload, doc as unknown as Record<string, unknown>).catch(
+          (err) => console.error('[Orders Hook] 送達通知信寄送失敗:', err),
         )
       },
       // ── status → cancelled：寄取消通知信（無 toggle，一律寄） ──

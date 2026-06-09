@@ -7,6 +7,7 @@ import {
   orderAccountUrl,
   type OrderItem,
 } from './_shared'
+import { renderEmailFromTemplate } from './renderFromTemplate'
 
 /**
  * 訂單取消通知信（status → cancelled 時觸發，無 toggle 控制 — 取消屬重大事件一律寄）
@@ -63,9 +64,24 @@ export async function sendOrderCancelledEmail(
       <a href="${escapeHtml(orderAccountUrl(orderId))}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">查看訂單</a>
     </div>`
 
+  // 後台模板優先；無 / 停用 / 出錯 → fallback 上面的 hardcoded content
+  const orderButton = `<div style="text-align:center;margin:24px 0 8px"><a href="${escapeHtml(orderAccountUrl(orderId))}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">查看訂單</a></div>`
+  const cancelReasonBlock = cancelReason
+    ? `<div style="background:#fafafa;padding:12px 16px;border-radius:8px;margin:16px 0;font-size:13px;color:#666"><strong>取消原因：</strong> ${escapeHtml(cancelReason)}</div>`
+    : ''
+  const tpl = await renderEmailFromTemplate(payload, 'order_cancelled', {
+    customerName: escapeHtml(name || '會員'),
+    orderNumber: escapeHtml(orderNumber),
+    itemCount: String(itemCount),
+    total: ntd(total),
+    cancelReasonBlock,
+    refundNoteBlock: refundNote,
+    orderButton,
+  })
+
   await payload.sendEmail({
     to: email,
-    subject,
-    html: emailWrapper({ headline: '訂單已取消', preheader, content }),
+    subject: tpl?.subject ?? subject,
+    html: tpl?.html ?? emailWrapper({ headline: '訂單已取消', preheader, content }),
   })
 }

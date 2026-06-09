@@ -117,6 +117,12 @@ export const OrderSettings: GlobalConfig = {
           defaultValue: true,
         },
         {
+          name: 'sendDeliveredEmail',
+          label: '送達通知信（寄給顧客）',
+          type: 'checkbox',
+          defaultValue: true,
+        },
+        {
           name: 'sendAdminNewOrderAlert',
           label: '新訂單 admin 通知信',
           type: 'checkbox',

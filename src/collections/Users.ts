@@ -1,6 +1,8 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, PayloadRequest } from 'payload'
 
 import { isAdmin, isAdminFieldLevel } from '../access/isAdmin'
+import { escapeHtml } from '../lib/email/_shared'
+import { renderEmailFromTemplate } from '../lib/email/renderFromTemplate'
 import { isAdminOrSelf } from '../access/isAdminOrSelf'
 import { createExportEndpoint, createImportEndpoint, type FieldMapping } from '../endpoints/importExport'
 import { customerRegisterEndpoint } from '../endpoints/customerRegister'
@@ -72,10 +74,29 @@ export const Users: CollectionConfig = {
     // 前端 reset URL = `${NEXT_PUBLIC_SITE_URL}/reset-password?token=<token>`
     forgotPassword: {
       generateEmailSubject: () => 'CHIC KIM & MIU｜重設密碼請求',
-      generateEmailHTML: ({ token, user } = {} as { token?: string; user?: Record<string, unknown> }) => {
+      // async：後台模板（eventKey auth_forgot_password）優先；無 / 停用 / 出錯 / 無 payload
+      // → fallback 內建 inline HTML。token URL 以 {{resetUrl}} 帶入。fallback 要穩（在 Payload
+      // auth 流程內跑）。payload 用 args.req.payload（不 import @payload-config，避免模組循環）。
+      generateEmailHTML: async (
+        args = {} as { token?: string; user?: Record<string, unknown>; req?: PayloadRequest },
+      ) => {
+        const token = args?.token
+        const user = args?.user
+        const reqPayload = args?.req?.payload
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com'
         const resetUrl = `${siteUrl}/reset-password?token=${token || ''}`
         const name = (user?.name as string) || (user?.email as string) || '會員'
+        if (reqPayload) {
+          try {
+            const r = await renderEmailFromTemplate(reqPayload, 'auth_forgot_password', {
+              customerName: escapeHtml(name),
+              resetUrl,
+            })
+            if (r) return r.html
+          } catch (e) {
+            console.error('[Users.forgotPassword] 模板渲染失敗，fallback inline:', e)
+          }
+        }
         return `<!DOCTYPE html>
 <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang TC','Microsoft JhengHei',sans-serif;background:#FDF8F3;padding:24px;color:#2C2C2C">
   <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #E5DED4;border-radius:14px;padding:28px">
@@ -96,11 +117,28 @@ export const Users: CollectionConfig = {
     // 前端 verify URL = `${NEXT_PUBLIC_SITE_URL}/verify-email?token=<token>`
     verify: {
       generateEmailSubject: () => 'CHIC KIM & MIU｜請驗證您的 Email',
-      generateEmailHTML: ({ token, user }) => {
+      // async：後台模板（eventKey auth_verify）優先；無 / 停用 / 出錯 / 無 payload → fallback
+      // 內建 inline HTML。token URL 以 {{verifyUrl}} 帶入。
+      generateEmailHTML: async (
+        args = {} as { token?: string; user?: unknown; req?: PayloadRequest },
+      ) => {
+        const token = args?.token
+        const reqPayload = args?.req?.payload
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com'
         const verifyUrl = `${siteUrl}/verify-email?token=${token || ''}`
-        const u = user as Record<string, unknown> | undefined
+        const u = args?.user as Record<string, unknown> | undefined
         const name = (u?.name as string) || (u?.email as string) || '會員'
+        if (reqPayload) {
+          try {
+            const r = await renderEmailFromTemplate(reqPayload, 'auth_verify', {
+              customerName: escapeHtml(name),
+              verifyUrl,
+            })
+            if (r) return r.html
+          } catch (e) {
+            console.error('[Users.verify] 模板渲染失敗，fallback inline:', e)
+          }
+        }
         return `<!DOCTYPE html>
 <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang TC','Microsoft JhengHei',sans-serif;background:#FDF8F3;padding:24px;color:#2C2C2C">
   <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #E5DED4;border-radius:14px;padding:28px">

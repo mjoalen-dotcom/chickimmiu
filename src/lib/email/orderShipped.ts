@@ -11,6 +11,7 @@ import {
   type ShippingAddress,
   type ShippingMethod,
 } from './_shared'
+import { renderEmailFromTemplate } from './renderFromTemplate'
 
 /**
  * 出貨通知信（status → shipped 時觸發；讀 OrderSettings.notifications.sendShippedEmail）
@@ -60,9 +61,21 @@ export async function sendOrderShippedEmail(
       若商品有任何損壞或瑕疵，請在簽收後 7 日內透過「我的帳戶 &gt; 我的訂單」申請退換貨。
     </p>`
 
+  // 後台模板優先；無 / 停用 / 出錯 → fallback 上面的 hardcoded content
+  const orderButton = `<div style="text-align:center;margin:24px 0 8px"><a href="${escapeHtml(orderAccountUrl(orderId))}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">查看訂單</a></div>`
+  const tpl = await renderEmailFromTemplate(payload, 'order_shipped', {
+    customerName: escapeHtml(name || '會員'),
+    orderNumber: escapeHtml(orderNumber),
+    itemCount: String(itemCount),
+    total: ntd(total),
+    trackingBlock: renderTracking(shippingMethod),
+    addressBlock: renderAddress(shippingAddress, shippingMethod),
+    orderButton,
+  })
+
   await payload.sendEmail({
     to: email,
-    subject,
-    html: emailWrapper({ headline: '您的訂單已出貨', preheader, content }),
+    subject: tpl?.subject ?? subject,
+    html: tpl?.html ?? emailWrapper({ headline: '您的訂單已出貨', preheader, content }),
   })
 }

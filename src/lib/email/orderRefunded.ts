@@ -6,6 +6,7 @@ import {
   ntd,
   orderAccountUrl,
 } from './_shared'
+import { renderEmailFromTemplate } from './renderFromTemplate'
 
 /**
  * 退款通知信（status → refunded 時觸發）
@@ -69,9 +70,19 @@ export async function sendOrderRefundedEmail(
       <a href="${escapeHtml(orderAccountUrl(orderId))}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">查看訂單</a>
     </div>`
 
+  // 後台模板優先；無 / 停用 / 出錯 → fallback 上面的 hardcoded content
+  const orderButton = `<div style="text-align:center;margin:24px 0 8px"><a href="${escapeHtml(orderAccountUrl(orderId))}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">查看訂單</a></div>`
+  const tpl = await renderEmailFromTemplate(payload, 'order_refunded', {
+    customerName: escapeHtml(name || '會員'),
+    orderNumber: escapeHtml(orderNumber),
+    refundAmount: ntd(refundAmount),
+    refundTarget: escapeHtml(refundTarget),
+    orderButton,
+  })
+
   await payload.sendEmail({
     to: email,
-    subject,
-    html: emailWrapper({ headline: '退款已處理', preheader, content }),
+    subject: tpl?.subject ?? subject,
+    html: tpl?.html ?? emailWrapper({ headline: '退款已處理', preheader, content }),
   })
 }
