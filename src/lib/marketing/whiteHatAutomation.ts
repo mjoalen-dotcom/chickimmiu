@@ -1,3 +1,5 @@
+import { createSign } from 'node:crypto'
+
 import type { Where } from 'payload'
 
 import { markdownToBasicLexical } from '@/lib/blog/aiDraft'
@@ -285,7 +287,7 @@ export async function getWhiteHatDashboard(payload: PayloadLike) {
       contentDrafts: drafts.totalDocs,
       procurementRecords: competitors.totalDocs,
       lifecycleEmailTemplates: whitehatTemplates.length,
-      gscConfigured: Boolean(process.env.GSC_ACCESS_TOKEN),
+      gscConfigured: Boolean(process.env.GSC_ACCESS_TOKEN || process.env.GSC_SERVICE_ACCOUNT_JSON),
       groqConfigured: Boolean(process.env.GROQ_API_KEY),
     },
     operations: summary,
@@ -360,10 +362,135 @@ async function ensureCoreMarketingJourneys(payload: PayloadLike) {
   return { created, updated }
 }
 
+interface ServiceAccountKey {
+  client_email: string
+  private_key: string
+  token_uri?: string
+}
+
+interface GscAuthResult {
+  token: string | null
+  method: 'static_token' | 'service_account' | 'none'
+  error?: string
+}
+
+function base64url(input: Buffer | string): string {
+  return Buffer.from(input)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+}
+
+function parseServiceAccount(raw: string): ServiceAccountKey | null {
+  try {
+    const trimmed = raw.trim()
+    // Accept either raw JSON or a base64-encoded JSON blob (easier to store in env).
+    const text = trimmed.startsWith('{') ? trimmed : Buffer.from(trimmed, 'base64').toString('utf8')
+    const json = JSON.parse(text) as Partial<ServiceAccountKey>
+    if (typeof json.client_email === 'string' && typeof json.private_key === 'string') {
+      return { client_email: json.client_email, private_key: json.private_key, token_uri: json.token_uri }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Mint a short-lived (1h) GSC access token from a service-account key using a
+ * self-signed JWT (RS256) exchanged at Google's OAuth token endpoint. This is
+ * the durable, cron-safe auth path — unlike a raw GSC_ACCESS_TOKEN which Google
+ * expires after ~1 hour and is therefore useless for scheduled runs.
+ *
+ * Setup: GCP service account + Search Console API enabled, and the SA's
+ * client_email added as a user on the GSC property (read access is enough).
+ */
+async function mintGscAccessTokenFromServiceAccount(sa: ServiceAccountKey): Promise<string | null> {
+  const tokenUri = sa.token_uri || 'https://oauth2.googleapis.com/token'
+  const now = Math.floor(Date.now() / 1000)
+  const header = base64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
+  const claims = base64url(
+    JSON.stringify({
+      iss: sa.client_email,
+      scope: 'https://www.googleapis.com/auth/webmasters.readonly',
+      aud: tokenUri,
+      iat: now,
+      exp: now + 3600,
+    }),
+  )
+  const signingInput = `${header}.${claims}`
+  const signer = createSign('RSA-SHA256')
+  signer.update(signingInput)
+  signer.end()
+  // private_key parsed from JSON already has real newlines; guard the case where
+  // it was stored with literal \n escapes outside of JSON.
+  const privateKey = sa.private_key.includes('\\n')
+    ? sa.private_key.replace(/\\n/g, '\n')
+    : sa.private_key
+  const assertion = `${signingInput}.${base64url(signer.sign(privateKey))}`
+
+  const res = await fetch(tokenUri, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion,
+    }),
+    signal: AbortSignal.timeout(15_000),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`token endpoint HTTP ${res.status}: ${text.slice(0, 200)}`)
+  }
+  const json = (await res.json()) as { access_token?: string }
+  return json.access_token ?? null
+}
+
+/**
+ * Resolve a usable GSC access token. Priority:
+ *  1. GSC_ACCESS_TOKEN (static bearer — for manual/one-off testing only; expires hourly)
+ *  2. GSC_SERVICE_ACCOUNT_JSON (raw or base64 JSON — durable, used by cron)
+ */
+async function resolveGscAccessToken(): Promise<GscAuthResult> {
+  if (process.env.GSC_ACCESS_TOKEN) {
+    return { token: process.env.GSC_ACCESS_TOKEN, method: 'static_token' }
+  }
+  const saRaw = process.env.GSC_SERVICE_ACCOUNT_JSON
+  if (saRaw) {
+    const sa = parseServiceAccount(saRaw)
+    if (!sa) {
+      return { token: null, method: 'service_account', error: 'GSC_SERVICE_ACCOUNT_JSON 解析失敗（需 raw JSON 或 base64 JSON，含 client_email + private_key）' }
+    }
+    try {
+      const token = await mintGscAccessTokenFromServiceAccount(sa)
+      if (!token) return { token: null, method: 'service_account', error: 'token 端點未回傳 access_token' }
+      return { token, method: 'service_account' }
+    } catch (err) {
+      return {
+        token: null,
+        method: 'service_account',
+        error: `換 token 失敗（確認 Search Console API 已啟用 + SA email 已加進 GSC property）：${err instanceof Error ? err.message : String(err)}`,
+      }
+    }
+  }
+  return { token: null, method: 'none' }
+}
+
 async function importSearchConsoleKeywords(payload: PayloadLike): Promise<SearchConsoleImportResult> {
-  const token = process.env.GSC_ACCESS_TOKEN
+  const auth = await resolveGscAccessToken()
   const siteUrl = process.env.GSC_SITE_URL || SITE_URL + '/'
-  if (!token) return { configured: false, imported: 0, updated: 0, skipped: 0 }
+  if (!auth.token) {
+    // method !== 'none' means credentials were provided but failed → surface the error.
+    return {
+      configured: auth.method !== 'none',
+      imported: 0,
+      updated: 0,
+      skipped: 0,
+      ...(auth.error ? { error: auth.error } : {}),
+    }
+  }
+  const token = auth.token
 
   const endDate = dateOnly(daysAgo(3))
   const startDate = dateOnly(daysAgo(31))
@@ -903,7 +1030,7 @@ async function buildOperationalSummary(payload: PayloadLike): Promise<Operationa
     })),
     promotionCandidates,
     engineeringTasks: [
-      process.env.GSC_ACCESS_TOKEN ? 'GSC 已設定；可檢查 SEO 回寫結果與 CTR 變化。' : '設定 GSC_ACCESS_TOKEN + GSC_SITE_URL，啟用 Search Console 關鍵字匯入。',
+      process.env.GSC_ACCESS_TOKEN || process.env.GSC_SERVICE_ACCOUNT_JSON ? 'GSC 已設定；可檢查 SEO 回寫結果與 CTR 變化。' : '設定 GSC_SERVICE_ACCOUNT_JSON + GSC_SITE_URL，啟用 Search Console 關鍵字匯入。',
       '確認 /api/cron/whitehat-marketing 已加入 GitHub Actions 並有 CRON_SECRET。',
       '若要自動發布 Reels/Shorts，下一步需接 Meta / YouTube 官方發布 API 與審核佇列。',
       '將低庫存提醒串到採購或內部 Email，只寄給 staff，不寄給一般會員。',
