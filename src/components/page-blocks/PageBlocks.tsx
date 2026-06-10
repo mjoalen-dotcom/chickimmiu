@@ -1,5 +1,20 @@
+/**
+ * 🔒 PROTECTED FILE — touches affect /pages/ckmu-on-show user 已抱怨 2 次。
+ *
+ * 這個檔案含 3 個關鍵設計：
+ *   1. MagazineCover 的 'banner' layout（image-only，self-contained 行銷圖用）
+ *   2. CelebrityGrid async server component（從 celebrity-features collection 讀）
+ *   3. SectionRenderer 的 'celebrity-grid' case
+ *
+ * 如果這 3 個任一被 wipe 掉（git reset --hard origin/main），CKMU ON SHOW
+ * 整頁壞掉。從 hetzner branch `claude/funny-haibt-a3b35a` 還原。
+ *
+ * 部署這個檔案前必走 `/root/deploy-ckmu-local.sh`（SKIP_GIT_RESET=1）。
+ */
 import Link from 'next/link'
 import Image from 'next/image'
+import { getPayload } from 'payload'
+import config from '@payload-config'
 import { ArrowRight, Instagram, Youtube, Facebook, MessageCircle, Globe, Music2 } from 'lucide-react'
 import { RichText } from '@payloadcms/richtext-lexical/react'
 import type { SerializedEditorState } from '@payloadcms/richtext-lexical/lexical'
@@ -20,7 +35,10 @@ import { CountdownTimer } from './CountdownTimer'
  */
 
 export type PageBlock = Record<string, unknown> & { blockType: string }
-type MediaDoc = { id?: string | number; url?: string; alt?: string } | null | undefined
+type MediaDoc =
+  | { id?: string | number; url?: string; alt?: string; width?: number; height?: number }
+  | null
+  | undefined
 type ProductDoc = Record<string, unknown> & { id: string | number; slug: string }
 
 export function PageBlocks({ blocks }: { blocks: PageBlock[] }) {
@@ -45,6 +63,8 @@ function SectionRenderer({ section }: { section: PageBlock }) {
       return <EditorialSpread section={section} />
     case 'lookbook-grid':
       return <LookbookGrid section={section} />
+    case 'celebrity-grid':
+      return <CelebrityGrid section={section} />
     case 'kol-persona':
       return <KOLPersona section={section} />
     case 'rich-content':
@@ -119,9 +139,50 @@ function HeroBanner({ section }: { section: PageBlock }) {
 
 function MagazineCover({ section }: { section: PageBlock }) {
   const image = section.image as MediaDoc
-  const layout = (section.layout as 'left' | 'center' | 'bottom') || 'center'
+  const layout =
+    (section.layout as
+      | 'banner'
+      | 'left'
+      | 'center'
+      | 'bottom'
+      | 'split-left'
+      | 'split-right') || 'banner'
   const theme = (section.theme as 'light' | 'dark' | 'gold') || 'light'
   const cornerLabels = (section.cornerLabels as Array<{ text: string }>) || []
+  const objectPos =
+    (section.objectPosition as 'center' | 'top' | 'bottom' | 'left' | 'right') || 'center'
+
+  /* ════════════════════════════════════════════════════════════════
+     BANNER layout — 圖即內容（圖本身含品牌+文字+標語）
+     圖置中、max-w、保留原 aspect、不疊任何文字
+     ════════════════════════════════════════════════════════════════ */
+  if (layout === 'banner') {
+    const imgW = image?.width || 1296
+    const imgH = image?.height || 1620
+    return (
+      <section className="pt-6 md:pt-10 pb-2 md:pb-4 bg-cream-50">
+        <div className="container max-w-3xl">
+          {image?.url ? (
+            <div className="relative rounded-2xl overflow-hidden shadow-lg border border-cream-200 bg-white">
+              <Image
+                src={normalizeMediaUrl(image.url) || image.url}
+                alt={image.alt || (section.heading as string) || 'CKMU ON SHOW'}
+                width={imgW}
+                height={imgH}
+                priority
+                className="w-full h-auto block"
+                sizes="(max-width: 768px) 100vw, 768px"
+              />
+            </div>
+          ) : (
+            <div className="aspect-[3/4] rounded-2xl bg-cream-100 border border-cream-200 flex items-center justify-center text-sm text-muted-foreground">
+              （後台未上傳主圖）
+            </div>
+          )}
+        </div>
+      </section>
+    )
+  }
 
   const themeBg =
     theme === 'dark'
@@ -132,6 +193,79 @@ function MagazineCover({ section }: { section: PageBlock }) {
   const textColor = theme === 'dark' ? 'text-cream-50' : 'text-foreground'
   const subColor = theme === 'dark' ? 'text-cream-200/70' : 'text-muted-foreground'
 
+  /* ════════════════════════════════════════════════════════════════
+     SPLIT layout — image 完整呈現 + 文字另一側（含人臉建議用此）
+     resp: mobile = 圖在上，文 在下；desktop = 左右並排
+     ════════════════════════════════════════════════════════════════ */
+  if (layout === 'split-left' || layout === 'split-right') {
+    const imageOrder = layout === 'split-right' ? 'md:order-2' : ''
+    return (
+      <section className={`py-10 md:py-14 ${themeBg}`}>
+        <div className="container max-w-6xl">
+          <div className="grid md:grid-cols-2 gap-6 md:gap-12 items-center">
+            {/* Image side — 完整呈現，不裁切焦點 */}
+            <div
+              className={`relative aspect-[4/5] md:aspect-[3/4] rounded-2xl overflow-hidden bg-cream-100 border border-cream-200 shadow-md ${imageOrder}`}
+            >
+              {image?.url ? (
+                <Image
+                  src={normalizeMediaUrl(image.url) || image.url}
+                  alt={image.alt || (section.heading as string) || ''}
+                  fill
+                  priority
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+                  （後台未上傳主圖）
+                </div>
+              )}
+            </div>
+
+            {/* Text side — 不疊在圖上 */}
+            <div className="px-2 md:px-4">
+              {Boolean(section.issueLabel) && (
+                <p
+                  className={`text-[10px] md:text-xs tracking-[0.4em] uppercase mb-4 ${
+                    theme === 'dark' ? 'text-gold-300' : 'text-gold-600'
+                  }`}
+                >
+                  {section.issueLabel as string}
+                </p>
+              )}
+              <h2
+                className={`font-serif leading-[1.05] tracking-tight mb-4 md:mb-5 text-3xl md:text-4xl lg:text-5xl ${textColor}`}
+              >
+                {section.heading as string}
+              </h2>
+              {Boolean(section.subheading) && (
+                <p className={`text-sm md:text-base leading-relaxed ${subColor}`}>
+                  {section.subheading as string}
+                </p>
+              )}
+              {cornerLabels.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-5">
+                  {cornerLabels.map((lbl, i) => (
+                    <span
+                      key={i}
+                      className="text-[10px] tracking-[0.2em] uppercase px-2.5 py-1 bg-foreground/5 border border-foreground/10 text-foreground/70 rounded-full"
+                    >
+                      {lbl.text}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     COVER layouts — 圖片全寬覆蓋（文字疊在圖上）
+     ════════════════════════════════════════════════════════════════ */
   const alignClass =
     layout === 'left'
       ? 'items-start text-left'
@@ -139,49 +273,48 @@ function MagazineCover({ section }: { section: PageBlock }) {
         ? 'items-center text-center justify-end'
         : 'items-center text-center justify-center'
 
+  const objectPositionClass = {
+    center: 'object-center',
+    top: 'object-top',
+    bottom: 'object-bottom',
+    left: 'object-left',
+    right: 'object-right',
+  }[objectPos]
+
   return (
-    <section className={`relative min-h-[80vh] flex flex-col ${alignClass} ${themeBg} overflow-hidden`}>
+    <section className={`relative min-h-[32vh] md:min-h-[40vh] flex flex-col ${alignClass} ${themeBg} overflow-hidden`}>
       {image?.url && (
         <Image
           src={normalizeMediaUrl(image.url) || image.url}
           alt={image.alt || (section.heading as string) || ''}
           fill
           priority
-          className="object-cover opacity-90"
+          className={`object-cover ${objectPositionClass}`}
         />
+      )}
+      {image?.url && (
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/25 to-black/55 z-[1]" />
       )}
       {Boolean(section.issueLabel) && (
         <div
-          className={`absolute top-6 ${layout === 'left' ? 'left-6' : 'right-6'} z-10 text-xs tracking-[0.3em] uppercase ${textColor} ${image?.url ? 'bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm text-white' : ''}`}
+          className={`absolute top-5 left-1/2 -translate-x-1/2 z-10 text-[10px] tracking-[0.4em] uppercase ${
+            image?.url
+              ? 'text-white/90 bg-white/10 border border-white/20 px-3 py-1 rounded-full backdrop-blur-md'
+              : 'text-foreground/70 bg-foreground/5 border border-foreground/10 px-3 py-1 rounded-full'
+          }`}
         >
           {section.issueLabel as string}
         </div>
       )}
-      {cornerLabels.length > 0 && (
-        <div className={`absolute ${layout === 'left' ? 'top-6 right-6' : 'top-6 left-6'} z-10 flex flex-col gap-1.5`}>
-          {cornerLabels.map((lbl, i) => (
-            <span
-              key={i}
-              className={`text-[10px] tracking-[0.2em] uppercase px-2 py-1 ${image?.url ? 'bg-white/80 text-foreground' : 'bg-foreground/10 text-foreground'} rounded`}
-            >
-              {lbl.text}
-            </span>
-          ))}
-        </div>
-      )}
-      <div className={`container relative z-10 py-20 md:py-32 ${layout === 'left' ? 'pl-8 md:pl-16' : ''}`}>
+      <div className={`container relative z-10 py-8 md:py-12 ${layout === 'left' ? 'pl-8 md:pl-16' : ''}`}>
         <h2
-          className={`font-serif leading-[0.95] tracking-tight mb-6 ${
-            layout === 'left'
-              ? 'text-5xl md:text-7xl lg:text-8xl'
-              : 'text-5xl md:text-7xl lg:text-9xl'
-          } ${image?.url ? 'text-white drop-shadow-md' : textColor}`}
+          className={`font-serif leading-[1.05] tracking-tight mb-3 md:mb-4 text-3xl md:text-4xl lg:text-5xl ${image?.url ? 'text-white drop-shadow-lg' : textColor}`}
         >
           {section.heading as string}
         </h2>
         {Boolean(section.subheading) && (
           <p
-            className={`text-base md:text-lg max-w-xl tracking-wide ${layout === 'center' || layout === 'bottom' ? 'mx-auto' : ''} ${image?.url ? 'text-white/90' : subColor}`}
+            className={`text-xs md:text-sm max-w-xl tracking-wide leading-relaxed ${layout === 'center' || layout === 'bottom' ? 'mx-auto' : ''} ${image?.url ? 'text-white/85' : subColor}`}
           >
             {section.subheading as string}
           </p>
@@ -199,7 +332,7 @@ function PullQuote({ section }: { section: PageBlock }) {
     alignment === 'left' ? 'text-left' : alignment === 'right' ? 'text-right' : 'text-center'
 
   return (
-    <section className="py-16 md:py-24 bg-cream-50">
+    <section className="py-10 md:py-14 bg-cream-50">
       <div className="container max-w-4xl">
         <blockquote className={`${alignClass}`}>
           <span
@@ -329,6 +462,7 @@ function LookbookGrid({ section }: { section: PageBlock }) {
       name?: string
       tags?: Array<{ text: string }>
       linkedProduct?: ProductDoc | string | number | null
+      linkUrl?: string | null
     }>) || []
   if (items.length === 0) return null
 
@@ -347,7 +481,9 @@ function LookbookGrid({ section }: { section: PageBlock }) {
               item.linkedProduct && typeof item.linkedProduct === 'object'
                 ? (item.linkedProduct as ProductDoc)
                 : null
-            const linkHref = product?.slug ? `/products/${product.slug}` : null
+            const linkHref =
+              (item.linkUrl && item.linkUrl.trim()) ||
+              (product?.slug ? `/products/${product.slug}` : null)
             const Wrapper = ({ children }: { children: React.ReactNode }) =>
               linkHref ? (
                 <Link href={linkHref} className="group block">
@@ -392,6 +528,254 @@ function LookbookGrid({ section }: { section: PageBlock }) {
                   )}
                 </div>
               </Wrapper>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   CelebrityGrid — async server component
+   從 celebrity-features collection 拉 published 藝人，magazine-style 卡片
+   ════════════════════════════════════════════════════════════════════ */
+
+type CelebrityDoc = {
+  id: number | string
+  slug?: string
+  name: string
+  program: string
+  photo?: MediaDoc
+  tagline?: string | null
+  bio?: string | null
+  brandQuote?: string | null
+  linkType?: 'pdp' | 'url' | 'none'
+  linkedProduct?: ProductDoc | string | number | null
+  linkUrl?: string | null
+  galleryImages?: Array<{ image?: MediaDoc; caption?: string | null }> | null
+}
+
+// 主頁卡片一律連到 /celebrity/{slug} 專屬子頁，再從子頁導購；
+// slug 缺失才 fallback 到 linkType 邏輯（早期資料相容）。
+function celebrityHref(c: CelebrityDoc): string | null {
+  if (c.slug && c.slug.trim()) return `/celebrity/${c.slug.trim()}`
+  if (c.linkType === 'none') return null
+  if (c.linkType === 'url' && c.linkUrl && c.linkUrl.trim()) return c.linkUrl.trim()
+  if (c.linkType === 'pdp' && c.linkedProduct && typeof c.linkedProduct === 'object') {
+    const p = c.linkedProduct as ProductDoc
+    if (p.slug) return `/products/${p.slug}`
+  }
+  return null
+}
+
+async function CelebrityGrid({ section }: { section: PageBlock }) {
+  const cols = (section.columns as '3' | '4' | '5') || '4'
+  const showBio = section.showBioOnHover !== false
+  const maxItems = (section.maxItems as number) || 0
+
+  let docs: CelebrityDoc[] = []
+  try {
+    const payload = await getPayload({ config })
+    const result = await payload.find({
+      collection: 'celebrity-features',
+      where: { status: { equals: 'published' } },
+      sort: 'sortOrder',
+      limit: maxItems > 0 ? maxItems : 100,
+      depth: 2,
+    })
+    docs = result.docs as unknown as CelebrityDoc[]
+  } catch {
+    return null
+  }
+  if (docs.length === 0) return null
+
+  const colClass =
+    cols === '3' ? 'md:grid-cols-3' : cols === '5' ? 'md:grid-cols-5' : 'md:grid-cols-4'
+
+  // 計算統計數字（社會證明）
+  const totalGalleryImages = docs.reduce(
+    (sum, c) => sum + ((c.galleryImages || []).filter((g) => g.image).length),
+    0,
+  )
+  const uniquePrograms = new Set(docs.map((c) => c.program.split(/[\/／]/)[0].trim())).size
+
+  return (
+    <section className="pt-2 md:pt-4 pb-12 md:pb-16 bg-gradient-to-b from-cream-50 via-white to-cream-50">
+      <div className="container">
+        {/* 數字社會證明 strip — 緊貼 hero 下方，當作 banner→grid 的橋樑 */}
+        <div className="relative mb-10 md:mb-14 z-20">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-0 max-w-3xl mx-auto bg-white rounded-2xl shadow-lg border border-cream-200 overflow-hidden">
+            {[
+              { value: String(docs.length), label: '電視藝人' },
+              { value: String(totalGalleryImages), label: '節目穿搭照' },
+              { value: String(uniquePrograms), label: '檔節目曝光' },
+              { value: '8', label: '年信任品牌' },
+            ].map((s, i) => (
+              <div
+                key={i}
+                className={`text-center py-5 md:py-6 ${
+                  i > 0 && i !== 2 ? 'border-l border-cream-200' : ''
+                } ${i === 2 ? 'md:border-l border-cream-200' : ''} ${
+                  i >= 2 ? 'border-t md:border-t-0 border-cream-200' : ''
+                }`}
+              >
+                <p className="text-2xl md:text-3xl font-serif text-gold-600 leading-none mb-1.5">
+                  {s.value}
+                </p>
+                <p className="text-[10px] md:text-[11px] tracking-[0.25em] uppercase text-muted-foreground">
+                  {s.label}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 可選副標 — 給 admin 後台想加文字解釋時用，預設不寫就不顯示 */}
+        {(Boolean(section.heading) || Boolean(section.subheading)) && (
+          <div className="text-center mb-8 md:mb-10">
+            {Boolean(section.heading) && (
+              <h3 className="text-xl md:text-2xl font-serif tracking-tight mb-2 text-foreground/80">
+                {section.heading as string}
+              </h3>
+            )}
+            {Boolean(section.subheading) && (
+              <p className="text-xs md:text-sm text-muted-foreground tracking-wide max-w-2xl mx-auto">
+                {section.subheading as string}
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className={`grid grid-cols-2 ${colClass} gap-4 md:gap-6`}>
+          {docs.map((c, idx) => {
+            const href = celebrityHref(c)
+            const photo = c.photo
+            const num = String(idx + 1).padStart(2, '0')
+            const galleryCount = (c.galleryImages || []).filter((g) => g.image).length
+            // 第一行 2 位 featured: 桌面寬 col-span-2 (在 4 欄 grid 中佔 2 欄 = 半寬)
+            const isFeatured = idx < 2
+
+            const cardInner = (
+              <div
+                className={`group relative aspect-[3/4] rounded-2xl overflow-hidden bg-cream-100 border border-cream-200 shadow-sm hover:shadow-2xl transition-all duration-500 ${
+                  isFeatured ? 'md:shadow-md' : ''
+                }`}
+              >
+                {photo?.url ? (
+                  <Image
+                    src={normalizeMediaUrl(photo.url) || photo.url}
+                    alt={photo.alt || `${c.name} ${c.program}`}
+                    fill
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    sizes={
+                      isFeatured
+                        ? '(max-width: 768px) 50vw, 50vw'
+                        : '(max-width: 768px) 50vw, 25vw'
+                    }
+                    priority={idx < 4}
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+                    {c.name}
+                  </div>
+                )}
+
+                {/* 編號徽章 — top-right */}
+                <div className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-[10px] tracking-[0.15em] font-medium text-foreground shadow-md">
+                  #{num}
+                </div>
+
+                {/* 整輯張數徽章 — top-left（若有 gallery 照片才顯示） */}
+                {galleryCount > 0 && (
+                  <div className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full bg-gold-500/95 backdrop-blur-sm text-[9px] md:text-[10px] tracking-[0.15em] font-medium text-white shadow-md flex items-center gap-1">
+                    <span>＋</span>
+                    <span>{galleryCount} 張整輯</span>
+                  </div>
+                )}
+
+                {/* Featured 徽章 — featured 卡片左下顯示「焦點藝人」標記 */}
+                {isFeatured && (
+                  <div className="absolute top-14 left-3 z-10 px-2.5 py-1 rounded-full bg-foreground/85 backdrop-blur-sm text-[9px] tracking-[0.25em] font-medium text-cream-50 shadow-md uppercase">
+                    Featured
+                  </div>
+                )}
+
+                {/* 底部漸層 + 名字 + 節目 + tagline */}
+                <div
+                  className={`absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/90 via-black/55 to-transparent p-4 md:p-6 ${
+                    isFeatured ? 'pt-16 md:pt-24' : 'pt-12 md:pt-16'
+                  }`}
+                >
+                  <p
+                    className={`tracking-[0.25em] uppercase text-white/80 mb-1.5 ${
+                      isFeatured ? 'text-xs md:text-[11px]' : 'text-[10px]'
+                    }`}
+                  >
+                    {c.program}
+                  </p>
+                  <h3
+                    className={`font-serif text-white leading-tight mb-1 ${
+                      isFeatured
+                        ? 'text-2xl md:text-3xl lg:text-4xl'
+                        : 'text-xl md:text-2xl'
+                    }`}
+                  >
+                    {c.name}
+                  </h3>
+                  {Boolean(c.tagline) && (
+                    <p
+                      className={`text-white/85 leading-snug line-clamp-2 ${
+                        isFeatured ? 'text-sm md:text-base' : 'text-xs md:text-sm'
+                      }`}
+                    >
+                      {c.tagline}
+                    </p>
+                  )}
+                </div>
+
+                {/* Hover overlay — brandQuote + bio + CTA */}
+                {showBio && (Boolean(c.brandQuote) || Boolean(c.bio)) && (
+                  <div className="absolute inset-0 z-20 bg-gradient-to-br from-black/85 via-black/75 to-black/85 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-center p-5 md:p-7 text-white">
+                    <p className="text-[10px] tracking-[0.25em] uppercase text-gold-300 mb-2">
+                      {c.program}
+                    </p>
+                    <h3 className="text-2xl md:text-3xl font-serif leading-tight mb-3">
+                      {c.name}
+                    </h3>
+                    {Boolean(c.brandQuote) && (
+                      <p className="text-sm md:text-base italic font-serif leading-relaxed border-l-2 border-gold-400 pl-3 mb-3 text-white/95">
+                        &ldquo;{c.brandQuote}&rdquo;
+                      </p>
+                    )}
+                    {Boolean(c.bio) && (
+                      <p className="text-xs md:text-sm text-white/75 leading-relaxed mb-4 line-clamp-4">
+                        {c.bio}
+                      </p>
+                    )}
+                    {href && (
+                      <span className="inline-flex items-center gap-1.5 text-xs tracking-[0.2em] uppercase text-gold-300 mt-auto">
+                        同款穿搭 <ArrowRight size={14} />
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+
+            const colSpanClass = isFeatured ? 'md:col-span-2' : ''
+            return href ? (
+              <Link
+                key={c.id}
+                href={href}
+                className={`block focus:outline-none focus:ring-2 focus:ring-gold-500 rounded-2xl ${colSpanClass}`}
+              >
+                {cardInner}
+              </Link>
+            ) : (
+              <div key={c.id} className={colSpanClass}>
+                {cardInner}
+              </div>
             )
           })}
         </div>

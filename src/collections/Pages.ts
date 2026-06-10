@@ -206,20 +206,30 @@ const Divider: Block = {
 
 const MagazineCover: Block = {
   slug: 'magazine-cover',
-  labels: { singular: '雜誌封面', plural: '雜誌封面' },
+  labels: { singular: '雜誌封面 Hero', plural: '雜誌封面 Hero' },
+  admin: {
+    description:
+      '頁面最上方主視覺。**含人物臉部的圖建議選「左右分欄」layout**（圖文不重疊、臉部完整露出）；純風景圖才用「覆蓋」layout。',
+  },
   fields: [
     {
       name: 'issueLabel',
-      label: '期號標籤',
+      label: '上方期號小標（可選）',
       type: 'text',
-      admin: { description: '例：ISSUE 04 · APR 2026' },
+      admin: { description: '例：ISSUE 04 · APR 2026 / CKMU ON SHOW' },
     },
     { name: 'heading', label: '主標題（大字）', type: 'text', required: true },
-    { name: 'subheading', label: '副標題', type: 'text' },
-    { name: 'image', label: '封面主圖', type: 'upload', relationTo: 'media' },
+    { name: 'subheading', label: '副標題（一行）', type: 'text' },
+    {
+      name: 'image',
+      label: '封面主圖',
+      type: 'upload',
+      relationTo: 'media',
+      admin: { description: '左右分欄 layout 建議直幅 3:4 或 4:5；覆蓋 layout 建議橫幅 16:9' },
+    },
     {
       name: 'cornerLabels',
-      label: '邊角小字（如「特刊」「主編精選」）',
+      label: '邊角小字（僅覆蓋 layout 顯示）',
       type: 'array',
       fields: [{ name: 'text', type: 'text', required: true }],
     },
@@ -227,12 +237,28 @@ const MagazineCover: Block = {
       name: 'layout',
       label: '排版風格',
       type: 'select',
-      defaultValue: 'center',
+      defaultValue: 'banner',
       options: [
-        { label: '左對齊（雜誌風）', value: 'left' },
-        { label: '置中（典雅）', value: 'center' },
-        { label: '底部對齊（Vogue 式）', value: 'bottom' },
+        {
+          label: '完整 Banner 圖（推薦：圖本身已含品牌文字 / Logo / 標語）',
+          value: 'banner',
+        },
+        {
+          label: '左圖右文（建議：純人物肖像，無文字疊上）',
+          value: 'split-left',
+        },
+        {
+          label: '左文右圖（建議：純人物肖像，無文字疊上）',
+          value: 'split-right',
+        },
+        { label: '圖片覆蓋全寬・左對齊文字（雜誌風）', value: 'left' },
+        { label: '圖片覆蓋全寬・置中文字（典雅）', value: 'center' },
+        { label: '圖片覆蓋全寬・底部對齊（Vogue 式）', value: 'bottom' },
       ],
+      admin: {
+        description:
+          '⚠️ 圖中已含文字/品牌 → 用「Banner」；純人物肖像 → 用「分欄」；風景/抽象 → 用「覆蓋」',
+      },
     },
     {
       name: 'theme',
@@ -244,6 +270,20 @@ const MagazineCover: Block = {
         { label: '深色（黑底）', value: 'dark' },
         { label: '金色點綴', value: 'gold' },
       ],
+    },
+    {
+      name: 'objectPosition',
+      label: '圖片裁切焦點（僅覆蓋 layout 用）',
+      type: 'select',
+      defaultValue: 'center',
+      options: [
+        { label: '置中', value: 'center' },
+        { label: '上方（人臉在圖片上半部用此）', value: 'top' },
+        { label: '下方', value: 'bottom' },
+        { label: '左', value: 'left' },
+        { label: '右', value: 'right' },
+      ],
+      admin: { description: '只在「圖片覆蓋全寬」三種 layout 下生效；分欄 layout 圖會完整呈現不裁切' },
     },
   ],
 }
@@ -357,6 +397,14 @@ const LookbookGrid: Block = {
           type: 'relationship',
           relationTo: 'products',
         },
+        {
+          name: 'linkUrl',
+          label: '自訂連結（優先於對應商品）',
+          type: 'text',
+          admin: {
+            description: '若想連到分類頁、活動頁、外部網址等非商品 URL，填這裡；留空時 fallback 用上面的對應商品。例：/category/dresses、/pages/ckmu-on-show-01',
+          },
+        },
       ],
     },
   ],
@@ -398,6 +446,50 @@ const KOLPersona: Block = {
         },
         { name: 'url', label: '網址', type: 'text', required: true },
       ],
+    },
+  ],
+}
+
+const CelebrityGrid: Block = {
+  slug: 'celebrity-grid',
+  labels: { singular: '藝人媒體曝光牆', plural: '藝人媒體曝光牆' },
+  fields: [
+    {
+      name: 'heading',
+      label: '區塊標題',
+      type: 'text',
+      admin: { description: '例：CKMU ON SHOW · 18 位藝人穿搭' },
+    },
+    {
+      name: 'subheading',
+      label: '區塊副標',
+      type: 'text',
+      admin: { description: '例：點圖直跳同款商品。形象代言會浮現品牌致敬詞' },
+    },
+    {
+      name: 'columns',
+      label: '欄數（桌面版）',
+      type: 'select',
+      defaultValue: '4',
+      options: [
+        { label: '3 欄', value: '3' },
+        { label: '4 欄', value: '4' },
+        { label: '5 欄', value: '5' },
+      ],
+      admin: { description: '行動裝置固定 2 欄' },
+    },
+    {
+      name: 'showBioOnHover',
+      label: 'Hover 顯示介紹文案',
+      type: 'checkbox',
+      defaultValue: true,
+      admin: { description: '勾選後滑鼠移到卡片浮現 bio + brandQuote；關掉只顯示姓名+節目' },
+    },
+    {
+      name: 'maxItems',
+      label: '最多顯示幾筆',
+      type: 'number',
+      admin: { description: '留空 = 全部 status=published 的藝人；填數字 = 取前 N 筆（按 sortOrder asc）' },
     },
   ],
 }
@@ -484,6 +576,7 @@ export const Pages: CollectionConfig = {
         PullQuote,
         EditorialSpread,
         LookbookGrid,
+        CelebrityGrid,
         KOLPersona,
         RichContent,
         ImageGallery,

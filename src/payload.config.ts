@@ -19,6 +19,12 @@ import { BlogPosts } from './collections/BlogPosts'
 import { BlogCategories } from './collections/BlogCategories'
 import { Podcasts } from './collections/Podcasts'
 import { Pages } from './collections/Pages'
+// 🔒 PROTECTED: CelebrityFeatures powers /pages/ckmu-on-show celebrity-grid block + /celebrity/[slug]
+// 子頁。Do NOT remove this import OR the entry in the collections[] array below — 砍掉等於把
+// /pages/ckmu-on-show 整頁 18 卡片牆 + 18 個藝人子頁全部砍掉（user 已抱怨 2 次）。
+// 如果你做 git reset --hard origin/main 把這條 wipe 掉，立刻從 hetzner branch
+// `claude/funny-haibt-a3b35a` 還原（含 banner layout + 161 圖 gallery）。
+import { CelebrityFeatures } from './collections/CelebrityFeatures'
 import { SubscriptionPlans } from './collections/SubscriptionPlans'
 import { ProductReviews } from './collections/ProductReviews'
 import { Returns } from './collections/Returns'
@@ -450,6 +456,7 @@ export default buildConfig({
     // 整段位置沒移）；Media 移到最後因為 admin 通常透過 Products / BlogPosts
     // 上傳介面間接用 Media，少直接點 Media collection；媒體資料夾已隱藏。
     Pages,
+    CelebrityFeatures,
     BlogPosts,
     BlogCategories,
     Podcasts,

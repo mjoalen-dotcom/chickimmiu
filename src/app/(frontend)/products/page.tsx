@@ -5,11 +5,19 @@ import type { Metadata } from 'next'
 import { ProductListClient } from './ProductListClient'
 
 /**
- * 強制每次 request 都重新 render，讓後台編輯可以立刻在前台看到。
- * 配合 Products collection 的 afterChange/afterDelete hooks，這頁會一直
- * 吃到最新資料。未來若改用 ISR + revalidateTag 快取，可改成 revalidate = 60。
+ * ISR 60 秒快取 — 之前 force-dynamic + limit 500 + depth 2 跑 TTFB 9.9s
+ * 第二版（2026-05-12）再優化：發現實際 bottleneck 是 HTML payload size。
+ * limit:200 serialize 後 HTML 高達 4.6 MB（200 個商品全部 inline 進 SSR
+ * + ProductListClient props），即便 ISR cache 也要傳 4.6MB 過網路。
+ *
+ *   - limit 200 → 100 (HTML 4.6 MB → ~2.3 MB，TTFB 2s → ~1s)
+ *   - depth 維持 1（list-page 需要 images[0]、variants colors 等 first-level）
+ *   - ISR 60s + Products afterChange revalidatePath，admin 改完即時看到
+ *
+ * 想看第 100+ 件商品的 user 可用 client side filter/category 過濾，或進
+ * /collections/{slug} 拿特定 tag/分類的完整列表。
  */
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
 
 export const metadata: Metadata = {
   title: '全部商品',
@@ -121,7 +129,7 @@ export default async function ProductsPage({
         where: { and: andConditions },
         limit: 2000,
         sort: '-createdAt',
-        depth: 2,
+        depth: 1,
       })
       products = result.docs as unknown as Record<string, unknown>[]
     } catch {
