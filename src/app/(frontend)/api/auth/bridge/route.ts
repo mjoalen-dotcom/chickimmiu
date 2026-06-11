@@ -3,6 +3,7 @@ import { getPayload, getFieldsToSign, jwtSign } from 'payload'
 import { addSessionToUser } from 'payload/shared'
 import config from '@payload-config'
 import { auth as nextAuth } from '@/auth'
+import { PROVIDER_SOCIAL_FIELD } from '@/lib/auth/social'
 
 // Setting `payload-token` from inside the NextAuth `signIn` callback doesn't
 // work — Auth.js v5 builds its own redirect Response and `cookies().set()`
@@ -84,9 +85,12 @@ export async function GET(request: Request) {
   // 使用者看到的是中性的「跳回登入」沒有原因。捕捉後主動清掉所有 NextAuth 相關 cookie
   // （含 chunk 變體 `.0` `.1`），導去 /login?error=session_invalid 並把原 redirect 帶回，
   // 使用者重新點 OAuth 即可拿到全新乾淨的 session。
-  let session: { user?: { email?: string | null } } | null = null
+  type BridgeSession = {
+    user?: { email?: string | null; provider?: string; providerAccountId?: string }
+  } | null
+  let session: BridgeSession = null
   try {
-    session = (await nextAuth()) as { user?: { email?: string | null } } | null
+    session = (await nextAuth()) as BridgeSession
   } catch (err) {
     console.error('[auth/bridge] nextAuth() threw — clearing stale cookies', err)
     return clearStaleAuthCookies(
@@ -94,18 +98,37 @@ export async function GET(request: Request) {
       cookieHeader,
     )
   }
-  if (!session?.user?.email) {
+  // 統一 lowercase 找 user：OAuth provider 偶爾回 mixed-case email，Payload 內部存 lowercase。
+  // 無 email 的社群帳號（LINE 常見）改用 session 上的 provider + providerAccountId
+  // 對 socialLogins.{field} 找人（auth.ts jwt/session callback 帶過來的）。
+  const sessionEmail = session?.user?.email?.toLowerCase() || null
+  const provider = session?.user?.provider
+  const providerAccountId = session?.user?.providerAccountId
+  const socialField = provider ? PROVIDER_SOCIAL_FIELD[provider] : undefined
+  if (!sessionEmail && !(socialField && providerAccountId)) {
     return NextResponse.redirect(new URL('/login?redirect=' + encodeURIComponent(next), base))
   }
 
   const payload = await getPayload({ config })
-  // 統一 lowercase 找 user：OAuth provider 偶爾回 mixed-case email，Payload 內部存 lowercase
-  const sessionEmail = session.user.email.toLowerCase()
-  const { docs } = await payload.find({
-    collection: 'users',
-    where: { email: { equals: sessionEmail } },
-    limit: 1,
-  })
+  // socialId-first（與 auth.ts signIn callback 同序）：email 在 LINE 端換過或不存在
+  // 也能對回同一個會員；找不到再 fallback email 匹配
+  let docs: Array<{ id: string | number }> = []
+  if (socialField && providerAccountId) {
+    const bySocial = await payload.find({
+      collection: 'users',
+      where: { [`socialLogins.${socialField}`]: { equals: providerAccountId } },
+      limit: 1,
+    })
+    docs = bySocial.docs
+  }
+  if (docs.length === 0 && sessionEmail) {
+    const byEmail = await payload.find({
+      collection: 'users',
+      where: { email: { equals: sessionEmail } },
+      limit: 1,
+    })
+    docs = byEmail.docs
+  }
   if (docs.length === 0) {
     return NextResponse.redirect(new URL('/login?error=user_not_found', base))
   }
@@ -162,7 +185,7 @@ export async function GET(request: Request) {
 
   const fieldsToSign = getFieldsToSign({
     collectionConfig: usersConfig,
-    email: user.email || sessionEmail,
+    email: user.email || sessionEmail || '',
     sid,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     user: user as any,

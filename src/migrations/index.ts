@@ -70,6 +70,8 @@ import * as migration_20260609_100000_add_coupon_stacking from './20260609_10000
 import * as migration_20260609_120000_fix_competitor_price_columns from './20260609_120000_fix_competitor_price_columns';
 import * as migration_20260609_140000_add_email_templates from './20260609_140000_add_email_templates';
 import * as migration_20260609_150000_add_order_delivered_email_toggle from './20260609_150000_add_order_delivered_email_toggle';
+import * as migration_20260611_120000_add_blog_posts_media_hero from './20260611_120000_add_blog_posts_media_hero';
+import * as migration_20260611_150000_add_line_messaging_fields from './20260611_150000_add_line_messaging_fields';
 
 export const migrations = [
   {
@@ -431,5 +433,15 @@ export const migrations = [
     up: migration_20260609_150000_add_order_delivered_email_toggle.up,
     down: migration_20260609_150000_add_order_delivered_email_toggle.down,
     name: '20260609_150000_add_order_delivered_email_toggle',
+  },
+  {
+    up: migration_20260611_120000_add_blog_posts_media_hero.up,
+    down: migration_20260611_120000_add_blog_posts_media_hero.down,
+    name: '20260611_120000_add_blog_posts_media_hero',
+  },
+  {
+    up: migration_20260611_150000_add_line_messaging_fields.up,
+    down: migration_20260611_150000_add_line_messaging_fields.down,
+    name: '20260611_150000_add_line_messaging_fields',
   },
 ];

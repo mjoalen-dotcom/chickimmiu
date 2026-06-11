@@ -157,8 +157,20 @@ export const CRMSettings: GlobalConfig = {
       label: 'LINE / Email 通知設定',
       type: 'group',
       fields: [
-        { name: 'lineEnabled', label: '啟用 LINE 推播', type: 'checkbox', defaultValue: true },
-        { name: 'lineChannelAccessToken', label: 'LINE Channel Access Token', type: 'text', admin: { description: 'LINE Messaging API Token' } },
+        // 總開關：沿用 Shopline 的 Messaging API channel，開啟 = 本站接管 LINE 推播；
+        // custom component 在勾選時 confirm「Shopline LINE 功能將失效」。
+        // （舊 lineEnabled 欄位是沒人讀的 stub，已從 UI 移除；DB 欄留著不影響。）
+        {
+          name: 'lineMessagingEnabled',
+          label: '啟用 LINE 推播（本站接管）',
+          type: 'checkbox',
+          defaultValue: false,
+          admin: {
+            components: { Field: '@/components/admin/LineMessagingEnableField' },
+          },
+        },
+        { name: 'lineChannelAccessToken', label: 'LINE Channel Access Token', type: 'text', admin: { description: 'LINE Messaging API Token（env LINE_CHANNEL_ACCESS_TOKEN 優先）' } },
+        { name: 'lineChannelSecret', label: 'LINE Channel Secret', type: 'text', admin: { description: 'Webhook 驗章用（env LINE_CHANNEL_SECRET 優先）' } },
         { name: 'emailEnabled', label: '啟用 Email 通知', type: 'checkbox', defaultValue: true },
         { name: 'emailFromName', label: '寄件人名稱', type: 'text', defaultValue: 'CHIC KIM & MIU' },
         { name: 'emailFromAddress', label: '寄件人 Email', type: 'email', defaultValue: 'hello@chickimmiu.com' },

@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 import SettingsClient, { type SettingsInitial } from './SettingsClient'
+import { isPlaceholderEmail } from '@/lib/auth/social'
 
 export const metadata: Metadata = {
   title: '帳號設定',
@@ -57,6 +58,7 @@ export default async function SettingsPage() {
     userId: String(sessionUser.id),
     name: (userDoc.name as string) ?? '',
     email: (userDoc.email as string) ?? '',
+    emailIsPlaceholder: isPlaceholderEmail(userDoc.email as string),
     phone: (userDoc.phone as string) ?? '',
     birthday: toDateInputValue(userDoc.birthday),
     birthTime: toStr(userDoc.birthTime),

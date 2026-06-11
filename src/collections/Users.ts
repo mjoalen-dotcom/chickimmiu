@@ -7,6 +7,7 @@ import { isAdminOrSelf } from '../access/isAdminOrSelf'
 import { createExportEndpoint, createImportEndpoint, type FieldMapping } from '../endpoints/importExport'
 import { customerRegisterEndpoint } from '../endpoints/customerRegister'
 import { customerLogoutEndpoint } from '../endpoints/customerLogout'
+import { bindEmailEndpoint } from '../endpoints/bindEmail'
 import { memberAnalyticsEndpoint } from '../endpoints/memberAnalytics'
 import { repeatPurchaseEndpoint } from '../endpoints/repeatPurchaseAnalytics'
 import { consumerInsightsEndpoint } from '../endpoints/consumerInsights'
@@ -168,6 +169,7 @@ export const Users: CollectionConfig = {
     createImportEndpoint('users', userFieldMappings),
     customerRegisterEndpoint,
     customerLogoutEndpoint,
+    bindEmailEndpoint,
     memberAnalyticsEndpoint,
     repeatPurchaseEndpoint,
     consumerInsightsEndpoint,

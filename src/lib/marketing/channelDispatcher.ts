@@ -17,6 +17,7 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { emailWrapper } from '../email/_shared'
+import { isPlaceholderEmail } from '../auth/social'
 
 // ══════════════════════════════════════════════════════════
 // Types
@@ -52,6 +53,7 @@ function generateMessageId(channel: string): string {
 // ══════════════════════════════════════════════════════════
 
 interface CRMSettings {
+  lineMessagingEnabled?: boolean
   lineChannelAccessToken?: string
   lineChannelSecret?: string
   emailSenderName?: string
@@ -66,15 +68,25 @@ interface CRMSettings {
 }
 
 /**
- * 從 CRM Global 設定讀取通道相關設定
+ * 從 CRM Global 設定讀取通道相關設定。
  *
- * @returns CRM 設定物件
+ * 注意：LINE 三欄位在 CRMSettings 是 nested 在 `notificationChannels` group 底下，
+ * 不是 global root（之前直接 cast root 的寫法讓 lineChannelAccessToken 永遠 undefined —
+ * 已修：攤平 group 再回傳）。automationConfig 是 root-level group，照舊。
+ *
+ * @returns CRM 設定物件（已攤平 notificationChannels）
  */
 async function loadCRMSettings(): Promise<CRMSettings> {
   try {
     const payload = await getPayload({ config })
-    const settings = await payload.findGlobal({ slug: 'crm-settings' }) as unknown as Record<string, unknown>
-    return settings as unknown as CRMSettings
+    const settings = (await payload.findGlobal({ slug: 'crm-settings' })) as unknown as Record<string, unknown>
+    const nc = (settings.notificationChannels || {}) as Record<string, unknown>
+    return {
+      lineMessagingEnabled: nc.lineMessagingEnabled === true,
+      lineChannelAccessToken: typeof nc.lineChannelAccessToken === 'string' ? nc.lineChannelAccessToken : undefined,
+      lineChannelSecret: typeof nc.lineChannelSecret === 'string' ? nc.lineChannelSecret : undefined,
+      automationConfig: settings.automationConfig as CRMSettings['automationConfig'],
+    }
   } catch {
     return {}
   }
@@ -150,14 +162,15 @@ export async function sendMessage(
 // ══════════════════════════════════════════════════════════
 
 /**
- * LINE OA 訊息發送
+ * LINE OA 訊息發送（真接 LINE Messaging API push）
  *
- * 從會員資料取得 lineUid，並使用 LINE Channel Access Token 發送。
- * 目前為 TODO 佔位實作。
+ * 從會員資料取得 lineUid，經 src/lib/line/client.ts 推播（內含
+ * lineMessagingEnabled 總開關 + token multi-source 解析；關閉/缺 token = no-op）。
+ * 行銷推播尊重 subscriptionStatus.lineSubscribed 退訂。
  *
  * @param userId - 會員 ID
  * @param content - 文字訊息內容
- * @param flexMessage - LINE Flex Message JSON（可選）
+ * @param flexMessage - LINE Flex Message JSON（可選；有給就送 flex，否則純文字）
  * @returns 發送結果
  */
 async function sendLineMessage(
@@ -166,7 +179,6 @@ async function sendLineMessage(
   flexMessage?: Record<string, unknown>,
 ): Promise<SendResult> {
   const payload = await getPayload({ config })
-  const settings = await loadCRMSettings()
 
   // 取得會員的 LINE UID
   const userDoc = await payload.findByID({ collection: 'users', id: userId })
@@ -181,19 +193,30 @@ async function sendLineMessage(
     }
   }
 
-  if (!settings.lineChannelAccessToken) {
-    console.warn('[Marketing] LINE Channel Access Token 未設定')
+  // 行銷推播尊重退訂（unfollow webhook 也會把這個關掉）
+  const sub = user.subscriptionStatus as { lineSubscribed?: boolean } | undefined
+  if (sub?.lineSubscribed === false) {
+    console.log(`[Marketing] 會員 ${userId} 已退訂 LINE 推播，跳過`)
+    return { success: false, channel: 'line', error: '會員已退訂 LINE 推播' }
   }
 
-  // TODO: 整合 LINE Messaging API
-  // const lineClient = new MessagingApiClient({ channelAccessToken: settings.lineChannelAccessToken })
-  // await lineClient.pushMessage({ to: lineUid, messages: [{ type: 'text', text: content }] })
+  // dynamic import 防模組循環（line/client 不依賴本檔，保守起見比照 automationEngine 慣例）
+  const { pushMessage, textMessage } = await import('../line/client')
+  const messages = flexMessage ? [flexMessage] : [textMessage(content)]
+  const ok = await pushMessage(payload, lineUid, messages)
+
+  if (!ok) {
+    return {
+      success: false,
+      channel: 'line',
+      error: 'LINE 推播未送出（總開關關閉 / 缺 token / API 失敗，見 server log）',
+    }
+  }
 
   const messageId = generateMessageId('line')
   const previewContent = content.length > 30 ? content.substring(0, 30) + '...' : content
-
   console.log(
-    `[Marketing] LINE 訊息發送 → lineUid: ${lineUid}, ` +
+    `[Marketing] LINE 訊息已送出 → lineUid: ${lineUid}, ` +
     `內容: ${previewContent}` +
     (flexMessage ? ', 含 Flex Message' : ''),
   )
@@ -232,7 +255,8 @@ async function sendEmail(
   const user = userDoc as unknown as Record<string, unknown>
   const email = typeof user.email === 'string' ? user.email : ''
 
-  if (!email) {
+  if (!email || isPlaceholderEmail(email)) {
+    // placeholder（無 email 的 LINE 社群帳號）= 不可投遞，視同未設定
     return {
       success: false,
       channel: 'email',
@@ -432,7 +456,8 @@ async function sendEDM(
   const user = userDoc as unknown as Record<string, unknown>
   const email = typeof user.email === 'string' ? user.email : ''
 
-  if (!email) {
+  if (!email || isPlaceholderEmail(email)) {
+    // placeholder（無 email 的 LINE 社群帳號）= 不可投遞，視同未設定
     return {
       success: false,
       channel: 'edm',

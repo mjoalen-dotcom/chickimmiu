@@ -9,6 +9,8 @@ export type SettingsInitial = {
   userId: string
   name: string
   email: string
+  /** 無 email 社群帳號（LINE 常見）建檔時掛 placeholder → 顯示「綁定 Email」UI */
+  emailIsPlaceholder: boolean
   phone: string
   birthday: string
   birthTime: string
@@ -57,6 +59,40 @@ export default function SettingsClient({ initial }: { initial: SettingsInitial }
   const [invoice, setInvoice] = useState({ ...initial.invoiceInfo })
 
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+
+  // 綁定 Email（僅 placeholder email 帳號出現此 UI）
+  const [bindEmail, setBindEmail] = useState('')
+  const [bindBusy, setBindBusy] = useState(false)
+  const [bindMessage, setBindMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+
+  async function handleBindEmail() {
+    setBindMessage(null)
+    const email = bindEmail.trim().toLowerCase()
+    if (!/.+@.+\..+/.test(email)) {
+      setBindMessage({ kind: 'err', text: 'Email 格式不正確' })
+      return
+    }
+    setBindBusy(true)
+    try {
+      const res = await fetch('/api/users/bind-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { message?: string }
+      if (!res.ok) {
+        setBindMessage({ kind: 'err', text: data.message || `綁定失敗 (${res.status})` })
+        return
+      }
+      setBindMessage({ kind: 'ok', text: 'Email 綁定成功！訂單通知將寄到這個信箱。' })
+      startTransition(() => router.refresh())
+    } catch {
+      setBindMessage({ kind: 'err', text: '網路錯誤，請稍後再試' })
+    } finally {
+      setBindBusy(false)
+    }
+  }
 
   async function handleSave() {
     setMessage(null)
@@ -123,18 +159,50 @@ export default function SettingsClient({ initial }: { initial: SettingsInitial }
               className={inputCls}
             />
           </div>
-          <div>
-            <label className={labelCls}>Email（不可修改）</label>
-            <div className="flex items-center gap-2">
-              <Mail size={14} className="text-muted-foreground shrink-0" />
-              <input
-                type="email"
-                value={initial.email}
-                disabled
-                className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm bg-cream-50 text-muted-foreground"
-              />
+          {initial.emailIsPlaceholder ? (
+            <div>
+              <label className={labelCls}>綁定 Email（尚未設定）</label>
+              <div className="flex items-center gap-2">
+                <Mail size={14} className="text-muted-foreground shrink-0" />
+                <input
+                  type="email"
+                  value={bindEmail}
+                  onChange={(e) => setBindEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  className={inputCls}
+                />
+                <button
+                  type="button"
+                  onClick={handleBindEmail}
+                  disabled={bindBusy}
+                  className="shrink-0 px-4 py-3 bg-foreground text-cream-50 rounded-xl text-sm hover:bg-foreground/90 transition-colors disabled:opacity-60"
+                >
+                  {bindBusy ? '綁定中…' : '綁定'}
+                </button>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                您是以 LINE 登入且尚未設定 email；綁定後才能收到訂單通知信。
+              </p>
+              {bindMessage && (
+                <p className={`text-xs mt-1.5 ${bindMessage.kind === 'ok' ? 'text-green-600' : 'text-red-600'}`} role="alert">
+                  {bindMessage.text}
+                </p>
+              )}
             </div>
-          </div>
+          ) : (
+            <div>
+              <label className={labelCls}>Email（不可修改）</label>
+              <div className="flex items-center gap-2">
+                <Mail size={14} className="text-muted-foreground shrink-0" />
+                <input
+                  type="email"
+                  value={initial.email}
+                  disabled
+                  className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm bg-cream-50 text-muted-foreground"
+                />
+              </div>
+            </div>
+          )}
           <div>
             <label className={labelCls}>電話</label>
             <div className="flex items-center gap-2">

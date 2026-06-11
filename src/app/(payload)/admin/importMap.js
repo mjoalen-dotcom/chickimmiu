@@ -66,6 +66,7 @@ import { FolderTableCell as FolderTableCell_f9c02e79a4aed9a3924487c0cd4cafb1 } f
 import { FolderField as FolderField_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 import { FolderTypeField as FolderTypeField_2b8867833a34864a02ddf429b0728a40 } from '@payloadcms/next/client'
 import { default as default_79570dded1e1ffe27a78eeea47302dcc } from '@/components/admin/PayloadFoldersListRedirect'
+import { default as default_e36fe685fba38b813c8557736b2983e5 } from '@/components/admin/LineMessagingEnableField'
 import { default as default_6f27c4d8c2613c9dc60f5fcd3b7e600a } from '@/components/admin/SiteBrandPreview'
 import { default as default_d500ae2ad98a0a33d640ae0ac1a3417c } from '@/components/admin/AdminIcon'
 import { default as default_b80a86fce1072afc84cd6a430a965697 } from '@/components/admin/AdminLogo'
@@ -160,6 +161,7 @@ export const importMap = {
   "@payloadcms/next/rsc#FolderField": FolderField_f9c02e79a4aed9a3924487c0cd4cafb1,
   "@payloadcms/next/client#FolderTypeField": FolderTypeField_2b8867833a34864a02ddf429b0728a40,
   "@/components/admin/PayloadFoldersListRedirect#default": default_79570dded1e1ffe27a78eeea47302dcc,
+  "@/components/admin/LineMessagingEnableField#default": default_e36fe685fba38b813c8557736b2983e5,
   "@/components/admin/SiteBrandPreview#default": default_6f27c4d8c2613c9dc60f5fcd3b7e600a,
   "@/components/admin/AdminIcon#default": default_d500ae2ad98a0a33d640ae0ac1a3417c,
   "@/components/admin/AdminLogo#default": default_b80a86fce1072afc84cd6a430a965697,

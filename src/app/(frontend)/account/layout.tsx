@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { auth as nextAuth } from '@/auth'
+import { PROVIDER_SOCIAL_FIELD } from '@/lib/auth/social'
 import { User, ShoppingBag, Heart, MapPin, Gift, Settings, Crown, Share2, RotateCcw, Star, FileText, Gamepad2, Sparkles, Brain, Wallet } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { LogoutButton } from './LogoutButton'
@@ -50,23 +51,36 @@ export default async function AccountLayout({ children }: { children: React.Reac
       return null
     }),
   ])
+  // 無 email 的社群帳號（LINE 常見）session.user 沒 email，但 auth.ts session
+  // callback 會帶 provider + providerAccountId — 一樣視為有效 NextAuth session。
+  const sessionUser = session?.user as
+    | { email?: string | null; provider?: string; providerAccountId?: string }
+    | undefined
+  const hasNextAuthIdentity = Boolean(sessionUser?.email || sessionUser?.providerAccountId)
   if (!user) {
     // OAuth (NextAuth) just completed but the Payload session cookie isn't set
     // (Auth.js v5 callback can't reliably write Set-Cookie on its redirect
     // response). Bounce through /api/auth/bridge so the cookie gets set from
     // a route handler we own, then come back here.
-    if (session?.user?.email) {
+    if (hasNextAuthIdentity) {
       redirect('/api/auth/bridge?next=/account')
     }
     redirect('/login?redirect=/account')
   }
   // 使用者在已登入狀態下按 OAuth 按鈕切帳號：NextAuth session 建好新身分了，
   // 但舊的 payload-token cookie 還在 → 讓 bridge 覆蓋 cookie，否則畫面會
-  // 停在舊帳號（"原地打轉"）。
+  // 停在舊帳號（"原地打轉"）。無 email session 改比 socialLogins 對應欄位。
   const payloadEmail = (user as unknown as { email?: string }).email?.toLowerCase()
-  const sessionEmail = session?.user?.email?.toLowerCase()
+  const sessionEmail = sessionUser?.email?.toLowerCase()
   if (sessionEmail && payloadEmail && sessionEmail !== payloadEmail) {
     redirect('/api/auth/bridge?next=/account')
+  }
+  if (!sessionEmail && sessionUser?.provider && sessionUser?.providerAccountId) {
+    const field = PROVIDER_SOCIAL_FIELD[sessionUser.provider]
+    const socials = (user as unknown as { socialLogins?: Record<string, unknown> }).socialLogins
+    if (field && socials && socials[field] && socials[field] !== sessionUser.providerAccountId) {
+      redirect('/api/auth/bridge?next=/account')
+    }
   }
 
   return (

@@ -1097,6 +1097,12 @@ export const Orders: CollectionConfig = {
           sendOrderConfirmationEmail(req.payload, doc as unknown as Record<string, unknown>).catch(
             (err) => console.error('[Orders Hook] 訂單確認信寄送失敗:', err),
           )
+          // LINE 推播（會員有 lineUid 才送；lineMessagingEnabled 總開關關閉 = no-op）
+          import('../lib/line/orderNotifications')
+            .then(({ sendOrderConfirmationLine }) =>
+              sendOrderConfirmationLine(req.payload, doc as unknown as Record<string, unknown>),
+            )
+            .catch((err) => console.error('[Orders Hook] 訂單確認 LINE 推播失敗:', err))
         }
       },
       // ── status → shipped：寄出貨通知信（OrderSettings.sendShippedEmail） ──
@@ -1115,6 +1121,12 @@ export const Orders: CollectionConfig = {
         sendOrderShippedEmail(req.payload, doc as unknown as Record<string, unknown>).catch(
           (err) => console.error('[Orders Hook] 出貨通知信寄送失敗:', err),
         )
+        // LINE 推播（會員有 lineUid 才送；lineMessagingEnabled 總開關關閉 = no-op）
+        import('../lib/line/orderNotifications')
+          .then(({ sendOrderShippedLine }) =>
+            sendOrderShippedLine(req.payload, doc as unknown as Record<string, unknown>),
+          )
+          .catch((err) => console.error('[Orders Hook] 出貨 LINE 推播失敗:', err))
       },
       // ── status → delivered：寄送達通知信（OrderSettings.sendDeliveredEmail，預設寄） ──
       async ({ doc, previousDoc, req }) => {

@@ -418,9 +418,20 @@ export async function executeStep(
   try {
     switch (step.action) {
       case 'send_line': {
-        // TODO: 整合 LINE Messaging API（待 channel token）
-        console.log(`[AutomationEngine] LINE 訊息 → ${userId}: ${step.content.substring(0, 50)}...`)
-        return true
+        // 透過 channelDispatcher 真推（內含免打擾時段 + lineSubscribed 退訂 gate +
+        // lineMessagingEnabled 總開關；關閉/缺 token = no-op 回 false）。
+        // dynamic import 避免載入期模組循環 — 比照隔壁 send_email。
+        const body = (step.content || '').trim()
+        if (!body) {
+          console.warn(`[AutomationEngine] send_line 無內容（userId=${userId}），跳過`)
+          return false
+        }
+        const { sendMessage } = await import('../marketing/channelDispatcher')
+        const result = await sendMessage(userId, 'line', { body })
+        if (!result.success) {
+          console.warn(`[AutomationEngine] send_line 未送出（userId=${userId}）: ${result.error}`)
+        }
+        return result.success
       }
 
       case 'send_email': {
