@@ -14,6 +14,7 @@ import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
 import { FloatingChatButton } from '@/components/ui/FloatingChatButton'
 import { FloatingQuickMenu } from '@/components/ui/FloatingQuickMenu'
+import { BrandAnthemPlayer } from '@/components/ui/BrandAnthemPlayer'
 import { CookieConsentBanner } from '@/components/ui/CookieConsentBanner'
 import { CartDrawer } from '@/components/cart/CartDrawer'
 import { ExitIntentPopup } from '@/components/recommendation/ExitIntentPopup'
@@ -389,6 +390,7 @@ export default async function FrontendLayout({
 
           <CartDrawer />
           <ExitIntentPopup />
+          <BrandAnthemPlayer />
           <FloatingQuickMenu />
           <FloatingChatButton
             lineOaUrl={cs.lineOaUrl as string | undefined}

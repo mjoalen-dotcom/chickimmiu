@@ -162,6 +162,49 @@ export const BlogPosts: CollectionConfig = {
       type: 'upload',
       relationTo: 'media',
     },
+    // ── 釘選 / 影音 hero（PR: 品牌主題曲 blog post 用） ─────────────────
+    {
+      name: 'featured',
+      label: '釘選在 /blog 頂部',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        description: '勾選後該文章會以大尺寸 hero card 顯示在 /blog 列表最頂部；只能釘選一篇',
+      },
+    },
+    {
+      name: 'heroVideo',
+      label: 'Hero 影片（可選）',
+      type: 'upload',
+      relationTo: 'media',
+      admin: {
+        description: '上傳 MP4 後，blog/[slug] 頁頂會出現 lightbox 影片播放器；用於品牌 MV/主題曲',
+      },
+    },
+    {
+      name: 'heroAudio',
+      label: 'Hero 音檔（可選）',
+      type: 'upload',
+      relationTo: 'media',
+      admin: {
+        description: '上傳 MP3 後，blog/[slug] 頁會在影片下方加入純音樂播放器',
+      },
+    },
+    {
+      name: 'lyrics',
+      label: '歌詞（heroAudio 時可選）',
+      type: 'textarea',
+      admin: {
+        description: '只在文章中含 heroVideo / heroAudio 時顯示。直接貼入歌詞文字（保留換行），前台會用 monospace serif 排版',
+        rows: 12,
+      },
+    },
+    {
+      name: 'mediaCredit',
+      label: '影音署名 / Credit line',
+      type: 'text',
+      admin: { description: '例：作詞作曲 / 監製：Alan Miao' },
+    },
     {
       name: 'author',
       label: '作者',

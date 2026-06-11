@@ -6,6 +6,7 @@ import { useCartStore } from '@/stores/cartStore'
 import { useWishlistStore } from '@/stores/wishlistStore'
 import { useLocaleStore } from '@/stores/localeStore'
 import { WishlistSync } from '@/components/wishlist/WishlistSync'
+import { useBGMStore } from '@/stores/bgmStore'
 
 /**
  * 全域 Providers
@@ -20,6 +21,7 @@ export function Providers({ children }: { children: ReactNode }) {
     useCartStore.persist.rehydrate()
     useWishlistStore.persist.rehydrate()
     useLocaleStore.persist.rehydrate()
+    useBGMStore.persist.rehydrate()
     // 拉幣別匯率（idempotent；store 內判 currenciesLoaded）
     useLocaleStore.getState().fetchCurrencies()
   }, [])

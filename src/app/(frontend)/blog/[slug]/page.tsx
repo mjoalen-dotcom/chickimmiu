@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { ArrowLeft, Calendar, User, ArrowRight } from 'lucide-react'
 import { ArticleJsonLd, BreadcrumbJsonLd } from '@/components/seo/JsonLd'
 import { RenderLexical } from '@/components/lexical/RenderLexical'
+import { BrandHeroPlayer } from '@/components/blog/BrandHeroPlayer'
 
 /**
  * 找 published 文章：先用精確 slug match，沒命中時用 prefix `${slug}-%` 找
@@ -224,8 +225,18 @@ export default async function BlogPostPage({ params }: Props) {
           </p>
         )}
 
-        {/* Featured image */}
-        {featuredImage?.url && (
+        {/* Brand hero player — 影片 / 音檔 / 歌詞 / credit（任一空就不渲染對應區塊） */}
+        <BrandHeroPlayer
+          heroVideo={post.heroVideo as { url?: string; alt?: string; width?: number; height?: number } | null}
+          heroAudio={post.heroAudio as { url?: string; alt?: string } | null}
+          poster={featuredImage}
+          lyrics={post.lyrics as string | null}
+          mediaCredit={post.mediaCredit as string | null}
+          title={post.title as string}
+        />
+
+        {/* Featured image — heroVideo 存在時不再顯示，避免重複視覺 */}
+        {!post.heroVideo && featuredImage?.url && (
           <div className="relative aspect-[16/9] rounded-2xl overflow-hidden mb-10 border border-cream-200">
             <Image
               src={featuredImage.url}

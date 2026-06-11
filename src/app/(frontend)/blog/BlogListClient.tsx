@@ -62,13 +62,19 @@ const DEMO_POSTS = [
 interface Props {
   initialPosts: Record<string, unknown>[]
   categories?: Array<{ value: string; label: string }>
+  featuredPost?: Record<string, unknown> | null
 }
 
-export function BlogListClient({ initialPosts, categories }: Props) {
+export function BlogListClient({ initialPosts, categories, featuredPost }: Props) {
   const posts = initialPosts.length > 0 ? initialPosts : DEMO_POSTS
   const cats = categories && categories.length > 0 ? categories : FALLBACK_CATEGORIES
   const labelByValue: Record<string, string> = Object.fromEntries(cats.map((c) => [c.value, c.label]))
   const [activeCategory, setActiveCategory] = useState('all')
+
+  const featuredImage = featuredPost
+    ? (featuredPost.featuredImage as { url?: string; alt?: string } | null)
+    : null
+  const featuredCategory = featuredPost ? (featuredPost.category as string) : ''
 
   const filtered = useMemo(() => {
     if (activeCategory === 'all') return posts
@@ -140,6 +146,58 @@ export function BlogListClient({ initialPosts, categories }: Props) {
       </section>
 
       <div className="container py-10 md:py-14">
+        {/* Featured pinned post — admin 釘選文章（featured=true，如品牌主題曲）
+            顯示在最頂、Editor's Pick 之上；只在「全部」分類時顯示 */}
+        {featuredPost && activeCategory === 'all' && (
+          <Link
+            href={`/blog/${featuredPost.slug as string}`}
+            className="group block relative w-full mb-8 md:mb-12 rounded-2xl overflow-hidden border border-cream-200 bg-white shadow-md hover:shadow-2xl transition-all duration-500"
+          >
+            <div className="grid md:grid-cols-[5fr_4fr]">
+              {/* Image side */}
+              <div className="relative aspect-[16/10] md:aspect-auto md:min-h-[320px] bg-cream-100 overflow-hidden">
+                {featuredImage?.url ? (
+                  <Image
+                    src={featuredImage.url}
+                    alt={featuredImage.alt || (featuredPost.title as string)}
+                    fill
+                    className="object-cover transition-transform duration-700 group-hover:scale-105"
+                    sizes="(max-width: 768px) 100vw, 60vw"
+                    priority
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+                    {featuredPost.title as string}
+                  </div>
+                )}
+                <div className="absolute top-4 left-4 z-10 px-3 py-1 rounded-full bg-gold-500 text-white text-[10px] tracking-[0.25em] uppercase shadow-md">
+                  ★ Featured
+                </div>
+              </div>
+
+              {/* Text side */}
+              <div className="p-6 md:p-8 lg:p-10 flex flex-col justify-center">
+                {Boolean(featuredCategory) && (
+                  <p className="text-[10px] tracking-[0.3em] uppercase text-gold-600 mb-3">
+                    {featuredCategory}
+                  </p>
+                )}
+                <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif leading-tight mb-3 group-hover:text-gold-700 transition-colors">
+                  {featuredPost.title as string}
+                </h2>
+                {Boolean(featuredPost.excerpt) && (
+                  <p className="text-sm md:text-base text-muted-foreground leading-relaxed line-clamp-3 mb-5">
+                    {featuredPost.excerpt as string}
+                  </p>
+                )}
+                <span className="inline-flex items-center gap-2 text-xs tracking-[0.2em] uppercase text-foreground group-hover:text-gold-700 transition-colors">
+                  Read story <ArrowRight size={14} />
+                </span>
+              </div>
+            </div>
+          </Link>
+        )}
+
         {/* Category tabs */}
         <div className="flex items-center gap-2 mb-10 overflow-x-auto scrollbar-hide">
           {[{ value: 'all', label: '全部' }, ...cats].map((cat) => (
