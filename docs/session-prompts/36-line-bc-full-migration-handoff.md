@@ -1,5 +1,11 @@
 # 36 — LINE B+C 整合 + Shopline 全功能轉移收尾（交接 2026-06-11）
 
+> **📌 2026-06-12 追加（commit `df851c2` + `231737e`，已部署 prod）**
+>
+> - **BGM 左下按鈕沒聲音已修**（`231737e`）：BrandAnthemPlayer「video 讓位」listener 在 document capture phase 連 BGM 自己 `<audio>` 的 play 事件都攔 → 開播即自我 pause()。已排除自身；本地 prod build 瀏覽器實測播放連續 + video 讓位無回歸。
+> - **main 不可 build 地雷已拆**（`df851c2`）：Products.ts/importMap 引用的 ProductCheckboxToggleCell/ProductInlineNumberCell 之前只在 `claude/gifted-turing-ef2d21`（`6c9ff59`）沒進 main，乾淨 checkout build 必炸（prod 靠 untracked scp 殘留副本撐著）。已從 `6c9ff59` 還原進 main。
+> - ⚠️ 本地 `next dev` mount 必炸（dev-only webpack factory-undefined，見 HANDOFF_B5_DIAGNOSIS.md）→ 本地驗證一律 `pnpm build` + launch.json `chickimmiu-next-prod-3006`。
+
 > **📌 2026-06-11 進度更新（commit `7efb313` + `891522b`，已部署 prod）**
 >
 > - **C 收尾 ✅ 全做完**：
