@@ -1,4 +1,5 @@
 import type { Payload } from 'payload'
+import { renderEmailFromTemplate } from './renderFromTemplate'
 
 /**
  * 寄送訂單確認信給顧客（status: pending → processing 時觸發）
@@ -191,9 +192,43 @@ export async function sendOrderConfirmationEmail(
 </div>
 </body></html>`
 
+  // 後台模板優先；無 / 停用 / 出錯 → fallback 上面的 hardcoded html（full HTML，舊行為）
+  const summaryTable = `<div style="margin:16px 0;padding:12px 0;border-top:1px solid #eee;font-size:14px">
+      <div style="display:flex;justify-content:space-between;margin:4px 0"><span>商品小計</span><span>${ntd(subtotal)}</span></div>
+      ${discountAmount ? `<div style="display:flex;justify-content:space-between;margin:4px 0;color:#999"><span>折扣</span><span>- ${ntd(discountAmount)}</span></div>` : ''}
+      ${shippingFee ? `<div style="display:flex;justify-content:space-between;margin:4px 0"><span>運費</span><span>${ntd(shippingFee)}</span></div>` : ''}
+      ${codFee ? `<div style="display:flex;justify-content:space-between;margin:4px 0"><span>COD 手續費</span><span>${ntd(codFee)}</span></div>` : ''}
+      ${pointsUsed ? `<div style="display:flex;justify-content:space-between;margin:4px 0;color:#999"><span>使用點數</span><span>- ${pointsUsed}</span></div>` : ''}
+      ${creditUsed ? `<div style="display:flex;justify-content:space-between;margin:4px 0;color:#999"><span>使用購物金</span><span>- ${ntd(creditUsed)}</span></div>` : ''}
+      <div style="display:flex;justify-content:space-between;margin:8px 0 0;padding-top:8px;border-top:1px solid #eee;font-weight:600;font-size:16px">
+        <span>應付總額</span><span style="color:#c9a961">${ntd(total)}</span>
+      </div>
+    </div>`
+  const paymentLine = paymentMethod
+    ? `<div style="font-size:13px;color:#666;margin:8px 0">付款方式：${escapeHtml(paymentLabelMap[paymentMethod] || paymentMethod)}</div>`
+    : ''
+  const noteBlock = customerNote
+    ? `<div style="background:#fff8e7;padding:12px;border-radius:8px;font-size:13px;color:#666;margin:16px 0"><strong>顧客備註：</strong> ${escapeHtml(customerNote)}</div>`
+    : ''
+  const orderButton = `<div style="text-align:center;margin:24px 0 8px"><a href="${escapeHtml(accountUrl)}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">查看訂單</a></div>`
+  const tpl = await renderEmailFromTemplate(payload, 'order_confirmation', {
+    customerName: escapeHtml(name || '會員'),
+    orderNumber: escapeHtml(orderNumber),
+    total: ntd(total),
+    itemsTable: renderItemsTable(items),
+    summaryTable,
+    paymentLine,
+    addressBlock: renderAddress(
+      order.shippingAddress as ShippingAddress | undefined,
+      order.shippingMethod as ShippingMethod | undefined,
+    ),
+    noteBlock,
+    orderButton,
+  })
+
   await payload.sendEmail({
     to: email,
-    subject,
-    html,
+    subject: tpl?.subject ?? subject,
+    html: tpl?.html ?? html,
   })
 }

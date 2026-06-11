@@ -9,6 +9,7 @@ import {
   type ShippingAddress,
   type ShippingMethod,
 } from './_shared'
+import { renderEmailFromTemplate } from './renderFromTemplate'
 
 /**
  * Admin 新單通知信（Orders create 時觸發；讀 OrderSettings.notifications.sendAdminNewOrderAlert
@@ -111,14 +112,37 @@ export async function sendAdminNewOrderAlert(
       <a href="${orderId != null ? escapeHtml(adminOrderUrl(orderId)) : '#'}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">開啟後台訂單</a>
     </div>`
 
+  // 後台模板優先；無 / 停用 / 出錯 → fallback 上面的 hardcoded content。render 一次給所有收件人共用。
+  const itemsListBlock =
+    items.length > 0
+      ? `<div style="margin:16px 0"><div style="font-size:13px;color:#666;margin-bottom:6px">商品清單：</div><ul style="margin:0;padding:0 0 0 18px">${itemsList}${moreItems}</ul></div>`
+      : ''
+  const noteBlock = customerNote
+    ? `<div style="background:#fff8e7;padding:12px;border-radius:8px;font-size:13px;color:#666;margin:16px 0"><strong>顧客備註：</strong> ${escapeHtml(customerNote)}</div>`
+    : ''
+  const adminOrderButton = `<div style="text-align:center;margin:24px 0 8px"><a href="${orderId != null ? escapeHtml(adminOrderUrl(orderId)) : '#'}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">開啟後台訂單</a></div>`
+  const tpl = await renderEmailFromTemplate(payload, 'admin_new_order', {
+    orderNumber: escapeHtml(orderNumber),
+    customerName: escapeHtml(customerName || '會員'),
+    customerEmail: customerEmail ? `&lt;${escapeHtml(customerEmail)}&gt;` : '',
+    itemCount: String(itemCount),
+    subtotal: ntd(subtotal),
+    total: ntd(total),
+    paymentLabel: escapeHtml(paymentLabel),
+    paymentStatus: escapeHtml(paymentStatus || 'unpaid'),
+    shippingLabel: escapeHtml(shippingLabel),
+    addrLine: escapeHtml(addrLine),
+    itemsListBlock,
+    noteBlock,
+    adminOrderButton,
+  })
+  const finalSubject = tpl?.subject ?? subject
+  const finalHtml = tpl?.html ?? emailWrapper({ headline: '新訂單通知', preheader, content })
+
   // 逐一寄，任一失敗不影響其他（for loop 隔離錯）
   for (const to of recipients) {
     try {
-      await payload.sendEmail({
-        to,
-        subject,
-        html: emailWrapper({ headline: '新訂單通知', preheader, content }),
-      })
+      await payload.sendEmail({ to, subject: finalSubject, html: finalHtml })
     } catch (err) {
       console.error(`[adminNewOrderAlert] 寄給 ${to} 失敗:`, err)
     }

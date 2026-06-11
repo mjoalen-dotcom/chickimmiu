@@ -1,5 +1,10 @@
 # 交接：自動化 Email 模板系統（範圍＝「全都做」）— 2026-06-09
 
+> ✅ **已全部完成並部署 prod（2026-06-09，commit `b4dce22`，branch `feat/shopline-parity`）。**
+> P1-P5 全做完：EmailTemplates collection + renderFromTemplate 引擎（模板優先、缺則 fallback 現有 HTML＝零退化）+ 重構 5 sender + welcome/delivered 新增信 + 後台預覽/測試寄送 view（`/admin/tools/email-templates`）+ 行銷/旅程死 stub 接真（emailSubscribed gate）+ auth 信納入模板。2 migration 已套 prod；`scripts/verify_email_templates.ts` 22/22 PASS；tsc 0；瀏覽器實測 view+API 200。
+> **🔴 唯一剩餘卡關（只有 user 能做）：到 resend.com 建 API key + 驗證 chickimmiu.com 寄件 domain → 寫 prod `.env` `RESEND_API_KEY`/`EMAIL_FROM_ADDRESS` + `pm2 restart`。** 在那之前全系統走 console-fallback（建/部署/預覽安全，不誤寄）。
+> 以下為原始計畫（保留供追溯）。
+
 > 給新對話：這份是自足交接包，照它做即可，**不必重做調研**。部署 SOP / dev DB drift / 乾淨 temp DB 驗證招式 → 見 `docs/HANDOFF_SHOPLINE_PARITY_2026-06-09.md`（不重複）。開工前 `git log --oneline -5` 確認狀態（user 多 session 並行）。
 
 ## 0. 任務 / 範圍（user 拍板＝全都做）

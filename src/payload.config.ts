@@ -35,6 +35,7 @@ import { UGCPosts } from './collections/UGCPosts'
 import { PointsRedemptions } from './collections/PointsRedemptions'
 import { MarketingCampaigns } from './collections/MarketingCampaigns'
 import { MessageTemplates } from './collections/MessageTemplates'
+import { EmailTemplates } from './collections/EmailTemplates'
 import { ABTests } from './collections/ABTests'
 import { MarketingExecutionLogs } from './collections/MarketingExecutionLogs'
 import { FestivalTemplates } from './collections/FestivalTemplates'
@@ -369,6 +370,12 @@ export default buildConfig({
           Component: '@/components/admin/BulkDeleteProductsView',
           path: '/tools/bulk-delete-products',
         },
+        // ④ 行銷工具：Email 模板預覽 / 測試寄送（入口也在 CKMUSystemToolsNavGroup）
+        // 對應 endpoint：POST /api/admin/email-templates/test
+        emailTemplates: {
+          Component: '@/components/admin/EmailTemplatePreviewView',
+          path: '/tools/email-templates',
+        },
 
       },
     },
@@ -419,6 +426,7 @@ export default buildConfig({
     MarketingCampaigns,
     NewsletterSubscribers, // Phase 2 B：電子報訂閱名單（前台訂閱表單寫入）
     MessageTemplates,
+    EmailTemplates, // 交易信模板（歡迎 / 訂單通知 / 驗證信）— 後台可編輯 / 預覽 / 測試寄送
     SearchConsoleKeywords,
     CompetitorPriceRecords,
     MarketingContentDrafts,
