@@ -1,5 +1,18 @@
 # 36 — LINE B+C 整合 + Shopline 全功能轉移收尾（交接 2026-06-11）
 
+> **📌 2026-06-11 進度更新（commit `7efb313` + `891522b`，已部署 prod）**
+>
+> - **C 收尾 ✅ 全做完**：
+>   - C#2 socialLogin 開關接通（login/register server wrapper + `SocialLoginButtons` 共用元件；缺 env 憑證 provider 自動隱藏 — prod 現在只剩 LINE 按鈕會出現）
+>   - C#3 lineId-first 匹配 + 無 email LINE 帳號可登入（placeholder `@noemail.invalid` + `/account/settings` 綁定 Email UI + `POST /api/users/bind-email`；行銷信對 placeholder 自動跳過）
+>   - C#1 端到端實測：⏳ 待 user 瀏覽器走一次 LINE 授權（程式已部署）
+> - **B ✅ 程式全接真（user 拍板：沿用 Shopline channel 1661280982，總開關預設關）**：
+>   - `src/lib/line/{client,verifySignature,orderNotifications}.ts` + `/api/webhooks/line` + CRMSettings `lineMessagingEnabled`（開啟跳 confirm 警告 Shopline 失效）/`lineChannelSecret` + migration `20260611_150000`
+>   - channelDispatcher nested-bug 已修 + sendLineMessage 真推（尊重 `lineSubscribed`）+ automationEngine `send_line` 接真 + Orders afterChange 確認/出貨 LINE 推播
+>   - ⏳ **剩 user 行動**：從 Shopline 後台抄 token/secret → 寫 prod `.env`（`LINE_CHANNEL_ACCESS_TOKEN`/`LINE_CHANNEL_SECRET`）或填 admin CRM 設定欄位；要切換時在後台打開總開關 + LINE Console 把 webhook 指到 `https://pre.chickimmiu.com/api/webhooks/line`
+> - **P1 內容頁 ✅**：`/pages/offline-shop-1` + `/pages/tagckmu` 已 seed 上 prod（`scripts/seed-p1-content-pages.ts`）
+> - 下一步：P2 內容頁（ckmustyle UGC 圖牆 / member-recommendation）+ P3 301 redirect map + 後台 inbox UI（客服中心 1B-1G）
+
 > **給新對話的第一句話**：先讀完本文件再動手。開工前必跑：
 > ```bash
 > git log --oneline -5          # user 多 session 並行，先確認 HEAD
