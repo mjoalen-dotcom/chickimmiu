@@ -62,7 +62,9 @@ export function BrandAnthemPlayer() {
   useEffect(() => {
     if (!isPlaying) return
     const handleVideoPlay = (e: Event) => {
-      const target = e.target as HTMLVideoElement
+      const target = e.target as HTMLMediaElement
+      // capture listener 連 BGM 自己 <audio> 的 play 事件都收得到 — 不跳過會自我暫停
+      if (target === audioRef.current) return
       // 避免靜音 video 也觸發暫停（很多 hero bg video 是 muted loop）
       if (target.muted) return
       pause()
