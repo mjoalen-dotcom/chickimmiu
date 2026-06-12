@@ -390,7 +390,7 @@ export default async function FrontendLayout({
 
           <CartDrawer />
           <ExitIntentPopup />
-          <BrandAnthemPlayer />
+          {((site.enableBrandAnthem as boolean) ?? true) && <BrandAnthemPlayer />}
           <FloatingQuickMenu />
           <FloatingChatButton
             lineOaUrl={cs.lineOaUrl as string | undefined}

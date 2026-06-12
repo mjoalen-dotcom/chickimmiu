@@ -72,6 +72,7 @@ import * as migration_20260609_140000_add_email_templates from './20260609_14000
 import * as migration_20260609_150000_add_order_delivered_email_toggle from './20260609_150000_add_order_delivered_email_toggle';
 import * as migration_20260611_120000_add_blog_posts_media_hero from './20260611_120000_add_blog_posts_media_hero';
 import * as migration_20260611_150000_add_line_messaging_fields from './20260611_150000_add_line_messaging_fields';
+import * as migration_20260612_100000_add_brand_anthem_toggle from './20260612_100000_add_brand_anthem_toggle';
 
 export const migrations = [
   {
@@ -443,5 +444,10 @@ export const migrations = [
     up: migration_20260611_150000_add_line_messaging_fields.up,
     down: migration_20260611_150000_add_line_messaging_fields.down,
     name: '20260611_150000_add_line_messaging_fields',
+  },
+  {
+    up: migration_20260612_100000_add_brand_anthem_toggle.up,
+    down: migration_20260612_100000_add_brand_anthem_toggle.down,
+    name: '20260612_100000_add_brand_anthem_toggle',
   },
 ];

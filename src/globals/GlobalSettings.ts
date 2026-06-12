@@ -90,6 +90,17 @@ export const GlobalSettings: GlobalConfig = {
               '檔案大小建議 < 1 MB 以利 Facebook / X / LINE 預覽載入。',
           },
         },
+        {
+          name: 'enableBrandAnthem',
+          label: '顯示品牌主題曲播放按鈕',
+          type: 'checkbox',
+          defaultValue: true,
+          admin: {
+            description:
+              '前台左下角的品牌主題曲（BGM）浮動播放按鈕。關閉後全站不顯示，' +
+              '正在播放的訪客重新整理頁面後也會停止。',
+          },
+        },
       ],
     },
 
