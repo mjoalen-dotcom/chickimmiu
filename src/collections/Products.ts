@@ -13,6 +13,7 @@ import { bulkDeleteUnpublishedEndpoint } from '../endpoints/bulkDeleteUnpublishe
 import { revalidateProduct } from '../lib/revalidate'
 import { suggestPersonalityTypes } from '../lib/games/mbtiAutoRecommend'
 import { bumpCategoryCount, getCategoryId } from '../lib/categoryCount'
+import { coerceToLexical } from '../lib/richtext/htmlToLexical'
 
 const productFieldMappings: FieldMapping[] = [
   { key: 'name', label: '商品名稱' },
@@ -184,6 +185,13 @@ export const Products: CollectionConfig = {
     beforeValidate: [
       ({ data }) => {
         if (!data) return data
+
+        // richText 守門：若 description 被匯入流程塞成「HTML/純文字字串」，
+        // 轉成合法 Lexical，杜絕 SQLite json-mode JSON.parse 崩潰
+        // （一筆壞值會毒死整個 products 查詢 → 首頁輪播+商品全消失）。
+        if (typeof data.description === 'string') {
+          data.description = coerceToLexical(data.description)
+        }
 
         // 自動 slug from name（若未填）
         if (!data.slug && typeof data.name === 'string') {
