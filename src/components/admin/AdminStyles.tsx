@@ -47,6 +47,12 @@ const ICON_SETTINGS = lucideMask(
 
 export default function AdminStyles() {
   const css = `
+    /* ── Blocks/Collapsible 區塊標題列高度修正 ──────────────────────
+       blocks 欄位（如 Pages 的「頁面區塊」）每個區塊用 collapsible 呈現，
+       其 .collapsible__toggle-wrap 預設 line-height 過小，標題列被擠壓、
+       「01 富文字區塊…」之類的列看起來空間不足/重疊。拉到 30px 即正常。 */
+    .collapsible__toggle-wrap { line-height: 30px !important; }
+
     /* ── Breadcrumb 推右 + 分隔符留白（對應使用者 B 議題） ───────── */
     .step-nav { margin-left: 16px; }
     .step-nav__separator,
