@@ -60,8 +60,12 @@ export function ProductQuickView({ product, open, onClose }: ProductQuickViewPro
   const selectedVariant = product.variants?.find(
     (v) => v.colorName === selectedColor && v.size === selectedSize,
   )
+  // priceOverride / salePrice 只在 > 0 時採用（LB-02，同 ProductDetailClient）：
+  // 避免 priceOverride:0 用 ?? 覆蓋原價造成 NT$0 結帳。
+  const posPrice = (n: unknown): number | undefined =>
+    typeof n === 'number' && n > 0 ? n : undefined
   const currentPrice =
-    selectedVariant?.priceOverride ?? product.salePrice ?? product.price
+    posPrice(selectedVariant?.priceOverride) ?? posPrice(product.salePrice) ?? product.price
   const inWishlist = isInWishlist(product.id)
 
   const handleAddToCart = () => {

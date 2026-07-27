@@ -1,4 +1,5 @@
 import type { CollectionConfig, Access, Where } from 'payload'
+import { APIError } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
 import { recordInventory } from '../lib/inventory/server'
@@ -510,6 +511,47 @@ export const Orders: CollectionConfig = {
       },
     ],
     beforeChange: [
+      // ── 下單前庫存可用量檢查（LB-03）──
+      // 只在 create 時跑：逐項比對可用庫存，數量超過且非預購商品 → 擋單（回 400，前端顯示訊息）。
+      // 這是「拒絕超賣」的主要防線；afterChange 的 Math.max(0,…) 只當最後夾制，不再依賴它擋超賣。
+      async ({ data, operation, req }) => {
+        if (operation !== 'create' || !data) return data
+        const items =
+          ((data as Record<string, unknown>).items as
+            | {
+                product?: string | { id: string }
+                sku?: string
+                quantity?: number
+                productName?: string
+              }[]
+            | undefined) || []
+        for (const item of items) {
+          const productId =
+            typeof item.product === 'string' ? item.product : item.product?.id
+          const qty = Number(item.quantity) || 0
+          if (!productId || qty <= 0) continue
+          const product = (await req.payload
+            .findByID({ collection: 'products', id: productId, depth: 0, req })
+            .catch(() => null)) as Record<string, unknown> | null
+          if (!product) continue
+          if (product.allowPreOrder) continue // 預購商品允許缺貨下單
+          const variants = product.variants as { sku?: string; stock?: number }[] | undefined
+          let available: number
+          if (variants && variants.length > 0 && item.sku) {
+            available = Number(variants.find((v) => v.sku === item.sku)?.stock ?? 0)
+          } else {
+            available = Number(product.stock ?? 0)
+          }
+          if (qty > available) {
+            const name = item.productName || (product.name as string) || '商品'
+            throw new APIError(
+              `「${name}」庫存不足，目前僅剩 ${available} 件，請調整數量後再結帳`,
+              400,
+            )
+          }
+        }
+        return data
+      },
       // ── 稅額自動計算 ──
       // 每次 create/update 都重算（以保證 items 或 shippingFee 被 admin 手動改動後
       // tax 欄位跟上）。失敗時 log 但不 throw，讓訂單還是能存檔（客服場景）。
@@ -679,7 +721,9 @@ export const Orders: CollectionConfig = {
         const prevStatus = previousDoc?.status as string | undefined
 
         // ── 新訂單建立：自動扣庫存 ──
-        if (operation === 'create' || (status === 'processing' && prevStatus === 'pending')) {
+        // LB-03：只在 create 扣一次庫存。原本 pending→processing 也扣，造成每張訂單雙重扣減。
+        // 缺貨拒單已移到 beforeChange 的可用量檢查；此處 Math.max(0,…) 僅作最後夾制。
+        if (operation === 'create') {
           const items = doc.items as {
             product: string | { id: string }
             sku?: string

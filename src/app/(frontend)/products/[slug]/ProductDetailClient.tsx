@@ -333,9 +333,14 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
   const selectedVariant = variants.find(
     (v) => v.colorName === selectedColor && v.size === selectedSize,
   )
+  // 變體 priceOverride / 商品 salePrice 只在 > 0 時採用（LB-02）：
+  // prod 部分資料的 priceOverride 是 0（非 null），用 ?? 會讓 0 覆蓋原價 → 選變體變 NT$0 結帳。
+  // 比照 lib/ads/feedBuilder.ts 的 > 0 守衛：任一非正值視為未設定，往下 fallback。
+  const posPrice = (n: unknown): number | undefined =>
+    typeof n === 'number' && n > 0 ? n : undefined
   const currentPrice =
-    selectedVariant?.priceOverride ??
-    (product.salePrice as number | undefined) ??
+    posPrice(selectedVariant?.priceOverride) ??
+    posPrice(product.salePrice) ??
     (product.price as number)
   const originalPrice = product.price as number
   const discountPercent =
