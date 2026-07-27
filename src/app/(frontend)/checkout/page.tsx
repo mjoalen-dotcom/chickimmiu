@@ -120,9 +120,16 @@ interface ShippingOption {
   estimatedDays: string
   icon: typeof Truck
   cashOnDelivery?: boolean
+  /** ShippingMethods collection doc id（DB 驅動時才有；寫入訂單 relationship） */
+  docId?: number
 }
 
-const SHIPPING_OPTIONS: ShippingOption[] = [
+/**
+ * LB-12：運費改由後台 ShippingMethods collection 驅動（/api/shipping-methods）。
+ * 這份硬編碼清單只剩 fallback 用途——API 掛掉或後台一筆啟用的方式都沒有時
+ * 才會用到，讓結帳永遠有物流可選。平常後台改運費會直接反映到結帳。
+ */
+const FALLBACK_SHIPPING_OPTIONS: ShippingOption[] = [
   // 宅配
   {
     id: 'hct',
@@ -235,6 +242,26 @@ const SHIPPING_OPTIONS: ShippingOption[] = [
   },
 ]
 
+/* LB-12：ShippingMethods collection 沒有前端分類欄位，以 carrier 代碼推導
+ * tab 類型與圖示；carrier=other 時看名稱是否為自取/面交類。 */
+const CVS_CARRIERS = ['711', 'family', 'hilife', 'ok']
+const INTL_CARRIERS = ['dhl', 'fedex']
+
+function deriveShippingType(carrier: string, name: string): ShippingType {
+  if (carrier === 'meetup') return 'meetup'
+  if (CVS_CARRIERS.includes(carrier)) return 'convenience_store'
+  if (INTL_CARRIERS.includes(carrier)) return 'international'
+  if (carrier === 'other' && /自取|面交/.test(name)) return 'meetup'
+  return 'home_delivery'
+}
+
+const SHIPPING_TYPE_ICON: Record<ShippingType, typeof Truck> = {
+  home_delivery: Truck,
+  convenience_store: Building2,
+  meetup: Handshake,
+  international: Plane,
+}
+
 const TAIWAN_CITIES = [
   '台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市',
   '基隆市', '新竹市', '新竹縣', '苗栗縣', '彰化縣', '南投縣',
@@ -279,6 +306,44 @@ export default function CheckoutPage() {
         setPaymentSettings((prev) => ({ ...prev, enabledMethods: ['cash_cod', 'cash_meetup'] }))
       })
       .finally(() => setPaymentSettingsLoaded(true))
+  }, [])
+
+  // LB-12：物流方式改讀後台 ShippingMethods（isActive + sortOrder）。
+  // fetch 失敗或後台一筆啟用的都沒有 → 續用 FALLBACK 硬編碼清單，結帳不中斷。
+  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>(
+    FALLBACK_SHIPPING_OPTIONS,
+  )
+  useEffect(() => {
+    fetch('/api/shipping-methods?where[isActive][equals]=true&limit=100&sort=sortOrder&depth=0')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => {
+        const docs = (body?.docs ?? []) as Array<Record<string, unknown>>
+        if (!docs.length) return
+        const mapped: ShippingOption[] = docs.map((d) => {
+          const carrier = String(d.carrier ?? 'other')
+          const name = String(d.name ?? carrier)
+          const type = deriveShippingType(carrier, name)
+          return {
+            id: String(d.id),
+            docId: typeof d.id === 'number' ? d.id : undefined,
+            type,
+            carrier,
+            name,
+            desc: typeof d.description === 'string' ? d.description : '',
+            fee: typeof d.baseFee === 'number' ? d.baseFee : 0,
+            freeThreshold:
+              typeof d.freeShippingThreshold === 'number' ? d.freeShippingThreshold : 0,
+            estimatedDays: typeof d.estimatedDays === 'string' ? d.estimatedDays : '',
+            icon: SHIPPING_TYPE_ICON[type],
+            // 與原硬編碼行為一致：宅配/超商支援貨到付款，自取/國際不支援
+            cashOnDelivery: type === 'home_delivery' || type === 'convenience_store',
+          }
+        })
+        setShippingOptions(mapped)
+      })
+      .catch(() => {
+        /* fallback 清單續用 */
+      })
   }, [])
 
   // 結帳設定（從 /api/checkout-settings 拉，失敗用 fallback）
@@ -424,9 +489,25 @@ export default function CheckoutPage() {
   const [buyerUBN, setBuyerUBN] = useState('')
   const [buyerCompanyName, setBuyerCompanyName] = useState('')
 
-  const shippingOption = SHIPPING_OPTIONS.find((s) => s.id === selectedShipping)
+  const shippingOption = shippingOptions.find((s) => s.id === selectedShipping)
   const isConvenienceStore = shippingOption?.type === 'convenience_store'
   const isMeetup = shippingOption?.type === 'meetup'
+
+  // DB 清單載入後，fallback 的字串 id（'711'…）不會存在於 DB id（'1'…'8'）中，
+  // 自動改選目前 tab 類型的第一個；該類型沒有啟用選項則跳到第一個有選項的 tab。
+  useEffect(() => {
+    if (shippingOptions.some((s) => s.id === selectedShipping)) return
+    const sameType = shippingOptions.find((s) => s.type === shippingTypeFilter)
+    if (sameType) {
+      setSelectedShipping(sameType.id)
+      return
+    }
+    if (shippingOptions[0]) {
+      setShippingTypeFilter(shippingOptions[0].type)
+      setSelectedShipping(shippingOptions[0].id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shippingOptions])
 
   const subtotal = items.reduce(
     (sum, i) => sum + (i.salePrice ?? i.price) * i.quantity,
@@ -436,8 +517,8 @@ export default function CheckoutPage() {
   // 運費計算：依會員等級、訂閱會員、物流方式
   const calcShippingFee = () => {
     if (!shippingOption) return 0
-    // 免運門檻
-    if (subtotal >= shippingOption.freeThreshold) return 0
+    // 免運門檻（後台語意：0 = 無免運，門檻 >0 才生效）
+    if (shippingOption.freeThreshold > 0 && subtotal >= shippingOption.freeThreshold) return 0
     return shippingOption.fee
   }
 
@@ -581,7 +662,7 @@ export default function CheckoutPage() {
     setCouponError(null)
   }
 
-  const filteredShipping = SHIPPING_OPTIONS.filter(
+  const filteredShipping = shippingOptions.filter(
     (s) => s.type === shippingTypeFilter,
   )
 
@@ -709,6 +790,8 @@ export default function CheckoutPage() {
             zipCode: form.zipCode,
           },
       shippingMethod: {
+        // LB-12：DB 驅動的選項帶 ShippingMethods relationship（fallback 清單無 docId）
+        method: shippingOption?.docId,
         methodName: shippingOption?.name,
         carrier: shippingOption?.carrier,
         convenienceStore:
@@ -863,6 +946,51 @@ export default function CheckoutPage() {
       console.warn('[Checkout] CAPI fire-and-forget failed (non-fatal):', err)
     })
 
+    // §4 二段式：綠界線上付款不直接跳成功頁——拿 AioCheckOut 表單參數
+    // auto-submit 導向綠界付款頁，付款結果由 server-to-server callback 回填 paid。
+    if (selectedPayment === 'ecpay') {
+      try {
+        const payRes = await fetch('/api/payment/ecpay/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ orderNumber: createdOrderNumber }),
+        })
+        const pay = (await payRes.json().catch(() => null)) as
+          | { action?: string; params?: Record<string, string>; error?: string }
+          | null
+        if (!payRes.ok || !pay?.action || !pay.params) {
+          // 訂單已建立但付款頁失敗：保留購物車；這筆 unpaid 訂單由
+          // 逾時自動取消機制清掉（LB-06 只豁免現金單）。
+          setSubmitError(
+            pay?.error ||
+              '付款頁建立失敗，請稍後再試或改用其他付款方式（未付款訂單將自動取消）',
+          )
+          setIsProcessing(false)
+          return
+        }
+        clearCart()
+        const payForm = document.createElement('form')
+        payForm.method = 'POST'
+        payForm.action = pay.action
+        Object.entries(pay.params).forEach(([k, v]) => {
+          const input = document.createElement('input')
+          input.type = 'hidden'
+          input.name = k
+          input.value = v
+          payForm.appendChild(input)
+        })
+        document.body.appendChild(payForm)
+        payForm.submit()
+        return
+      } catch (err) {
+        console.error('[Checkout] ecpay create error:', err)
+        setSubmitError('付款頁建立失敗，請檢查網路連線後再試')
+        setIsProcessing(false)
+        return
+      }
+    }
+
     clearCart()
     router.push(`/checkout/success/${createdOrderNumber}`)
   }
@@ -958,13 +1086,16 @@ export default function CheckoutPage() {
                       { type: 'meetup' as ShippingType, label: '到辦公室取貨', icon: Handshake },
                       { type: 'international' as ShippingType, label: '國際配送', icon: Plane },
                     ] as const
-                  ).map((tab) => (
+                  )
+                    // LB-12：後台沒有任何啟用選項的類型不顯示 tab（例如停用國際快遞）
+                    .filter((tab) => shippingOptions.some((s) => s.type === tab.type))
+                    .map((tab) => (
                     <button
                       key={tab.type}
                       type="button"
                       onClick={() => {
                         setShippingTypeFilter(tab.type)
-                        const first = SHIPPING_OPTIONS.find((s) => s.type === tab.type)
+                        const first = shippingOptions.find((s) => s.type === tab.type)
                         if (first) setSelectedShipping(first.id)
                       }}
                       className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs transition-all flex-1 justify-center ${
@@ -997,7 +1128,8 @@ export default function CheckoutPage() {
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium">{opt.name}</p>
                           <span className="text-xs font-medium text-gold-600">
-                            {subtotal >= opt.freeThreshold ? (
+                            {opt.fee === 0 ||
+                            (opt.freeThreshold > 0 && subtotal >= opt.freeThreshold) ? (
                               <span className="text-green-600">免運費</span>
                             ) : (
                               `NT$ ${opt.fee}`
@@ -1009,7 +1141,7 @@ export default function CheckoutPage() {
                           <span className="text-[10px] text-muted-foreground">
                             ⏱ {opt.estimatedDays}
                           </span>
-                          {subtotal < opt.freeThreshold && (
+                          {opt.freeThreshold > 0 && subtotal < opt.freeThreshold && (
                             <span className="text-[10px] text-muted-foreground">
                               滿 NT$ {opt.freeThreshold.toLocaleString()} 免運
                             </span>

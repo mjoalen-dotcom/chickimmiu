@@ -21,10 +21,10 @@
 | LB-06 | 🔴 P0 | 訂單 | 60 分鐘自動取消誤殺貨到付款訂單 | 程式/設定 | ✅ 2026-07-27 `a049848` 排除現金單（註：outage crontab 本來就沒排 auto-cancel，此為回歸保險） |
 | LB-07 | 🔴 P0 | 法遵 | 首頁假網紅 + 假讚數 live（不實廣告曝險） | 程式/資料 | ✅ 2026-07-27 `a049848` DEMO_UGC 全移除，空集合不渲染 |
 | LB-08 | 🟠 P1 | 設定 | PAYLOAD_SECRET / DATABASE_URI 靜默 dev fallback | 設定(+程式) | 0.5 天 |
-| LB-09 | 🟠 P1 | 內容 | 7 個導覽主題系列全空 | 資料 | 0.5 天 |
-| LB-10 | 🟠 P1 | SEO | 封測站 robots 仍 allow:/ | 程式/設定 | 0.25 天 |
+| LB-09 | 🟠 P1 | 內容 | 7 個導覽主題系列全空 | 資料 | ✅ 2026-07-27 七系列綁真商品 197 tags（來源=Shopline tags/分類/舊站分類爬回比對；scripts/oneoff/seed-collection-tags-20260727.py；demo 商品 id1-9 的暫時 tags 已移除） |
+| LB-10 | 🟠 P1 | SEO | 封測站 robots 仍 allow:/ | 程式/設定 | ✅ 2026-07-27 robots.ts 依 NEXT_PUBLIC_SITE_URL host（pre./staging. 前綴）或 DISABLE_INDEXING=1 全站 Disallow；prod env 已確認設 pre. |
 | LB-11 | 🟠 P1 | 上線 | www 仍是舊 Shopline，需域名切換計畫 | 營運 | — |
-| LB-12 | 🟠 P1 | 物流 | ShippingMethods 後台無效（運費寫死前端） | 程式 | 1 天 |
+| LB-12 | 🟠 P1 | 物流 | ShippingMethods 後台無效（運費寫死前端） | 程式 | ✅ 2026-07-27 結帳改讀 /api/shipping-methods（isActive+sortOrder；carrier→tab 類型 derive；API 掛掉 fallback 硬編碼）；prod 後台既有 8 筆設定直接生效 |
 | LB-13 | 🟠 P1 | 轉換 | 結帳強制填生日+性別、店家新單通知信箱空 | 設定 | 0.25 天 |
 | LB-14 | 🟡 P2 | 收尾 | 客服資訊不一致 / 退款不回補 / 訪客結帳名實不符等 | 雜項 | 1 天 |
 
@@ -160,6 +160,13 @@ prod `/api/checkout-settings` 顯示 `birthdayRequired:true, genderRequired:true
 
 ## 4. 路徑 B 專屬：ECPay 線上金流串接（若選完整上線）
 > 需你先提供憑證：綠界 **MerchantID / HashKey / HashIV**（測試站可先用綠界測試值）。env：`ECPAY_MERCHANT_ID / ECPAY_HASH_KEY / ECPAY_HASH_IV`。
+
+> **✅ 2026-07-27 程式面已全部串完**（`src/lib/payment/ecpay.ts` + `/api/payment/ecpay/{create,callback,result}` + checkout 二段式導向）。現況：
+> - prod `.env` 的 `ECPAY_ENV=sandbox` 且憑證留空 → 自動用綠界公開測試商店 2000132，**後台把 `ecpay` 勾進 enabledMethods 即可全程測刷卡**（測試卡 4311-9522-2222-2222，安全碼 222）。
+> - 拿到正式憑證後：填 `ECPAY_MERCHANT_ID/HASH_KEY/HASH_IV`、改 `ECPAY_ENV=production`、`pm2 restart chickimmiu-nextjs` 即切正式。production 憑證缺值時 create API 回 503，不會誤用測試商店收單。
+> - `ChoosePayment` 預設 Credit（同步刷卡）；ATM/超商代碼屬非同步取號，會被 60 分鐘自動取消誤殺，開 ALL 前先調整取消時窗（env `ECPAY_CHOOSE_PAYMENT` 可覆蓋）。
+> - callback 冪等（paid→paid 不重觸發）；已付款信/點數/銷量/佣金走既有 unpaid→paid hooks（`Orders.ts:749`）。原始回傳記在 pm2 log（`[ecpay] callback raw`）。
+> - 電子發票（第 5 點）與超商電子地圖（第 6 點）仍未做。
 
 **新開發範圍（純新增，約 1–2 週）**
 1. **建單改二段式**：現有 `POST /api/orders` 建 `unpaid/pending` 後，對線上金流方式**不跳成功頁**，改導向自建 `POST /api/payment/ecpay/create` → 產生 ECPay 表單（含 `CheckMacValue`、`MerchantTradeNo`=訂單號、`ReturnURL`、`OrderResultURL`、`ClientBackURL`）→ 302/auto-submit 到綠界付款頁。
