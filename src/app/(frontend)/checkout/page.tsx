@@ -27,6 +27,7 @@ import {
   Tag,
   X,
   Check,
+  Sparkles,
 } from 'lucide-react'
 import { useCartStore } from '@/stores/cartStore'
 import { CheckoutLastChance } from '@/components/recommendation/CheckoutLastChance'
@@ -308,6 +309,29 @@ export default function CheckoutPage() {
       .finally(() => setPaymentSettingsLoaded(true))
   }, [])
 
+  // 訂閱會員權益（/api/subscription/me）：全站折扣 % + 專屬免運門檻。
+  // 未登入 / 無訂閱 / fetch 失敗 → { active:false }，權益一律不套用。
+  const [membership, setMembership] = useState<{
+    active: boolean
+    planName?: string
+    benefits?: {
+      discountPercent: number
+      freeShippingThreshold: number | null
+      pointsMultiplier: number
+      monthlyCredit: number
+    }
+  }>({ active: false })
+  useEffect(() => {
+    fetch('/api/subscription/me', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((m) => {
+        if (m?.active) setMembership(m)
+      })
+      .catch(() => {
+        /* 無權益 */
+      })
+  }, [])
+
   // LB-12：物流方式改讀後台 ShippingMethods（isActive + sortOrder）。
   // fetch 失敗或後台一筆啟用的都沒有 → 續用 FALLBACK 硬編碼清單，結帳不中斷。
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>(
@@ -525,7 +549,14 @@ export default function CheckoutPage() {
   const rawShippingFee = calcShippingFee()
   // 免運優惠券：任一已套用券免運 → 運費歸零（仍保留原價於摘要顯示）
   const hasFreeShippingCoupon = appliedCoupons.some((c) => c.freeShipping)
-  const shippingFee = hasFreeShippingCoupon ? 0 : rawShippingFee
+  // 訂閱會員專屬免運門檻（後台語意：null=未提供；0=全站免運；>0=滿額免運）
+  const memberFreeThreshold = membership.active
+    ? membership.benefits?.freeShippingThreshold ?? null
+    : null
+  const hasMemberFreeShipping =
+    memberFreeThreshold !== null &&
+    (memberFreeThreshold === 0 || subtotal >= memberFreeThreshold)
+  const shippingFee = hasFreeShippingCoupon || hasMemberFreeShipping ? 0 : rawShippingFee
 
   // COD 手續費：只有選 cash_cod 時才計入 total
   const codFee = selectedPayment === 'cash_cod' ? paymentSettings.codDefaultFee : 0
@@ -534,7 +565,15 @@ export default function CheckoutPage() {
     subtotal,
     appliedCoupons.reduce((sum, c) => sum + (c.freeShipping ? 0 : c.discountAmount), 0),
   )
-  const total = Math.max(0, subtotal + shippingFee + codFee - couponDiscount)
+  // 訂閱會員全站折扣（對小計計算，與優惠券併用；兩者合計不超過小計）
+  const memberDiscountPercent = membership.active
+    ? Number(membership.benefits?.discountPercent) || 0
+    : 0
+  const memberDiscount = Math.min(
+    Math.max(0, subtotal - couponDiscount),
+    Math.floor((subtotal * memberDiscountPercent) / 100),
+  )
+  const total = Math.max(0, subtotal + shippingFee + codFee - couponDiscount - memberDiscount)
 
   // COD 上限檢查（不含 COD 手續費本身，避免 self-reference）
   const baseTotalForCodCheck = subtotal + shippingFee
@@ -745,11 +784,18 @@ export default function CheckoutPage() {
       shippingFee,
       codFee,
       total,
-      discountAmount: couponDiscount,
+      discountAmount: couponDiscount + memberDiscount,
       discountReason:
-        appliedCoupons.length > 0
-          ? `優惠券 ${appliedCoupons.map((c) => `${c.couponCode}${c.freeShipping ? '（免運）' : ''}`).join('、')}`
-          : undefined,
+        [
+          appliedCoupons.length > 0
+            ? `優惠券 ${appliedCoupons.map((c) => `${c.couponCode}${c.freeShipping ? '（免運）' : ''}`).join('、')}`
+            : '',
+          memberDiscount > 0
+            ? `訂閱會員 ${membership.planName || ''} ${memberDiscountPercent}% 折扣`
+            : '',
+        ]
+          .filter(Boolean)
+          .join('；') || undefined,
       couponCode: appliedCoupons[0]?.couponCode,
       coupon: appliedCoupons[0]?.couponId,
       appliedCoupons: appliedCoupons.map((c) => ({
@@ -1826,11 +1872,29 @@ export default function CheckoutPage() {
                       </span>
                     </div>
                   )}
+                  {membership.active && (memberDiscount > 0 || hasMemberFreeShipping) && (
+                    <div className="flex justify-between text-gold-600">
+                      <span className="flex items-center gap-1">
+                        <Sparkles size={12} />
+                        訂閱會員{membership.planName ? `・${membership.planName}` : ''}
+                      </span>
+                      <span>
+                        {memberDiscount > 0 ? (
+                          <>
+                            − <Price twd={memberDiscount} />
+                          </>
+                        ) : (
+                          '免運'
+                        )}
+                        {memberDiscount > 0 && hasMemberFreeShipping ? '（含免運）' : ''}
+                      </span>
+                    </div>
+                  )}
                   {(() => {
                     const rate = taxSettings.defaultTaxRate || 0
                     if (rate <= 0) return null
                     // 稅基：已扣優惠後的 subtotal + (可選) 運費
-                    const discountedSubtotal = Math.max(0, subtotal - couponDiscount)
+                    const discountedSubtotal = Math.max(0, subtotal - couponDiscount - memberDiscount)
                     const taxableBase =
                       discountedSubtotal + (taxSettings.shippingTaxable ? shippingFee : 0)
                     const tax = taxSettings.defaultTaxIncluded

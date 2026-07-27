@@ -215,6 +215,7 @@ export const WalletTransactions: CollectionConfig = {
         { label: '遊戲獎勵', value: 'game' },
         { label: '生日禮', value: 'birthday' },
         { label: '推薦回饋', value: 'referral' },
+        { label: '訂閱會員', value: 'subscription' },
         { label: '訂單', value: 'order' },
         { label: '訂單退款', value: 'order_refund' },
         { label: '儲值', value: 'topup' },

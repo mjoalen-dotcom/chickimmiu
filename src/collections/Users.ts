@@ -724,6 +724,54 @@ export const Users: CollectionConfig = {
                 },
               ],
             },
+            // Paid membership（付費訂閱會員）— user-subscriptions 的 denormalized 快照，
+            // 由 lib/subscription/activate.ts syncUserMembership 維護，勿手動編輯。
+            // Orders paid hook / 結帳權益檢查讀這裡，免每單 join 訂閱表。
+            {
+              name: 'membership',
+              label: '付費訂閱會員',
+              type: 'group',
+              admin: { description: '訂閱系統自動維護（勿手動改），來源 = 會員訂閱 collection' },
+              fields: [
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'activePlan',
+                      label: '生效方案',
+                      type: 'relationship',
+                      relationTo: 'subscription-plans',
+                      admin: { width: '50%', readOnly: true },
+                    },
+                    {
+                      name: 'activeSubscription',
+                      label: '生效訂閱紀錄',
+                      type: 'relationship',
+                      relationTo: 'user-subscriptions',
+                      admin: { width: '50%', readOnly: true },
+                    },
+                  ],
+                },
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'validUntil',
+                      label: '權益有效至',
+                      type: 'date',
+                      admin: { width: '50%', readOnly: true, date: { pickerAppearance: 'dayAndTime' } },
+                    },
+                    {
+                      name: 'streakMonths',
+                      label: '連續訂閱月數',
+                      type: 'number',
+                      defaultValue: 0,
+                      admin: { width: '50%', readOnly: true },
+                    },
+                  ],
+                },
+              ],
+            },
             // Referral
             {
               type: 'row',

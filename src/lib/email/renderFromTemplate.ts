@@ -38,6 +38,8 @@ export const EMAIL_EVENT_KEYS = [
   'order_delivered',
   'order_cancelled',
   'order_refunded',
+  'subscription_receipt',
+  'subscription_cancelled',
   'admin_new_order',
   'auth_verify',
   'auth_forgot_password',
@@ -53,6 +55,8 @@ export const EMAIL_EVENT_LABELS: Record<EmailEventKey, string> = {
   order_delivered: '送達通知信',
   order_cancelled: '訂單取消信',
   order_refunded: '退款通知信',
+  subscription_receipt: '訂閱收據信（開通/續扣）',
+  subscription_cancelled: '訂閱取消通知信',
   admin_new_order: '後台新單提醒（寄給管理員）',
   auth_verify: 'Email 驗證信',
   auth_forgot_password: '重設密碼信',
@@ -114,6 +118,22 @@ export const EMAIL_EVENT_VARIABLES: Record<EmailEventKey, Array<{ name: string; 
     { name: 'refundAmount', desc: '退款金額（已格式化 NT$）' },
     { name: 'refundTarget', desc: '退款去向文字' },
     { name: 'orderButton', desc: '「查看訂單」按鈕（已 render）' },
+  ],
+  subscription_receipt: [
+    { name: 'customerName', desc: '會員姓名' },
+    { name: 'planName', desc: '方案名稱' },
+    { name: 'statusLine', desc: '狀態句（開通：「訂閱已開通」；續扣：「第 N 期扣款成功」）' },
+    { name: 'amount', desc: '本期扣款金額（已格式化 NT$）' },
+    { name: 'validUntil', desc: '權益有效至（YYYY-MM-DD）' },
+    { name: 'streakMonths', desc: '連續訂閱月數' },
+    { name: 'creditLine', desc: '購物金入帳區塊（已 render；無則空）' },
+    { name: 'subscriptionButton', desc: '「管理訂閱」按鈕（已 render）' },
+  ],
+  subscription_cancelled: [
+    { name: 'customerName', desc: '會員姓名' },
+    { name: 'planName', desc: '方案名稱' },
+    { name: 'validUntil', desc: '權益保留至（YYYY-MM-DD）' },
+    { name: 'subscriptionButton', desc: '「查看訂閱」按鈕（已 render）' },
   ],
   admin_new_order: [
     { name: 'orderNumber', desc: '訂單編號' },
@@ -311,6 +331,43 @@ export const DEFAULT_EMAIL_TEMPLATES: Record<EmailEventKey, EmailTemplateDefault
     </p>
 
     {{orderButton}}`,
+  },
+  subscription_receipt: {
+    name: '訂閱收據信',
+    subject: '【CHIC KIM & MIU】訂閱收據 — {{planName}}',
+    preheader: '{{statusLine}}，權益有效至 {{validUntil}}',
+    headline: '訂閱收據',
+    bodyHtml: `    <p style="margin:0 0 16px;font-size:14px;line-height:1.6">{{customerName}} 您好，</p>
+    <p style="margin:0 0 16px;font-size:14px;line-height:1.6">
+      您的 <strong>{{planName}}</strong> {{statusLine}}，本期金額
+      <strong style="color:#c9a961">{{amount}}</strong>。<br/>
+      會員權益有效至 <strong>{{validUntil}}</strong>，目前已連續訂閱 {{streakMonths}} 個月。
+    </p>
+
+    {{creditLine}}
+
+    {{subscriptionButton}}
+
+    <p style="font-size:12px;color:#999;line-height:1.6;margin:16px 0 0;padding-top:16px;border-top:1px solid #eee">
+      您可隨時於「我的訂閱」查看權益或取消訂閱；取消後已付期間權益仍保留至到期日。
+    </p>`,
+  },
+  subscription_cancelled: {
+    name: '訂閱取消通知信',
+    subject: '【CHIC KIM & MIU】訂閱已取消 — {{planName}}',
+    preheader: '權益保留至 {{validUntil}}，期待再次相見',
+    headline: '訂閱已取消',
+    bodyHtml: `    <p style="margin:0 0 16px;font-size:14px;line-height:1.6">{{customerName}} 您好，</p>
+    <p style="margin:0 0 16px;font-size:14px;line-height:1.6">
+      您的 <strong>{{planName}}</strong> 訂閱已取消，後續將不再扣款。<br/>
+      已付期間的會員權益仍保留至 <strong>{{validUntil}}</strong>。
+    </p>
+
+    {{subscriptionButton}}
+
+    <p style="font-size:12px;color:#999;line-height:1.6;margin:16px 0 0;padding-top:16px;border-top:1px solid #eee">
+      隨時歡迎回來——重新訂閱即可再次啟用全部會員權益。
+    </p>`,
   },
   admin_new_order: {
     name: '後台新單提醒',
@@ -533,6 +590,17 @@ function buildScalarSample(eventKey: EmailEventKey): Record<string, string> {
       return { customerName: base.customerName }
     case 'payment_received':
       return { customerName: base.customerName, orderNumber: base.orderNumber, total: base.total }
+    case 'subscription_receipt':
+      return {
+        customerName: base.customerName,
+        planName: 'VIP 閃耀會員',
+        statusLine: '第 3 期扣款成功',
+        amount: ntd(299),
+        validUntil: '2026-09-30',
+        streakMonths: '3',
+      }
+    case 'subscription_cancelled':
+      return { customerName: base.customerName, planName: 'VIP 閃耀會員', validUntil: '2026-09-30' }
     case 'order_refunded':
       return { customerName: base.customerName, orderNumber: base.orderNumber, refundAmount: ntd(4240), refundTarget: '原付款帳戶 (信用卡)' }
     case 'admin_new_order':
@@ -586,6 +654,17 @@ export function buildSampleVars(eventKey: EmailEventKey): Record<string, string>
         ...scalar,
         paymentLine: `<div style="font-size:13px;color:#666;margin:8px 0">付款方式：綠界科技 ECPay</div>`,
         orderButton,
+      }
+    case 'subscription_receipt':
+      return {
+        ...scalar,
+        creditLine: `<div style="background:#fff8e7;padding:14px 16px;border-radius:8px;margin:16px 0;font-size:13px;line-height:1.8"><div style="color:#666">本期購物金已入帳：</div><div>• NT$ 150</div></div>`,
+        subscriptionButton: `<div style="text-align:center;margin:24px 0 8px"><a href="${siteUrl}/account/subscription" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">管理訂閱</a></div>`,
+      }
+    case 'subscription_cancelled':
+      return {
+        ...scalar,
+        subscriptionButton: `<div style="text-align:center;margin:24px 0 8px"><a href="${siteUrl}/account/subscription" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">查看訂閱</a></div>`,
       }
     case 'order_shipped':
       return {

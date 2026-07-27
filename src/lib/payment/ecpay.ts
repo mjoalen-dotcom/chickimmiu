@@ -176,3 +176,98 @@ export function buildAioCheckoutParams(
   params.CheckMacValue = generateAioCheckMacValue(params, cfg.hashKey, cfg.hashIV)
   return params
 }
+
+// ───────────────────────── 定期定額（訂閱） ─────────────────────────
+
+export interface BuildPeriodCheckoutParamsInput {
+  /** user-subscriptions 紀錄 id（CustomField1 以 SUB: 前綴回查） */
+  subscriptionId: number | string
+  planName: string
+  /** 每期金額 = TotalAmount = PeriodAmount（綠界硬性要求相等） */
+  amount: number
+  /** monthly → M/1；yearly → Y/1 */
+  cycle: 'monthly' | 'yearly'
+  siteUrl: string
+}
+
+/** 訂閱流程的 CustomField1 前綴（與訂單 callback 的 orderNumber 區隔） */
+export const SUBSCRIPTION_CUSTOM_PREFIX = 'SUB:'
+
+/**
+ * 組定期定額 AioCheckOut 表單參數。
+ * 規格（developers.ecpay.com.tw/?p=2868）：
+ *   - ChoosePayment 必須 Credit，且不可與分期參數併用
+ *   - PeriodAmount 必須 = TotalAmount
+ *   - ExecTimes 最少 2；M 最多 999、Y 最多 99 → 「訂閱到取消為止」用上限
+ *   - 首期授權結果送 ReturnURL（一般 AIO 格式）；第二期起送 PeriodReturnURL
+ *   - 扣款連續失敗 6 次綠界自動取消後續
+ */
+export function buildPeriodCheckoutParams(
+  cfg: EcpayConfig,
+  input: BuildPeriodCheckoutParamsInput,
+): Record<string, string> {
+  const isYearly = input.cycle === 'yearly'
+  const params: Record<string, string> = {
+    MerchantID: cfg.merchantId,
+    MerchantTradeNo: buildMerchantTradeNo(`S${input.subscriptionId}`),
+    MerchantTradeDate: formatMerchantTradeDate(),
+    PaymentType: 'aio',
+    TotalAmount: String(Math.round(input.amount)),
+    TradeDesc: 'CHIC KIM MIU Subscription',
+    ItemName: `${input.planName}（${isYearly ? '年繳' : '月繳'}訂閱）`.slice(0, 380),
+    ReturnURL: `${input.siteUrl}/api/subscription/ecpay/callback`,
+    OrderResultURL: `${input.siteUrl}/api/subscription/ecpay/result`,
+    ClientBackURL: `${input.siteUrl}/account/subscription`,
+    ChoosePayment: 'Credit',
+    EncryptType: '1',
+    CustomField1: `${SUBSCRIPTION_CUSTOM_PREFIX}${input.subscriptionId}`,
+    NeedExtraPaidInfo: 'N',
+    PeriodAmount: String(Math.round(input.amount)),
+    PeriodType: isYearly ? 'Y' : 'M',
+    Frequency: '1',
+    ExecTimes: isYearly ? '99' : '999',
+    PeriodReturnURL: `${input.siteUrl}/api/subscription/ecpay/period-callback`,
+  }
+  params.CheckMacValue = generateAioCheckMacValue(params, cfg.hashKey, cfg.hashIV)
+  return params
+}
+
+/** CreditCardPeriodAction 端點（解約/補授權；?p=16618） */
+export function periodActionUrl(cfg: EcpayConfig): string {
+  return cfg.sandbox
+    ? 'https://payment-stage.ecpay.com.tw/Cashier/CreditCardPeriodAction'
+    : 'https://payment.ecpay.com.tw/Cashier/CreditCardPeriodAction'
+}
+
+/**
+ * 呼叫綠界停用定期定額後續扣款（Action=Cancel，不可逆）。
+ * TimeStamp 為 Unix 秒，綠界端 3 分鐘內有效。回傳綠界原始欄位。
+ * 注意：ReAuth 測試環境不可用；Cancel 可。
+ */
+export async function cancelPeriodAtEcpay(
+  cfg: EcpayConfig,
+  merchantTradeNo: string,
+): Promise<{ ok: boolean; rtnCode: string; rtnMsg: string }> {
+  const params: Record<string, string> = {
+    MerchantID: cfg.merchantId,
+    MerchantTradeNo: merchantTradeNo,
+    Action: 'Cancel',
+    TimeStamp: String(Math.floor(Date.now() / 1000)),
+  }
+  params.CheckMacValue = generateAioCheckMacValue(params, cfg.hashKey, cfg.hashIV)
+  const res = await fetch(periodActionUrl(cfg), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(params).toString(),
+  })
+  const text = await res.text()
+  const parsed: Record<string, string> = {}
+  new URLSearchParams(text).forEach((v, k) => {
+    parsed[k] = v
+  })
+  return {
+    ok: parsed.RtnCode === '1',
+    rtnCode: parsed.RtnCode || '',
+    rtnMsg: parsed.RtnMsg || text.slice(0, 200),
+  }
+}

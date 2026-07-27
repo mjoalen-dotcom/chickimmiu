@@ -26,6 +26,7 @@ import { Pages } from './collections/Pages'
 // `claude/funny-haibt-a3b35a` 還原（含 banner layout + 161 圖 gallery）。
 import { CelebrityFeatures } from './collections/CelebrityFeatures'
 import { SubscriptionPlans } from './collections/SubscriptionPlans'
+import { UserSubscriptions } from './collections/UserSubscriptions'
 import { ProductReviews } from './collections/ProductReviews'
 import { Returns } from './collections/Returns'
 import { Exchanges } from './collections/Exchanges'
@@ -421,6 +422,7 @@ export default buildConfig({
     Users,
     MembershipTiers,
     SubscriptionPlans,
+    UserSubscriptions,
     PointsRedemptions,
     CreditScoreHistory,
     PointsTransactions,

@@ -909,7 +909,19 @@ export const Orders: CollectionConfig = {
                   const tierMultipliers =
                     loyaltySettings.tierMultipliers as unknown as Record<string, unknown> | undefined
                   const multiplier = (tierMultipliers?.[`${tierSlug}Multiplier`] as number) ?? 1
-                  pointsEarned = Math.floor(basePoints * multiplier)
+
+                  // 訂閱會員點數倍率（SubscriptionPlans.benefits.pointsMultiplier）
+                  // 疊乘在 tier 倍率之上；無生效訂閱 = 1。查詢失敗不影響基礎發放。
+                  let subscriptionMultiplier = 1
+                  try {
+                    const { getActiveMembership } = await import('../lib/subscription/activate')
+                    const m = await getActiveMembership(payload, customerData)
+                    const pm = Number(m?.plan.benefits?.pointsMultiplier)
+                    if (Number.isFinite(pm) && pm > 0) subscriptionMultiplier = pm
+                  } catch (subErr) {
+                    console.error('[Orders Hook] 訂閱倍率查詢失敗（用 1）:', subErr)
+                  }
+                  pointsEarned = Math.floor(basePoints * multiplier * subscriptionMultiplier)
                 }
               } catch (err) {
                 console.error('[Orders Hook] LoyaltySettings 讀取失敗:', err)

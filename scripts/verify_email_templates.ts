@@ -65,6 +65,8 @@ async function main() {
     order_delivered: ['查看訂單'],
     order_cancelled: ['取消原因', '查看訂單'],
     order_refunded: ['退款金額', '查看訂單'],
+    subscription_receipt: ['訂閱收據', '管理訂閱'],
+    subscription_cancelled: ['訂閱已取消', '查看訂閱'],
     admin_new_order: ['商品清單', '開啟後台訂單'],
     auth_verify: ['驗證 Email', 'SAMPLE_TOKEN'],
     auth_forgot_password: ['重設密碼', 'SAMPLE_TOKEN'],
