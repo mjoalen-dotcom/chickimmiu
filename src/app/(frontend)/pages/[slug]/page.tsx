@@ -12,6 +12,9 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   if (!process.env.DATABASE_URI) return { title: slug }
+  // 查詢包 try（DB 錯誤 → 佔位 title）；miss 判斷放 try 外——
+  // notFound() 是 throw 實作，放進 try 會被 catch 吞掉。
+  let page: Record<string, unknown> | undefined
   try {
     const payload = await getPayload({ config })
     const { docs } = await payload.find({
@@ -19,16 +22,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       where: { slug: { equals: slug }, status: { equals: 'published' } },
       limit: 1,
     })
-    const page = docs[0] as unknown as Record<string, unknown> | undefined
-    // 查無頁面：metadata 階段 notFound() 才回真 HTTP 404（同 PDP soft-404 修法）
-    if (!page) notFound()
-    const seo = page.seo as unknown as Record<string, unknown> | undefined
-    return {
-      title: (seo?.metaTitle as string) || (page.title as string),
-      description: (seo?.metaDescription as string) || undefined,
-    }
+    page = docs[0] as unknown as Record<string, unknown> | undefined
   } catch {
     return { title: slug }
+  }
+  // 查無頁面：metadata 階段 notFound()（soft-404 緩解；狀態碼受 loading.tsx flush 限制）
+  if (!page) notFound()
+  const seo = page.seo as unknown as Record<string, unknown> | undefined
+  return {
+    title: (seo?.metaTitle as string) || (page.title as string),
+    description: (seo?.metaDescription as string) || undefined,
   }
 }
 

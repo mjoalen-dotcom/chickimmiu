@@ -81,36 +81,43 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   if (!process.env.DATABASE_URI) return { title: slug }
+  // 查詢包 try（DB 錯誤 → 佔位 title）；miss 判斷放 try 外——
+  // notFound() 是 throw 實作，放進 try 會被 catch 吞掉還記成 error。
+  let post: Record<string, unknown> | null = null
+  let canonicalSlug: string | null = null
   try {
-    const { post, canonicalSlug } = await findPublishedPost(slug)
-    // 查無文章：metadata 階段 notFound() 才回真 HTTP 404（同 PDP soft-404 修法）
-    if (!post) notFound()
-    const seo = post.seo as unknown as Record<string, unknown> | undefined
-    const featuredImg = post.featuredImage as { url?: string } | null
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://chickimmiu.com'
-    const canonical = `${siteUrl}/blog/${canonicalSlug || slug}`
-
-    return {
-      title: (seo?.metaTitle as string) || (post.title as string),
-      description: (seo?.metaDescription as string) || (post.excerpt as string) || undefined,
-      alternates: { canonical },
-      openGraph: {
-        title: (seo?.metaTitle as string) || (post.title as string),
-        description: (seo?.metaDescription as string) || (post.excerpt as string) || undefined,
-        type: 'article',
-        url: canonical,
-        images: featuredImg?.url ? [{ url: featuredImg.url }] : undefined,
-        publishedTime: post.publishedAt as string,
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title: (seo?.metaTitle as string) || (post.title as string),
-        images: featuredImg?.url ? [featuredImg.url] : undefined,
-      },
-    }
+    const r = await findPublishedPost(slug)
+    post = r.post
+    canonicalSlug = r.canonicalSlug
   } catch (err) {
     console.error('[blog/[slug]/generateMetadata] threw:', err instanceof Error ? err.stack : err)
     return { title: slug }
+  }
+  // 查無文章：metadata 階段 notFound()（soft-404 緩解；狀態碼受 loading.tsx flush 限制）
+  if (!post) notFound()
+
+  const seo = post.seo as unknown as Record<string, unknown> | undefined
+  const featuredImg = post.featuredImage as { url?: string } | null
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://chickimmiu.com'
+  const canonical = `${siteUrl}/blog/${canonicalSlug || slug}`
+
+  return {
+    title: (seo?.metaTitle as string) || (post.title as string),
+    description: (seo?.metaDescription as string) || (post.excerpt as string) || undefined,
+    alternates: { canonical },
+    openGraph: {
+      title: (seo?.metaTitle as string) || (post.title as string),
+      description: (seo?.metaDescription as string) || (post.excerpt as string) || undefined,
+      type: 'article',
+      url: canonical,
+      images: featuredImg?.url ? [{ url: featuredImg.url }] : undefined,
+      publishedTime: post.publishedAt as string,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: (seo?.metaTitle as string) || (post.title as string),
+      images: featuredImg?.url ? [featuredImg.url] : undefined,
+    },
   }
 }
 

@@ -20,6 +20,9 @@ const PAGE_SIZE = 24
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   if (!process.env.DATABASE_URI) return { title: slug }
+  // 查詢包 try（DB 錯誤 → 佔位 title）；miss 判斷放 try 外——
+  // notFound() 是 throw 實作，放進 try 會被 catch 吞掉。
+  let cat: Record<string, unknown> | undefined
   try {
     const payload = await getPayload({ config })
     const { docs } = await payload.find({
@@ -28,20 +31,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       limit: 1,
       depth: 0,
     })
-    const cat = docs[0]
-    // 查無分類：metadata 階段就 notFound()，才能搶在 loading.tsx flush 200 殼之前
-    // 回真 HTTP 404（page body 的 notFound() 只能改內容、改不了狀態碼）。
-    if (!cat) notFound()
-    const seo = (cat as unknown as Record<string, unknown>).seo as
-      | Record<string, unknown>
-      | undefined
-    return {
-      title: (seo?.metaTitle as string) || `${cat.name} | CHIC KIM & MIU`,
-      description:
-        (seo?.metaDescription as string) || (cat as { description?: string }).description,
-    }
+    cat = docs[0] as unknown as Record<string, unknown> | undefined
   } catch {
     return { title: slug }
+  }
+  // 查無分類：metadata 階段 notFound()（soft-404 緩解；狀態碼受 loading.tsx flush 限制）
+  if (!cat) notFound()
+  const seo = cat.seo as Record<string, unknown> | undefined
+  return {
+    title: (seo?.metaTitle as string) || `${(cat as { name?: string }).name} | CHIC KIM & MIU`,
+    description:
+      (seo?.metaDescription as string) || (cat as { description?: string }).description,
   }
 }
 
