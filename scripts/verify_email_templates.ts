@@ -60,6 +60,7 @@ async function main() {
   const blockMarker: Record<EmailEventKey, string[]> = {
     welcome: ['前往會員中心'],
     order_confirmation: ['應付總額', '韓系針織開衫'],
+    payment_received: ['已收到您訂單', '查看訂單'],
     order_shipped: ['CKMU-SAMPLE-0001', '查看訂單'],
     order_delivered: ['查看訂單'],
     order_cancelled: ['取消原因', '查看訂單'],

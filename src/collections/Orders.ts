@@ -8,6 +8,7 @@ import { createExportEndpoint, type FieldMapping } from '../endpoints/importExpo
 import { orderCreditScoreHook } from '../lib/crm/creditScoreHooks'
 import { autoIssueInvoiceForOrder } from '../lib/invoice/ecpayInvoiceEngine'
 import { sendOrderConfirmationEmail } from '../lib/email/orderConfirmation'
+import { sendPaymentReceivedEmail } from '../lib/email/paymentReceived'
 import { sendOrderShippedEmail } from '../lib/email/orderShipped'
 import { sendOrderDeliveredEmail } from '../lib/email/orderDelivered'
 import { sendOrderCancelledEmail } from '../lib/email/orderCancelled'
@@ -1148,6 +1149,18 @@ export const Orders: CollectionConfig = {
             sendOrderConfirmationLine(req.payload, doc as unknown as Record<string, unknown>),
           )
           .catch((err) => console.error('[Orders Hook] 訂單確認 LINE 推播失敗:', err))
+      },
+      // ── paymentStatus unpaid→paid：寄付款完成信給顧客 ──
+      // 線上金流 callback 回填與 admin 手動標 paid 都會觸發。與 create 時的
+      // 訂單確認信互補：確認信在未付款當下只說「訂單已成立」，這封才宣告收款。
+      // 冪等靠 prev!=='paid' gate（與點數/發票/mint 卡同一模式）。
+      async ({ doc, previousDoc, req }) => {
+        const paymentStatus = doc.paymentStatus as string
+        const prevPaymentStatus = previousDoc?.paymentStatus as string | undefined
+        if (paymentStatus !== 'paid' || prevPaymentStatus === 'paid') return
+        sendPaymentReceivedEmail(req.payload, doc as unknown as Record<string, unknown>).catch(
+          (err) => console.error('[Orders Hook] 付款完成信寄送失敗:', err),
+        )
       },
       // ── status → shipped：寄出貨通知信（OrderSettings.sendShippedEmail） ──
       async ({ doc, previousDoc, req }) => {

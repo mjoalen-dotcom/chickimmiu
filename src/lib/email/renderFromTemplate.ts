@@ -33,6 +33,7 @@ import {
 export const EMAIL_EVENT_KEYS = [
   'welcome',
   'order_confirmation',
+  'payment_received',
   'order_shipped',
   'order_delivered',
   'order_cancelled',
@@ -47,6 +48,7 @@ export type EmailEventKey = (typeof EMAIL_EVENT_KEYS)[number]
 export const EMAIL_EVENT_LABELS: Record<EmailEventKey, string> = {
   welcome: '會員歡迎信',
   order_confirmation: '訂單確認信',
+  payment_received: '付款完成信',
   order_shipped: '出貨通知信',
   order_delivered: '送達通知信',
   order_cancelled: '訂單取消信',
@@ -73,6 +75,13 @@ export const EMAIL_EVENT_VARIABLES: Record<EmailEventKey, Array<{ name: string; 
     { name: 'paymentLine', desc: '付款方式列（已 render；無則空）' },
     { name: 'addressBlock', desc: '配送資訊（已 render）' },
     { name: 'noteBlock', desc: '顧客備註區塊（已 render；無則空）' },
+    { name: 'orderButton', desc: '「查看訂單」按鈕（已 render）' },
+  ],
+  payment_received: [
+    { name: 'customerName', desc: '會員姓名' },
+    { name: 'orderNumber', desc: '訂單編號' },
+    { name: 'total', desc: '已付總額（已格式化 NT$）' },
+    { name: 'paymentLine', desc: '付款方式列（已 render；無則空）' },
     { name: 'orderButton', desc: '「查看訂單」按鈕（已 render）' },
   ],
   order_shipped: [
@@ -189,6 +198,26 @@ export const DEFAULT_EMAIL_TEMPLATES: Record<EmailEventKey, EmailTemplateDefault
     {{noteBlock}}
 
     {{orderButton}}`,
+  },
+  payment_received: {
+    name: '付款完成信',
+    subject: '【CHIC KIM & MIU】已收到付款 {{orderNumber}}',
+    preheader: '訂單 {{orderNumber}} 付款完成，我們將盡快為您安排出貨',
+    headline: '付款完成',
+    bodyHtml: `    <p style="margin:0 0 16px;font-size:14px;line-height:1.6">{{customerName}} 您好，</p>
+    <p style="margin:0 0 16px;font-size:14px;line-height:1.6">
+      我們已收到您訂單 <strong>{{orderNumber}}</strong> 的付款
+      <strong style="color:#c9a961">{{total}}</strong>，將盡快為您安排出貨。<br/>
+      出貨後會再以 Email 通知您物流資訊。
+    </p>
+
+    {{paymentLine}}
+
+    {{orderButton}}
+
+    <p style="font-size:12px;color:#999;line-height:1.6;margin:16px 0 0;padding-top:16px;border-top:1px solid #eee">
+      點數與會員回饋已同步入帳，可在「我的帳戶」查看。
+    </p>`,
   },
   order_shipped: {
     name: '出貨通知信',
@@ -502,6 +531,8 @@ function buildScalarSample(eventKey: EmailEventKey): Record<string, string> {
   switch (eventKey) {
     case 'welcome':
       return { customerName: base.customerName }
+    case 'payment_received':
+      return { customerName: base.customerName, orderNumber: base.orderNumber, total: base.total }
     case 'order_refunded':
       return { customerName: base.customerName, orderNumber: base.orderNumber, refundAmount: ntd(4240), refundTarget: '原付款帳戶 (信用卡)' }
     case 'admin_new_order':
@@ -548,6 +579,12 @@ export function buildSampleVars(eventKey: EmailEventKey): Record<string, string>
         paymentLine: `<div style="font-size:13px;color:#666;margin:8px 0">付款方式：綠界科技 ECPay</div>`,
         addressBlock: renderAddress(SAMPLE_ADDRESS, SAMPLE_SHIPPING),
         noteBlock: '',
+        orderButton,
+      }
+    case 'payment_received':
+      return {
+        ...scalar,
+        paymentLine: `<div style="font-size:13px;color:#666;margin:8px 0">付款方式：綠界科技 ECPay</div>`,
         orderButton,
       }
     case 'order_shipped':
