@@ -8,7 +8,10 @@ import * as crypto from 'crypto'
  *
  * 憑證來源：env `ECPAY_MERCHANT_ID / ECPAY_HASH_KEY / ECPAY_HASH_IV`。
  * `ECPAY_ENV=sandbox|production` 決定閘道；sandbox 且 env 未填時退回綠界
- * 公開測試商店（2000132），可直接在測試站完成整條刷卡流程。
+ * 官方現行測試商店（3002607，developers.ecpay.com.tw/2856 公開憑證），
+ * 可直接在測試站完成整條刷卡流程（3D 驗證頁會直接顯示 OTP=1234）。
+ * ⚠️ 勿換回舊公開店 2000132：它在新版 pay-stage VerifySMS 簡訊驗證流程
+ * 走不完（固定碼 1234 會被拒，2026-07-27 實測錯 3 次交易作廢）。
  * production 且憑證未填 → isConfigured=false，create 路由回 503，
  * 絕不讓正式站帶測試商店收單。
  */
@@ -26,10 +29,10 @@ export interface EcpayConfig {
 const ECPAY_STAGE_CHECKOUT = 'https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5'
 const ECPAY_PROD_CHECKOUT = 'https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5'
 
-/** 綠界官方 AIO 測試商店（公開憑證，僅 sandbox fallback 用） */
-const STAGE_MERCHANT_ID = '2000132'
-const STAGE_HASH_KEY = '5294y06JbISpM5x9'
-const STAGE_HASH_IV = 'v77hoKGq4kWxNNIS'
+/** 綠界官方 AIO 測試商店（公開憑證，僅 sandbox fallback 用；見檔頭 2000132 警告） */
+const STAGE_MERCHANT_ID = '3002607'
+const STAGE_HASH_KEY = 'pwFHCqoQZGmho4w6'
+const STAGE_HASH_IV = 'EkRm7iFT261dpevs'
 
 export function loadEcpayConfig(): EcpayConfig {
   const envFlag = (process.env.ECPAY_ENV || '').toLowerCase()

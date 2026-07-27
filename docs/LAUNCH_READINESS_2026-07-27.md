@@ -20,12 +20,12 @@
 | LB-05 | 🔴 P0 | 通知 | 下單當下不發確認信，且文案謊稱「已收到付款」 | 程式 | ✅ 2026-07-27 `a049848` create 即寄 + statusLine 動態文案 |
 | LB-06 | 🔴 P0 | 訂單 | 60 分鐘自動取消誤殺貨到付款訂單 | 程式/設定 | ✅ 2026-07-27 `a049848` 排除現金單（註：outage crontab 本來就沒排 auto-cancel，此為回歸保險） |
 | LB-07 | 🔴 P0 | 法遵 | 首頁假網紅 + 假讚數 live（不實廣告曝險） | 程式/資料 | ✅ 2026-07-27 `a049848` DEMO_UGC 全移除，空集合不渲染 |
-| LB-08 | 🟠 P1 | 設定 | PAYLOAD_SECRET / DATABASE_URI 靜默 dev fallback | 設定(+程式) | 0.5 天 |
+| LB-08 | 🟠 P1 | 設定 | PAYLOAD_SECRET / DATABASE_URI 靜默 dev fallback | 設定(+程式) | ✅ 2026-07-27 晚 `ee6472c` production 缺任一即 throw fail-fast；prod build 通過（= env 齊全實證） |
 | LB-09 | 🟠 P1 | 內容 | 7 個導覽主題系列全空 | 資料 | ✅ 2026-07-27 七系列綁真商品 197 tags（來源=Shopline tags/分類/舊站分類爬回比對；scripts/oneoff/seed-collection-tags-20260727.py；demo 商品 id1-9 的暫時 tags 已移除） |
 | LB-10 | 🟠 P1 | SEO | 封測站 robots 仍 allow:/ | 程式/設定 | ✅ 2026-07-27 robots.ts 依 NEXT_PUBLIC_SITE_URL host（pre./staging. 前綴）或 DISABLE_INDEXING=1 全站 Disallow；prod env 已確認設 pre. |
 | LB-11 | 🟠 P1 | 上線 | www 仍是舊 Shopline，需域名切換計畫 | 營運 | — |
 | LB-12 | 🟠 P1 | 物流 | ShippingMethods 後台無效（運費寫死前端） | 程式 | ✅ 2026-07-27 結帳改讀 /api/shipping-methods（isActive+sortOrder；carrier→tab 類型 derive；API 掛掉 fallback 硬編碼）；prod 後台既有 8 筆設定直接生效 |
-| LB-13 | 🟠 P1 | 轉換 | 結帳強制填生日+性別、店家新單通知信箱空 | 設定 | 0.25 天 |
+| LB-13 | 🟠 P1 | 轉換 | 結帳強制填生日+性別、店家新單通知信箱空 | 設定 | ✅ 2026-07-27 晚 `scripts/oneoff/launch-settings-20260727.ts`：生日/性別必填=false + adminAlertEmails=service@chickimmiu.com + sendAdminNewOrderAlert=true（prod API 驗證生效） |
 | LB-14 | 🟡 P2 | 收尾 | 客服資訊不一致 / 退款不回補 / 訪客結帳名實不符等 | 雜項 | 1 天 |
 
 ---
@@ -167,6 +167,11 @@ prod `/api/checkout-settings` 顯示 `birthdayRequired:true, genderRequired:true
 > - `ChoosePayment` 預設 Credit（同步刷卡）；ATM/超商代碼屬非同步取號，會被 60 分鐘自動取消誤殺，開 ALL 前先調整取消時窗（env `ECPAY_CHOOSE_PAYMENT` 可覆蓋）。
 > - callback 冪等（paid→paid 不重觸發）；已付款信/點數/銷量/佣金走既有 unpaid→paid hooks（`Orders.ts:749`）。原始回傳記在 pm2 log（`[ecpay] callback raw`）。
 > - 電子發票（第 5 點）與超商電子地圖（第 6 點）仍未做。
+>
+> **✅ 2026-07-27 晚 E2E 驗收完成（訂單 CKMU20260727002）**：登入 → 加購物車 → 結帳選 ecpay → 綠界 sandbox 測試卡 4311-9522-2222-2222 → 3D 驗證（頁面顯示 OTP=1234）→ callback 回填 paid（TradeNo `2607272249180591`）→ 導回成功頁。點數 +1680 + 升等 bronze 贈點 +100、mint 卡 +1、訂單確認信 + **付款完成信**（新增 `payment_received` 事件，`445afa8`）+ 綠界通知信全數實收；callback 重送實測 `1|OK` 且不重複入點。發票自動開立失敗屬預期（`ECPAY_INVOICE_*` 未設）。
+> - **⚠️ sandbox 商店已換 3002607**（官方現行測試店，3D 頁直接顯示 OTP）：舊公開店 2000132 在新版 pay-stage VerifySMS 簡訊流程走不完（固定碼 1234 被拒、錯 3 次交易作廢，實測 4 個 tradeNo 陣亡）。fallback 憑證已改進 `ecpay.ts`。
+> - **正式切換（靚秀既有綠界帳號）**：登入綠界廠商後台 → 系統開發管理 → 系統介接設定，抄 MerchantID/HashKey/HashIV 三值填 prod `.env` 的 `ECPAY_MERCHANT_ID/ECPAY_HASH_KEY/ECPAY_HASH_IV` + `ECPAY_ENV=production` + `pm2 restart chickimmiu-nextjs --update-env` 即正式收單，無須重新申請。
+> - 測試遺留：訂單 CKMU20260727001（unpaid，已手動取消）、CKMU20260727002（paid，驗收證據，商品 4833 totalSold +1）；測試會員 id=12 `mjoalen+ecpaytest@gmail.com`。
 
 **新開發範圍（純新增，約 1–2 週）**
 1. **建單改二段式**：現有 `POST /api/orders` 建 `unpaid/pending` 後，對線上金流方式**不跳成功頁**，改導向自建 `POST /api/payment/ecpay/create` → 產生 ECPay 表單（含 `CheckMacValue`、`MerchantTradeNo`=訂單號、`ReturnURL`、`OrderResultURL`、`ClientBackURL`）→ 302/auto-submit 到綠界付款頁。
@@ -181,12 +186,12 @@ prod `/api/checkout-settings` 顯示 `birthdayRequired:true, genderRequired:true
 ---
 
 ## 5. 上線前「非程式」設定檢查清單（後台/環境，不需寫 code）
-- [ ] GlobalSettings → 付款 → `enabledMethods` 勾入要用的方式（現金版：cash_cod / cash_meetup）
-- [ ] OrderSettings → `adminAlertEmails` 填店家收件人
+- [x] GlobalSettings → 付款 → `enabledMethods` = cash_cod / cash_meetup / **ecpay**（2026-07-27 晚）
+- [x] OrderSettings → `adminAlertEmails` = service@chickimmiu.com（2026-07-27 晚）
 - [ ] OrderSettings → `autoCancelUnpaidMinutes` 對現金版設 0（或等 LB-06 程式排除）
-- [ ] CheckoutSettings → 關閉生日/性別必填
+- [x] CheckoutSettings → 關閉生日/性別必填（2026-07-27 晚）
 - [ ] GlobalSettings → `businessInfo.email` = `service@chickimmiu.com`
-- [ ] prod env 確認：`PAYLOAD_SECRET`、`DATABASE_URI`、`RESEND_API_KEY`、`EMAIL_FROM_ADDRESS`、四個 `R2_*`、`NEXT_PUBLIC_SITE_URL`、`CRON_SECRET`
+- [x] prod env 確認：`PAYLOAD_SECRET`、`DATABASE_URI` 由 LB-08 fail-fast + build 通過實證；其餘依既有專案記錄已驗
 - [ ] 封測站 robots `Disallow:/`（LB-10）
 - [ ] 首頁 UGC 區：seed 真實內容或隱藏（LB-07）
 - [ ] 7 個導覽系列綁商品或移除（LB-09）
