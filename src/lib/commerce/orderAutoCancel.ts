@@ -6,6 +6,10 @@ import type { Payload, Where } from 'payload'
  * 掃 `paymentStatus=unpaid AND status=pending AND createdAt < now - minutes`
  * 的訂單，逐筆改成 status=cancelled。由 /api/cron/auto-cancel-orders 呼叫。
  *
+ * LB-06：現金訂單（cash_cod 貨到付款 / cash_meetup 面交）本質上就是
+ * 「unpaid + pending 直到收款」，永遠排除在自動取消之外——這個機制只
+ * 用來清線上金流（ecpay 等）逾時未完成付款的訂單。
+ *
  * Cancelled 後 Orders.afterChange 會自動回補庫存（既有邏輯），所以這裡
  * 不直接操作庫存，只改 status/cancelReason。
  */
@@ -30,6 +34,7 @@ export async function runAutoCancelUnpaid(
         { paymentStatus: { equals: 'unpaid' } },
         { status: { equals: 'pending' } },
         { createdAt: { less_than: cutoff } },
+        { paymentMethod: { not_in: ['cash_cod', 'cash_meetup'] } },
       ],
     } satisfies Where,
     limit: 500,

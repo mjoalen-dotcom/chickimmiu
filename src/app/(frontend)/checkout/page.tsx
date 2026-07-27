@@ -251,23 +251,34 @@ export default function CheckoutPage() {
   const { user, isAuthenticated, loading: authLoading } = useCurrentUser()
   const router = useRouter()
   const { items, clearCart } = useCartStore()
-  const [selectedPayment, setSelectedPayment] = useState<PaymentMethodId>('ecpay')
+  // LB-01：不預設 ecpay（線上金流未串接）。初始空值，等 /api/payment-settings
+  // 回來後由 useEffect 自動選第一個「後台真正啟用」的付款方式。
+  const [selectedPayment, setSelectedPayment] = useState<PaymentMethodId | ''>('')
   const [selectedShipping, setSelectedShipping] = useState('711')
   const [shippingTypeFilter, setShippingTypeFilter] = useState<ShippingType>('convenience_store')
   const [isProcessing, setIsProcessing] = useState(false)
 
-  // 付款設定（從 /api/payment-settings 拉，失敗用 fallback）
+  // 付款設定（從 /api/payment-settings 拉）
+  // LB-01：初始 enabledMethods 為空（載入中不顯示任何付款方式），以後台回傳為準；
+  // fetch 失敗才 fallback 到現金方式——絕不 fallback 到未串接的線上金流（ecpay 等）。
   const [paymentSettings, setPaymentSettings] = useState<{
     enabledMethods: string[]
     codDefaultFee: number
     codMaxAmount: number
-  }>({ enabledMethods: ['ecpay', 'cash_cod', 'cash_meetup'], codDefaultFee: 30, codMaxAmount: 20000 })
+  }>({ enabledMethods: [], codDefaultFee: 30, codMaxAmount: 20000 })
+  const [paymentSettingsLoaded, setPaymentSettingsLoaded] = useState(false)
 
   useEffect(() => {
     fetch('/api/payment-settings')
       .then((r) => (r.ok ? r.json() : null))
-      .then((s) => { if (s) setPaymentSettings(s) })
-      .catch(() => { /* 用預設 */ })
+      .then((s) => {
+        if (s) setPaymentSettings(s)
+        else setPaymentSettings((prev) => ({ ...prev, enabledMethods: ['cash_cod', 'cash_meetup'] }))
+      })
+      .catch(() => {
+        setPaymentSettings((prev) => ({ ...prev, enabledMethods: ['cash_cod', 'cash_meetup'] }))
+      })
+      .finally(() => setPaymentSettingsLoaded(true))
   }, [])
 
   // 結帳設定（從 /api/checkout-settings 拉，失敗用 fallback）
@@ -614,6 +625,18 @@ export default function CheckoutPage() {
     }
     if (checkoutCfg.requireMarketingConsent && !marketingAccepted) {
       setSubmitError('請先勾選同意接收行銷訊息')
+      return
+    }
+
+    // LB-01 防呆：必須選到一個「目前可用」的付款方式才能送單。
+    // 沒有這個檢查時，selectedPayment 可能停在已被後台停用/被物流過濾掉的方式，
+    // 建出一張永遠收不到錢的 unpaid 訂單。
+    if (
+      !selectedPayment ||
+      availablePayments.length === 0 ||
+      !availablePayments.some((pm) => pm.id === selectedPayment)
+    ) {
+      setSubmitError('目前沒有可用的付款方式，請重新選擇或聯繫客服')
       return
     }
 
@@ -1388,6 +1411,11 @@ export default function CheckoutPage() {
                   <CreditCard size={18} className="text-gold-500" />
                   付款方式
                 </h2>
+                {paymentSettingsLoaded && availablePayments.length === 0 && (
+                  <p className="text-sm text-rose-600 mb-3">
+                    目前沒有可用的付款方式，暫時無法結帳，請聯繫客服。
+                  </p>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {availablePayments.map((pm) => (
                     <button

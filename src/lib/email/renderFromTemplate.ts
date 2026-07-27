@@ -66,6 +66,7 @@ export const EMAIL_EVENT_VARIABLES: Record<EmailEventKey, Array<{ name: string; 
   order_confirmation: [
     { name: 'customerName', desc: '會員姓名' },
     { name: 'orderNumber', desc: '訂單編號' },
+    { name: 'statusLine', desc: '訂單狀態句（依付款狀態動態：已付款寫「已收到付款」；未付現金單寫「已成立+收款提示」）' },
     { name: 'total', desc: '應付總額（已格式化 NT$）' },
     { name: 'itemsTable', desc: '商品明細表（已 render）' },
     { name: 'summaryTable', desc: '金額明細（小計/折扣/運費/總額，已 render）' },
@@ -169,11 +170,11 @@ export const DEFAULT_EMAIL_TEMPLATES: Record<EmailEventKey, EmailTemplateDefault
   order_confirmation: {
     name: '訂單確認信',
     subject: '【CHIC KIM & MIU】訂單確認 {{orderNumber}}',
-    preheader: '您的訂單 {{orderNumber}} 已收到付款並開始處理',
+    preheader: '您的訂單 {{orderNumber}} 已成立，明細請見內文',
     headline: '訂單已確認',
     bodyHtml: `    <p style="margin:0 0 16px;font-size:14px;line-height:1.6">{{customerName}} 您好，</p>
     <p style="margin:0 0 16px;font-size:14px;line-height:1.6">
-      感謝您於 CHIC KIM &amp; MIU 訂購，訂單 <strong>{{orderNumber}}</strong> 已收到付款並開始處理。<br/>
+      感謝您於 CHIC KIM &amp; MIU 訂購，訂單 <strong>{{orderNumber}}</strong> {{statusLine}}。<br/>
       以下為您的訂單明細，請核對是否正確：
     </p>
 
@@ -541,6 +542,7 @@ export function buildSampleVars(eventKey: EmailEventKey): Record<string, string>
     case 'order_confirmation':
       return {
         ...scalar,
+        statusLine: '已成立！我們將盡快安排出貨，商品送達時再以現金付款給配送員即可',
         itemsTable: renderItemsTable(SAMPLE_ITEMS),
         summaryTable: `<div style="margin:16px 0;padding:12px 0;border-top:1px solid #eee;font-size:14px"><div style="display:flex;justify-content:space-between;margin:4px 0"><span>商品小計</span><span>${ntd(4240)}</span></div><div style="display:flex;justify-content:space-between;margin:8px 0 0;padding-top:8px;border-top:1px solid #eee;font-weight:600;font-size:16px"><span>應付總額</span><span style="color:#c9a961">${ntd(4240)}</span></div></div>`,
         paymentLine: `<div style="font-size:13px;color:#666;margin:8px 0">付款方式：綠界科技 ECPay</div>`,

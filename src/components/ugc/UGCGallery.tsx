@@ -26,82 +26,6 @@ interface UGCItem {
   taggedProducts?: { slug: string; name: string; price: number; image: string }[]
 }
 
-// Demo data
-const DEMO_UGC: UGCItem[] = [
-  {
-    id: '1',
-    authorName: 'Mia Style',
-    authorHandle: '@mia_style_tw',
-    platform: 'instagram',
-    contentType: 'image',
-    image: 'https://shoplineimg.com/559df3efe37ec64e9f000092/69c140b9f04a564933f21f59/1500x.webp?source_format=png',
-    caption: '今天穿 @chickimmiu 的蕾絲洋裝去參加閨蜜婚禮',
-    likes: 342,
-    comments: 28,
-    taggedProducts: [{ slug: 'serene-elegant-lace-layered-dress', name: 'Serene 名媛蕾絲洋裝', price: 2980, image: 'https://shoplineimg.com/559df3efe37ec64e9f000092/69c140b9f04a564933f21f59/1500x.webp?source_format=png' }],
-  },
-  {
-    id: '2',
-    authorName: 'KK Fashion',
-    authorHandle: '@kk.fashion',
-    platform: 'instagram',
-    contentType: 'image',
-    image: 'https://shoplineimg.com/559df3efe37ec64e9f000092/69aea7b58f3bc8e1bdf32201/1500x.webp?source_format=png',
-    caption: '約會穿搭 OOTD',
-    likes: 218,
-    comments: 15,
-    taggedProducts: [{ slug: 'amelia-elegant-tulle-button-dress', name: 'Amelia 疊紗洋裝', price: 2680, image: 'https://shoplineimg.com/559df3efe37ec64e9f000092/69aea7b58f3bc8e1bdf32201/1500x.webp?source_format=png' }],
-  },
-  {
-    id: '3',
-    authorName: 'Lin 穿搭日記',
-    authorHandle: '@lin.daily',
-    platform: 'instagram',
-    contentType: 'image',
-    image: 'https://shoplineimg.com/559df3efe37ec64e9f000092/69c1521fa96d6491182ab509/1500x.webp?source_format=png',
-    caption: '上班穿搭 直筒褲超顯瘦！',
-    likes: 156,
-    comments: 12,
-    taggedProducts: [{ slug: 'ant-waist-urban-straight-pants', name: '螞蟻腰修身直筒褲', price: 1480, image: 'https://shoplineimg.com/559df3efe37ec64e9f000092/69c1521fa96d6491182ab509/1500x.webp?source_format=png' }],
-  },
-  {
-    id: '4',
-    authorName: 'Summer Girl',
-    authorHandle: '@summer.girl.tw',
-    platform: 'instagram',
-    contentType: 'image',
-    image: 'https://shoplineimg.com/559df3efe37ec64e9f000092/69b8e8ecf7cad647346583b3/1500x.webp?source_format=png',
-    caption: '氣質洋裝 怎麼穿都美',
-    likes: 289,
-    comments: 22,
-    taggedProducts: [{ slug: 'quincy-elegant-wrap-slit-dress', name: 'Quincy 裹身洋裝', price: 2680, image: 'https://shoplineimg.com/559df3efe37ec64e9f000092/69b8e8ecf7cad647346583b3/1500x.webp?source_format=png' }],
-  },
-  {
-    id: '5',
-    authorName: 'Amy Chen',
-    authorHandle: '@amychen.style',
-    platform: 'instagram',
-    contentType: 'image',
-    image: 'https://shoplineimg.com/559df3efe37ec64e9f000092/69bd18487d7f9fb65f0f78b4/1500x.webp?source_format=png',
-    caption: 'Y2K 風回歸！墨鏡是穿搭加分神器',
-    likes: 198,
-    comments: 9,
-    taggedProducts: [{ slug: 'y2k-oval-sunglasses', name: 'Y2K橢圓墨鏡', price: 780, image: 'https://shoplineimg.com/559df3efe37ec64e9f000092/69bd18487d7f9fb65f0f78b4/1500x.webp?source_format=png' }],
-  },
-  {
-    id: '6',
-    authorName: 'Chloe W',
-    authorHandle: '@chloe.wardrobe',
-    platform: 'instagram',
-    contentType: 'image',
-    image: 'https://shoplineimg.com/559df3efe37ec64e9f000092/69aeddfa41bba89465778780/1500x.webp?source_format=png',
-    caption: '時髦墨鏡穿搭分享',
-    likes: 167,
-    comments: 11,
-    taggedProducts: [{ slug: 'trendy-multicolor-oval-sunglasses', name: '時髦多色墨鏡', price: 780, image: 'https://shoplineimg.com/559df3efe37ec64e9f000092/69aeddfa41bba89465778780/1500x.webp?source_format=png' }],
-  },
-]
-
 type LayoutType = 'grid' | 'masonry' | 'carousel' | 'shoppable_gallery'
 
 interface Props {
@@ -109,23 +33,8 @@ interface Props {
   maxItems?: number
   showHeader?: boolean
   title?: string
-  /** Real UGC posts from Payload. When provided, overrides demo data. */
+  /** Real UGC posts from Payload. LB-07：無真實貼文時整個元件不渲染（不再有 demo 假資料 fallback）。 */
   ugcPosts?: UGCItem[]
-  /** Real Payload products to attach to each demo UGC slot (fallback only). */
-  taggedProducts?: { slug: string; name: string; price: number; image: string }[]
-}
-
-function applyRealProducts(
-  items: UGCItem[],
-  realProducts?: { slug: string; name: string; price: number; image: string }[],
-): UGCItem[] {
-  if (!realProducts || realProducts.length === 0) {
-    return items.map((it) => ({ ...it, taggedProducts: undefined }))
-  }
-  return items.map((it, i) => ({
-    ...it,
-    taggedProducts: [realProducts[i % realProducts.length]],
-  }))
 }
 
 export function UGCGallery({
@@ -134,13 +43,10 @@ export function UGCGallery({
   showHeader = true,
   title = '穿搭靈感',
   ugcPosts,
-  taggedProducts,
 }: Props) {
   const [selectedItem, setSelectedItem] = useState<UGCItem | null>(null)
-  const items =
-    ugcPosts && ugcPosts.length > 0
-      ? ugcPosts.slice(0, maxItems)
-      : applyRealProducts(DEMO_UGC.slice(0, maxItems), taggedProducts)
+  const items = (ugcPosts ?? []).slice(0, maxItems)
+  if (items.length === 0) return null
 
   return (
     <section>

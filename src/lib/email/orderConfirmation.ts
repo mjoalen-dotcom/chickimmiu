@@ -2,7 +2,10 @@ import type { Payload } from 'payload'
 import { renderEmailFromTemplate } from './renderFromTemplate'
 
 /**
- * 寄送訂單確認信給顧客（status: pending → processing 時觸發）
+ * 寄送訂單確認信給顧客（LB-05：訂單 create 當下觸發）
+ *
+ * 文案依付款狀態動態（statusLine）：只有 paymentStatus=paid 才寫「已收到付款」；
+ * 未付款的現金訂單（貨到付款/面交）寫「訂單已成立 + 收款方式提示」，避免謊稱已收款。
  *
  * 用 payload.sendEmail 透過已掛的 Resend adapter 寄出；若 RESEND_API_KEY 未設，
  * payload.config.ts 的 consoleFallback 會把信件內容印到 server log。
@@ -138,6 +141,17 @@ export async function sendOrderConfirmationEmail(
     cash_meetup: '現金 — 到辦公室取貨付款',
   }
 
+  // LB-05：依付款狀態決定開頭句（純文字、無 HTML，模板 {{statusLine}} 與 preheader 都可用）
+  const paymentStatus = order.paymentStatus as string | undefined
+  const statusLine = (() => {
+    if (paymentStatus === 'paid') return '已收到付款並開始處理'
+    if (paymentMethod === 'cash_cod')
+      return '已成立！我們將盡快安排出貨，商品送達時再以現金付款給配送員即可'
+    if (paymentMethod === 'cash_meetup')
+      return '已成立！請於約定時間至取貨地點取貨並以現金付款'
+    return '已成立，我們將於付款完成後開始處理'
+  })()
+
   const subject = `【CHIC KIM & MIU】訂單確認 ${orderNumber}`
   const accountUrl =
     (process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com').replace(/\/$/, '') +
@@ -155,7 +169,7 @@ export async function sendOrderConfirmationEmail(
   <div style="background:#fff;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
     <p style="margin:0 0 16px;font-size:14px;line-height:1.6">${escapeHtml(name || '會員')} 您好，</p>
     <p style="margin:0 0 16px;font-size:14px;line-height:1.6">
-      感謝您於 CHIC KIM &amp; MIU 訂購，訂單 <strong>${escapeHtml(orderNumber)}</strong> 已收到付款並開始處理。<br/>
+      感謝您於 CHIC KIM &amp; MIU 訂購，訂單 <strong>${escapeHtml(orderNumber)}</strong> ${escapeHtml(statusLine)}。<br/>
       以下為您的訂單明細，請核對是否正確：
     </p>
 
@@ -214,6 +228,7 @@ export async function sendOrderConfirmationEmail(
   const tpl = await renderEmailFromTemplate(payload, 'order_confirmation', {
     customerName: escapeHtml(name || '會員'),
     orderNumber: escapeHtml(orderNumber),
+    statusLine: escapeHtml(statusLine),
     total: ntd(total),
     itemsTable: renderItemsTable(items),
     summaryTable,

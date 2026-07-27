@@ -189,20 +189,8 @@ export default async function HomePage() {
         { icon: 'MessageCircle', label: '尺寸協助', desc: 'LINE 提供身高體重可協助抓版' },
       ]
 
-  // ── UGC tagged products (real Payload products) ──
-  const ugcTaggedProducts = [...newProducts, ...hotProducts]
-    .map((p) => {
-      const slug = p.slug as string | undefined
-      const name = p.name as string | undefined
-      const price = p.price as number | undefined
-      const image = getProductImage(p)
-      if (!slug || !name || typeof price !== 'number' || !image) return null
-      return { slug, name, price, image }
-    })
-    .filter((p): p is { slug: string; name: string; price: number; image: string } => p !== null)
-    .slice(0, 6)
-
   // ── Real UGC posts from Payload ──
+  // （LB-07：demo fallback 已移除，UGC 區塊只吃真實 ugc-posts）
   type UGCProductRef = { slug: string; name: string; price: number; image: string }
   type UGCItemProp = {
     id: string; authorName: string; authorHandle: string; authorAvatar?: string
@@ -544,15 +532,16 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* ── 穿搭靈感（UGC） ── */}
-      {(ugcSection.visible !== false) && (
+      {/* ── 穿搭靈感（UGC） ──
+          LB-07：只在有「真實」ugc-posts 時渲染。空集合不再 fallback 到
+          內建 demo 假網紅/假讚數（公平交易法不實廣告曝險）。 */}
+      {(ugcSection.visible !== false) && ugcPosts.length > 0 && (
         <section className="py-16 md:py-24">
           <div className="container">
             <UGCGallery
               layout="shoppable_gallery"
               maxItems={(ugcSection.maxItems as number) || 6}
-              ugcPosts={ugcPosts.length > 0 ? ugcPosts : undefined}
-              taggedProducts={ugcPosts.length === 0 ? ugcTaggedProducts : undefined}
+              ugcPosts={ugcPosts}
             />
           </div>
         </section>

@@ -1125,29 +1125,29 @@ export const Orders: CollectionConfig = {
           }
         }
       },
-      // ── pending → processing：寄訂單確認信給顧客（OrderSettings.sendConfirmationEmail） ──
-      async ({ doc, previousDoc, req }) => {
-        const status = doc.status as string
-        const prevStatus = previousDoc?.status as string | undefined
-        if (status === 'processing' && prevStatus === 'pending') {
-          try {
-            const settings = (await req.payload.findGlobal({
-              slug: 'order-settings',
-            })) as unknown as { notifications?: { sendConfirmationEmail?: boolean } }
-            if (settings?.notifications?.sendConfirmationEmail === false) return
-          } catch {
-            // 讀 global 失敗沿用預設行為（寄）
-          }
-          sendOrderConfirmationEmail(req.payload, doc as unknown as Record<string, unknown>).catch(
-            (err) => console.error('[Orders Hook] 訂單確認信寄送失敗:', err),
-          )
-          // LINE 推播（會員有 lineUid 才送；lineMessagingEnabled 總開關關閉 = no-op）
-          import('../lib/line/orderNotifications')
-            .then(({ sendOrderConfirmationLine }) =>
-              sendOrderConfirmationLine(req.payload, doc as unknown as Record<string, unknown>),
-            )
-            .catch((err) => console.error('[Orders Hook] 訂單確認 LINE 推播失敗:', err))
+      // ── create：寄訂單確認信給顧客（OrderSettings.sendConfirmationEmail） ──
+      // LB-05：改成下單當下觸發（原本掛在 pending→processing，顧客下單後收不到任何信，
+      // 且要等店員手動推進狀態）。文案由 orderConfirmation.ts 依付款狀態動態決定，
+      // 未付款現金單不會謊稱「已收到付款」。pending→processing 不再寄，避免重複。
+      async ({ doc, operation, req }) => {
+        if (operation !== 'create') return
+        try {
+          const settings = (await req.payload.findGlobal({
+            slug: 'order-settings',
+          })) as unknown as { notifications?: { sendConfirmationEmail?: boolean } }
+          if (settings?.notifications?.sendConfirmationEmail === false) return
+        } catch {
+          // 讀 global 失敗沿用預設行為（寄）
         }
+        sendOrderConfirmationEmail(req.payload, doc as unknown as Record<string, unknown>).catch(
+          (err) => console.error('[Orders Hook] 訂單確認信寄送失敗:', err),
+        )
+        // LINE 推播（會員有 lineUid 才送；lineMessagingEnabled 總開關關閉 = no-op）
+        import('../lib/line/orderNotifications')
+          .then(({ sendOrderConfirmationLine }) =>
+            sendOrderConfirmationLine(req.payload, doc as unknown as Record<string, unknown>),
+          )
+          .catch((err) => console.error('[Orders Hook] 訂單確認 LINE 推播失敗:', err))
       },
       // ── status → shipped：寄出貨通知信（OrderSettings.sendShippedEmail） ──
       async ({ doc, previousDoc, req }) => {
