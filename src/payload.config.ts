@@ -240,6 +240,22 @@ if (r2Configured) {
  *   InvoiceSettings — 綠界電子發票設定（API 金鑰、賣方資訊、LOGO、自動化）
  *   GameSettings — 遊戲系統設定（各遊戲免費次數、獎勵、排行榜、徽章）
  */
+// LB-08：production 缺關鍵 env 必須 fail-fast，不准靜默 fallback。
+// PAYLOAD_SECRET 缺 → 空密鑰簽 auth token；DATABASE_URI 缺 → 靜默開一顆空的本地 SQLite。
+// 兩者都是災難級靜默錯誤，build / migrate / payload run / 啟動任何一路 import 到本檔就直接炸。
+if (
+  process.env.NODE_ENV === 'production' &&
+  (!process.env.PAYLOAD_SECRET || !process.env.DATABASE_URI)
+) {
+  const missing = [
+    !process.env.PAYLOAD_SECRET ? 'PAYLOAD_SECRET' : null,
+    !process.env.DATABASE_URI ? 'DATABASE_URI' : null,
+  ]
+    .filter(Boolean)
+    .join(', ')
+  throw new Error(`[payload.config] production 環境缺少必要 env：${missing}（拒絕以 dev fallback 啟動）`)
+}
+
 export default buildConfig({
   // 啟用 Payload 內建資料夾系統（v3 native folders，experimental but stable enough）
   //   - 自動建立 `payload-folders` collection（樹狀，自我參照 folder 欄位）
