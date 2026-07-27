@@ -429,7 +429,10 @@ export async function runDailySegmentation(): Promise<{
       })
 
       for (const user of usersResult.docs) {
-        const userId = typeof user.id === 'string' ? user.id : String(user.id)
+        // SQLite 的 user.id 是 number；relationship 寫入與 update id 必須保留原型別，
+        // String(id) 會被 Payload validation 打回「The following field is invalid: 會員」
+        const rawUserId = user.id
+        const userId = String(rawUserId)
 
         try {
           const result = await calculateMemberSegment(userId)
@@ -437,7 +440,7 @@ export async function runDailySegmentation(): Promise<{
           distribution[result.segment] = (distribution[result.segment] ?? 0) + 1
 
           // 查詢現有分群紀錄
-          const existingQuery: Where = { user: { equals: userId } }
+          const existingQuery: Where = { user: { equals: rawUserId } }
           const existing = await payload.find({
             collection: 'member-segments',
             where: existingQuery satisfies Where,
@@ -448,7 +451,7 @@ export async function runDailySegmentation(): Promise<{
 
           if (existing.docs.length > 0) {
             const doc = existing.docs[0] as unknown as Record<string, unknown>
-            const docId = typeof doc.id === 'string' ? doc.id : String(doc.id)
+            const docId = doc.id as string | number
             const prevSegment = typeof doc.currentSegment === 'string' ? doc.currentSegment : ''
             const segmentDidChange = prevSegment !== result.segment
 
@@ -498,7 +501,7 @@ export async function runDailySegmentation(): Promise<{
             await (payload.create as Function)({
               collection: 'member-segments',
               data: {
-                user: userId,
+                user: rawUserId,
                 currentSegment: result.segment,
                 segmentLabel: result.label,
                 segmentColor: result.color,
