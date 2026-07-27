@@ -83,7 +83,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!process.env.DATABASE_URI) return { title: slug }
   try {
     const { post, canonicalSlug } = await findPublishedPost(slug)
-    if (!post) return { title: '文章不存在' }
+    // 查無文章：metadata 階段 notFound() 才回真 HTTP 404（同 PDP soft-404 修法）
+    if (!post) notFound()
     const seo = post.seo as unknown as Record<string, unknown> | undefined
     const featuredImg = post.featuredImage as { url?: string } | null
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://chickimmiu.com'

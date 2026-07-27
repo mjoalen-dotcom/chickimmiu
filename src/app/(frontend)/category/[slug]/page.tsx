@@ -29,7 +29,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       depth: 0,
     })
     const cat = docs[0]
-    if (!cat) return { title: '分類不存在' }
+    // 查無分類：metadata 階段就 notFound()，才能搶在 loading.tsx flush 200 殼之前
+    // 回真 HTTP 404（page body 的 notFound() 只能改內容、改不了狀態碼）。
+    if (!cat) notFound()
     const seo = (cat as unknown as Record<string, unknown>).seo as
       | Record<string, unknown>
       | undefined

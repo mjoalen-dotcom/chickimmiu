@@ -36,7 +36,8 @@ async function getCard(slug: string): Promise<CMSCard | null> {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const card = await getCard(slug)
-  if (!card) return { title: '找不到此系列' }
+  // 查無系列：metadata 階段 notFound() 才回真 HTTP 404（同 PDP soft-404 修法）
+  if (!card) notFound()
   return {
     title: card.seo?.metaTitle ?? card.title,
     description: card.seo?.metaDescription ?? card.description ?? undefined,

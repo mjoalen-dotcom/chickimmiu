@@ -1,7 +1,7 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Metadata } from 'next'
-import { notFound, redirect } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { ProductDetailClient } from './ProductDetailClient'
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/seo/JsonLd'
 import { normalizeMediaUrl } from '@/lib/media-url'
@@ -65,10 +65,40 @@ async function findProductBySlug(slug: string): Promise<Record<string, unknown> 
   }
 }
 
+/**
+ * PR-δ alias fallback：canonical slug 找不到時查 aliasSlugs 子表。
+ * 回傳 canonical slug（要轉址的目標）或 null。DB 錯誤一律回 null（外層走 notFound）。
+ */
+async function findAliasTarget(slug: string): Promise<string | null> {
+  if (!process.env.DATABASE_URI) return null
+  try {
+    const payload = await getPayload({ config })
+    const { docs } = await payload.find({
+      collection: 'products',
+      where: { 'aliasSlugs.slug': { equals: slug } },
+      limit: 1,
+      depth: 0,
+    })
+    const match = docs[0] as unknown as Record<string, unknown> | undefined
+    const target = match?.slug as string | undefined
+    return target && target !== slug ? target : null
+  } catch {
+    return null
+  }
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const product = await findProductBySlug(slug)
-  if (!product) return { title: '商品不存在｜CHIC KIM & MIU' }
+  if (!product) {
+    // 真 404 要在 metadata 階段丟：root loading.tsx 會在 page body 執行前就
+    // flush 200 殼，page 內的 notFound() 只能改內容改不了狀態碼（soft-404）。
+    // metadata 擋在第一次 flush 之前，這裡 notFound() 才會真的回 HTTP 404。
+    // aliasSlugs 命中的舊網址例外——讓 page body 去 308，這裡先回佔位 title。
+    const alias = await findAliasTarget(slug)
+    if (!alias) notFound()
+    return { title: '商品跳轉中｜CHIC KIM & MIU' }
+  }
 
   const seo = product.seo as unknown as Record<string, unknown> | undefined
   const images = product.images as { image?: { url?: string } }[] | undefined
@@ -163,26 +193,16 @@ export default async function ProductDetailPage({ params }: Props) {
     }
   }
 
-  // PR-δ：alias fallback — 找不到 canonical slug 時查 aliasSlugs 子表，命中則 301
-  if (!product && process.env.DATABASE_URI) {
-    try {
-      const payload = await getPayload({ config })
-      const { docs } = await payload.find({
-        collection: 'products',
-        where: { 'aliasSlugs.slug': { equals: slug } },
-        limit: 1,
-        depth: 0,
-      })
-      const aliasMatch = docs[0] as unknown as Record<string, unknown> | undefined
-      if (aliasMatch?.slug && aliasMatch.slug !== slug) {
-        redirect(`/products/${aliasMatch.slug as string}`)
-      }
-    } catch {
-      // ignore — notFound() below handles both DB errors and misses
+  // PR-δ：alias fallback — 找不到 canonical slug 時查 aliasSlugs 子表，命中則 308。
+  // ⚠️ redirect/permanentRedirect 是用 throw 實作的：絕不能包進 try/catch，
+  //    否則被 catch 吞掉、轉址永遠不會發生（舊版真的踩了這個雷）。
+  if (!product) {
+    const aliasTarget = await findAliasTarget(slug)
+    if (aliasTarget) {
+      permanentRedirect(`/products/${aliasTarget}`)
     }
+    notFound()
   }
-
-  if (!product) notFound()
 
   // 顧客評價（只撈 approved）— product 確定存在後再 fetch；shape 對齊 ProductDetailClient.ReviewLite
   if (process.env.DATABASE_URI) {

@@ -20,7 +20,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       limit: 1,
     })
     const page = docs[0] as unknown as Record<string, unknown> | undefined
-    if (!page) return { title: '頁面不存在' }
+    // 查無頁面：metadata 階段 notFound() 才回真 HTTP 404（同 PDP soft-404 修法）
+    if (!page) notFound()
     const seo = page.seo as unknown as Record<string, unknown> | undefined
     return {
       title: (seo?.metaTitle as string) || (page.title as string),
