@@ -1,0 +1,21 @@
+diff --git a/bin.js b/bin.js
+index 288bcc8af8e0efc9969d87abe9bdb434b085d5a4..19c5370f5b6a4ce0a2bae56d24e6c80ea953c082 100644
+--- a/bin.js
++++ b/bin.js
+@@ -3,6 +3,16 @@
+ import path from 'node:path'
+ import { fileURLToPath, pathToFileURL } from 'node:url'
+ 
++// PATCH (chickimmiu 2026-07-29): the CLI below runs entirely inside
++// un-awaited `void start()` promises. While tsx compiles TS off-thread
++// during startup there are moments when the main thread holds zero live
++// libuv handles; if the event loop drains in such a gap (likely on a busy
++// box), node exits 0 before the command runs — e.g. `payload migrate`
++// silently applying nothing. Hold a ref'd handle for the process lifetime;
++// every CLI path already ends in an explicit process.exit(), so this never
++// delays a normal exit.
++setInterval(() => {}, 1 << 30)
++
+ const useSwc = process.argv.includes('--use-swc')
+ const disableTranspile = process.argv.includes('--disable-transpile')
+ 

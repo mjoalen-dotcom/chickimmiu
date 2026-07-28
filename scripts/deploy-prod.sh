@@ -119,22 +119,79 @@ pnpm install $INSTALL_FLAG
 # 3. Run pending migrations — idempotent. Must happen BEFORE pm2 restart
 #    so new code boots against a schema it expects.
 #
-#    `yes y |` auto-accepts Payload v3's "dev-mode dirty schema, proceed?
-#    (y/N)" prompt. In non-TTY ssh the default-No path silently takes, and
-#    `pnpm payload migrate` exits 0 with nothing applied — this masked PR
-#    #79's card-schema migration on 2026-04-21, caught only because the
-#    page 500'd on the missing table.
+#    Two known SILENT failure modes — both exit 0 with nothing applied, so
+#    exit code alone is never trusted here:
 #
-#    We check PIPESTATUS[1] (pnpm's own exit) because under `set -o pipefail`
-#    yes receives SIGPIPE the moment pnpm closes stdin and exits 141, which
-#    would otherwise make a successful migrate look failed. `set +e` around
-#    the pipeline lets us capture PIPESTATUS before `-e` trips on the 141.
-log "step 3/7: pnpm payload migrate (auto-accepting dev-mode prompt)"
-set +e
-yes y | pnpm payload migrate
-MIGRATE_STATUSES=("${PIPESTATUS[@]}")
-set -e
-[[ "${MIGRATE_STATUSES[1]:-1}" -eq 0 ]] || fail "payload migrate failed (pnpm exit ${MIGRATE_STATUSES[1]:-?})" 3
+#    a) 2026-04-21 (PR #79): in non-TTY ssh, Payload's "dev-mode dirty
+#       schema, proceed? (y/N)" prompt takes the default No and the CLI
+#       process.exit(0)s. `yes y |` auto-accepts the prompt.
+#    b) 2026-07-28 (2f04c49): Payload's bin.js runs the whole CLI as an
+#       un-awaited floating promise (`void start()`), and tsx compiles the
+#       TS config off-thread. During that async startup there are moments
+#       when the main thread holds zero live libuv handles; if the event
+#       loop drains in such a gap — far more likely on a busy box (deploy
+#       install/build, app boot) — node exits 0 before any migrate code
+#       runs. Zero output, exit 0, migration skipped. Proven on prod with
+#       `--trace-exit` (no exit() ever called) + a beforeExit probe (fired
+#       = loop drained). Root-fixed by patches/payload@3.83.0.patch which
+#       holds a keep-alive interval in bin.js; the verification below
+#       remains as belt-and-braces (a payload upgrade drops the patch, and
+#       mode (a) would resurface the same way).
+#
+#    Strategy: capture output, require the CLI's final "Done." marker, then
+#    positively verify against SQLite that every migration file on disk is
+#    recorded in payload_migrations. Retry up to 3 times; anything less
+#    than verified success fails the deploy loudly.
+log "step 3/7: pnpm payload migrate (verified, up to 3 attempts)"
+
+DB_FILE=""
+if [[ -f .env ]]; then
+  DB_FILE=$(grep -E '^DATABASE_URI=' .env | tail -1 | sed -e 's/^DATABASE_URI=//' -e 's/^"//' -e 's/"$//')
+  DB_FILE=${DB_FILE#file:}
+fi
+
+# Migration files present on disk but absent from payload_migrations.
+# Empty output = schema verifiably up to date. When the DB isn't inspectable
+# (non-SQLite URI, sqlite3 missing) we return nothing and rely on the
+# "Done." marker alone.
+pending_migrations() {
+  if ! command -v sqlite3 >/dev/null 2>&1 || [[ -z "$DB_FILE" || ! -f "$DB_FILE" ]]; then
+    return 0
+  fi
+  comm -23 \
+    <(find src/migrations -maxdepth 1 -name '*.ts' ! -name 'index.ts' -printf '%f\n' | sed 's/\.ts$//' | sort) \
+    <(sqlite3 "$DB_FILE" "SELECT name FROM payload_migrations;" 2>/dev/null | sort)
+}
+
+MIGRATE_LOG=$(mktemp)
+MIGRATE_VERIFIED=0
+for attempt in 1 2 3; do
+  # PIPESTATUS[1] is pnpm's own exit; [0] is `yes`, which dies 141/SIGPIPE
+  # by design the moment pnpm stops reading stdin. `set +e` lets us capture
+  # PIPESTATUS before `-e` trips on the 141.
+  set +e
+  yes y | pnpm payload migrate > "$MIGRATE_LOG" 2>&1
+  MIGRATE_STATUSES=("${PIPESTATUS[@]}")
+  set -e
+  sed 's/^/  /' "$MIGRATE_LOG"
+  if [[ "${MIGRATE_STATUSES[1]:-1}" -ne 0 ]]; then
+    # Real migration failure (SQL error etc.) — retrying won't help.
+    fail "payload migrate failed (pnpm exit ${MIGRATE_STATUSES[1]:-?})" 3
+  fi
+  if ! grep -q 'Done\.' "$MIGRATE_LOG"; then
+    log "  attempt $attempt/3: exit 0 but CLI never reached 'Done.' (silent early exit) — retrying"
+    continue
+  fi
+  PENDING=$(pending_migrations)
+  if [[ -n "$PENDING" ]]; then
+    log "  attempt $attempt/3: migrate said Done but still unrecorded in payload_migrations: $(echo "$PENDING" | tr '\n' ' ')"
+    continue
+  fi
+  MIGRATE_VERIFIED=1
+  break
+done
+rm -f "$MIGRATE_LOG"
+[[ "$MIGRATE_VERIFIED" -eq 1 ]] || fail "payload migrate did not verifiably apply after 3 attempts" 3
 
 # 3b. Regenerate Payload admin importMap.js — MUST happen BEFORE build so
 #     `next build` picks up the fresh map. Source-of-truth is the live

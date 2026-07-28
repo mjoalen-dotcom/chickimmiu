@@ -88,6 +88,9 @@
       "esbuild",
       "unrs-resolver",
       "libsql"
-    ]
+    ],
+    "patchedDependencies": {
+      "payload@3.83.0": "patches/payload@3.83.0.patch"
+    }
   }
 }
