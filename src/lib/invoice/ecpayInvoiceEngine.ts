@@ -2,6 +2,22 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import * as crypto from 'crypto'
 
+/**
+ * ECPay 電子發票引擎 — 新版 B2CInvoice JSON+AES API
+ * ────────────────────────────────────────────
+ * 傳輸格式（developers.ecpay.com.tw/?p=7958 參數加密方式說明）：
+ *   POST JSON { MerchantID, RqHeader:{ Timestamp }, Data }
+ *   Data = base64( AES-128-CBC/PKCS7( URL-encode( JSON payload ), HashKey, HashIV ) )
+ *   回應信封 { TransCode, TransMsg, RpHeader, Data }；TransCode=1 才有 Data，
+ *   Data 同法解密後才是業務結果（RtnCode=1 = 成功）。
+ *
+ * 憑證來源：env `ECPAY_INVOICE_MERCHANT_ID / HASH_KEY / HASH_IV`。
+ * `ECPAY_INVOICE_ENV=sandbox|production` 決定閘道（比照 payment/ecpay.ts）；
+ * sandbox 且 env 未填時退回綠界官方電子發票測試環境憑證（2000132）。
+ * production 且憑證缺值 → isConfigured=false，一律略過開立（不打 API、
+ * 不建 failed 發票紀錄），避免拿測試憑證打正式端點。
+ */
+
 // ── Types ──
 
 interface InvoiceConfig {
@@ -9,6 +25,9 @@ interface InvoiceConfig {
   hashKey: string
   hashIV: string
   gatewayUrl: string
+  sandbox: boolean
+  /** production 且 ECPAY_INVOICE_* 任一缺值 → false，所有開立/重試直接略過 */
+  isConfigured: boolean
 }
 
 interface IssueInvoiceParams {
@@ -50,7 +69,7 @@ interface ECPayResponse {
 /** 最大重試次數 */
 const MAX_RETRY_COUNT = 3
 
-/** ECPay 載具類型對照 */
+/** ECPay 載具類型對照（B2CInvoice CarrierType） */
 const CARRIER_TYPE_MAP: Record<string, string> = {
   none: '',
   ecpay_member: '1',
@@ -73,86 +92,128 @@ const ITEM_TAX_TYPE_MAP: Record<string, string> = {
   tax_free: '3',
 }
 
-// ── 核心函式 ──
+const EINVOICE_STAGE_GATEWAY = 'https://einvoice-stage.ecpay.com.tw'
+const EINVOICE_PROD_GATEWAY = 'https://einvoice.ecpay.com.tw'
+
+/** 綠界官方電子發票測試環境公開憑證（?p=7958；僅 sandbox fallback 用） */
+const STAGE_INVOICE_MERCHANT_ID = '2000132'
+const STAGE_INVOICE_HASH_KEY = 'ejCk326UnaZWKisg'
+const STAGE_INVOICE_HASH_IV = 'q9jcZX8Ib9LM8wYk'
+
+// ── 設定 ──
 
 /**
- * 從環境變數載入 ECPay 電子發票設定
- * 若環境變數未設定則使用測試環境預設值
+ * 從環境變數載入 ECPay 電子發票設定。
+ * ECPAY_INVOICE_ENV 未設時以 NODE_ENV 判斷（比照 payment/ecpay.ts 的 ECPAY_ENV）。
  */
-export async function loadInvoiceConfig(): Promise<InvoiceConfig> {
-  const isProduction = process.env.NODE_ENV === 'production'
+export function loadInvoiceConfig(): InvoiceConfig {
+  const envFlag = (process.env.ECPAY_INVOICE_ENV || '').toLowerCase()
+  const sandbox = envFlag
+    ? envFlag !== 'production'
+    : process.env.NODE_ENV !== 'production'
 
-  const merchantId = process.env.ECPAY_INVOICE_MERCHANT_ID || '2000132'
-  const hashKey = process.env.ECPAY_INVOICE_HASH_KEY || 'ejCk326UnaZWKisg'
-  const hashIV = process.env.ECPAY_INVOICE_HASH_IV || 'q9jcZX8Ib9LM8wYk'
+  const envId = process.env.ECPAY_INVOICE_MERCHANT_ID || ''
+  const envKey = process.env.ECPAY_INVOICE_HASH_KEY || ''
+  const envIV = process.env.ECPAY_INVOICE_HASH_IV || ''
+  const hasEnvCreds = Boolean(envId && envKey && envIV)
 
-  const gatewayUrl = isProduction
-    ? 'https://einvoice.ecpay.com.tw'
-    : 'https://einvoice-stage.ecpay.com.tw'
-
-  return { merchantId, hashKey, hashIV, gatewayUrl }
+  return {
+    merchantId: envId || (sandbox ? STAGE_INVOICE_MERCHANT_ID : ''),
+    hashKey: envKey || (sandbox ? STAGE_INVOICE_HASH_KEY : ''),
+    hashIV: envIV || (sandbox ? STAGE_INVOICE_HASH_IV : ''),
+    gatewayUrl: sandbox ? EINVOICE_STAGE_GATEWAY : EINVOICE_PROD_GATEWAY,
+    sandbox,
+    isConfigured: sandbox ? true : hasEnvCreds,
+  }
 }
 
-/**
- * ECPay 專用 URL 編碼
- * 依照綠界 .NET 風格 URL encoding 規則處理特殊字元
- */
-function ecpayUrlEncode(str: string): string {
-  let encoded = encodeURIComponent(str)
+// ── 傳輸層 ──
 
-  // 還原 .NET 風格不編碼的字元
-  encoded = encoded
-    .replace(/%2D/gi, '-')
-    .replace(/%5F/gi, '_')
-    .replace(/%2E/gi, '.')
-    .replace(/%21/gi, '!')
-    .replace(/%2A/gi, '*')
-    .replace(/%28/gi, '(')
-    .replace(/%29/gi, ')')
-    .replace(/%20/gi, '+')
-
-  // 轉為小寫（ECPay 規範）
-  return encoded.toLowerCase()
-}
-
-/**
- * 產生 ECPay CheckMacValue（HMAC-SHA256）
- *
- * 流程：
- * 1. 參數按 key 字母排序
- * 2. 組合成 key=value& 字串
- * 3. 前後加上 HashKey / HashIV
- * 4. 使用 ECPay URL encode
- * 5. 轉小寫
- * 6. SHA256 雜湊後轉大寫
- */
-export function generateCheckMacValue(
-  params: Record<string, string>,
+/** Data 加密：JSON → URL-encode → AES-128-CBC(PKCS7) → base64 */
+export function encryptInvoiceData(
+  payload: unknown,
   hashKey: string,
   hashIV: string,
 ): string {
-  // 1. 按 key 字母排序（不區分大小寫）
-  const sortedKeys = Object.keys(params).sort((a, b) =>
-    a.toLowerCase().localeCompare(b.toLowerCase()),
+  const plaintext = encodeURIComponent(JSON.stringify(payload))
+  const cipher = crypto.createCipheriv('aes-128-cbc', hashKey, hashIV)
+  return Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]).toString(
+    'base64',
   )
-
-  // 2. 組合成 key=value& 字串
-  const paramStr = sortedKeys.map((key) => `${key}=${params[key]}`).join('&')
-
-  // 3. 前後加上 HashKey / HashIV
-  const raw = `HashKey=${hashKey}&${paramStr}&HashIV=${hashIV}`
-
-  // 4. URL encode（ECPay 自訂規則）
-  const encoded = ecpayUrlEncode(raw)
-
-  // 5. 轉小寫（ecpayUrlEncode 已處理）
-  const lowered = encoded.toLowerCase()
-
-  // 6. SHA256 雜湊 → 大寫
-  const hash = crypto.createHash('sha256').update(lowered, 'utf8').digest('hex')
-
-  return hash.toUpperCase()
 }
+
+/** Data 解密：base64 → AES 解密 → URL-decode（.NET UrlEncode 的 + 先轉空白）→ JSON */
+export function decryptInvoiceData(
+  data: string,
+  hashKey: string,
+  hashIV: string,
+): Record<string, unknown> {
+  const decipher = crypto.createDecipheriv('aes-128-cbc', hashKey, hashIV)
+  const decrypted = Buffer.concat([
+    decipher.update(Buffer.from(data, 'base64')),
+    decipher.final(),
+  ]).toString('utf8')
+  return JSON.parse(decodeURIComponent(decrypted.replace(/\+/g, '%20')))
+}
+
+/**
+ * 發送 B2CInvoice API 請求。
+ * data 內容會自動補 MerchantID 後加密塞進信封的 Data。
+ * 傳輸層失敗（HTTP 非 JSON / TransCode≠1）以 RtnCode:0 回報，不 throw。
+ */
+async function postToECPay(
+  cfg: InvoiceConfig,
+  path: string,
+  data: Record<string, unknown>,
+): Promise<ECPayResponse> {
+  const envelope = {
+    MerchantID: cfg.merchantId,
+    RqHeader: { Timestamp: Math.floor(Date.now() / 1000) },
+    Data: encryptInvoiceData(
+      { MerchantID: cfg.merchantId, ...data },
+      cfg.hashKey,
+      cfg.hashIV,
+    ),
+  }
+
+  const response = await fetch(`${cfg.gatewayUrl}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(envelope),
+  })
+
+  const text = await response.text()
+  let parsed: { TransCode?: number; TransMsg?: string; Data?: string }
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    return {
+      RtnCode: 0,
+      RtnMsg: `ECPay 回應非 JSON（HTTP ${response.status}）：${text.slice(0, 200)}`,
+    }
+  }
+
+  if (parsed.TransCode !== 1 || !parsed.Data) {
+    return {
+      RtnCode: 0,
+      RtnMsg: `傳輸失敗 TransCode=${parsed.TransCode ?? '?'} ${parsed.TransMsg ?? ''}`.trim(),
+    }
+  }
+
+  const dataObj = decryptInvoiceData(parsed.Data, cfg.hashKey, cfg.hashIV)
+  return {
+    ...dataObj,
+    RtnCode: Number(dataObj.RtnCode) || 0,
+    RtnMsg: String(dataObj.RtnMsg || ''),
+  } as ECPayResponse
+}
+
+/** Issue 回應的 InvoiceDate 是 `yyyy-MM-dd HH:mm:ss`，查詢/作廢/折讓只吃日期部分 */
+function toInvoiceDateOnly(invoiceDate: string): string {
+  return invoiceDate.slice(0, 10)
+}
+
+// ── 稅額 ──
 
 /**
  * 計算稅額
@@ -173,46 +234,14 @@ export function calculateTax(
   return { salesAmount: totalAmount, taxAmount: 0 }
 }
 
-/**
- * 發送 POST 請求到 ECPay
- * Content-Type: application/x-www-form-urlencoded
- */
-async function postToECPay(url: string, params: Record<string, string>): Promise<ECPayResponse> {
-  const body = new URLSearchParams(params).toString()
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-  })
-
-  const text = await response.text()
-
-  // ECPay 回傳格式為 URL-encoded key=value&key=value
-  const parsed: Record<string, unknown> = {}
-  const pairs = text.split('&')
-  for (const pair of pairs) {
-    const idx = pair.indexOf('=')
-    if (idx > -1) {
-      const key = decodeURIComponent(pair.substring(0, idx))
-      const value = decodeURIComponent(pair.substring(idx + 1))
-      parsed[key] = value
-    }
-  }
-
-  // RtnCode 轉為數字
-  return {
-    ...parsed,
-    RtnCode: Number(parsed.RtnCode) || 0,
-    RtnMsg: String(parsed.RtnMsg || ''),
-  } as ECPayResponse
-}
+// ── 核心函式 ──
 
 /**
- * 開立電子發票
+ * 開立電子發票（POST /B2CInvoice/Issue）
  *
- * 根據發票類型自動設定列印、載具、捐贈等欄位
- * 品項使用管線符號（|）串接
+ * 根據發票類型自動設定列印、載具、捐贈等欄位；品項為物件陣列（新版格式）。
+ * B2C 不印不捐且未指定載具時，預設存綠界會員載具（CarrierType=1），
+ * 符合「無實體發票必須存載具」的開立規則。
  */
 export async function issueInvoice(params: IssueInvoiceParams): Promise<{
   success: boolean
@@ -223,18 +252,13 @@ export async function issueInvoice(params: IssueInvoiceParams): Promise<{
   rtnMsg?: string
   rawResponse?: Record<string, unknown>
 }> {
-  const cfg = await loadInvoiceConfig()
-  const timestamp = Math.floor(Date.now() / 1000).toString()
-
-  // ── 品項組合（管線分隔） ──
-  const itemNames = params.items.map((i) => i.name).join('|')
-  const itemCounts = params.items.map((i) => i.count.toString()).join('|')
-  const itemWords = params.items.map((i) => i.word).join('|')
-  const itemPrices = params.items.map((i) => i.price.toString()).join('|')
-  const itemAmounts = params.items.map((i) => (i.count * i.price).toString()).join('|')
-  const itemTaxTypes = params.items
-    .map((i) => ITEM_TAX_TYPE_MAP[i.taxType || 'taxable'] || '1')
-    .join('|')
+  const cfg = loadInvoiceConfig()
+  if (!cfg.isConfigured) {
+    console.warn(
+      '[ECPay Invoice] production 未設定 ECPAY_INVOICE_MERCHANT_ID/HASH_KEY/HASH_IV，略過開立',
+    )
+    return { success: false, rtnMsg: 'ECPay 發票憑證未設定（production），已略過開立' }
+  }
 
   // ── 發票類型相關欄位 ──
   const isB2B = params.invoiceType === 'b2b'
@@ -250,27 +274,42 @@ export async function issueInvoice(params: IssueInvoiceParams): Promise<{
   // Donation
   const donation = isDonation ? '1' : '0'
 
-  // 載具
-  const carrierType = hasCarrier ? (CARRIER_TYPE_MAP[params.carrierType!] || '') : ''
-  const carrierNum = hasCarrier ? (params.carrierNumber || '') : ''
+  // 載具：指定載具照填；B2C 不印不捐未指定 → 綠界會員載具
+  let carrierType = hasCarrier ? CARRIER_TYPE_MAP[params.carrierType!] || '' : ''
+  let carrierNum = hasCarrier ? params.carrierNumber || '' : ''
+  if (!carrierType && print === '0' && donation === '0') {
+    carrierType = '1'
+    carrierNum = ''
+  }
 
   // 愛心碼
-  const loveCode = isDonation ? (params.loveCode || '') : ''
+  const loveCode = isDonation ? params.loveCode || '' : ''
 
   // 統一編號（B2B 必填）
-  const customerIdentifier = isB2B ? (params.buyerUBN || '') : ''
+  const customerIdentifier = isB2B ? params.buyerUBN || '' : ''
 
   // 稅別
   const taxType = TAX_TYPE_MAP[params.taxType || 'taxable'] || '1'
-  const { salesAmount } = calculateTax(params.totalAmount, params.taxType || 'taxable')
 
-  // ── 組合 ECPay 參數 ──
-  const ecpayParams: Record<string, string> = {
-    MerchantID: cfg.merchantId,
+  // ── 品項（新版為物件陣列） ──
+  const items = params.items.map((item, idx) => ({
+    ItemSeq: idx + 1,
+    ItemName: item.name,
+    ItemCount: item.count,
+    ItemWord: item.word,
+    ItemPrice: item.price,
+    ItemTaxType: ITEM_TAX_TYPE_MAP[item.taxType || 'taxable'] || '1',
+    ItemAmount: item.count * item.price,
+  }))
+
+  // ── 組合 Data payload ──
+  const data: Record<string, unknown> = {
     RelateNumber: params.orderNumber,
-    CustomerID: params.customerId || '',
+    CustomerID: params.customerId
+      ? String(params.customerId).replace(/[^A-Za-z0-9_]/g, '')
+      : '',
     CustomerIdentifier: customerIdentifier,
-    CustomerName: isB2B ? (params.buyerCompanyName || params.buyerName) : params.buyerName,
+    CustomerName: isB2B ? params.buyerCompanyName || params.buyerName : params.buyerName,
     CustomerAddr: params.buyerAddress || '',
     CustomerPhone: params.buyerPhone || '',
     CustomerEmail: params.buyerEmail,
@@ -280,26 +319,16 @@ export async function issueInvoice(params: IssueInvoiceParams): Promise<{
     CarrierType: carrierType,
     CarrierNum: carrierNum,
     TaxType: taxType,
-    SalesAmount: params.totalAmount.toString(),
+    SalesAmount: Math.round(params.totalAmount),
     InvoiceRemark: '',
-    ItemName: itemNames,
-    ItemCount: itemCounts,
-    ItemWord: itemWords,
-    ItemPrice: itemPrices,
-    ItemTaxType: itemTaxTypes,
-    ItemAmount: itemAmounts,
+    Items: items,
     InvType: '07',
-    TimeStamp: timestamp,
     vat: '1',
   }
 
-  // ── 產生 CheckMacValue ──
-  ecpayParams.CheckMacValue = generateCheckMacValue(ecpayParams, cfg.hashKey, cfg.hashIV)
-
   // ── 送出請求 ──
   try {
-    const url = `${cfg.gatewayUrl}/B2CInvoice/Issue`
-    const result = await postToECPay(url, ecpayParams)
+    const result = await postToECPay(cfg, '/B2CInvoice/Issue', data)
 
     const success = result.RtnCode === 1
     return {
@@ -321,29 +350,23 @@ export async function issueInvoice(params: IssueInvoiceParams): Promise<{
 }
 
 /**
- * 查詢發票
- * 透過發票號碼與發票日期查詢發票狀態
+ * 查詢發票（POST /B2CInvoice/GetIssue）
+ * 以發票號碼＋發票日期查詢；invoiceDate 可帶完整時間字串，自動取日期部分。
  */
 export async function queryInvoice(
   invoiceNo: string,
   invoiceDate: string,
 ): Promise<ECPayResponse> {
-  const cfg = await loadInvoiceConfig()
-  const timestamp = Math.floor(Date.now() / 1000).toString()
-
-  const params: Record<string, string> = {
-    MerchantID: cfg.merchantId,
-    RelateNumber: '',
-    InvoiceNo: invoiceNo,
-    InvoiceDate: invoiceDate,
-    TimeStamp: timestamp,
+  const cfg = loadInvoiceConfig()
+  if (!cfg.isConfigured) {
+    return { RtnCode: 0, RtnMsg: 'ECPay 發票憑證未設定（production），無法查詢' }
   }
 
-  params.CheckMacValue = generateCheckMacValue(params, cfg.hashKey, cfg.hashIV)
-
   try {
-    const url = `${cfg.gatewayUrl}/B2CInvoice/GetIssue`
-    return await postToECPay(url, params)
+    return await postToECPay(cfg, '/B2CInvoice/GetIssue', {
+      InvoiceNo: invoiceNo,
+      InvoiceDate: toInvoiceDateOnly(invoiceDate),
+    })
   } catch (error) {
     console.error('[ECPay Invoice] 查詢發票請求失敗:', error)
     return {
@@ -354,25 +377,19 @@ export async function queryInvoice(
 }
 
 /**
- * 作廢發票
- * 傳入發票號碼與作廢原因，向 ECPay 發送作廢請求
+ * 作廢發票（POST /B2CInvoice/Invalid）
+ * InvoiceDate 優先用呼叫端提供值，否則從 invoices 紀錄的 ecpayResponse 取。
  */
 export async function voidInvoice(
   invoiceNo: string,
   voidReason: string,
+  invoiceDate?: string,
 ): Promise<{ success: boolean; rtnMsg?: string }> {
-  const cfg = await loadInvoiceConfig()
-  const timestamp = Math.floor(Date.now() / 1000).toString()
-
-  const params: Record<string, string> = {
-    MerchantID: cfg.merchantId,
-    InvoiceNo: invoiceNo,
-    InvoiceDate: '',
-    Reason: voidReason,
-    TimeStamp: timestamp,
+  const cfg = loadInvoiceConfig()
+  if (!cfg.isConfigured) {
+    return { success: false, rtnMsg: 'ECPay 發票憑證未設定（production），無法作廢' }
   }
 
-  // 先查詢發票取得 InvoiceDate
   const payload = await getPayload({ config })
   const invoiceRecords = await payload.find({
     collection: 'invoices',
@@ -380,18 +397,21 @@ export async function voidInvoice(
     limit: 1,
   })
 
-  if (invoiceRecords.docs.length > 0) {
+  let resolvedDate = invoiceDate || ''
+  if (!resolvedDate && invoiceRecords.docs.length > 0) {
     const ecpayResp = invoiceRecords.docs[0].ecpayResponse as
       | { invoiceDate?: string }
       | undefined
-    params.InvoiceDate = ecpayResp?.invoiceDate || ''
+    resolvedDate = ecpayResp?.invoiceDate || ''
   }
 
-  params.CheckMacValue = generateCheckMacValue(params, cfg.hashKey, cfg.hashIV)
-
   try {
-    const url = `${cfg.gatewayUrl}/B2CInvoice/Invalid`
-    const result = await postToECPay(url, params)
+    const result = await postToECPay(cfg, '/B2CInvoice/Invalid', {
+      InvoiceNo: invoiceNo,
+      InvoiceDate: toInvoiceDateOnly(resolvedDate),
+      // Reason 上限 20 字
+      Reason: voidReason.slice(0, 20),
+    })
 
     const success = result.RtnCode === 1
 
@@ -421,8 +441,9 @@ export async function voidInvoice(
 }
 
 /**
- * 開立折讓
- * 針對已開立發票進行部分或全額折讓
+ * 開立折讓（POST /B2CInvoice/Allowance）
+ * 針對已開立發票進行部分或全額折讓；新版必帶 InvoiceDate，
+ * 從 invoices 紀錄的 ecpayResponse 取得。
  */
 export async function issueAllowance(
   invoiceNo: string,
@@ -435,36 +456,12 @@ export async function issueAllowance(
     taxType?: string
   }>,
 ): Promise<{ success: boolean; allowanceNo?: string; rtnMsg?: string }> {
-  const cfg = await loadInvoiceConfig()
-  const timestamp = Math.floor(Date.now() / 1000).toString()
-
-  // 品項組合
-  const itemNames = items.map((i) => i.name).join('|')
-  const itemCounts = items.map((i) => i.count.toString()).join('|')
-  const itemWords = items.map((i) => i.word).join('|')
-  const itemPrices = items.map((i) => i.price.toString()).join('|')
-  const itemAmounts = items.map((i) => (i.count * i.price).toString()).join('|')
-  const itemTaxTypes = items
-    .map((i) => ITEM_TAX_TYPE_MAP[i.taxType || 'taxable'] || '1')
-    .join('|')
-
-  const params: Record<string, string> = {
-    MerchantID: cfg.merchantId,
-    InvoiceNo: invoiceNo,
-    AllowanceNotify: 'E',
-    NotifyMail: '',
-    NotifyPhone: '',
-    AllowanceAmount: allowanceAmount.toString(),
-    ItemName: itemNames,
-    ItemCount: itemCounts,
-    ItemWord: itemWords,
-    ItemPrice: itemPrices,
-    ItemTaxType: itemTaxTypes,
-    ItemAmount: itemAmounts,
-    TimeStamp: timestamp,
+  const cfg = loadInvoiceConfig()
+  if (!cfg.isConfigured) {
+    return { success: false, rtnMsg: 'ECPay 發票憑證未設定（production），無法折讓' }
   }
 
-  // 從發票紀錄取得 Email
+  // 從發票紀錄取得發票日期與買受人 Email
   const payload = await getPayload({ config })
   const invoiceRecords = await payload.find({
     collection: 'invoices',
@@ -472,18 +469,42 @@ export async function issueAllowance(
     limit: 1,
   })
 
+  let invoiceDate = ''
+  let notifyMail = ''
+  let customerName = ''
   if (invoiceRecords.docs.length > 0) {
-    const buyerInfo = invoiceRecords.docs[0].buyerInfo as
-      | { buyerEmail?: string }
+    const doc = invoiceRecords.docs[0]
+    const ecpayResp = doc.ecpayResponse as { invoiceDate?: string } | undefined
+    const buyerInfo = doc.buyerInfo as
+      | { buyerEmail?: string; buyerName?: string }
       | undefined
-    params.NotifyMail = buyerInfo?.buyerEmail || ''
+    invoiceDate = ecpayResp?.invoiceDate || ''
+    notifyMail = buyerInfo?.buyerEmail || ''
+    customerName = buyerInfo?.buyerName || ''
   }
 
-  params.CheckMacValue = generateCheckMacValue(params, cfg.hashKey, cfg.hashIV)
+  const allowanceItems = items.map((item, idx) => ({
+    ItemSeq: idx + 1,
+    ItemName: item.name,
+    ItemCount: item.count,
+    ItemWord: item.word,
+    ItemPrice: item.price,
+    ItemTaxType: ITEM_TAX_TYPE_MAP[item.taxType || 'taxable'] || '1',
+    ItemAmount: item.count * item.price,
+  }))
 
   try {
-    const url = `${cfg.gatewayUrl}/B2CInvoice/Allowance`
-    const result = await postToECPay(url, params)
+    const result = await postToECPay(cfg, '/B2CInvoice/Allowance', {
+      InvoiceNo: invoiceNo,
+      InvoiceDate: toInvoiceDateOnly(invoiceDate),
+      // 有 Email 用 Email 通知，否則不通知
+      AllowanceNotify: notifyMail ? 'E' : 'N',
+      CustomerName: customerName,
+      NotifyMail: notifyMail,
+      NotifyPhone: '',
+      AllowanceAmount: Math.round(allowanceAmount),
+      Items: allowanceItems,
+    })
 
     const success = result.RtnCode === 1
     const allowanceNo = result.IA_Allow_No as string | undefined
@@ -523,10 +544,20 @@ export async function issueAllowance(
  * 2. 建立 pending 發票紀錄
  * 3. 呼叫 issueInvoice 開立
  * 4. 更新發票紀錄（成功/失敗）
+ *
+ * production 憑證未設定時直接略過（不建 failed 紀錄，避免 retry cron 空轉）。
  */
 export async function autoIssueInvoiceForOrder(
   orderId: string,
 ): Promise<{ success: boolean; invoiceId?: string; error?: string }> {
+  const cfg = loadInvoiceConfig()
+  if (!cfg.isConfigured) {
+    console.warn(
+      `[ECPay Invoice] production 未設定 ECPAY_INVOICE_* 憑證，訂單 ${orderId} 略過開立發票`,
+    )
+    return { success: false, error: 'ECPay 發票憑證未設定，已略過開立' }
+  }
+
   const payload = await getPayload({ config })
 
   try {
@@ -724,9 +755,15 @@ export async function retryFailedInvoices(): Promise<{
   succeeded: number
   failed: number
 }> {
-  const payload = await getPayload({ config })
-
   const result = { retried: 0, succeeded: 0, failed: 0 }
+
+  const cfg = loadInvoiceConfig()
+  if (!cfg.isConfigured) {
+    console.warn('[ECPay Invoice] production 未設定 ECPAY_INVOICE_* 憑證，略過發票重試')
+    return result
+  }
+
+  const payload = await getPayload({ config })
 
   try {
     // ── 查詢需要重試的發票 ──
