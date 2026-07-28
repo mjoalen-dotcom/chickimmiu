@@ -179,6 +179,12 @@ prod `/api/checkout-settings` 顯示 `birthdayRequired:true, genderRequired:true
 3. **顧客導回**：`OrderResultURL`/`ClientBackURL` → 導回 `checkout/success/[orderId]`。
 4. **對帳/冪等**：callback 需冪等（同一訂單重送不重複加點）；保留原始回傳存 log。
 5. **（可選）電子發票**：`ecpayInvoiceEngine.ts` 已有骨架，補 `ECPAY_INVOICE_*` 憑證後於 paid 時開立。
+   > **✅ 2026-07-28 傳輸層已改寫為新版 B2CInvoice JSON+AES 並 stage E2E PASS**（舊版 CheckMacValue+form-urlencoded 被 stage 拒收 HTTP 500 `TransCode:128`）。
+   > - 新格式：POST JSON `{MerchantID, RqHeader:{Timestamp}, Data}`，Data = base64(AES-128-CBC/PKCS7(URL-encode(JSON), HashKey, HashIV))；回應 `TransCode=1` 才解密 Data 取 `RtnCode`。Issue/GetIssue/Invalid/Allowance 四支全改；查詢/作廢/折讓必帶 InvoiceDate（取日期部分）。
+   > - **E2E 證據（stage 2000132）**：Issue → `RtnCode:1 開立發票成功`，發票 **LA20052028**（2026-07-28 08:21:08、RandomNumber 4393、RelateNumber CKE2EMS3WU5PT）；GetIssue → `查詢成功`（IIS_Upload_Status=1、載具 CarrierType=1 綠界會員載具）；Invalid → `作廢發票成功`。腳本：`scripts/oneoff/e2e-ecpay-invoice-20260728.ts`（`pnpm payload run` 可重跑）。
+   > - **設定模式改比照金流**：`ECPAY_INVOICE_ENV=sandbox|production`（未設看 NODE_ENV）；sandbox 缺值 fallback 官方測試憑證 2000132；**production 缺 `ECPAY_INVOICE_MERCHANT_ID/HASH_KEY/HASH_IV` 任一值 → 一律略過開立**（不打 API、不建 failed 紀錄、retry cron 不空轉），log 一行可查。
+   > - 正式啟用：綠界廠商後台抄電子發票介接三值（與金流 ECPAY_* 不同組）→ 填 prod `.env` + `ECPAY_INVOICE_ENV=production` + `pm2 restart chickimmiu-nextjs --update-env`。
+   > - 已知限制（既有行為，非本次引入）：`autoIssueInvoiceForOrder` 以 `order.total` 開發票，若訂單含運費/折抵使品項小計 ≠ 總額，綠界會以金額不符拒開（會留 failed 紀錄 + retry），正式啟用前如有運費需補品項調整列。
 6. **超商取貨物流**：目前 CVS 門市是顧客手打（`checkout/page.tsx:1128`），如要真物流需另接 ECPay 電子地圖/物流 API（`orderSelfService.ts:6-9` 註解提到但未發號）。
 
 **驗收**：測試站完成一筆刷卡 → 付款 → callback 回填 paid → 顧客導回成功頁 → 後台顯示已付款 + 已寄已付款信 + 點數入帳；重送 callback 不重複加點。
