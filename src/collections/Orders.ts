@@ -390,6 +390,31 @@ export const Orders: CollectionConfig = {
           ],
         },
         { name: 'estimatedDays', label: '預計送達天數', type: 'text' },
+        // ── ECPay C2C 託運單（/Express/Create 發號後回寫；LAUNCH §4-6 後續） ──
+        {
+          name: 'ecpayLogisticsId',
+          label: '綠界物流交易編號',
+          type: 'text',
+          admin: { description: 'AllPayLogisticsID——超商發號後回寫，已有值不重覆發號' },
+        },
+        {
+          name: 'cvsPaymentNo',
+          label: '寄貨編號',
+          type: 'text',
+          admin: { description: 'CVSPaymentNo——門市代寄用，同步寫入訂單追蹤號' },
+        },
+        {
+          name: 'cvsValidationNo',
+          label: '寄貨驗證碼',
+          type: 'text',
+          admin: { description: 'CVSValidationNo——僅 7-11 C2C，列印託運單要用' },
+        },
+        {
+          name: 'logisticsStatus',
+          label: '物流狀態',
+          type: 'text',
+          admin: { description: '綠界物流狀態通知（ServerReplyURL）最新一筆：代碼|訊息|時間' },
+        },
       ],
     },
     {

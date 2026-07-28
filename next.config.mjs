@@ -81,7 +81,9 @@ const nextConfig = {
       "frame-ancestors 'self'",
       "object-src 'none'",
       "base-uri 'self'",
-      "form-action 'self' https://payment.ecpay.com.tw https://payment-stage.ecpay.com.tw",
+      // logistics*.ecpay.com.tw：超商電子地圖選店 + C2C 託運單標籤列印都是
+      //   瀏覽器端 form POST 過去，缺了會被 form-action 靜默擋掉（按鈕卡 loading）
+      "form-action 'self' https://payment.ecpay.com.tw https://payment-stage.ecpay.com.tw https://logistics.ecpay.com.tw https://logistics-stage.ecpay.com.tw",
       "upgrade-insecure-requests",
     ].join('; ')
 

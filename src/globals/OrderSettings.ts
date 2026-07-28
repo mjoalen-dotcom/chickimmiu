@@ -139,6 +139,31 @@ export const OrderSettings: GlobalConfig = {
         },
       ],
     },
+    // ── 超商託運（ECPay C2C 發號） ──
+    {
+      name: 'cvsShipping',
+      label: '超商託運寄件人',
+      type: 'group',
+      admin: {
+        description:
+          '批次出貨「超商發號」用：綠界 /Express/Create 託運單上的寄件人。手機必填（09 開頭 10 碼），沒填不能發號。',
+      },
+      fields: [
+        {
+          name: 'senderName',
+          label: '寄件人名稱',
+          type: 'text',
+          defaultValue: '靚秀國際',
+          admin: { description: '印在託運單上；避免特殊符號，最長 10 字' },
+        },
+        {
+          name: 'senderCellPhone',
+          label: '寄件人手機',
+          type: 'text',
+          admin: { description: '09 開頭 10 碼，門市/物流聯絡寄件人用' },
+        },
+      ],
+    },
     // ── 狀態流設定 ──
     {
       name: 'statusFlow',

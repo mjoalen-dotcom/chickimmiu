@@ -13,9 +13,16 @@ const CARRIERS: Array<{ code: string; label: string }> = [
   { code: 'post', label: '中華郵政' },
 ]
 
-type Mode = 'uniform' | 'mapping'
+type Mode = 'uniform' | 'mapping' | 'cvs'
 
-type ResultRow = { orderNumber: string; reason?: string }
+type ResultRow = {
+  orderNumber: string
+  reason?: string
+  // cvs（超商發號）模式回傳
+  cvsPaymentNo?: string
+  cvsValidationNo?: string
+  allPayLogisticsID?: string
+}
 
 type Result = {
   succeededCount: number
@@ -120,40 +127,51 @@ export default function OrderBulkShipPanel() {
   // mapping-mode state
   const [csvText, setCsvText] = useState('')
 
+  // cvs-mode state（超商發號：綠界 /Express/Create）
+  const [cvsOrderNumbersText, setCvsOrderNumbersText] = useState('')
+
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
   const [error, setError] = useState<string>('')
 
-  const uniformOrderNumbers = useMemo(
-    () =>
-      orderNumbersText
-        .split(/\r?\n|,/)
-        .map((s) => s.trim())
-        .filter(Boolean),
-    [orderNumbersText],
-  )
+  const splitOrderNumbers = (text: string) =>
+    text
+      .split(/\r?\n|,/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+
+  const uniformOrderNumbers = useMemo(() => splitOrderNumbers(orderNumbersText), [orderNumbersText])
+  const cvsOrderNumbers = useMemo(() => splitOrderNumbers(cvsOrderNumbersText), [cvsOrderNumbersText])
   const mappingRows = useMemo(() => parseCsvRows(csvText), [csvText])
 
-  const previewCount = mode === 'uniform' ? uniformOrderNumbers.length : mappingRows.length
+  const previewCount =
+    mode === 'uniform'
+      ? uniformOrderNumbers.length
+      : mode === 'cvs'
+        ? cvsOrderNumbers.length
+        : mappingRows.length
 
   const submit = async () => {
     setBusy(true)
     setError('')
     setResult(null)
     try {
+      const endpoint = mode === 'cvs' ? '/api/admin/orders/cvs-ship' : '/api/admin/orders/bulk-ship'
       const body =
-        mode === 'uniform'
-          ? {
-              mode: 'uniform' as const,
-              orderNumbers: uniformOrderNumbers,
-              carrier: uniformCarrier,
-              trackingNumber: uniformTracking,
-            }
-          : {
-              mode: 'mapping' as const,
-              rows: mappingRows,
-            }
-      const res = await fetch('/api/admin/orders/bulk-ship', {
+        mode === 'cvs'
+          ? { orderNumbers: cvsOrderNumbers }
+          : mode === 'uniform'
+            ? {
+                mode: 'uniform' as const,
+                orderNumbers: uniformOrderNumbers,
+                carrier: uniformCarrier,
+                trackingNumber: uniformTracking,
+              }
+            : {
+                mode: 'mapping' as const,
+                rows: mappingRows,
+              }
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -163,7 +181,8 @@ export default function OrderBulkShipPanel() {
         setError(data.error || '送出失敗')
       } else {
         setResult(data)
-        if (data.succeededCount > 0) {
+        // cvs 模式不自動 reload：留住寄貨編號 + 列印按鈕
+        if (data.succeededCount > 0 && mode !== 'cvs') {
           // Refresh list view to reflect new status
           setTimeout(() => window.location.reload(), 1500)
         }
@@ -172,6 +191,41 @@ export default function OrderBulkShipPanel() {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(false)
+    }
+  }
+
+  // 發號結果列「列印託運單」：拿列印表單參數，開新視窗 form POST 到綠界
+  const printLabel = async (orderNumber: string) => {
+    try {
+      const res = await fetch('/api/admin/orders/cvs-ship/print', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderNumber }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.action) {
+        setError(data.error || '取得列印參數失敗')
+        return
+      }
+      const w = window.open('', '_blank')
+      if (!w) {
+        setError('瀏覽器擋了新視窗，請允許彈出視窗後再試')
+        return
+      }
+      const form = w.document.createElement('form')
+      form.method = 'POST'
+      form.action = data.action
+      Object.entries(data.params as Record<string, string>).forEach(([k, v]) => {
+        const input = w.document.createElement('input')
+        input.type = 'hidden'
+        input.name = k
+        input.value = v
+        form.appendChild(input)
+      })
+      w.document.body.appendChild(form)
+      form.submit()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
     }
   }
 
@@ -201,7 +255,30 @@ export default function OrderBulkShipPanel() {
             <button type="button" style={tabStyle(mode === 'mapping')} onClick={() => setMode('mapping')}>
               CSV 對應（一行一張單）
             </button>
+            <button type="button" style={tabStyle(mode === 'cvs')} onClick={() => setMode('cvs')}>
+              超商發號（綠界 C2C 託運單）
+            </button>
           </div>
+
+          {mode === 'cvs' && (
+            <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={labelStyle}>訂單編號（一行一個，或用逗號分隔）——限超商取貨訂單</label>
+                <textarea
+                  value={cvsOrderNumbersText}
+                  onChange={(e) => setCvsOrderNumbersText(e.target.value)}
+                  rows={5}
+                  placeholder={'CKMU20260728001\nCKMU20260728002\n...'}
+                  style={{ ...inputStyle, fontFamily: 'monospace', resize: 'vertical' }}
+                />
+              </div>
+              <p style={{ fontSize: 11, color: '#6B6560', margin: 0 }}>
+                對綠界 /Express/Create 建 C2C 託運單：自動帶顧客選的門市（storeId）、
+                回寫寄貨編號當追蹤碼、標 shipped + 寄出貨通知信。
+                寄件人資料讀「訂單設定 → 超商託運寄件人」；已發號的訂單會自動略過。
+              </p>
+            </div>
+          )}
 
           {mode === 'uniform' && (
             <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
@@ -264,6 +341,12 @@ export default function OrderBulkShipPanel() {
           {previewCount > 0 && (
             <div style={{ background: '#fafaf7', border: '1px solid #E8DDD0', borderRadius: 6, padding: 12, marginBottom: 12, fontSize: 12 }}>
               <strong style={{ color: '#1A1F36' }}>將處理 {previewCount} 張訂單</strong>
+              {mode === 'cvs' && cvsOrderNumbers.length > 0 && (
+                <div style={{ marginTop: 6, color: '#6B6560' }}>
+                  {cvsOrderNumbers.slice(0, 5).join(', ')}
+                  {cvsOrderNumbers.length > 5 && ` ... 等 ${cvsOrderNumbers.length} 筆`}
+                </div>
+              )}
               {mode === 'uniform' && uniformOrderNumbers.length > 0 && (
                 <div style={{ marginTop: 6, color: '#6B6560' }}>
                   {uniformOrderNumbers.slice(0, 5).join(', ')}
@@ -293,6 +376,7 @@ export default function OrderBulkShipPanel() {
                 setOrderNumbersText('')
                 setUniformTracking('')
                 setCsvText('')
+                setCvsOrderNumbersText('')
                 setResult(null)
                 setError('')
               }}
@@ -320,7 +404,37 @@ export default function OrderBulkShipPanel() {
                   ))}
                 </div>
               )}
-              {result.succeededCount > 0 && (
+              {mode === 'cvs' && result.succeeded.some((r) => r.cvsPaymentNo || r.allPayLogisticsID) && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 11, color: '#6B6560', marginBottom: 4 }}>
+                    發號結果（寄貨編號已寫入訂單追蹤號）：
+                  </div>
+                  {result.succeeded.map((r, i) => (
+                    <div
+                      key={i}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontFamily: 'monospace', color: '#1A1F36', marginBottom: 4 }}
+                    >
+                      <span>
+                        {r.orderNumber} — 寄貨編號 {r.cvsPaymentNo || '(待綠界配號)'}
+                        {r.cvsValidationNo ? ` / 驗證碼 ${r.cvsValidationNo}` : ''}
+                      </span>
+                      {r.cvsPaymentNo && (
+                        <button
+                          type="button"
+                          onClick={() => printLabel(r.orderNumber)}
+                          style={{ ...btnOutline, padding: '2px 10px', fontSize: 11 }}
+                        >
+                          列印託運單
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <div style={{ fontSize: 11, color: '#6B6560', marginTop: 6 }}>
+                    列印完請手動重新整理頁面查看訂單狀態。
+                  </div>
+                </div>
+              )}
+              {result.succeededCount > 0 && mode !== 'cvs' && (
                 <div style={{ fontSize: 11, color: '#6B6560', marginTop: 6 }}>
                   頁面將在 1.5 秒後自動 reload。
                 </div>
