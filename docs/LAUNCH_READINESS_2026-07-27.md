@@ -166,7 +166,7 @@ prod `/api/checkout-settings` 顯示 `birthdayRequired:true, genderRequired:true
 > - 拿到正式憑證後：填 `ECPAY_MERCHANT_ID/HASH_KEY/HASH_IV`、改 `ECPAY_ENV=production`、`pm2 restart chickimmiu-nextjs` 即切正式。production 憑證缺值時 create API 回 503，不會誤用測試商店收單。
 > - `ChoosePayment` 預設 Credit（同步刷卡）；ATM/超商代碼屬非同步取號，會被 60 分鐘自動取消誤殺，開 ALL 前先調整取消時窗（env `ECPAY_CHOOSE_PAYMENT` 可覆蓋）。
 > - callback 冪等（paid→paid 不重觸發）；已付款信/點數/銷量/佣金走既有 unpaid→paid hooks（`Orders.ts:749`）。原始回傳記在 pm2 log（`[ecpay] callback raw`）。
-> - 電子發票（第 5 點）與超商電子地圖（第 6 點）仍未做。
+> - ~~電子發票（第 5 點）與超商電子地圖（第 6 點）仍未做~~ → 兩項均已完成（見第 5、6 點 2026-07-28 補記）。
 >
 > **✅ 2026-07-27 晚 E2E 驗收完成（訂單 CKMU20260727002）**：登入 → 加購物車 → 結帳選 ecpay → 綠界 sandbox 測試卡 4311-9522-2222-2222 → 3D 驗證（頁面顯示 OTP=1234）→ callback 回填 paid（TradeNo `2607272249180591`）→ 導回成功頁。點數 +1680 + 升等 bronze 贈點 +100、mint 卡 +1、訂單確認信 + **付款完成信**（新增 `payment_received` 事件，`445afa8`）+ 綠界通知信全數實收；callback 重送實測 `1|OK` 且不重複入點。發票自動開立失敗屬預期（`ECPAY_INVOICE_*` 未設）。
 > - **⚠️ sandbox 商店已換 3002607**（官方現行測試店，3D 頁直接顯示 OTP）：舊公開店 2000132 在新版 pay-stage VerifySMS 簡訊流程走不完（固定碼 1234 被拒、錯 3 次交易作廢，實測 4 個 tradeNo 陣亡）。fallback 憑證已改進 `ecpay.ts`。
@@ -186,6 +186,10 @@ prod `/api/checkout-settings` 顯示 `birthdayRequired:true, genderRequired:true
    > - 正式啟用：綠界廠商後台抄電子發票介接三值（與金流 ECPAY_* 不同組）→ 填 prod `.env` + `ECPAY_INVOICE_ENV=production` + `pm2 restart chickimmiu-nextjs --update-env`。
    > - 已知限制（既有行為，非本次引入）：`autoIssueInvoiceForOrder` 以 `order.total` 開發票，若訂單含運費/折抵使品項小計 ≠ 總額，綠界會以金額不符拒開（會留 failed 紀錄 + retry），正式啟用前如有運費需補品項調整列。
 6. **超商取貨物流**：目前 CVS 門市是顧客手打（`checkout/page.tsx:1128`），如要真物流需另接 ECPay 電子地圖/物流 API（`orderSelfService.ts:6-9` 註解提到但未發號）。
+   > **✅ 2026-07-28 電子地圖選店已上線（`8d656c8`）**：結帳頁「從地圖選擇門市」→ `POST /api/logistics/ecpay/map` 產表單（`src/lib/logistics/ecpayLogisticsMap.ts`，物流 CheckMacValue 用 **MD5**）auto-submit 到 `/Express/map` → 綠界以顧客瀏覽器 POST 門市（CVSStoreID/Name/Address）回 `/api/logistics/ecpay/map/reply` → 303 導回 `/checkout?cvs=…` 回填。來回是整頁跳轉，表單以 sessionStorage 草稿保全（一次性、2h TTL）；跨超商切換自動清舊門市。
+   > - **sandbox E2E PASS**：map 參數（stage C2C 2000933 + 我方 CheckMacValue）綠界 HTTP 200 接受並轉入 7-11 地圖 bootstrap；reply→回填→下單，訂單 CKMU20260728001 `shippingMethod.convenienceStore` = 測試門市/131386/南港三重路 正確落庫（本機 DB，非 prod）。
+   > - env：`ECPAY_LOGISTICS_MERCHANT_ID/HASH_KEY/HASH_IV`（物流模組與金流**不同組**憑證，綠界後台需開通物流）+ `ECPAY_LOGISTICS_ENV`（未設沿用 ECPAY_ENV）+ `ECPAY_LOGISTICS_CVS_TYPE`（預設 C2C 店到店；B2C 大宗寄倉需另簽約且無 OK）。sandbox 缺值 fallback 物流文件測試店（C2C 2000933/B2C 2000132）；**production 缺值 → map API 回 503，前端顯示「請直接輸入門市資訊」，手打 fallback 不受影響**。
+   > - 尚未做：物流「託運單建立」（B2C/C2C 出貨 API 發號）、出貨後門市配達追蹤——地圖選店只解決結帳端門市正確性。
 
 **驗收**：測試站完成一筆刷卡 → 付款 → callback 回填 paid → 顧客導回成功頁 → 後台顯示已付款 + 已寄已付款信 + 點數入帳；重送 callback 不重複加點。
 
