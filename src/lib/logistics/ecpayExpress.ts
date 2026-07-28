@@ -80,6 +80,12 @@ export interface BuildCvsCreateParamsInput {
   receiverStoreId: string
   /** 物流狀態通知（server-to-server POST） */
   serverReplyURL: string
+  /**
+   * 退貨門市代號——包裹退貨時退到這間門市。僅 7-ELEVEN C2C 有效；
+   * 其他超商帶了也會退回原寄件門市（綠界門市訂單建立規格）。
+   * 未帶 = 退回原寄件門市。
+   */
+  returnStoreId?: string
 }
 
 export function buildCvsCreateParams(
@@ -108,6 +114,9 @@ export function buildCvsCreateParams(
   }
   if (input.isCollection) params.CollectionAmount = String(Math.round(input.goodsAmount))
   if (input.receiverEmail) params.ReceiverEmail = input.receiverEmail
+  if (subType === 'UNIMARTC2C' && input.returnStoreId) {
+    params.ReturnStoreID = input.returnStoreId.trim().slice(0, 6)
+  }
   params.CheckMacValue = generateLogisticsCheckMacValue(params, cfg.hashKey, cfg.hashIV)
   return params
 }
@@ -120,6 +129,8 @@ export interface CvsCreateResult {
   cvsPaymentNo?: string
   /** 驗證碼（7-11 C2C 才有） */
   cvsValidationNo?: string
+  /** 託運單號（LogisticsType=HOME 才有；黑貓當追蹤碼） */
+  bookingNote?: string
   raw: string
   error?: string
 }
@@ -149,16 +160,110 @@ export async function createCvsShipment(
     allPayLogisticsID: kv.AllPayLogisticsID || '',
     cvsPaymentNo: kv.CVSPaymentNo || '',
     cvsValidationNo: kv.CVSValidationNo || '',
+    bookingNote: kv.BookingNote || '',
     raw,
   }
 }
 
-/** C2C 託運單標籤列印端點（瀏覽器 form POST，開新視窗） */
+/* ────────────────────────────────────────────────────────────
+ * 宅配（LogisticsType=HOME）——黑貓 TCAT / 中華郵政 POST
+ * 綠界宅配文件（產生物流訂單Ⅱ）：寄/收件人都要地址+郵遞區號；
+ * TCAT 可代收貨款（上限 2 萬）、POST 不可代收且必填 GoodsWeight。
+ * 新竹物流（hct）綠界不支援——維持人工填單號（bulk-ship）。
+ * ──────────────────────────────────────────────────────────── */
+
+const HOME_SUBTYPE: Record<string, string> = {
+  tcat: 'TCAT',
+  post: 'POST',
+}
+
+export function carrierToHomeSubType(carrier: string): string | null {
+  return HOME_SUBTYPE[carrier] ?? null
+}
+
+/** 宅配姓名規格 4~10 字元：中文以 2 字元計，2 個中文字即符合下限 */
+export function isValidHomeName(name: string): boolean {
+  let units = 0
+  for (const ch of name) units += /[一-鿿]/.test(ch) ? 2 : 1
+  return units >= 4 && units <= 10
+}
+
+export interface BuildHomeCreateParamsInput {
+  orderId: number | string
+  /** ShippingMethods.carrier：tcat / post */
+  carrier: string
+  /** 商品金額（TCAT 代收上限 20000） */
+  goodsAmount: number
+  /** 貨到付款（僅 TCAT） */
+  isCollection: boolean
+  goodsName: string
+  senderName: string
+  senderCellPhone: string
+  senderZipCode: string
+  senderAddress: string
+  receiverName: string
+  receiverCellPhone: string
+  receiverZipCode: string
+  receiverAddress: string
+  receiverEmail?: string
+  /** POST 必填：包裹重量（公斤，上限 20） */
+  goodsWeight?: number
+  /** 0001 常溫（預設）/ 0002 冷藏 / 0003 冷凍；POST 只收 0001 */
+  temperature?: string
+  /** 0001 60cm（預設）/ 0002 90cm / 0003 120cm / 0004 150cm（冷藏冷凍不可 150） */
+  specification?: string
+  /** 1=13 時前 / 2=14~18 時 / 4=不限時（預設） */
+  scheduledDeliveryTime?: string
+  serverReplyURL: string
+}
+
+export function buildHomeCreateParams(
+  cfg: EcpayLogisticsConfig,
+  input: BuildHomeCreateParamsInput,
+): Record<string, string> {
+  const subType = carrierToHomeSubType(input.carrier)
+  if (!subType) {
+    throw new Error(`carrier ${input.carrier} 不支援 ECPay 宅配（僅 tcat / post）`)
+  }
+  const params: Record<string, string> = {
+    MerchantID: cfg.merchantId,
+    MerchantTradeNo: buildLogisticsTradeNo(input.orderId),
+    MerchantTradeDate: formatLogisticsTradeDate(),
+    LogisticsType: 'HOME',
+    LogisticsSubType: subType,
+    GoodsAmount: String(Math.round(input.goodsAmount)),
+    GoodsName: input.goodsName.replace(/[^0-9A-Za-z一-鿿\s]/g, '').trim().slice(0, 50),
+    SenderName: input.senderName,
+    SenderCellPhone: input.senderCellPhone,
+    SenderZipCode: input.senderZipCode,
+    SenderAddress: input.senderAddress,
+    ReceiverName: input.receiverName,
+    ReceiverCellPhone: input.receiverCellPhone,
+    ReceiverZipCode: input.receiverZipCode,
+    ReceiverAddress: input.receiverAddress,
+    ServerReplyURL: input.serverReplyURL,
+  }
+  if (subType === 'TCAT') {
+    params.Temperature = input.temperature || '0001'
+    params.Specification = input.specification || '0001'
+    params.ScheduledPickupTime = '4'
+    params.ScheduledDeliveryTime = input.scheduledDeliveryTime || '4'
+    params.IsCollection = input.isCollection ? 'Y' : 'N'
+    if (input.isCollection) params.CollectionAmount = String(Math.round(input.goodsAmount))
+  } else {
+    // POST：不可代收、必填重量（公斤，最多 3 位小數）
+    params.GoodsWeight = String(Math.min(Math.max(input.goodsWeight || 1, 0.001), 20))
+  }
+  if (input.receiverEmail) params.ReceiverEmail = input.receiverEmail
+  params.CheckMacValue = generateLogisticsCheckMacValue(params, cfg.hashKey, cfg.hashIV)
+  return params
+}
+
+/** C2C 託運單標籤列印端點（瀏覽器 form POST，開新視窗）。OKMARTC2C 已終止服務。 */
 const PRINT_PATHS: Record<string, string> = {
   UNIMARTC2C: '/Express/PrintUniMartC2COrderInfo',
   FAMIC2C: '/Express/PrintFAMIC2COrderInfo',
   HILIFEC2C: '/Express/PrintHILIFEC2COrderInfo',
-  OKMARTC2C: '/Express/PrintOKMARTC2COrderInfo',
 }
 
 export interface BuildPrintParamsInput {
@@ -186,6 +291,110 @@ export function buildCvsPrintForm(
   if (subType === 'UNIMARTC2C') params.CVSValidationNo = input.cvsValidationNo || ''
   params.CheckMacValue = generateLogisticsCheckMacValue(params, cfg.hashKey, cfg.hashIV)
   return { action: `${expressHost(cfg)}${path}`, params }
+}
+
+/**
+ * 宅配（含 B2C）託運單列印：/helper/printTradeDocument。
+ * 瀏覽器 form POST 開新視窗；AllPayLogisticsID 可逗號分隔批次列印
+ * （不同標籤格式不可混印——這裡只給 TCAT/POST 用）。
+ */
+export function buildHomePrintForm(
+  cfg: EcpayLogisticsConfig,
+  allPayLogisticsIDs: string[],
+): { action: string; params: Record<string, string> } {
+  const ids = allPayLogisticsIDs.map((s) => s.trim()).filter(Boolean)
+  if (ids.length === 0) throw new Error('沒有可列印的物流交易編號')
+  const params: Record<string, string> = {
+    MerchantID: cfg.merchantId,
+    AllPayLogisticsID: ids.join(','),
+    // 1=A4、2=熱感應標籤（A6）
+    PrintMode: '1',
+  }
+  params.CheckMacValue = generateLogisticsCheckMacValue(params, cfg.hashKey, cfg.hashIV)
+  return { action: `${expressHost(cfg)}/helper/printTradeDocument`, params }
+}
+
+/* ────────────────────────────────────────────────────────────
+ * 宅配逆物流 /Express/ReturnHome（僅 TCAT）
+ * 寄件人=顧客（原收件地址）、收件人=商家。成功回 `1|OK`，
+ * 後續貨態走「逆物流狀態通知」打回 ServerReplyURL（同一支
+ * /api/logistics/ecpay/status，靠 AllPayLogisticsID 對回訂單）。
+ * ──────────────────────────────────────────────────────────── */
+
+export interface BuildReturnHomeParamsInput {
+  /** 原正向託運單的綠界物流交易編號 */
+  allPayLogisticsID: string
+  goodsAmount: number
+  goodsName: string
+  /** 寄件人＝顧客 */
+  senderName: string
+  senderCellPhone: string
+  senderZipCode: string
+  senderAddress: string
+  /** 收件人＝商家 */
+  receiverName: string
+  receiverCellPhone: string
+  receiverZipCode: string
+  receiverAddress: string
+  temperature?: string
+  specification?: string
+  serverReplyURL: string
+  remark?: string
+}
+
+export function buildReturnHomeParams(
+  cfg: EcpayLogisticsConfig,
+  input: BuildReturnHomeParamsInput,
+): Record<string, string> {
+  const params: Record<string, string> = {
+    MerchantID: cfg.merchantId,
+    AllPayLogisticsID: input.allPayLogisticsID,
+    LogisticsSubType: 'TCAT',
+    GoodsAmount: String(Math.round(input.goodsAmount)),
+    GoodsName: input.goodsName.replace(/[^0-9A-Za-z一-鿿\s]/g, '').trim().slice(0, 50),
+    SenderName: input.senderName,
+    SenderCellPhone: input.senderCellPhone,
+    SenderZipCode: input.senderZipCode,
+    SenderAddress: input.senderAddress,
+    ReceiverName: input.receiverName,
+    ReceiverCellPhone: input.receiverCellPhone,
+    ReceiverZipCode: input.receiverZipCode,
+    ReceiverAddress: input.receiverAddress,
+    Temperature: input.temperature || '0001',
+    Distance: '00',
+    Specification: input.specification || '0001',
+    ScheduledPickupTime: '4',
+    ScheduledDeliveryTime: '4',
+    ServerReplyURL: input.serverReplyURL,
+  }
+  if (input.remark) params.Remark = input.remark.slice(0, 200)
+  params.CheckMacValue = generateLogisticsCheckMacValue(params, cfg.hashKey, cfg.hashIV)
+  return params
+}
+
+export interface ReturnHomeResult {
+  ok: boolean
+  raw: string
+  error?: string
+}
+
+/** 打 /Express/ReturnHome；成功回 `1|OK`（無其他欄位） */
+export async function createReturnHome(
+  cfg: EcpayLogisticsConfig,
+  params: Record<string, string>,
+): Promise<ReturnHomeResult> {
+  const res = await fetch(`${expressHost(cfg)}/Express/ReturnHome`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(params).toString(),
+  })
+  const raw = (await res.text()).trim()
+  const sep = raw.indexOf('|')
+  const code = sep >= 0 ? raw.slice(0, sep) : raw
+  if (code !== '1') {
+    return { ok: false, raw, error: (sep >= 0 ? raw.slice(sep + 1) : raw).slice(0, 200) }
+  }
+  return { ok: true, raw }
 }
 
 /** 驗物流狀態通知（ServerReplyURL）的 CheckMacValue（MD5，同組憑證） */

@@ -67,6 +67,7 @@ export async function POST(req: Request) {
   const cvsShipping = (settings?.cvsShipping || {}) as {
     senderName?: string
     senderCellPhone?: string
+    returnStoreId?: string
   }
   const senderName = sanitizeLogisticsName(cvsShipping.senderName || '')
   const senderCellPhone = normalizeCellPhone(cvsShipping.senderCellPhone || '')
@@ -154,6 +155,7 @@ export async function POST(req: Request) {
         receiverCellPhone,
         receiverStoreId: storeId,
         serverReplyURL,
+        returnStoreId: String(cvsShipping.returnStoreId || '').trim() || undefined,
       })
       const result = await createCvsShipment(cfg, params)
       if (!result.ok) {

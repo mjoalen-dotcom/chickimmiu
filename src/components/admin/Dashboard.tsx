@@ -58,6 +58,7 @@ const STATUS_MAP: Record<string, { label: string; bg: string; color: string }> =
   processing: { label: '處理中',  bg: '#BFDBFE', color: '#1E3A8A' }, // 7.5:1 (was #DBEAFE/#1E40AF = 4.16:1)
   shipped:    { label: '已出貨',  bg: '#BBF7D0', color: '#14532D' }, // 7.7:1
   delivered:  { label: '已送達',  bg: '#A7F3D0', color: '#064E3B' }, // 8.4:1
+  returned:   { label: '已退回',  bg: '#FED7AA', color: '#7C2D12' }, // 7.2:1
   cancelled:  { label: '已取消',  bg: '#FECACA', color: '#7F1D1D' }, // 7.0:1
   refunded:   { label: '已退款',  bg: '#E5E7EB', color: '#1F2937' }, // 11.5:1
 }

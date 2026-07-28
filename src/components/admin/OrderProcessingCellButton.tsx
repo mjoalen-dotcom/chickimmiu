@@ -22,6 +22,7 @@ const STATUS_LABELS: Record<string, string> = {
   processing: '處理中',
   shipped: '已出貨',
   delivered: '已送達',
+  returned: '已退回',
   cancelled: '已取消',
   refunded: '已退款',
 }

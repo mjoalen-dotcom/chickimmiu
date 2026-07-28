@@ -26,6 +26,7 @@ const STATUS_MAP: Record<string, { label: string; icon: React.ElementType; color
   processing: { label: '處理中', icon: Package, color: 'text-blue-500' },
   shipped: { label: '已出貨', icon: Truck, color: 'text-indigo-500' },
   delivered: { label: '已送達', icon: CheckCircle, color: 'text-green-500' },
+  returned: { label: '已退回', icon: RotateCcw, color: 'text-orange-500' },
   cancelled: { label: '已取消', icon: XCircle, color: 'text-red-500' },
   refunded: { label: '已退款', icon: RotateCcw, color: 'text-gray-500' },
 }

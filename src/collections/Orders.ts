@@ -306,9 +306,14 @@ export const Orders: CollectionConfig = {
         { label: '處理中', value: 'processing' },
         { label: '已出貨', value: 'shipped' },
         { label: '已送達', value: 'delivered' },
+        { label: '已退回', value: 'returned' },
         { label: '已取消', value: 'cancelled' },
         { label: '已退款', value: 'refunded' },
       ],
+      admin: {
+        description:
+          'returned＝包裹退回（未取退回門市/賣家已取回），由綠界物流貨態自動標或手動標；後續退款仍走 refunded',
+      },
     },
     // ── 付款 ──
     {
@@ -414,6 +419,18 @@ export const Orders: CollectionConfig = {
           label: '物流狀態',
           type: 'text',
           admin: { description: '綠界物流狀態通知（ServerReplyURL）最新一筆：代碼|訊息|時間' },
+        },
+        {
+          name: 'returnLogisticsId',
+          label: '逆物流交易編號',
+          type: 'text',
+          admin: { description: '宅配退貨（ReturnHome）建立後標記；超商 C2C 退貨走門市自動退回無編號' },
+        },
+        {
+          name: 'returnLogisticsStatus',
+          label: '逆物流狀態',
+          type: 'text',
+          admin: { description: '退貨貨態最新一筆：代碼|訊息|時間' },
         },
       ],
     },

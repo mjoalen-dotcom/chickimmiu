@@ -162,6 +162,85 @@ export const OrderSettings: GlobalConfig = {
           type: 'text',
           admin: { description: '09 開頭 10 碼，門市/物流聯絡寄件人用' },
         },
+        {
+          name: 'returnStoreId',
+          label: '7-ELEVEN 退貨門市代號',
+          type: 'text',
+          admin: {
+            description:
+              '包裹退貨時退到這間 7-11 門市（6 碼店號）。只有 7-ELEVEN C2C 支援；' +
+              '全家/萊爾富一律退回原寄件門市。留空 = 退回原寄件門市。',
+          },
+        },
+      ],
+    },
+    // ── 宅配託運（綠界 HOME：黑貓/中華郵政）──
+    {
+      name: 'homeShipping',
+      label: '宅配託運寄件人（黑貓/郵政）',
+      type: 'group',
+      admin: {
+        description:
+          '批次出貨「宅配發號」用：綠界 /Express/Create（HOME）託運單寄件人。' +
+          '宅配規格要求姓名 4~10 字元（2 個中文字即可）、地址含郵遞區號必填。' +
+          '新竹物流綠界不支援，維持人工填單號。逆物流（ReturnHome）收件人也用這組。',
+      },
+      fields: [
+        {
+          name: 'senderName',
+          label: '寄件人名稱',
+          type: 'text',
+          admin: { description: '4~10 字元（中文以 2 字元計），不可含數字與特殊符號' },
+        },
+        {
+          name: 'senderCellPhone',
+          label: '寄件人手機',
+          type: 'text',
+          admin: { description: '09 開頭 10 碼' },
+        },
+        {
+          name: 'senderZipCode',
+          label: '寄件郵遞區號',
+          type: 'text',
+          admin: { description: '3 或 5 碼' },
+        },
+        {
+          name: 'senderAddress',
+          label: '寄件地址',
+          type: 'text',
+          admin: { description: '6~60 字，黑貓要求完整地址（含縣市區）' },
+        },
+        {
+          name: 'temperature',
+          label: '溫層',
+          type: 'select',
+          defaultValue: '0001',
+          options: [
+            { label: '常溫', value: '0001' },
+            { label: '冷藏', value: '0002' },
+            { label: '冷凍', value: '0003' },
+          ],
+          admin: { description: '黑貓用；郵政一律常溫。冷藏/冷凍不可用 150cm 規格' },
+        },
+        {
+          name: 'specification',
+          label: '包裹規格',
+          type: 'select',
+          defaultValue: '0001',
+          options: [
+            { label: '60cm', value: '0001' },
+            { label: '90cm', value: '0002' },
+            { label: '120cm', value: '0003' },
+            { label: '150cm', value: '0004' },
+          ],
+        },
+        {
+          name: 'defaultGoodsWeight',
+          label: '預設包裹重量（公斤）',
+          type: 'number',
+          defaultValue: 1,
+          admin: { description: '中華郵政必填重量（上限 20kg）；黑貓不用' },
+        },
       ],
     },
     // ── 狀態流設定 ──
@@ -175,6 +254,17 @@ export const OrderSettings: GlobalConfig = {
           label: '啟用「處理中」狀態',
           type: 'checkbox',
           defaultValue: true,
+        },
+        {
+          name: 'autoStatusFromLogistics',
+          label: '物流貨態自動流轉訂單狀態',
+          type: 'checkbox',
+          defaultValue: true,
+          admin: {
+            description:
+              '綠界物流狀態通知打進來時：買家取貨/宅配配完 → 已送達；' +
+              '包裹退回寄件門市/賣家取回 → 已退回。關掉 = 只記錄貨態不動狀態。',
+          },
         },
         {
           name: 'enableReadyForPickup',

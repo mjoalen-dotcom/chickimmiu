@@ -13,7 +13,7 @@ const CARRIERS: Array<{ code: string; label: string }> = [
   { code: 'post', label: '中華郵政' },
 ]
 
-type Mode = 'uniform' | 'mapping' | 'cvs'
+type Mode = 'uniform' | 'mapping' | 'cvs' | 'home' | 'return'
 
 type ResultRow = {
   orderNumber: string
@@ -22,6 +22,8 @@ type ResultRow = {
   cvsPaymentNo?: string
   cvsValidationNo?: string
   allPayLogisticsID?: string
+  // home（宅配發號）模式回傳：託運單號
+  bookingNote?: string
 }
 
 type Result = {
@@ -130,6 +132,12 @@ export default function OrderBulkShipPanel() {
   // cvs-mode state（超商發號：綠界 /Express/Create）
   const [cvsOrderNumbersText, setCvsOrderNumbersText] = useState('')
 
+  // home-mode state（宅配發號：綠界 HOME 黑貓/郵政）
+  const [homeOrderNumbersText, setHomeOrderNumbersText] = useState('')
+
+  // return-mode state（宅配退貨：綠界 ReturnHome 黑貓）
+  const [returnOrderNumbersText, setReturnOrderNumbersText] = useState('')
+
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
   const [error, setError] = useState<string>('')
@@ -142,6 +150,8 @@ export default function OrderBulkShipPanel() {
 
   const uniformOrderNumbers = useMemo(() => splitOrderNumbers(orderNumbersText), [orderNumbersText])
   const cvsOrderNumbers = useMemo(() => splitOrderNumbers(cvsOrderNumbersText), [cvsOrderNumbersText])
+  const homeOrderNumbers = useMemo(() => splitOrderNumbers(homeOrderNumbersText), [homeOrderNumbersText])
+  const returnOrderNumbers = useMemo(() => splitOrderNumbers(returnOrderNumbersText), [returnOrderNumbersText])
   const mappingRows = useMemo(() => parseCsvRows(csvText), [csvText])
 
   const previewCount =
@@ -149,28 +159,43 @@ export default function OrderBulkShipPanel() {
       ? uniformOrderNumbers.length
       : mode === 'cvs'
         ? cvsOrderNumbers.length
-        : mappingRows.length
+        : mode === 'home'
+          ? homeOrderNumbers.length
+          : mode === 'return'
+            ? returnOrderNumbers.length
+            : mappingRows.length
 
   const submit = async () => {
     setBusy(true)
     setError('')
     setResult(null)
     try {
-      const endpoint = mode === 'cvs' ? '/api/admin/orders/cvs-ship' : '/api/admin/orders/bulk-ship'
+      const endpoint =
+        mode === 'cvs'
+          ? '/api/admin/orders/cvs-ship'
+          : mode === 'home'
+            ? '/api/admin/orders/home-ship'
+            : mode === 'return'
+              ? '/api/admin/orders/return-ship'
+              : '/api/admin/orders/bulk-ship'
       const body =
         mode === 'cvs'
           ? { orderNumbers: cvsOrderNumbers }
-          : mode === 'uniform'
-            ? {
-                mode: 'uniform' as const,
-                orderNumbers: uniformOrderNumbers,
-                carrier: uniformCarrier,
-                trackingNumber: uniformTracking,
-              }
-            : {
-                mode: 'mapping' as const,
-                rows: mappingRows,
-              }
+          : mode === 'home'
+            ? { orderNumbers: homeOrderNumbers }
+            : mode === 'return'
+              ? { orderNumbers: returnOrderNumbers }
+              : mode === 'uniform'
+                ? {
+                    mode: 'uniform' as const,
+                    orderNumbers: uniformOrderNumbers,
+                    carrier: uniformCarrier,
+                    trackingNumber: uniformTracking,
+                  }
+                : {
+                    mode: 'mapping' as const,
+                    rows: mappingRows,
+                  }
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -181,8 +206,8 @@ export default function OrderBulkShipPanel() {
         setError(data.error || '送出失敗')
       } else {
         setResult(data)
-        // cvs 模式不自動 reload：留住寄貨編號 + 列印按鈕
-        if (data.succeededCount > 0 && mode !== 'cvs') {
+        // cvs / home 模式不自動 reload：留住寄貨編號/託運單號 + 列印按鈕
+        if (data.succeededCount > 0 && mode !== 'cvs' && mode !== 'home') {
           // Refresh list view to reflect new status
           setTimeout(() => window.location.reload(), 1500)
         }
@@ -195,9 +220,9 @@ export default function OrderBulkShipPanel() {
   }
 
   // 發號結果列「列印託運單」：拿列印表單參數，開新視窗 form POST 到綠界
-  const printLabel = async (orderNumber: string) => {
+  const printLabel = async (orderNumber: string, kind: 'cvs' | 'home' = 'cvs') => {
     try {
-      const res = await fetch('/api/admin/orders/cvs-ship/print', {
+      const res = await fetch(kind === 'home' ? '/api/admin/orders/home-ship/print' : '/api/admin/orders/cvs-ship/print', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderNumber }),
@@ -258,6 +283,12 @@ export default function OrderBulkShipPanel() {
             <button type="button" style={tabStyle(mode === 'cvs')} onClick={() => setMode('cvs')}>
               超商發號（綠界 C2C 託運單）
             </button>
+            <button type="button" style={tabStyle(mode === 'home')} onClick={() => setMode('home')}>
+              宅配發號（綠界黑貓/郵政）
+            </button>
+            <button type="button" style={tabStyle(mode === 'return')} onClick={() => setMode('return')}>
+              宅配退貨（黑貓收退件）
+            </button>
           </div>
 
           {mode === 'cvs' && (
@@ -276,6 +307,49 @@ export default function OrderBulkShipPanel() {
                 對綠界 /Express/Create 建 C2C 託運單：自動帶顧客選的門市（storeId）、
                 回寫寄貨編號當追蹤碼、標 shipped + 寄出貨通知信。
                 寄件人資料讀「訂單設定 → 超商託運寄件人」；已發號的訂單會自動略過。
+              </p>
+            </div>
+          )}
+
+          {mode === 'home' && (
+            <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={labelStyle}>訂單編號（一行一個，或用逗號分隔）——限黑貓/中華郵政宅配訂單</label>
+                <textarea
+                  value={homeOrderNumbersText}
+                  onChange={(e) => setHomeOrderNumbersText(e.target.value)}
+                  rows={5}
+                  placeholder={'CKMU20260728001\nCKMU20260728002\n...'}
+                  style={{ ...inputStyle, fontFamily: 'monospace', resize: 'vertical' }}
+                />
+              </div>
+              <p style={{ fontSize: 11, color: '#6B6560', margin: 0 }}>
+                對綠界 /Express/Create（HOME）建宅配託運單：回寫託運單號當追蹤碼、
+                標 shipped + 寄出貨通知信。寄件人讀「訂單設定 → 宅配託運寄件人」
+                （名稱/手機/郵遞區號/地址都要填）。收件地址要有郵遞區號。
+                貨到付款單自動帶代收（僅黑貓，上限 2 萬）。
+                ⚠ 新竹物流綠界不支援——請用「統一託運 / CSV 對應」人工填單號。
+              </p>
+            </div>
+          )}
+
+          {mode === 'return' && (
+            <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={labelStyle}>訂單編號（一行一個，或用逗號分隔）——限已發號的黑貓宅配訂單</label>
+                <textarea
+                  value={returnOrderNumbersText}
+                  onChange={(e) => setReturnOrderNumbersText(e.target.value)}
+                  rows={5}
+                  placeholder={'CKMU20260728001\n...'}
+                  style={{ ...inputStyle, fontFamily: 'monospace', resize: 'vertical' }}
+                />
+              </div>
+              <p style={{ fontSize: 11, color: '#6B6560', margin: 0 }}>
+                對綠界 /Express/ReturnHome 建逆物流託運單：黑貓到顧客地址收退貨、
+                送回「訂單設定 → 宅配託運寄件人」地址。退貨貨態會寫進訂單的
+                「逆物流狀態」欄。超商 C2C 沒有退貨 API：買家未取自動退回寄件門市
+                （7-11 可在訂單設定指定退貨門市）。
               </p>
             </div>
           )}
@@ -347,6 +421,13 @@ export default function OrderBulkShipPanel() {
                   {cvsOrderNumbers.length > 5 && ` ... 等 ${cvsOrderNumbers.length} 筆`}
                 </div>
               )}
+              {(mode === 'home' || mode === 'return') && (
+                <div style={{ marginTop: 6, color: '#6B6560' }}>
+                  {(mode === 'home' ? homeOrderNumbers : returnOrderNumbers).slice(0, 5).join(', ')}
+                  {(mode === 'home' ? homeOrderNumbers : returnOrderNumbers).length > 5 &&
+                    ` ... 等 ${(mode === 'home' ? homeOrderNumbers : returnOrderNumbers).length} 筆`}
+                </div>
+              )}
               {mode === 'uniform' && uniformOrderNumbers.length > 0 && (
                 <div style={{ marginTop: 6, color: '#6B6560' }}>
                   {uniformOrderNumbers.slice(0, 5).join(', ')}
@@ -377,6 +458,8 @@ export default function OrderBulkShipPanel() {
                 setUniformTracking('')
                 setCsvText('')
                 setCvsOrderNumbersText('')
+                setHomeOrderNumbersText('')
+                setReturnOrderNumbersText('')
                 setResult(null)
                 setError('')
               }}
@@ -434,7 +517,39 @@ export default function OrderBulkShipPanel() {
                   </div>
                 </div>
               )}
-              {result.succeededCount > 0 && mode !== 'cvs' && (
+              {mode === 'home' && result.succeeded.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 11, color: '#6B6560', marginBottom: 4 }}>
+                    發號結果（託運單號已寫入訂單追蹤號）：
+                  </div>
+                  {result.succeeded.map((r, i) => (
+                    <div
+                      key={i}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontFamily: 'monospace', color: '#1A1F36', marginBottom: 4 }}
+                    >
+                      <span>
+                        {r.orderNumber} — 託運單號 {r.bookingNote || r.allPayLogisticsID || '(待綠界回填)'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => printLabel(r.orderNumber, 'home')}
+                        style={{ ...btnOutline, padding: '2px 10px', fontSize: 11 }}
+                      >
+                        列印託運單
+                      </button>
+                    </div>
+                  ))}
+                  <div style={{ fontSize: 11, color: '#6B6560', marginTop: 6 }}>
+                    列印完請手動重新整理頁面查看訂單狀態。
+                  </div>
+                </div>
+              )}
+              {mode === 'return' && result.succeeded.length > 0 && (
+                <div style={{ fontSize: 11, color: '#6B6560', marginTop: 6 }}>
+                  已向綠界建立退貨託運單，黑貓將去顧客地址收件；退貨貨態會自動寫進訂單「逆物流狀態」。
+                </div>
+              )}
+              {result.succeededCount > 0 && mode !== 'cvs' && mode !== 'home' && (
                 <div style={{ fontSize: 11, color: '#6B6560', marginTop: 6 }}>
                   頁面將在 1.5 秒後自動 reload。
                 </div>

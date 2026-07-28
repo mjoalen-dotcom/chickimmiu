@@ -104,14 +104,14 @@ export function generateLogisticsCheckMacValue(
 
 /**
  * ShippingMethods.carrier 代碼 → 電子地圖 LogisticsSubType。
- * C2C（店到店）四大超商都支援；B2C（大宗寄倉）沒有 OK mart。
+ * B2C（大宗寄倉）沒有 OK mart；OK 超商 C2C（OKMARTC2C）已於
+ * 2026/7/1 終止服務（綠界物流狀態代碼表異動歷程），一併下架。
  */
 const CVS_SUBTYPE: Record<'C2C' | 'B2C', Record<string, string>> = {
   C2C: {
     '711': 'UNIMARTC2C',
     family: 'FAMIC2C',
     hilife: 'HILIFEC2C',
-    ok: 'OKMARTC2C',
   },
   B2C: {
     '711': 'UNIMART',

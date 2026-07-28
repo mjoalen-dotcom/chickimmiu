@@ -75,6 +75,7 @@ import * as migration_20260611_150000_add_line_messaging_fields from './20260611
 import * as migration_20260612_100000_add_brand_anthem_toggle from './20260612_100000_add_brand_anthem_toggle';
 import * as migration_20260728_010000_add_user_subscriptions_membership from './20260728_010000_add_user_subscriptions_membership';
 import * as migration_20260728_150000_add_cvs_shipment_fields from './20260728_150000_add_cvs_shipment_fields';
+import * as migration_20260729_090000_add_home_shipping_return_logistics from './20260729_090000_add_home_shipping_return_logistics';
 
 export const migrations = [
   {
@@ -461,5 +462,10 @@ export const migrations = [
     up: migration_20260728_150000_add_cvs_shipment_fields.up,
     down: migration_20260728_150000_add_cvs_shipment_fields.down,
     name: '20260728_150000_add_cvs_shipment_fields',
+  },
+  {
+    up: migration_20260729_090000_add_home_shipping_return_logistics.up,
+    down: migration_20260729_090000_add_home_shipping_return_logistics.down,
+    name: '20260729_090000_add_home_shipping_return_logistics',
   },
 ];
