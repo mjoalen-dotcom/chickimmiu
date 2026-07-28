@@ -109,10 +109,19 @@ developers.ecpay.com.tw/logistics_status/）。
 home_shipping_* 7、status_flow_auto_status_from_logistics）。
 
 ### 上線前 user 必做（2026-07-29 盤點）
-1. **（未完成！）** prod `.env` 實際上沒有任何 `ECPAY_LOGISTICS_*`
-   （全機 grep 過，唯一出現在 .env.example）。地圖/發號現在都在
-   sandbox fallback（MerchantID 2000933）。要重做：抄三值 + ENV=production
-   + `pm2 restart chickimmiu-nextjs`。
+1. **（未完成！）** prod `.env` 沒有任何 `ECPAY_LOGISTICS_*`（全機 grep 過）。
+   07-29 07:51 金流+發票已切 production（3018203），物流因此從 sandbox
+   fallback 變成「production 無憑證」＝map/發號回 503、前台 fallback 手動
+   輸入門市。**已實測：金流 3018203 那組 HashKey/IV 打物流查詢 API 回
+   `0|CheckMacValue驗證錯誤`（同腳本打 stage 測試店回 `0|找不到訂單`，
+   演算法無誤）→ 物流模組憑證確定是另一組，只能從綠界後台抄。**
+   解法（一行指令，先驗證再寫入，貼錯不動 .env）：
+   ```
+   ssh root@5.223.85.14 '/var/www/chickimmiu/scripts/setup-ecpay-logistics-prod.sh <物流MID> <HashKey> <HashIV>'
+   ```
 2. 後台「訂單設定 → 超商託運寄件人」手機仍是 `0912345678`（測試佔位）。
 3. 新增：「訂單設定 → 宅配託運寄件人」四欄（名稱/手機/郵遞區號/地址）
    填齊才能宅配發號；7-11 退貨門市代號選填。
+4. ⚠️ 順帶發現：.env 的 `ECPAY_INVOICE_HASH_KEY/IV` 與金流同值——發票
+   介接憑證照理也是獨立一組（電子發票介接設定），若同值是誤填，開立
+   發票會在綠界端解密失敗，建議核對。
