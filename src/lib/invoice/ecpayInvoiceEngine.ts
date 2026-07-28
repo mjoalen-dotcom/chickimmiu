@@ -234,6 +234,31 @@ export function calculateTax(
   return { salesAmount: totalAmount, taxAmount: 0 }
 }
 
+/**
+ * 品項合計對帳：綠界要求 Σ ItemAmount = SalesAmount，不符即以金額不符拒開。
+ * 合計與 totalAmount 有差額時補一列調整項吸收（正差=其他費用、負差=折扣折抵），
+ * 讓運費/折抵未逐列展開的舊紀錄（retry 路徑）與所有呼叫端都不會被拒開。
+ */
+export function reconcileInvoiceItems(
+  items: IssueInvoiceParams['items'],
+  totalAmount: number,
+): IssueInvoiceParams['items'] {
+  const target = Math.round(totalAmount)
+  const lineSum = items.reduce((sum, item) => sum + item.count * item.price, 0)
+  const diff = target - lineSum
+  if (diff === 0) return items
+  return [
+    ...items,
+    {
+      name: diff > 0 ? '其他費用' : '折扣折抵',
+      count: 1,
+      word: '式',
+      price: diff,
+      taxType: 'taxable',
+    },
+  ]
+}
+
 // ── 核心函式 ──
 
 /**
@@ -291,8 +316,8 @@ export async function issueInvoice(params: IssueInvoiceParams): Promise<{
   // 稅別
   const taxType = TAX_TYPE_MAP[params.taxType || 'taxable'] || '1'
 
-  // ── 品項（新版為物件陣列） ──
-  const items = params.items.map((item, idx) => ({
+  // ── 品項（新版為物件陣列；合計必須等於 SalesAmount，差額補調整列） ──
+  const items = reconcileInvoiceItems(params.items, params.totalAmount).map((item, idx) => ({
     ItemSeq: idx + 1,
     ItemName: item.name,
     ItemCount: item.count,
@@ -625,6 +650,12 @@ export async function autoIssueInvoiceForOrder(
       unitPrice: number
     }>
 
+    const orderTotal = Math.round(Number(order.total) || 0)
+    if (orderTotal <= 0) {
+      // 全額折抵訂單綠界必拒開，直接略過（不建 failed 紀錄，避免 retry cron 空轉）
+      return { success: false, error: '訂單總額為 0，略過開立發票' }
+    }
+
     const invoiceItems = orderItems.map((item) => ({
       name: item.productName,
       count: item.quantity,
@@ -632,6 +663,28 @@ export async function autoIssueInvoiceForOrder(
       price: item.unitPrice,
       taxType: 'taxable',
     }))
+
+    // 運費/手續費逐列展開；剩餘差額（折價券/會員折扣/購物金）補一列負數折抵。
+    // 綠界要求品項合計 = SalesAmount（order.total），缺列會以金額不符拒開（LAUNCH §4-5）
+    const shippingFee = Math.round(Number(order.shippingFee) || 0)
+    if (shippingFee > 0) {
+      invoiceItems.push({ name: '運費', count: 1, word: '式', price: shippingFee, taxType: 'taxable' })
+    }
+    const codFee = Math.round(Number(order.codFee) || 0)
+    if (codFee > 0) {
+      invoiceItems.push({ name: '貨到付款手續費', count: 1, word: '式', price: codFee, taxType: 'taxable' })
+    }
+    const lineSum = invoiceItems.reduce((sum, item) => sum + item.count * item.price, 0)
+    const adjustment = orderTotal - lineSum
+    if (adjustment !== 0) {
+      invoiceItems.push({
+        name: adjustment < 0 ? '折扣折抵' : '訂單調整',
+        count: 1,
+        word: '式',
+        price: adjustment,
+        taxType: 'taxable',
+      })
+    }
 
     // ── 預設發票類型：個人二聯式（手機條碼載具） ──
     // 實務上應從訂單或前端帶入發票資訊，此處設定合理預設值
@@ -660,7 +713,7 @@ export async function autoIssueInvoiceForOrder(
           itemTaxType: 'taxable',
           itemAmount: item.count * item.price,
         })),
-        totalAmount: order.total as number,
+        totalAmount: orderTotal,
         taxType: 'taxable',
         retryCount: 0,
       },
@@ -676,14 +729,14 @@ export async function autoIssueInvoiceForOrder(
       buyerPhone,
       buyerAddress,
       items: invoiceItems,
-      totalAmount: order.total as number,
+      totalAmount: orderTotal,
       taxType: 'taxable',
       customerId,
     })
 
     // ── 更新發票紀錄 ──
     if (result.success) {
-      const { salesAmount, taxAmount } = calculateTax(order.total as number, 'taxable')
+      const { salesAmount, taxAmount } = calculateTax(orderTotal, 'taxable')
 
       await (payload.update as Function)({
         collection: 'invoices',
