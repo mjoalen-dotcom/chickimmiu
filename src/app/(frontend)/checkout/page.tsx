@@ -263,6 +263,23 @@ const SHIPPING_TYPE_ICON: Record<ShippingType, typeof Truck> = {
   international: Plane,
 }
 
+/* 綠界電子地圖來回是整頁跳轉：跳轉前把整張結帳表單暫存 sessionStorage
+ * （購物車本身是 zustand persist，不會掉），回來 mount 時一次性還原。 */
+const CHECKOUT_DRAFT_KEY = 'ckmu-checkout-draft-v1'
+const CHECKOUT_DRAFT_TTL_MS = 2 * 60 * 60 * 1000
+
+/* 電子地圖 reply 的 LogisticsSubType → ShippingMethods.carrier */
+const SUBTYPE_TO_CARRIER: Record<string, string> = {
+  UNIMART: '711',
+  UNIMARTC2C: '711',
+  FAMI: 'family',
+  FAMIC2C: 'family',
+  HILIFE: 'hilife',
+  HILIFEC2C: 'hilife',
+  OKMART: 'ok',
+  OKMARTC2C: 'ok',
+}
+
 const TAIWAN_CITIES = [
   '台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市',
   '基隆市', '新竹市', '新竹縣', '苗栗縣', '彰化縣', '南投縣',
@@ -478,12 +495,15 @@ export default function CheckoutPage() {
     customerNote: '',
   })
 
-  // 超商門市選擇
+  // 超商門市選擇（forCarrier 記錄門市屬於哪家超商，跨超商切換時清掉舊門市）
   const [storeInfo, setStoreInfo] = useState({
     storeName: '',
     storeId: '',
     storeAddress: '',
+    forCarrier: '',
   })
+  const [cvsMapLoading, setCvsMapLoading] = useState(false)
+  const [cvsMapError, setCvsMapError] = useState<string | null>(null)
 
   // 到辦公室取貨資訊（location 預設「辦公室」，customer 可改）
   const [meetupInfo, setMeetupInfo] = useState({
@@ -516,6 +536,161 @@ export default function CheckoutPage() {
   const shippingOption = shippingOptions.find((s) => s.id === selectedShipping)
   const isConvenienceStore = shippingOption?.type === 'convenience_store'
   const isMeetup = shippingOption?.type === 'meetup'
+
+  // ── 綠界電子地圖選店（LAUNCH §4-6）──
+  type CheckoutDraft = {
+    ts: number
+    form?: Partial<typeof form>
+    storeInfo?: Partial<typeof storeInfo>
+    meetupInfo?: Partial<typeof meetupInfo>
+    selectedShipping?: string
+    shippingTypeFilter?: ShippingType
+    selectedPayment?: PaymentMethodId
+    tosAccepted?: boolean
+    marketingAccepted?: boolean
+    appliedCoupons?: AppliedCoupon[]
+    invoice?: {
+      invoiceType?: 'b2c_personal' | 'b2c_carrier' | 'b2b' | 'donation'
+      carrierType?: 'none' | 'phone_barcode' | 'natural_cert'
+      carrierNumber?: string
+      loveCode?: string
+      buyerUBN?: string
+      buyerCompanyName?: string
+    }
+  }
+
+  const saveCheckoutDraft = () => {
+    try {
+      const draft: CheckoutDraft = {
+        ts: Date.now(),
+        form,
+        storeInfo,
+        meetupInfo,
+        selectedShipping,
+        shippingTypeFilter,
+        selectedPayment: selectedPayment || undefined,
+        tosAccepted,
+        marketingAccepted,
+        appliedCoupons,
+        invoice: { invoiceType, carrierType, carrierNumber, loveCode, buyerUBN, buyerCompanyName },
+      }
+      sessionStorage.setItem(CHECKOUT_DRAFT_KEY, JSON.stringify(draft))
+    } catch {
+      /* 存不了就算了——回來只是表單要重填，購物車不受影響 */
+    }
+  }
+
+  // mount 時：先還原草稿（一次性），再讀 map/reply 塞的 cvs query 回填門市
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(CHECKOUT_DRAFT_KEY)
+      if (raw) {
+        sessionStorage.removeItem(CHECKOUT_DRAFT_KEY)
+        const d = JSON.parse(raw) as CheckoutDraft
+        if (d?.ts && Date.now() - d.ts < CHECKOUT_DRAFT_TTL_MS) {
+          if (d.form) setForm((prev) => ({ ...prev, ...d.form }))
+          if (d.storeInfo) setStoreInfo((prev) => ({ ...prev, ...d.storeInfo }))
+          if (d.meetupInfo) setMeetupInfo((prev) => ({ ...prev, ...d.meetupInfo }))
+          if (d.selectedShipping) setSelectedShipping(d.selectedShipping)
+          if (d.shippingTypeFilter) setShippingTypeFilter(d.shippingTypeFilter)
+          if (d.selectedPayment) setSelectedPayment(d.selectedPayment)
+          if (d.tosAccepted) setTosAccepted(true)
+          if (d.marketingAccepted) setMarketingAccepted(true)
+          if (Array.isArray(d.appliedCoupons) && d.appliedCoupons.length > 0) {
+            setAppliedCoupons(d.appliedCoupons)
+          }
+          if (d.invoice) {
+            if (d.invoice.invoiceType) setInvoiceType(d.invoice.invoiceType)
+            if (d.invoice.carrierType) setCarrierType(d.invoice.carrierType)
+            setCarrierNumber(d.invoice.carrierNumber || '')
+            setLoveCode(d.invoice.loveCode || '')
+            setBuyerUBN(d.invoice.buyerUBN || '')
+            setBuyerCompanyName(d.invoice.buyerCompanyName || '')
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Checkout] 還原結帳草稿失敗（忽略）:', err)
+    }
+
+    try {
+      const q = new URLSearchParams(window.location.search)
+      if (q.get('cvs') === '1' && q.get('cvsStoreId')) {
+        setStoreInfo({
+          storeName: q.get('cvsStoreName') || '',
+          storeId: q.get('cvsStoreId') || '',
+          storeAddress: q.get('cvsAddress') || '',
+          forCarrier: SUBTYPE_TO_CARRIER[q.get('cvsSubType') || ''] || '',
+        })
+        window.history.replaceState(null, '', window.location.pathname)
+      }
+    } catch {
+      /* URL 解析失敗就不回填，門市欄位仍可手動輸入 */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const updateStore = (field: 'storeName' | 'storeId' | 'storeAddress', value: string) =>
+    setStoreInfo((prev) => ({
+      ...prev,
+      [field]: value,
+      forCarrier: shippingOption?.carrier || prev.forCarrier,
+    }))
+
+  // 換到不同超商時清掉舊門市（7-11 的門市不能掛在全家單上）
+  const selectShippingOption = (opt: ShippingOption) => {
+    if (
+      opt.type === 'convenience_store' &&
+      storeInfo.forCarrier &&
+      storeInfo.forCarrier !== opt.carrier
+    ) {
+      setStoreInfo({ storeName: '', storeId: '', storeAddress: '', forCarrier: '' })
+    }
+    setSelectedShipping(opt.id)
+  }
+
+  const openCvsMap = async () => {
+    if (!shippingOption || cvsMapLoading) return
+    setCvsMapError(null)
+    setCvsMapLoading(true)
+    try {
+      saveCheckoutDraft()
+      const res = await fetch('/api/logistics/ecpay/map', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          carrier: shippingOption.carrier,
+          // 貨到付款要代收貨款，地圖只列支援代收的門市
+          isCollection: selectedPayment === 'cash_cod',
+        }),
+      })
+      const data = (await res.json().catch(() => null)) as
+        | { action?: string; params?: Record<string, string>; error?: string }
+        | null
+      if (!res.ok || !data?.action || !data.params) {
+        setCvsMapError(data?.error || '地圖開啟失敗，請直接輸入門市資訊')
+        setCvsMapLoading(false)
+        return
+      }
+      const mapForm = document.createElement('form')
+      mapForm.method = 'POST'
+      mapForm.action = data.action
+      Object.entries(data.params).forEach(([k, v]) => {
+        const input = document.createElement('input')
+        input.type = 'hidden'
+        input.name = k
+        input.value = v
+        mapForm.appendChild(input)
+      })
+      document.body.appendChild(mapForm)
+      mapForm.submit()
+      // 整頁跳轉綠界地圖中——不重置 loading，避免跳轉前按鈕又可點
+    } catch (err) {
+      console.error('[Checkout] open cvs map error:', err)
+      setCvsMapError('地圖開啟失敗，請檢查網路連線後再試')
+      setCvsMapLoading(false)
+    }
+  }
 
   // DB 清單載入後，fallback 的字串 id（'711'…）不會存在於 DB id（'1'…'8'）中，
   // 自動改選目前 tab 類型的第一個；該類型沒有啟用選項則跳到第一個有選項的 tab。
@@ -1142,7 +1317,7 @@ export default function CheckoutPage() {
                       onClick={() => {
                         setShippingTypeFilter(tab.type)
                         const first = shippingOptions.find((s) => s.type === tab.type)
-                        if (first) setSelectedShipping(first.id)
+                        if (first) selectShippingOption(first)
                       }}
                       className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs transition-all flex-1 justify-center ${
                         shippingTypeFilter === tab.type
@@ -1162,7 +1337,7 @@ export default function CheckoutPage() {
                     <button
                       key={opt.id}
                       type="button"
-                      onClick={() => setSelectedShipping(opt.id)}
+                      onClick={() => selectShippingOption(opt)}
                       className={`w-full flex items-start gap-3 p-4 rounded-xl border-2 transition-all text-left ${
                         selectedShipping === opt.id
                           ? 'border-gold-500 bg-gold-500/5'
@@ -1313,9 +1488,7 @@ export default function CheckoutPage() {
                           type="text"
                           required
                           value={storeInfo.storeName}
-                          onChange={(e) =>
-                            setStoreInfo((prev) => ({ ...prev, storeName: e.target.value }))
-                          }
+                          onChange={(e) => updateStore('storeName', e.target.value)}
                           placeholder={`請輸入${shippingOption?.name.split(' ')[0]}門市名稱`}
                           className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
                         />
@@ -1327,9 +1500,7 @@ export default function CheckoutPage() {
                         <input
                           type="text"
                           value={storeInfo.storeId}
-                          onChange={(e) =>
-                            setStoreInfo((prev) => ({ ...prev, storeId: e.target.value }))
-                          }
+                          onChange={(e) => updateStore('storeId', e.target.value)}
                           placeholder="選填"
                           className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
                         />
@@ -1342,23 +1513,24 @@ export default function CheckoutPage() {
                           type="text"
                           required
                           value={storeInfo.storeAddress}
-                          onChange={(e) =>
-                            setStoreInfo((prev) => ({ ...prev, storeAddress: e.target.value }))
-                          }
+                          onChange={(e) => updateStore('storeAddress', e.target.value)}
                           placeholder="請輸入門市地址"
                           className="w-full px-4 py-3 rounded-xl border border-cream-200 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/40"
                         />
                       </div>
                     </div>
 
-                    {/* 門市地圖選擇按鈕（實際整合物流商 API 使用） */}
+                    {/* 綠界電子地圖選店：整頁跳轉，回程由 /api/logistics/ecpay/map/reply 導回 */}
                     <button
                       type="button"
-                      className="w-full py-3 border-2 border-dashed border-gold-400/50 rounded-xl text-sm text-gold-600 hover:bg-gold-500/5 transition-colors flex items-center justify-center gap-2"
+                      onClick={openCvsMap}
+                      disabled={cvsMapLoading}
+                      className="w-full py-3 border-2 border-dashed border-gold-400/50 rounded-xl text-sm text-gold-600 hover:bg-gold-500/5 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-wait"
                     >
                       <MapPin size={16} />
-                      從地圖選擇門市
+                      {cvsMapLoading ? '地圖開啟中…' : '從地圖選擇門市'}
                     </button>
+                    {cvsMapError && <p className="text-xs text-rose-600">{cvsMapError}</p>}
                   </div>
                 )}
 
