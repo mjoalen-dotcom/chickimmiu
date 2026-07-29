@@ -30,22 +30,28 @@ export const InvoiceSettings: GlobalConfig = {
           name: 'merchantId',
           label: 'MerchantID',
           type: 'text',
-          required: true,
-          admin: { description: '綠界特店代號' },
+          required: false,
+          admin: {
+            description: '綠界特店代號（僅供紀錄；實際連線讀 .env ECPAY_INVOICE_MERCHANT_ID）',
+          },
         },
         {
           name: 'hashKey',
           label: 'HashKey',
           type: 'text',
-          required: true,
-          admin: { description: '綠界 HashKey（加密用）' },
+          required: false,
+          admin: {
+            description: '綠界 HashKey（僅供紀錄；實際連線讀 .env ECPAY_INVOICE_HASH_KEY）',
+          },
         },
         {
           name: 'hashIV',
           label: 'HashIV',
           type: 'text',
-          required: true,
-          admin: { description: '綠界 HashIV（加密用）' },
+          required: false,
+          admin: {
+            description: '綠界 HashIV（僅供紀錄；實際連線讀 .env ECPAY_INVOICE_HASH_IV）',
+          },
         },
         {
           name: 'environment',

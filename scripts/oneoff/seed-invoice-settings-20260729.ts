@@ -10,9 +10,9 @@ import config from '@payload-config'
  *
  * 冪等規則：sellerUBN 已有值就整組略過（不覆蓋人工改過的資料）。
  *
- * 注意：global 的 apiSettings.merchantId/hashKey/hashIV 欄位為 required，但
- * engine 只讀 env、不讀這組 DB 欄位（死欄位）。若 updateGlobal 因此驗證失敗，
- * 腳本會印出錯誤並以非 0 退出 — 屆時改由後台一次填齊。
+ * 注意：ecpayConfig.merchantId/hashKey/hashIV 為死欄位（engine 只讀 env），
+ * 已於 20260729_120000 migration 改 nullable + config required:false，
+ * 本腳本不再受其驗證阻擋。若 updateGlobal 仍失敗，腳本印出錯誤並以非 0 退出。
  *
  * 用法：pnpm payload run scripts/oneoff/seed-invoice-settings-20260729.ts
  */
