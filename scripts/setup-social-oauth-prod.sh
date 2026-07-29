@@ -6,15 +6,17 @@
 # （零副作用），驗過才動 .env，寫完 pm2 restart 再打自家 /api/auth/providers 驗收。
 #
 # 用法（在 prod 主機 /var/www/chickimmiu 下執行）：
-#   scripts/setup-social-oauth-prod.sh google <CLIENT_ID> <CLIENT_SECRET>
-#   scripts/setup-social-oauth-prod.sh apple  <SERVICES_ID> <TEAM_ID> <KEY_ID> <P8檔路徑>
+#   scripts/setup-social-oauth-prod.sh google   <CLIENT_ID> <CLIENT_SECRET>
+#   scripts/setup-social-oauth-prod.sh facebook <APP_ID> <APP_SECRET>
+#   scripts/setup-social-oauth-prod.sh apple    <SERVICES_ID> <TEAM_ID> <KEY_ID> <P8檔路徑>
 #   scripts/setup-social-oauth-prod.sh apple-renew        # cron 用：重簽 Apple secret
 #
 # 憑證怎麼申請：docs/OAUTH_GOOGLE_APPLE_SETUP.md
 #
-# 驗證原理（兩家通用、零副作用）：拿憑證 + 一個假 authorization code 打官方 token
+# 驗證原理（零副作用）：Google/Apple 拿憑證 + 一個假 authorization code 打官方 token
 # endpoint —— 回 invalid_grant = 憑證通過驗證只是 code 是假的（預期）；
 # 回 invalid_client = 憑證本身錯，中止不動 .env。
+# Facebook 更直接：client_credentials grant 換 app access token，換得到 = 憑證正確。
 set -euo pipefail
 
 ENV_FILE=/var/www/chickimmiu/.env
@@ -91,6 +93,37 @@ google)
   restart_and_verify google
   echo "   下一步：後台「網站全域設定 → 社群登入」確認 Google 開關是開的（預設開），"
   echo "   然後真瀏覽器走一次 /login → Google 登入 → /account 驗收。"
+  ;;
+
+# ───────────────────────────── Facebook ─────────────────────────────
+facebook)
+  FBID="${2:-}"; FBSECRET="${3:-}"
+  if [ -z "$FBID" ]; then read -rp "Facebook App ID: " FBID; fi
+  if [ -z "$FBSECRET" ]; then read -rp "Facebook App Secret: " FBSECRET; fi
+
+  [[ "$FBID" =~ ^[0-9]{10,20}$ ]] || { echo "❌ App ID 應為純數字：$FBID"; exit 1; }
+  [[ "$FBSECRET" =~ ^[0-9a-f]{32}$ ]] \
+    || echo "⚠️ App Secret 不是 32 碼 hex（照樣繼續驗證，錯了會被 Graph API 擋）"
+
+  echo "== 1/3 對 Graph API 驗證憑證（client_credentials，零副作用）=="
+  TOKEN_RESULT=$(curl -s --max-time 15 "https://graph.facebook.com/oauth/access_token?client_id=$FBID&client_secret=$FBSECRET&grant_type=client_credentials" || true)
+  echo "   Graph API 回應：$(echo "$TOKEN_RESULT" | head -c 200)"
+  if echo "$TOKEN_RESULT" | grep -q '"access_token"'; then
+    echo "   ✅ 憑證有效（成功換到 app access token）"
+  else
+    echo "   ❌ 換不到 app access token —— App ID/Secret 抄錯，.env 未變動"; exit 1
+  fi
+
+  echo "== 2/3 寫入 $ENV_FILE =="
+  backup_env
+  sed -i '/^AUTH_FACEBOOK_ID=/d;/^AUTH_FACEBOOK_SECRET=/d' "$ENV_FILE"
+  { echo "AUTH_FACEBOOK_ID=$FBID"; echo "AUTH_FACEBOOK_SECRET=$FBSECRET"; } >> "$ENV_FILE"
+  echo "   已寫入 2 行（舊 .env 已備份）"
+
+  restart_and_verify facebook
+  echo "   提醒：App 要切成【上線模式】一般用戶才登入得了（開發模式只有 app 角色能用），"
+  echo "   後台「網站全域設定 → 社群登入」確認 Facebook 開關是開的（預設開），"
+  echo "   然後真瀏覽器走一次 /login → Facebook 登入 → /account 驗收。"
   ;;
 
 # ───────────────────────────── Apple ─────────────────────────────

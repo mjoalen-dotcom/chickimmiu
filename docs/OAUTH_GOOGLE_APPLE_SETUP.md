@@ -1,16 +1,19 @@
-# Google / Apple 登入串接指南（2026-07-29）
+# Google / Apple / Facebook 登入串接指南（2026-07-29）
 
 ## 現況：程式端 100% 就緒，缺的只有憑證
 
 - [src/auth.ts](../src/auth.ts) 早已註冊 Google / Facebook / LINE / Apple 四個 provider（env 憑證齊全才啟用）
 - 登入/註冊頁按鈕、`/api/auth/bridge` Payload session 橋接、socialLogins 綁定/placeholder email 全鏈共用，LINE 已實測通過
-- 後台開關：**網站全域設定 → 社群登入**（Google 預設開、**Apple 預設關**）
-- prod `.env`（`/var/www/chickimmiu/.env`）現況：`AUTH_GOOGLE_ID/SECRET` 空、`AUTH_APPLE_*` 未設
+- **`/login` 沒看到按鈕就是因為憑證還沒設**：按鈕顯示 = env 憑證 AND 後台開關，缺一即隱藏
+  （點了必失敗的按鈕不渲染，見 [socialProviders.ts](../src/lib/auth/socialProviders.ts)）
+- 後台開關:**網站全域設定 → 社群登入**（Google/Facebook 預設開、**Apple 預設關**）
+- prod `.env`（`/var/www/chickimmiu/.env`）現況：`AUTH_GOOGLE_*`、`AUTH_FACEBOOK_*` 空、`AUTH_APPLE_*` 未設
 
 拿到憑證後**各只要跑一條指令**（腳本會先對官方端點驗證憑證、驗過才寫 .env、寫完自動重啟 + 驗收）：
 
 ```bash
 ssh root@5.223.85.14 /var/www/chickimmiu/scripts/setup-social-oauth-prod.sh google <CLIENT_ID> <CLIENT_SECRET>
+ssh root@5.223.85.14 /var/www/chickimmiu/scripts/setup-social-oauth-prod.sh facebook <APP_ID> <APP_SECRET>
 ssh root@5.223.85.14 /var/www/chickimmiu/scripts/setup-social-oauth-prod.sh apple <SERVICES_ID> <TEAM_ID> <KEY_ID> <p8檔路徑>
 ```
 
@@ -26,6 +29,8 @@ ssh root@5.223.85.14 /var/www/chickimmiu/scripts/setup-social-oauth-prod.sh appl
 | Google（LB-11 切換後） | `https://www.chickimmiu.com/api/auth/callback/google` |
 | Apple | `https://pre.chickimmiu.com/api/auth/callback/apple` |
 | Apple（LB-11 切換後） | `https://www.chickimmiu.com/api/auth/callback/apple` |
+| Facebook | `https://pre.chickimmiu.com/api/auth/callback/facebook` |
+| Facebook（LB-11 切換後） | `https://www.chickimmiu.com/api/auth/callback/facebook` |
 
 **現在就把 www 那組一起登記**（兩家都允許多筆），LB-11 www 切換時只要改 prod `AUTH_URL=https://www.chickimmiu.com`，OAuth 不會斷。
 （LB-11 runbook 另有規定 `/api/` 不可 301 轉址——OAuth callback 也吃這條。）
@@ -48,6 +53,24 @@ ssh root@5.223.85.14 /var/www/chickimmiu/scripts/setup-social-oauth-prod.sh appl
    - 已授權的 JavaScript 來源：`https://pre.chickimmiu.com`、`https://www.chickimmiu.com`
 4. 抄下 **Client ID**（`xxxx.apps.googleusercontent.com`）與 **Client Secret**（`GOCSPX-…`）
 5. 跑 `setup-social-oauth-prod.sh google <ID> <SECRET>` → 真瀏覽器 `/login` 走一輪驗收
+
+## Facebook（免費，約 20 分鐘；你已有 BM/開發者帳號經驗）
+
+1. https://developers.facebook.com → 我的應用程式 → **建立應用程式**：
+   - 用例：**驗證使用者並向他們索取資料（Facebook 登入）**
+   - 類型：商業（Business）→ 可掛到既有 Business Manager（FENGZHESHOW 那個）
+   - 名稱建議：`CHIC KIM & MIU`
+2. 左側 **Facebook 登入 → 設定**：
+   - 「有效的 OAuth 重新導向 URI」：貼上表格那 **兩條 facebook callback**（pre + www）
+   - 用戶端 OAuth 登入、網頁 OAuth 登入：開；強制 HTTPS：開（預設）
+3. **應用程式設定 → 基本資料**：
+   - 應用程式網域：`chickimmiu.com`
+   - 隱私政策網址：`https://www.chickimmiu.com/privacy`
+   - 資料刪除說明：選「資料刪除說明網址」，可先填隱私政策頁
+   - 抄下 **應用程式編號（App ID）** 與 **應用程式密鑰（App Secret，按「顯示」）**
+4. 頂部把 App 從「開發中」切成 **上線（Live）**——不切的話只有 app 角色（你自己）能登入。
+   `email`、`public_profile` 這兩個權限是自動核准（Automatic Advanced Access），不用送審。
+5. 跑 `setup-social-oauth-prod.sh facebook <APP_ID> <APP_SECRET>` → 真瀏覽器 `/login` 驗收
 
 ## Apple（需 Apple Developer Program，USD 99/年；約 30 分鐘）
 
