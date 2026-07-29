@@ -1,4 +1,4 @@
-import NextAuth from 'next-auth'
+import NextAuth, { type NextAuthConfig } from 'next-auth'
 import Google from 'next-auth/providers/google'
 import Facebook from 'next-auth/providers/facebook'
 import Line from 'next-auth/providers/line'
@@ -6,6 +6,7 @@ import Apple from 'next-auth/providers/apple'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { PROVIDER_SOCIAL_FIELD, isPlaceholderEmail, placeholderEmailFor } from '@/lib/auth/social'
+import { resolveSocialAuth } from '@/lib/auth/socialCredentials'
 
 /**
  * NextAuth v5 — Google / Facebook / LINE / Apple
@@ -17,54 +18,13 @@ import { PROVIDER_SOCIAL_FIELD, isPlaceholderEmail, placeholderEmailFor } from '
  * 改由 `/api/auth/bridge` route handler 處理：`/account/**` layout 偵測到
  * NextAuth session 但無 Payload session 時，redirect 過去補 cookie 再導回。
  *
- * 開發環境若無 OAuth 憑證，providers 陣列為空，不影響網站運作。
+ * Lazy initialization：憑證每次請求經 resolveSocialAuth() 解析（後台
+ * GlobalSettings 優先、.env fallback、15 秒快取）——後台貼上憑證即生效，
+ * 免重啟。開關關閉或憑證不齊的 provider 不註冊，按鈕端（socialProviders）
+ * 同一份判斷，永遠一致。沒有任何憑證時 providers 為空，不影響網站運作。
  */
 
-const providers = []
-
-if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
-  providers.push(
-    Google({
-      clientId: process.env.AUTH_GOOGLE_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET,
-    })
-  )
-}
-
-if (process.env.AUTH_FACEBOOK_ID && process.env.AUTH_FACEBOOK_SECRET) {
-  providers.push(
-    Facebook({
-      clientId: process.env.AUTH_FACEBOOK_ID,
-      clientSecret: process.env.AUTH_FACEBOOK_SECRET,
-    })
-  )
-}
-
-if (process.env.AUTH_LINE_CHANNEL_ID && process.env.AUTH_LINE_CHANNEL_SECRET) {
-  providers.push(
-    Line({
-      clientId: process.env.AUTH_LINE_CHANNEL_ID,
-      clientSecret: process.env.AUTH_LINE_CHANNEL_SECRET,
-      // LINE Login v2.1 要求 `state`（見 LINE docs「Required」欄位）。Auth.js
-      // 內建 Line provider 預設 `checks` 只放 `pkce`，少了 state 會被 LINE
-      // 在 callback 擋成 `error=INVALID_REQUEST&error_description='state' is
-      // not specified`。顯式補上 state + nonce（後者是 OIDC replay protection）。
-      checks: ['pkce', 'state', 'nonce'],
-    })
-  )
-}
-
-if (process.env.AUTH_APPLE_ID && process.env.AUTH_APPLE_SECRET) {
-  providers.push(
-    Apple({
-      clientId: process.env.AUTH_APPLE_ID,
-      clientSecret: process.env.AUTH_APPLE_SECRET,
-    })
-  )
-}
-
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers,
+const sharedConfig = {
   pages: {
     signIn: '/login',
     error: '/login',
@@ -197,4 +157,52 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session
     },
   },
+} satisfies Omit<NextAuthConfig, 'providers'>
+
+export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
+  const { creds, enabled } = await resolveSocialAuth()
+  const providers: NextAuthConfig['providers'] = []
+
+  if (enabled.google && creds.google) {
+    providers.push(
+      Google({
+        clientId: creds.google.clientId,
+        clientSecret: creds.google.clientSecret,
+      }),
+    )
+  }
+
+  if (enabled.facebook && creds.facebook) {
+    providers.push(
+      Facebook({
+        clientId: creds.facebook.clientId,
+        clientSecret: creds.facebook.clientSecret,
+      }),
+    )
+  }
+
+  if (enabled.line && creds.line) {
+    providers.push(
+      Line({
+        clientId: creds.line.clientId,
+        clientSecret: creds.line.clientSecret,
+        // LINE Login v2.1 要求 `state`（見 LINE docs「Required」欄位）。Auth.js
+        // 內建 Line provider 預設 `checks` 只放 `pkce`，少了 state 會被 LINE
+        // 在 callback 擋成 `error=INVALID_REQUEST&error_description='state' is
+        // not specified`。顯式補上 state + nonce（後者是 OIDC replay protection）。
+        checks: ['pkce', 'state', 'nonce'],
+      }),
+    )
+  }
+
+  if (enabled.apple && creds.apple) {
+    providers.push(
+      Apple({
+        clientId: creds.apple.clientId,
+        clientSecret: creds.apple.clientSecret,
+      }),
+    )
+  }
+
+  return { ...sharedConfig, providers }
 })

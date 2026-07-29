@@ -1,6 +1,6 @@
 import type { GlobalConfig } from 'payload'
 
-import { isAdmin } from '../access/isAdmin'
+import { isAdmin, isAdminFieldLevel } from '../access/isAdmin'
 import { revalidateLayout } from '../lib/revalidate'
 
 /**
@@ -415,12 +415,104 @@ export const GlobalSettings: GlobalConfig = {
       name: 'socialLogin',
       label: '社群登入設定',
       type: 'group',
-      admin: { description: '管理前台會員可使用的社群登入方式' },
+      admin: {
+        description:
+          '管理前台會員可使用的社群登入方式。憑證貼上儲存後約 15 秒自動生效（免重啟）；' +
+          '欄位留空則使用伺服器 .env 的憑證（目前 LINE 走 .env）。' +
+          '各家開發者後台的 Callback URL 一律登記兩條：https://pre.chickimmiu.com/api/auth/callback/{provider} ' +
+          '與 https://www.chickimmiu.com/api/auth/callback/{provider}（{provider}=google/facebook/line/apple）。' +
+          '申請步驟詳見 docs/OAUTH_GOOGLE_APPLE_SETUP.md',
+      },
       fields: [
         { name: 'enableGoogle', label: '啟用 Google 登入', type: 'checkbox', defaultValue: true },
+        {
+          name: 'googleClientId',
+          label: 'Google Client ID',
+          type: 'text',
+          admin: {
+            description:
+              'Google Cloud Console → 憑證 → OAuth 用戶端 ID（網頁應用程式），格式 xxx.apps.googleusercontent.com',
+          },
+        },
+        {
+          name: 'googleClientSecret',
+          label: 'Google Client Secret',
+          type: 'text',
+          access: { read: isAdminFieldLevel },
+          admin: { description: '格式 GOCSPX-…（僅管理員可見）' },
+        },
         { name: 'enableFacebook', label: '啟用 Facebook 登入', type: 'checkbox', defaultValue: true },
+        {
+          name: 'facebookAppId',
+          label: 'Facebook 應用程式編號（App ID）',
+          type: 'text',
+          admin: {
+            description:
+              'developers.facebook.com → 應用程式設定 → 基本資料。App 記得切「上線」模式，否則只有 app 角色能登入',
+          },
+        },
+        {
+          name: 'facebookAppSecret',
+          label: 'Facebook 應用程式密鑰（App Secret）',
+          type: 'text',
+          access: { read: isAdminFieldLevel },
+          admin: { description: '基本資料頁按「顯示」取得，32 碼（僅管理員可見）' },
+        },
         { name: 'enableLine', label: '啟用 LINE 登入', type: 'checkbox', defaultValue: true },
-        { name: 'enableApple', label: '啟用 Apple 登入', type: 'checkbox', defaultValue: false, admin: { description: '需先在 Apple Developer 設定 Sign in with Apple 服務' } },
+        {
+          name: 'lineChannelId',
+          label: 'LINE Channel ID',
+          type: 'text',
+          admin: {
+            description: 'LINE Login Channel（非 Messaging API）。目前已用 .env 設定，留空即可；填了會優先於 .env',
+          },
+        },
+        {
+          name: 'lineChannelSecret',
+          label: 'LINE Channel Secret',
+          type: 'text',
+          access: { read: isAdminFieldLevel },
+          admin: { description: '僅管理員可見' },
+        },
+        {
+          name: 'enableApple',
+          label: '啟用 Apple 登入',
+          type: 'checkbox',
+          defaultValue: false,
+          admin: { description: '需下方四欄齊全（或 .env 憑證）才會顯示按鈕' },
+        },
+        {
+          name: 'appleServicesId',
+          label: 'Apple Services ID',
+          type: 'text',
+          admin: {
+            description:
+              'Apple Developer → Identifiers → Services IDs（如 com.chickimmiu.web）。注意：是 Services ID 不是 App 的 Bundle ID；已有 App 的話新增一個 Services ID 掛在既有 App ID 下即可',
+          },
+        },
+        {
+          name: 'appleTeamId',
+          label: 'Apple Team ID',
+          type: 'text',
+          admin: { description: 'Membership 頁的 10 碼英數' },
+        },
+        {
+          name: 'appleKeyId',
+          label: 'Apple Key ID',
+          type: 'text',
+          admin: { description: 'Keys 頁建立「Sign in with Apple」金鑰後顯示的 10 碼英數' },
+        },
+        {
+          name: 'applePrivateKey',
+          label: 'Apple 私鑰（.p8 檔內容）',
+          type: 'textarea',
+          access: { read: isAdminFieldLevel },
+          admin: {
+            description:
+              '把下載的 .p8 檔用文字編輯器打開，整段貼上（-----BEGIN PRIVATE KEY----- 開頭）。' +
+              '系統會自動簽發並定期更新 Apple 要求的 client secret（180 天效期），免手動維護（僅管理員可見）',
+          },
+        },
       ],
     },
     // ── Email 註冊/驗證設定 ──

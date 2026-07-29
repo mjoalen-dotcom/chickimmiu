@@ -9,13 +9,31 @@
 - 後台開關:**網站全域設定 → 社群登入**（Google/Facebook 預設開、**Apple 預設關**）
 - prod `.env`（`/var/www/chickimmiu/.env`）現況：`AUTH_GOOGLE_*`、`AUTH_FACEBOOK_*` 空、`AUTH_APPLE_*` 未設
 
-拿到憑證後**各只要跑一條指令**（腳本會先對官方端點驗證憑證、驗過才寫 .env、寫完自動重啟 + 驗收）：
+## 憑證設定方式（擇一）
+
+### 方式 A：後台貼上（推薦，Shopline 式，2026-07-29 起支援）
+
+**後台 → ⑦ 系統與安全 → 網站全域設定 → 社群登入設定**，把各家憑證直接貼進對應欄位，
+儲存後約 **15 秒自動生效，免重啟免 SSH**。Secret 類欄位僅管理員可見（field-level access）。
+
+- Google：Client ID + Client Secret 兩欄
+- Facebook：App ID + App Secret 兩欄
+- Apple：Services ID + Team ID + Key ID + .p8 私鑰全文 四欄 ——
+  **client secret（180 天效期的 JWT）由系統 runtime 自動簽發並自動換新，完全免維護**
+- LINE：現行走 .env，留空即可；填了會優先於 .env
+
+後台欄位留空 → fallback 到伺服器 .env 憑證；兩邊都空 → 該按鈕自動隱藏。
+「按鈕顯示」與「provider 註冊」用同一份判斷（`socialCredentials.ts`），不會出現點了必失敗的按鈕。
+
+### 方式 B：SSH 腳本寫 .env（備援）
 
 ```bash
 ssh root@5.223.85.14 /var/www/chickimmiu/scripts/setup-social-oauth-prod.sh google <CLIENT_ID> <CLIENT_SECRET>
 ssh root@5.223.85.14 /var/www/chickimmiu/scripts/setup-social-oauth-prod.sh facebook <APP_ID> <APP_SECRET>
 ssh root@5.223.85.14 /var/www/chickimmiu/scripts/setup-social-oauth-prod.sh apple <SERVICES_ID> <TEAM_ID> <KEY_ID> <p8檔路徑>
 ```
+
+腳本會先對官方端點驗證憑證、驗過才寫 .env、寫完自動重啟 + 驗收（apple 模式另裝月簽 cron）。
 
 > Apple 的 .p8 檔要先 `scp` 上 prod（腳本會收進 `/var/www/chickimmiu/secrets/` 並 chmod 600）。
 
@@ -52,7 +70,7 @@ ssh root@5.223.85.14 /var/www/chickimmiu/scripts/setup-social-oauth-prod.sh appl
    - 已授權的重新導向 URI：貼上表格那 **兩條 google callback**（pre + www）
    - 已授權的 JavaScript 來源：`https://pre.chickimmiu.com`、`https://www.chickimmiu.com`
 4. 抄下 **Client ID**（`xxxx.apps.googleusercontent.com`）與 **Client Secret**（`GOCSPX-…`）
-5. 跑 `setup-social-oauth-prod.sh google <ID> <SECRET>` → 真瀏覽器 `/login` 走一輪驗收
+5. 後台「社群登入設定」貼 Client ID/Secret（方式 A）→ 真瀏覽器 `/login` 走一輪驗收
 
 ## Facebook（免費，約 20 分鐘；你已有 BM/開發者帳號經驗）
 
@@ -70,33 +88,34 @@ ssh root@5.223.85.14 /var/www/chickimmiu/scripts/setup-social-oauth-prod.sh appl
    - 抄下 **應用程式編號（App ID）** 與 **應用程式密鑰（App Secret，按「顯示」）**
 4. 頂部把 App 從「開發中」切成 **上線（Live）**——不切的話只有 app 角色（你自己）能登入。
    `email`、`public_profile` 這兩個權限是自動核准（Automatic Advanced Access），不用送審。
-5. 跑 `setup-social-oauth-prod.sh facebook <APP_ID> <APP_SECRET>` → 真瀏覽器 `/login` 驗收
+5. 後台「社群登入設定」貼 App ID/Secret（方式 A）→ 真瀏覽器 `/login` 驗收
 
-## Apple（需 Apple Developer Program，USD 99/年；約 30 分鐘）
+## Apple（已有 App/開發者會籍 → 免額外付費，約 20 分鐘）
 
-前提：https://developer.apple.com/programs/ 付費會籍（審核 1–2 天）。沒有會籍前 Apple 登入做不了。
+我們已有 iOS App = 已有 Apple Developer 會籍與 App ID，只要在**同一個帳號**下補
+Services ID + 金鑰即可（新 App ID 那步跳過，用既有的當 Primary App ID；
+若既有 App ID 沒勾 Sign in with Apple capability，先去 Identifiers 把它勾上）。
 
-1. **Certificates, Identifiers & Profiles → Identifiers → ＋ → App IDs**：
-   - Bundle ID：`com.chickimmiu.app`（explicit）；Capabilities 勾 **Sign in with Apple**
+1. ~~建 App ID~~（已有，跳過；確認 Capabilities 有勾 **Sign in with Apple**）
 2. **Identifiers → ＋ → Services IDs**：
    - Identifier：`com.chickimmiu.web` ← **這個就是 AUTH_APPLE_ID**
    - 勾 Sign in with Apple → Configure：
      - Primary App ID：選上面的 `com.chickimmiu.app`
      - Domains：`pre.chickimmiu.com`、`www.chickimmiu.com`
      - Return URLs：貼上表格那 **兩條 apple callback**
-3. **Keys → ＋**：名稱 `chickimmiu-signin`，勾 Sign in with Apple（Primary App ID 選 `com.chickimmiu.app`）
+3. **Keys → ＋**：名稱 `chickimmiu-signin`，勾 Sign in with Apple（Primary App ID 選既有 App ID）
    → **下載 .p8（只給下載一次，保管好）**，抄下 **Key ID**（10 碼）
 4. **Membership** 頁抄下 **Team ID**（10 碼）
-5. .p8 丟上 prod 後跑 `setup-social-oauth-prod.sh apple com.chickimmiu.web <TEAM_ID> <KEY_ID> <p8路徑>`
-6. **後台「網站全域設定 → 社群登入」把 Apple 開關打開**（預設關，不開按鈕不會出現）
+5. 後台「社群登入設定」貼四欄：Services ID / Team ID / Key ID / .p8 全文（方式 A）
+6. **同頁把「啟用 Apple 登入」開關打開**（預設關，不開按鈕不會出現）
 7. 真瀏覽器 `/login` 走一輪驗收
 
-### Apple secret 會過期（重要）
+### Apple secret 過期問題（方式 A 已自動解）
 
-`AUTH_APPLE_SECRET` 是用 .p8 簽的 JWT，**Apple 規定最長 180 天**。setup 腳本會自動裝
-`[ckmu-apple-secret]` crontab（每月 1 號重簽 170 天效期 + pm2 restart），理論上永不過期；
-若哪天 Apple 登入突然全掛，先查 `crontab -l | grep apple` 跟 `/var/log/ckmu-apple-secret.log`。
-手動重簽：`setup-social-oauth-prod.sh apple-renew`。
+Apple 的 client secret 是用 .p8 簽的 JWT，**Apple 規定最長 180 天**。
+- **方式 A（後台）**：系統 runtime 自動簽 170 天效期、剩 7 天內自動換新 —— 免維護
+- 方式 B（.env）：setup 腳本裝 `[ckmu-apple-secret]` crontab 月簽；
+  出事查 `crontab -l | grep apple` 跟 `/var/log/ckmu-apple-secret.log`，手動重簽 `setup-social-oauth-prod.sh apple-renew`
 
 ---
 
