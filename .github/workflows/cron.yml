@@ -4,13 +4,18 @@ name: Scheduled Cron
 # prod server 的 .env 也要用相同值，否則 endpoint 回 401/503。
 #
 # 時區：GitHub cron 用 UTC。TPE = UTC+8。
-#   - */10 * * * *      每 10 分鐘（automation + segments）
-#   - 0 3 * * *         每日 03:00 UTC = TPE 11:00（expire-points）
+#   - */10 * * * *      每 10 分鐘（automation + segments + auto-cancel-orders）
+#   - */30 * * * *      每 30 分鐘（retry-invoices，發票 48h 時限）
+#   - 0 3 * * *         每日 03:00 UTC = TPE 11:00（expire-points + expire-subscriptions）
 #   - 0 16 * * *        每日 16:00 UTC = TPE 00:00（streak-decay，day rollover）
+#
+# ⚠️ GitHub Actions 停權期間 prod crontab 有同名 fallback（tag [ckmu-outage-cron]）；
+#    恢復切回本 workflow 前，先確認這裡的 job 清單 ⊇ crontab 清單，再刪 crontab 行。
 
 on:
   schedule:
     - cron: '*/10 * * * *'
+    - cron: '*/30 * * * *'
     - cron: '0 3 * * *'
     - cron: '0 16 * * *'
   workflow_dispatch:
@@ -49,6 +54,25 @@ jobs:
             -H "Content-Type: application/json" \
             --max-time 120 \
             "${TARGET_HOST}/api/cron/apply-product-schedules"
+      - name: Run auto-cancel-orders cron
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 120 \
+            "${TARGET_HOST}/api/cron/auto-cancel-orders"
+
+  retry-invoices:
+    if: github.event.schedule == '*/30 * * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run retry-invoices cron
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 120 \
+            "${TARGET_HOST}/api/cron/retry-invoices"
 
   expire-points:
     if: github.event.schedule == '0 3 * * *' || github.event_name == 'workflow_dispatch'
@@ -82,6 +106,13 @@ jobs:
             -H "Content-Type: application/json" \
             --max-time 300 \
             "${TARGET_HOST}/api/cron/expire-wishes"
+      - name: Run expire-subscriptions cron
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 300 \
+            "${TARGET_HOST}/api/cron/expire-subscriptions"
 
   streak-decay:
     if: github.event.schedule == '0 16 * * *' || github.event_name == 'workflow_dispatch'
