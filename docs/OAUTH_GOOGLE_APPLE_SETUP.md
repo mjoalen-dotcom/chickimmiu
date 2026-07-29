@@ -1,0 +1,95 @@
+# Google / Apple 登入串接指南（2026-07-29）
+
+## 現況：程式端 100% 就緒，缺的只有憑證
+
+- [src/auth.ts](../src/auth.ts) 早已註冊 Google / Facebook / LINE / Apple 四個 provider（env 憑證齊全才啟用）
+- 登入/註冊頁按鈕、`/api/auth/bridge` Payload session 橋接、socialLogins 綁定/placeholder email 全鏈共用，LINE 已實測通過
+- 後台開關：**網站全域設定 → 社群登入**（Google 預設開、**Apple 預設關**）
+- prod `.env`（`/var/www/chickimmiu/.env`）現況：`AUTH_GOOGLE_ID/SECRET` 空、`AUTH_APPLE_*` 未設
+
+拿到憑證後**各只要跑一條指令**（腳本會先對官方端點驗證憑證、驗過才寫 .env、寫完自動重啟 + 驗收）：
+
+```bash
+ssh root@5.223.85.14 /var/www/chickimmiu/scripts/setup-social-oauth-prod.sh google <CLIENT_ID> <CLIENT_SECRET>
+ssh root@5.223.85.14 /var/www/chickimmiu/scripts/setup-social-oauth-prod.sh apple <SERVICES_ID> <TEAM_ID> <KEY_ID> <p8檔路徑>
+```
+
+> Apple 的 .p8 檔要先 `scp` 上 prod（腳本會收進 `/var/www/chickimmiu/secrets/` 並 chmod 600）。
+
+---
+
+## Callback URL 白名單（兩家後台都要登記）
+
+| Provider | Redirect / Return URL |
+|---|---|
+| Google | `https://pre.chickimmiu.com/api/auth/callback/google` |
+| Google（LB-11 切換後） | `https://www.chickimmiu.com/api/auth/callback/google` |
+| Apple | `https://pre.chickimmiu.com/api/auth/callback/apple` |
+| Apple（LB-11 切換後） | `https://www.chickimmiu.com/api/auth/callback/apple` |
+
+**現在就把 www 那組一起登記**（兩家都允許多筆），LB-11 www 切換時只要改 prod `AUTH_URL=https://www.chickimmiu.com`，OAuth 不會斷。
+（LB-11 runbook 另有規定 `/api/` 不可 301 轉址——OAuth callback 也吃這條。）
+
+---
+
+## Google（約 15 分鐘，免費）
+
+1. https://console.cloud.google.com → 選/建專案（建議名稱 `chickimmiu-web`）
+2. **API 和服務 → OAuth 同意畫面**（首次必做）：
+   - User Type：**外部（External）**
+   - 應用程式名稱：`CHIC KIM & MIU`；支援 email、開發人員 email：填自己的
+   - 應用程式首頁：`https://www.chickimmiu.com`；隱私權政策：`https://www.chickimmiu.com/privacy`
+   - 範圍（Scopes）：加 `email`、`profile`、`openid` 三個非敏感範圍即可
+   - 發布狀態按「**發布應用程式**」轉正式（只用非敏感 scope 不需 Google 審查；
+     留在「測試中」的話只有測試名單能登入，且 7 天要重新授權）
+3. **憑證 → 建立憑證 → OAuth 用戶端 ID**：
+   - 類型：**網頁應用程式**
+   - 已授權的重新導向 URI：貼上表格那 **兩條 google callback**（pre + www）
+   - 已授權的 JavaScript 來源：`https://pre.chickimmiu.com`、`https://www.chickimmiu.com`
+4. 抄下 **Client ID**（`xxxx.apps.googleusercontent.com`）與 **Client Secret**（`GOCSPX-…`）
+5. 跑 `setup-social-oauth-prod.sh google <ID> <SECRET>` → 真瀏覽器 `/login` 走一輪驗收
+
+## Apple（需 Apple Developer Program，USD 99/年；約 30 分鐘）
+
+前提：https://developer.apple.com/programs/ 付費會籍（審核 1–2 天）。沒有會籍前 Apple 登入做不了。
+
+1. **Certificates, Identifiers & Profiles → Identifiers → ＋ → App IDs**：
+   - Bundle ID：`com.chickimmiu.app`（explicit）；Capabilities 勾 **Sign in with Apple**
+2. **Identifiers → ＋ → Services IDs**：
+   - Identifier：`com.chickimmiu.web` ← **這個就是 AUTH_APPLE_ID**
+   - 勾 Sign in with Apple → Configure：
+     - Primary App ID：選上面的 `com.chickimmiu.app`
+     - Domains：`pre.chickimmiu.com`、`www.chickimmiu.com`
+     - Return URLs：貼上表格那 **兩條 apple callback**
+3. **Keys → ＋**：名稱 `chickimmiu-signin`，勾 Sign in with Apple（Primary App ID 選 `com.chickimmiu.app`）
+   → **下載 .p8（只給下載一次，保管好）**，抄下 **Key ID**（10 碼）
+4. **Membership** 頁抄下 **Team ID**（10 碼）
+5. .p8 丟上 prod 後跑 `setup-social-oauth-prod.sh apple com.chickimmiu.web <TEAM_ID> <KEY_ID> <p8路徑>`
+6. **後台「網站全域設定 → 社群登入」把 Apple 開關打開**（預設關，不開按鈕不會出現）
+7. 真瀏覽器 `/login` 走一輪驗收
+
+### Apple secret 會過期（重要）
+
+`AUTH_APPLE_SECRET` 是用 .p8 簽的 JWT，**Apple 規定最長 180 天**。setup 腳本會自動裝
+`[ckmu-apple-secret]` crontab（每月 1 號重簽 170 天效期 + pm2 restart），理論上永不過期；
+若哪天 Apple 登入突然全掛，先查 `crontab -l | grep apple` 跟 `/var/log/ckmu-apple-secret.log`。
+手動重簽：`setup-social-oauth-prod.sh apple-renew`。
+
+---
+
+## 驗收清單（每個 provider 各跑一次）
+
+1. `curl -s https://pre.chickimmiu.com/api/auth/providers` 有該 provider（腳本已自動驗）
+2. 真瀏覽器（不要用 MCP pane，hydration 假象）開 `/login` → 按鈕有出現
+3. 走完 OAuth → 回站 → `/account` 有登入（NextAuth session + bridge 補 Payload cookie）
+4. 後台 Users 查該會員：`socialLogins.googleId` / `appleId` 有寫入
+5. Apple 加驗：選「隱藏我的 email」註冊 → 應建出 `@privaterelay.appleid.com` email 的會員，
+   再登入一次應對回同一個會員（socialId-first 匹配）
+
+## 疑難排解
+
+- 按鈕沒出現：env 憑證缺 → provider 根本沒註冊；或後台開關關著（Apple 預設關）
+- `redirect_uri_mismatch`（Google）/ `invalid_client`（Apple）：callback URL 沒登記或 Services ID 抄錯
+- Apple 登入在 Safari 以外正常、Safari 掛：檢查 cookie SameSite —— Apple callback 是
+  cross-site form_post，Auth.js v5 會自動處理，但自訂 cookie 設定時要留意
+- OAuth 成功但回站沒登入：bridge 問題，看 `/login?error=` 帶回的代碼（LoginClient 會翻中文）
