@@ -35,6 +35,17 @@
       "runtimeArgs": ["start", "-p", "3007"],
       "port": 3007,
       "autoPort": false
+    },
+    {
+      "name": "kim-blog-static-3012",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "D:/alan/kimlafayette/kim_custom_blog/scripts/production-preview.mjs",
+        "3012",
+        "blog-release"
+      ],
+      "port": 3012,
+      "autoPort": false
     }
   ]
 }

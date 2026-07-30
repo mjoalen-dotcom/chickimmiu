@@ -1,12 +1,16 @@
 import { withPayload } from '@payloadcms/next/withPayload'
 import createNextIntlPlugin from 'next-intl/plugin'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 // next-intl plugin — 註冊伺服端 request config（src/i18n/request.ts）
 //   讀 ckm_locale cookie 決定當前語系，dynamic import 對應 dictionary。
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
+const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  outputFileTracingRoot: projectRoot,
   serverExternalPackages: ['libsql', '@libsql/client'],
   typescript: {
     ignoreBuildErrors: true,
