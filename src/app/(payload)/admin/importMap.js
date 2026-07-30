@@ -1,21 +1,16 @@
-import { default as default_ab80819f8b2b0b37f8700bad83cb86aa } from '@/components/admin/OrderProcessingCellButton'
-import { default as default_8ae569cef047456396f977e84e1f356b } from '@/components/admin/OrderBulkShipPanel'
-import { default as default_be333bc994f41cc3f44396316cdf4a5e } from '@/components/admin/OrderToolsPanel'
-import { default as default_9d7e3eddacf50cc2af6eec17731f6fad } from '@/components/admin/OrderExportButton'
-import { default as default_ac9b3343bdbbc9a11f639268e925829e } from '@/components/admin/ReturnApprovalCellButton'
-import { default as default_7b3334ccab91a8bc2d541f847ce2c885 } from '@/components/admin/ExchangeApprovalCellButton'
-import { default as default_2d9516e76c36d74134ebee4f781829f6 } from '@/components/admin/CategoryRecountButton'
-import { default as default_ebf9d2025b92d97c921799c47cf282d1 } from '@/components/admin/CategoryTreeView'
-import { default as default_cb040906944cedc20f0a1dc81a047b38 } from '@/components/admin/ProductStatusCell'
-import { default as default_6b2c0a93bbeb350d6bcacee01a93fd01 } from '@/components/admin/ProductCheckboxToggleCell'
-import { default as default_9b57c43980e97d4b56c8d7a919923508 } from '@/components/admin/ProductMarginInsight'
-import { default as default_9eb65d1e13a161fff630e7bf785e9dc3 } from '@/components/admin/ProductWizardLauncher'
+import { default as default_916617e4baba23f7b71ea02488bb8afa } from '@/components/admin/BlogEditorHeader'
 import { RscEntryLexicalCell as RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
 import { RscEntryLexicalField as RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
 import { LexicalDiffComponent as LexicalDiffComponent_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
+import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { default as default_fc18f198025fd75884468788785f22db } from '@/components/admin/BlogImageSizeField'
+import { default as default_d7f09f9e8d99149f4027217ae38f03b3 } from '@/components/admin/EmoticonResizeBlock'
+import { BlogImageResizeFeatureClient as BlogImageResizeFeatureClient_74cb45170de7b84dad1e6ef6cecb4d00 } from '@/components/admin/lexical/BlogImageResizeFeature.client'
 import { UploadFeatureClient as UploadFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
-import { InlineToolbarFeatureClient as InlineToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { TableFeatureClient as TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { HorizontalRuleFeatureClient as HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { FixedToolbarFeatureClient as FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { InlineToolbarFeatureClient as InlineToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { BlockquoteFeatureClient as BlockquoteFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { RelationshipFeatureClient as RelationshipFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { LinkFeatureClient as LinkFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
@@ -33,6 +28,20 @@ import { StrikethroughFeatureClient as StrikethroughFeatureClient_e70f5e05f09f93
 import { UnderlineFeatureClient as UnderlineFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { default as default_603a2b8138cd47687180f37ca2cfb3ae } from '@/components/admin/BlogPublishedAtCell'
+import { default as default_fce296b7499db768c8bb0fc89b6e5f6b } from '@/components/admin/BlogSyncCell'
+import { default as default_8caf9717c60858cb0f0c579495ac02be } from '@/components/admin/BlogStatusCell'
+import { default as default_7ac7d8af5819af6361453ab081f6e0e0 } from '@/components/admin/BlogListDashboard'
+import { default as default_ab80819f8b2b0b37f8700bad83cb86aa } from '@/components/admin/OrderProcessingCellButton'
+import { default as default_8ae569cef047456396f977e84e1f356b } from '@/components/admin/OrderBulkShipPanel'
+import { default as default_be333bc994f41cc3f44396316cdf4a5e } from '@/components/admin/OrderToolsPanel'
+import { default as default_9d7e3eddacf50cc2af6eec17731f6fad } from '@/components/admin/OrderExportButton'
+import { default as default_ac9b3343bdbbc9a11f639268e925829e } from '@/components/admin/ReturnApprovalCellButton'
+import { default as default_7b3334ccab91a8bc2d541f847ce2c885 } from '@/components/admin/ExchangeApprovalCellButton'
+import { default as default_cb040906944cedc20f0a1dc81a047b38 } from '@/components/admin/ProductStatusCell'
+import { default as default_6b2c0a93bbeb350d6bcacee01a93fd01 } from '@/components/admin/ProductCheckboxToggleCell'
+import { default as default_9b57c43980e97d4b56c8d7a919923508 } from '@/components/admin/ProductMarginInsight'
+import { default as default_9eb65d1e13a161fff630e7bf785e9dc3 } from '@/components/admin/ProductWizardLauncher'
 import { default as default_699dba4f26b8b856c306de3bbc7388c9 } from '@/components/admin/AutoPricingPreview'
 import { default as default_8c44d53910d53c8b62c9bbd9f4c07a57 } from '@/components/admin/ProductInlineNumberCell'
 import { default as default_a3aa3dfb1277ec9c02ef061f872a6dd6 } from '@/components/admin/ProductCategoryTreePicker'
@@ -54,20 +63,11 @@ import { default as default_e8d6ffb15fc46072823f2ab09538bb28 } from '@/component
 import { default as default_da45625f08d6c78051d9389e2ef13996 } from '@/components/admin/ProductTabBadges'
 import { default as default_75a69f86e8fd1756deda3bb508c9e126 } from '@/components/admin/ProductSaveToast'
 import { default as default_dad6df07f5ce6091043bf2907b451c8b } from '@/components/admin/ProductDuplicateButton'
+import { default as default_2d9516e76c36d74134ebee4f781829f6 } from '@/components/admin/CategoryRecountButton'
+import { default as default_ebf9d2025b92d97c921799c47cf282d1 } from '@/components/admin/CategoryTreeView'
 import { default as default_2155efc8584149395a6a7408e7342b75 } from '@/components/admin/MemberTreasureBoxPanel'
 import { default as default_f9f3bd50e8c71daeaf79c761e8047d29 } from '@/components/admin/ShoplineCustomerImporter'
 import { default as default_35c860dac7cd35087c887518997aff75 } from '@/components/admin/PageTemplatePicker'
-import { default as default_916617e4baba23f7b71ea02488bb8afa } from '@/components/admin/BlogEditorHeader'
-import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
-import { default as default_fc18f198025fd75884468788785f22db } from '@/components/admin/BlogImageSizeField'
-import { default as default_d7f09f9e8d99149f4027217ae38f03b3 } from '@/components/admin/EmoticonResizeBlock'
-import { BlogImageResizeFeatureClient as BlogImageResizeFeatureClient_74cb45170de7b84dad1e6ef6cecb4d00 } from '@/components/admin/lexical/BlogImageResizeFeature.client'
-import { TableFeatureClient as TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
-import { FixedToolbarFeatureClient as FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
-import { default as default_603a2b8138cd47687180f37ca2cfb3ae } from '@/components/admin/BlogPublishedAtCell'
-import { default as default_fce296b7499db768c8bb0fc89b6e5f6b } from '@/components/admin/BlogSyncCell'
-import { default as default_8caf9717c60858cb0f0c579495ac02be } from '@/components/admin/BlogStatusCell'
-import { default as default_7ac7d8af5819af6361453ab081f6e0e0 } from '@/components/admin/BlogListDashboard'
 import { default as default_2d3b6dcbebce75fc2ef5ac094f4218f0 } from '@/components/admin/ColorField'
 import { default as default_7daf04b168de0230737ba8fdd5db8d46 } from '@/components/admin/MediaUploadRulesNotice'
 import { FolderTableCell as FolderTableCell_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
@@ -78,6 +78,7 @@ import { default as default_e36fe685fba38b813c8557736b2983e5 } from '@/component
 import { default as default_6f27c4d8c2613c9dc60f5fcd3b7e600a } from '@/components/admin/SiteBrandPreview'
 import { default as default_d500ae2ad98a0a33d640ae0ac1a3417c } from '@/components/admin/AdminIcon'
 import { default as default_b80a86fce1072afc84cd6a430a965697 } from '@/components/admin/AdminLogo'
+import { default as default_e54e8b5f596e022da667100903465892 } from '@/components/admin/KimBlogNavGroup'
 import { default as default_37be21d5d30aaf368ac239b9d524d111 } from '@/components/admin/CKMUSystemToolsNavGroup'
 import { default as default_0e7b23c75ea046975e1784ba01f82886 } from '@/components/admin/Dashboard'
 import { default as default_365d92937231ef8e59f225db1998a642 } from '@/components/admin/AdminBackButton'
@@ -103,24 +104,19 @@ import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } f
 
 /** @type import('payload').ImportMap */
 export const importMap = {
-  "@/components/admin/OrderProcessingCellButton#default": default_ab80819f8b2b0b37f8700bad83cb86aa,
-  "@/components/admin/OrderBulkShipPanel#default": default_8ae569cef047456396f977e84e1f356b,
-  "@/components/admin/OrderToolsPanel#default": default_be333bc994f41cc3f44396316cdf4a5e,
-  "@/components/admin/OrderExportButton#default": default_9d7e3eddacf50cc2af6eec17731f6fad,
-  "@/components/admin/ReturnApprovalCellButton#default": default_ac9b3343bdbbc9a11f639268e925829e,
-  "@/components/admin/ExchangeApprovalCellButton#default": default_7b3334ccab91a8bc2d541f847ce2c885,
-  "@/components/admin/CategoryRecountButton#default": default_2d9516e76c36d74134ebee4f781829f6,
-  "@/components/admin/CategoryTreeView#default": default_ebf9d2025b92d97c921799c47cf282d1,
-  "@/components/admin/ProductStatusCell#default": default_cb040906944cedc20f0a1dc81a047b38,
-  "@/components/admin/ProductCheckboxToggleCell#default": default_6b2c0a93bbeb350d6bcacee01a93fd01,
-  "@/components/admin/ProductMarginInsight#default": default_9b57c43980e97d4b56c8d7a919923508,
-  "@/components/admin/ProductWizardLauncher#default": default_9eb65d1e13a161fff630e7bf785e9dc3,
+  "@/components/admin/BlogEditorHeader#default": default_916617e4baba23f7b71ea02488bb8afa,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalField": RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#LexicalDiffComponent": LexicalDiffComponent_44fe37237e0ebf4470c9990d8cb7b07e,
+  "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  "@/components/admin/BlogImageSizeField#default": default_fc18f198025fd75884468788785f22db,
+  "@/components/admin/EmoticonResizeBlock#default": default_d7f09f9e8d99149f4027217ae38f03b3,
+  "@/components/admin/lexical/BlogImageResizeFeature.client#BlogImageResizeFeatureClient": BlogImageResizeFeatureClient_74cb45170de7b84dad1e6ef6cecb4d00,
   "@payloadcms/richtext-lexical/client#UploadFeatureClient": UploadFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
-  "@payloadcms/richtext-lexical/client#InlineToolbarFeatureClient": InlineToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  "@payloadcms/richtext-lexical/client#TableFeatureClient": TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#HorizontalRuleFeatureClient": HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  "@payloadcms/richtext-lexical/client#FixedToolbarFeatureClient": FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  "@payloadcms/richtext-lexical/client#InlineToolbarFeatureClient": InlineToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#BlockquoteFeatureClient": BlockquoteFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#RelationshipFeatureClient": RelationshipFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#LinkFeatureClient": LinkFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
@@ -138,6 +134,20 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#UnderlineFeatureClient": UnderlineFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#BoldFeatureClient": BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  "@/components/admin/BlogPublishedAtCell#default": default_603a2b8138cd47687180f37ca2cfb3ae,
+  "@/components/admin/BlogSyncCell#default": default_fce296b7499db768c8bb0fc89b6e5f6b,
+  "@/components/admin/BlogStatusCell#default": default_8caf9717c60858cb0f0c579495ac02be,
+  "@/components/admin/BlogListDashboard#default": default_7ac7d8af5819af6361453ab081f6e0e0,
+  "@/components/admin/OrderProcessingCellButton#default": default_ab80819f8b2b0b37f8700bad83cb86aa,
+  "@/components/admin/OrderBulkShipPanel#default": default_8ae569cef047456396f977e84e1f356b,
+  "@/components/admin/OrderToolsPanel#default": default_be333bc994f41cc3f44396316cdf4a5e,
+  "@/components/admin/OrderExportButton#default": default_9d7e3eddacf50cc2af6eec17731f6fad,
+  "@/components/admin/ReturnApprovalCellButton#default": default_ac9b3343bdbbc9a11f639268e925829e,
+  "@/components/admin/ExchangeApprovalCellButton#default": default_7b3334ccab91a8bc2d541f847ce2c885,
+  "@/components/admin/ProductStatusCell#default": default_cb040906944cedc20f0a1dc81a047b38,
+  "@/components/admin/ProductCheckboxToggleCell#default": default_6b2c0a93bbeb350d6bcacee01a93fd01,
+  "@/components/admin/ProductMarginInsight#default": default_9b57c43980e97d4b56c8d7a919923508,
+  "@/components/admin/ProductWizardLauncher#default": default_9eb65d1e13a161fff630e7bf785e9dc3,
   "@/components/admin/AutoPricingPreview#default": default_699dba4f26b8b856c306de3bbc7388c9,
   "@/components/admin/ProductInlineNumberCell#default": default_8c44d53910d53c8b62c9bbd9f4c07a57,
   "@/components/admin/ProductCategoryTreePicker#default": default_a3aa3dfb1277ec9c02ef061f872a6dd6,
@@ -159,20 +169,11 @@ export const importMap = {
   "@/components/admin/ProductTabBadges#default": default_da45625f08d6c78051d9389e2ef13996,
   "@/components/admin/ProductSaveToast#default": default_75a69f86e8fd1756deda3bb508c9e126,
   "@/components/admin/ProductDuplicateButton#default": default_dad6df07f5ce6091043bf2907b451c8b,
+  "@/components/admin/CategoryRecountButton#default": default_2d9516e76c36d74134ebee4f781829f6,
+  "@/components/admin/CategoryTreeView#default": default_ebf9d2025b92d97c921799c47cf282d1,
   "@/components/admin/MemberTreasureBoxPanel#default": default_2155efc8584149395a6a7408e7342b75,
   "@/components/admin/ShoplineCustomerImporter#default": default_f9f3bd50e8c71daeaf79c761e8047d29,
   "@/components/admin/PageTemplatePicker#default": default_35c860dac7cd35087c887518997aff75,
-  "@/components/admin/BlogEditorHeader#default": default_916617e4baba23f7b71ea02488bb8afa,
-  "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
-  "@/components/admin/BlogImageSizeField#default": default_fc18f198025fd75884468788785f22db,
-  "@/components/admin/EmoticonResizeBlock#default": default_d7f09f9e8d99149f4027217ae38f03b3,
-  "@/components/admin/lexical/BlogImageResizeFeature.client#BlogImageResizeFeatureClient": BlogImageResizeFeatureClient_74cb45170de7b84dad1e6ef6cecb4d00,
-  "@payloadcms/richtext-lexical/client#TableFeatureClient": TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
-  "@payloadcms/richtext-lexical/client#FixedToolbarFeatureClient": FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
-  "@/components/admin/BlogPublishedAtCell#default": default_603a2b8138cd47687180f37ca2cfb3ae,
-  "@/components/admin/BlogSyncCell#default": default_fce296b7499db768c8bb0fc89b6e5f6b,
-  "@/components/admin/BlogStatusCell#default": default_8caf9717c60858cb0f0c579495ac02be,
-  "@/components/admin/BlogListDashboard#default": default_7ac7d8af5819af6361453ab081f6e0e0,
   "@/components/admin/ColorField#default": default_2d3b6dcbebce75fc2ef5ac094f4218f0,
   "@/components/admin/MediaUploadRulesNotice#default": default_7daf04b168de0230737ba8fdd5db8d46,
   "@payloadcms/next/rsc#FolderTableCell": FolderTableCell_f9c02e79a4aed9a3924487c0cd4cafb1,
@@ -183,6 +184,7 @@ export const importMap = {
   "@/components/admin/SiteBrandPreview#default": default_6f27c4d8c2613c9dc60f5fcd3b7e600a,
   "@/components/admin/AdminIcon#default": default_d500ae2ad98a0a33d640ae0ac1a3417c,
   "@/components/admin/AdminLogo#default": default_b80a86fce1072afc84cd6a430a965697,
+  "@/components/admin/KimBlogNavGroup#default": default_e54e8b5f596e022da667100903465892,
   "@/components/admin/CKMUSystemToolsNavGroup#default": default_37be21d5d30aaf368ac239b9d524d111,
   "@/components/admin/Dashboard#default": default_0e7b23c75ea046975e1784ba01f82886,
   "@/components/admin/AdminBackButton#default": default_365d92937231ef8e59f225db1998a642,

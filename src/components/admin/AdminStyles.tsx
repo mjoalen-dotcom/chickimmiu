@@ -10,8 +10,16 @@ import React from 'react'
  *   1. Breadcrumb：AdminIcon 跟第一個 `/` 分隔符擠在一起、被右側控制區色塊
  *      蓋住。加左側間距 + 加大分隔符左右 margin。
  *   2. 使用說明 hover 樣式：配合 HelpNavLink.tsx 的 .ckmu-help-nav-link class。
- *   3. Sidebar 8 個 group 在 toggle button 左側加 lucide 圖示
+ *   3. Sidebar 9 個 group 在 toggle button 左側加 lucide 圖示
  *      （透過 mask-image，自動跟著 currentColor 走主題色）。
+ *   4. 色弱無障礙（2026-07-30 使用者要求）：全後台邊線加深。色弱使用者靠
+ *      「明度對比」而非色相分辨界線，Payload 預設 elevation-100~200 的淺灰
+ *      邊線幾乎看不見。三管齊下：
+ *      a) 把 --theme-elevation-150/200 兩級（幾乎只被拿來當 border）改成
+ *         中灰 — 38 個自訂 admin 元件的 inline 邊線一次全部生效；
+ *      b) 原生元素（input / card / table / pill …）直接上 !important
+ *         border-color（!important 才蓋得過元件 inline style）；
+ *      c) Dashboard.tsx 的 BORDER 常數同步加深（該檔自成一套色票）。
  */
 
 // Lucide static SVG paths (24x24, no stroke color → mask-image 取 currentColor)。
@@ -22,6 +30,9 @@ const lucideMask = (paths: string) =>
 
 const ICON_DASHBOARD = lucideMask(
   "<rect width='7' height='9' x='3' y='3' rx='1'/><rect width='7' height='5' x='14' y='3' rx='1'/><rect width='7' height='9' x='14' y='12' rx='1'/><rect width='7' height='5' x='3' y='16' rx='1'/>",
+)
+const ICON_FEATHER = lucideMask(
+  "<path d='M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z'/><path d='M16 8 2 22'/><path d='M17.5 15H9'/>",
 )
 const ICON_ORDERS = lucideMask(
   "<path d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z'/><path d='M3 6h18'/><path d='M16 10a4 4 0 0 1-8 0'/>",
@@ -93,7 +104,52 @@ export default function AdminStyles() {
     /* ⓪ 數據儀表 — 自訂 group，固定 class */
     .ckmu-dashboard-group > .nav-group__toggle::before { -webkit-mask-image: ${ICON_DASHBOARD}; mask-image: ${ICON_DASHBOARD}; }
 
-    /* ① ~ ⑦ Payload 原生 group — 用 group label 子字串匹配 */
+    /* ── 色弱無障礙：邊線全面加深 ─────────────────────────────────
+       只動邊線相關色，不動主要背景。150/200 兩級在本專案幾乎只作
+       border 用（僅 2 處背景：進度條軌道 / chip，變深無妨）；深淺主題
+       都蓋掉 — 中灰在亮暗底上都有足夠明度對比。 */
+    html[data-theme='light'], html[data-theme='dark'] {
+      --theme-elevation-150: #a9a9a9;
+      --theme-elevation-200: #8f8f8f;
+    }
+
+    /* 表單控件：邊線加深；聚焦時外框加粗更易定位 */
+    .field-type input, .field-type textarea, .field-type select,
+    input[type='text'], input[type='email'], input[type='password'],
+    input[type='number'], input[type='search'], textarea, select {
+      border-color: var(--theme-elevation-400, #9a9a9a) !important;
+    }
+    .field-type input:focus-visible, .field-type textarea:focus-visible,
+    .field-type select:focus-visible {
+      outline: 2px solid var(--theme-elevation-600, #6b6b6b) !important;
+      outline-offset: 1px;
+    }
+    .react-select .rs__control, [class*='react-select'] [class*='control'] {
+      border-color: var(--theme-elevation-400, #9a9a9a) !important;
+    }
+
+    /* 卡片 / 折疊區塊 / 次要按鈕 / pill：外框加深 */
+    .card, .collapsible__toggle-wrap, .btn--style-secondary, .pill,
+    .checkbox-input__input {
+      border-color: var(--theme-elevation-400, #9a9a9a) !important;
+    }
+
+    /* 列表表格：行分隔線 + 表頭底線加深 */
+    .table th { border-bottom: 2px solid var(--theme-elevation-400, #9a9a9a) !important; }
+    .table td { border-bottom: 1px solid var(--theme-elevation-300, #b0b0b0) !important; }
+
+    /* 分頁籤底線 / 一般分隔線 */
+    .tabs-field__tabs, hr {
+      border-color: var(--theme-elevation-300, #b0b0b0) !important;
+    }
+
+    /* Sidebar：group 標題底下加分隔線，群組界線一目了然 */
+    .nav-group__toggle {
+      border-bottom: 1px solid var(--theme-elevation-250, #bdbdbd);
+    }
+
+    /* Ⓚ + ① ~ ⑦ Payload 原生 group — 用 group label 子字串匹配 */
+    .nav-group[class*="金老佛爺"] > .nav-group__toggle::before { -webkit-mask-image: ${ICON_FEATHER}; mask-image: ${ICON_FEATHER}; }
     .nav-group[class*="① 訂單"] > .nav-group__toggle::before { -webkit-mask-image: ${ICON_ORDERS}; mask-image: ${ICON_ORDERS}; }
     .nav-group[class*="② 商品"] > .nav-group__toggle::before { -webkit-mask-image: ${ICON_PRODUCTS}; mask-image: ${ICON_PRODUCTS}; }
     .nav-group[class*="③ 會員"] > .nav-group__toggle::before { -webkit-mask-image: ${ICON_USERS}; mask-image: ${ICON_USERS}; }

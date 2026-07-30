@@ -78,6 +78,7 @@ import { ProductListSettings } from './globals/ProductListSettings'
 import { AboutPageSettings } from './globals/AboutPageSettings'
 import { FAQPageSettings } from './globals/FAQPageSettings'
 import { PolicyPagesSettings } from './globals/PolicyPagesSettings'
+import { PackagingPageSettings } from './globals/PackagingPageSettings'
 import { NavigationSettings } from './globals/NavigationSettings'
 import { CheckoutSettings } from './globals/CheckoutSettings'
 import { OrderSettings } from './globals/OrderSettings'
@@ -216,30 +217,16 @@ if (r2Configured) {
 /**
  * CHIC KIM & MIU — Payload CMS v3 主設定
  * ────────────────────────────────────────
- * Collections（34 個）：
- *   會員管理：Users、MembershipTiers、SubscriptionPlans
- *   商品管理：Products、Categories、ProductReviews
- *   訂單管理：Orders、Returns、Refunds、Exchanges、ShippingMethods、Invoices
- *   合作夥伴：Affiliates
- *   內容管理：BlogPosts、Pages、UGCPosts
- *   行銷活動：PointsRedemptions
- *   CRM：CreditScoreHistory、PointsTransactions、AutomationJourneys、AutomationLogs、CustomerServiceTickets、MemberSegments
- *   行銷自動化：MarketingCampaigns、MessageTemplates、ABTests、MarketingExecutionLogs、FestivalTemplates、BirthdayCampaigns
- *   VIP 管家：ConciergeServiceRequests
- *   遊戲系統：MiniGameRecords、CardBattles、GameLeaderboard、UserRewards、StyleSubmissions、StyleGameRooms、StyleVotes、StyleWishes
- *   媒體資源：Media
+ * Sidebar 群組架構（9 組；各 collection/global 的 admin.group 為準）：
+ *   ⓪ 數據儀表        — 手刻 client group（CKMUDashboardNavGroup，分析 views）
+ *   Ⓚ 金老佛爺部落格  — BlogPosts / BlogCategories + KimBlogNavGroup 注入的
+ *                        工作台 / 相簿 / AI 草稿 / 查看部落格 連結
+ *   ① 訂單與物流      ② 商品管理      ③ 會員與 CRM
+ *   ④ 行銷推廣        ⑤ 互動體驗      ⑥ 內容與頁面      ⑦ 系統與安全
  *
- * Globals（10 個）：
- *   GlobalSettings — 全站通用設定
- *   LoyaltySettings — 忠誠度計畫（點數、等級倍率、生日禮、遊戲次數、AI推薦權重）
- *   ReferralSettings — 推薦計畫 + 防濫用設定
- *   PointRedemptionSettings — 點數消耗心理學參數（到期提醒、限時加倍、稀缺性、抽獎）
- *   RecommendationSettings — AI 推薦引擎設定（權重、各階段推薦策略）
- *   CRMSettings — CRM 系統設定（信用分數權重、AI客服、自動化流程、通知模板）
- *   SegmentationSettings — 會員分群設定（權重、門檻、排程）
- *   MarketingAutomationSettings — 行銷自動化設定（通道、A/B測試、個人化、節慶、生日）
- *   InvoiceSettings — 綠界電子發票設定（API 金鑰、賣方資訊、LOGO、自動化）
- *   GameSettings — 遊戲系統設定（各遊戲免費次數、獎勵、排行榜、徽章）
+ * 群組順序由 collections[] 陣列中「該 group 第一個成員」的位置決定；
+ * 群組內連結順序 = 陣列內順序（globals 同理，接在 collections 之後）。
+ * 排序原則：使用頻率高在前 + 同類流程相鄰。詳見 collections[] 內各段註解。
  */
 // LB-08：production 缺關鍵 env 必須 fail-fast，不准靜默 fallback。
 // PAYLOAD_SECRET 缺 → 空密鑰簽 auth token；DATABASE_URI 缺 → 靜默開一顆空的本地 SQLite。
@@ -332,10 +319,14 @@ export default buildConfig({
         '@/components/admin/NavScrollPersist',
         '@/components/admin/AdminUserMenu',
       ],
-      // afterNavLinks 掛 CKMUSystemToolsNavGroup — 該 component 本身不渲染獨立
-      // 群組，而是 DOM 注入兩個工具連結（AI 部落格草稿產生器 / REST API 文件）
-      // 進「⑦ 系統與安全」原生 group 的 nav 列表，視覺合而為一。
-      afterNavLinks: ['@/components/admin/CKMUSystemToolsNavGroup'],
+      // afterNavLinks 掛兩個 DOM 注入元件（本身不渲染獨立群組）：
+      //   - KimBlogNavGroup → 把部落格工作台 / 相簿 / AI 草稿 / 查看部落格
+      //     連結注入「Ⓚ 金老佛爺部落格」原生 group
+      //   - CKMUSystemToolsNavGroup → 把系統工具連結注入「⑦ 系統與安全」
+      afterNavLinks: [
+        '@/components/admin/KimBlogNavGroup',
+        '@/components/admin/CKMUSystemToolsNavGroup',
+      ],
       views: {
         blogStudio: {
           Component: '@/components/admin/BlogStudioView',
@@ -413,34 +404,41 @@ export default buildConfig({
   // re-order the sidebar groups. (The ①…⑦ prefix in group names is a visual
   // hint only; it does not influence sort.)
   collections: [
-    // ① 訂單與物流
+    // Ⓚ 金老佛爺部落格 — 旗艦內容專區，緊接 ⓪ 數據儀表之後。
+    // BlogStudio 自訂 view 連結（工作台 / 相簿 / AI 草稿 / 查看部落格）由
+    // KimBlogNavGroup DOM 注入同一 group，視覺上合為一站式專區。
+    BlogPosts,
+    BlogCategories,
+    // ① 訂單與物流 — 每日營運最高頻：訂單 / 發票在前；退貨 → 換貨 → 退款
+    // 照客服處理流程排列；物流方式設定極少動放最後。
     Orders,
-    Returns,
-    Refunds,
-    Exchanges,
-    ShippingMethods,
     Invoices,
-    // ② 商品管理
+    Returns,
+    Exchanges,
+    Refunds,
+    ShippingMethods,
+    // ② 商品管理 — Products 最常用放最前；進銷存三件套殿後。
+    Products,
     Categories,
     SizeCharts,
-    Products,
     ProductReviews,
     InventoryTransactions, // 進銷存：庫存異動流水
     PurchaseOrders, // 進銷存：進貨單
     StockTakes, // 進銷存：盤點
-    // ③ 會員與 CRM
+    // ③ 會員與 CRM — 會員核心 → 訂閱 → 點數回饋 → 錢包 → 收藏 →
+    // 客服對話 → 行為事件（同類相鄰，高頻在前）。
     Users,
     MembershipTiers,
+    MemberSegments,
     SubscriptionPlans,
     UserSubscriptions,
-    PointsRedemptions,
-    CreditScoreHistory,
     PointsTransactions,
-    MemberSegments,
+    PointsRedemptions,
     UserRewards,
-    WishlistItems, // Phase 2 B：會員收藏清單 DB 持久化（跨裝置）
+    CreditScoreHistory,
     WalletTransactions, // Phase 2 C：購物金/儲值金帳本
     WalletWithdrawals, // Phase 2 C：儲值金退現申請
+    WishlistItems, // Phase 2 B：會員收藏清單 DB 持久化（跨裝置）
     // 客服中心 v1 Phase 1A — Conversations + Messages 是 ③ 會員 CRM 的延伸
     Conversations,
     Messages,
@@ -448,53 +446,52 @@ export default buildConfig({
     ConversationActivities,
     ProductViewEvents, // PR-B：UTM 商品瀏覽事件流
     BehaviorEvents, // 消費者分析：點擊 / 加購 / 瀏覽 / 停留
-    // ④ 行銷推廣
-    AutomationJourneys,
-    AutomationLogs,
-    MarketingCampaigns,
-    NewsletterSubscribers, // Phase 2 B：電子報訂閱名單（前台訂閱表單寫入）
-    MessageTemplates,
-    EmailTemplates, // 交易信模板（歡迎 / 訂單通知 / 驗證信）— 後台可編輯 / 預覽 / 測試寄送
-    SearchConsoleKeywords,
-    CompetitorPriceRecords,
-    MarketingContentDrafts,
-    ABTests,
-    MarketingExecutionLogs,
-    FestivalTemplates,
-    BirthdayCampaigns,
+    // ④ 行銷推廣 — 促銷工具（最常動）→ 檔期活動 → 自動化 → 訊息/名單 →
+    // 廣告與市場情報（低頻查閱類殿後）。
+    Coupons,
+    CouponRedemptions,
     AddOnProducts,
     GiftRules,
     Bundles,
-    Coupons,
-    CouponRedemptions,
+    MarketingCampaigns,
+    FestivalTemplates,
+    BirthdayCampaigns,
+    AutomationJourneys,
+    AutomationLogs,
+    ABTests,
+    MarketingExecutionLogs,
+    MessageTemplates,
+    EmailTemplates, // 交易信模板（歡迎 / 訂單通知 / 驗證信）— 後台可編輯 / 預覽 / 測試寄送
+    NewsletterSubscribers, // Phase 2 B：電子報訂閱名單（前台訂閱表單寫入）
     UTMCampaigns, // PR-B：集中管理 UTM 活動 slug
     AdAudiences, // PR-E：DPA Retargeting Custom Audience 定義
-    // ⑤ 互動體驗
-    Affiliates,
-    UGCPosts,
+    SearchConsoleKeywords,
+    CompetitorPriceRecords,
+    MarketingContentDrafts,
+    // ⑤ 互動體驗 — 客服工單 / VIP 管家在前（第一線每日處理）；
+    // 聯盟與 UGC 次之；遊戲系統照玩法聚類殿後。
     CustomerServiceTickets,
     ConciergeServiceRequests,
+    Affiliates,
+    UGCPosts,
     PrizePools,
     MiniGameRecords,
     CardBattles,
     GameLeaderboard,
+    CollectibleCardTemplates,
+    CollectibleCards,
+    CollectibleCardEvents,
     StyleSubmissions,
     StyleGameRooms,
     StyleVotes,
     StyleWishes,
-    CollectibleCardTemplates,
-    CollectibleCards,
-    CollectibleCardEvents,
     DailyHoroscopes,
     // ⑥ 內容與頁面
     // 順序原則：核心內容（最常編輯）→ 樣式（少動）→ 資源池（最少動）。
-    // Pages 放第一個 = group order 也由它決定（仍排在 ⑤ 後面 / ⑦ 前面，因
-    // 整段位置沒移）；Media 移到最後因為 admin 通常透過 Products / BlogPosts
-    // 上傳介面間接用 Media，少直接點 Media collection；媒體資料夾已隱藏。
+    // 部落格已移至 Ⓚ 金老佛爺部落格專區；Media 放最後因為 admin 通常透過
+    // Products / BlogPosts 上傳介面間接用 Media，少直接點；媒體資料夾已隱藏。
     Pages,
     CelebrityFeatures,
-    BlogPosts,
-    BlogCategories,
     Podcasts,
     SiteThemes,
     Media,
@@ -535,6 +532,7 @@ export default buildConfig({
     AboutPageSettings,
     FAQPageSettings,
     PolicyPagesSettings,
+    PackagingPageSettings,
     // ⑦ 系統與安全
     GlobalSettings,
     PricingFormulaSettings,

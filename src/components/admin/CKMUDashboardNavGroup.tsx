@@ -15,10 +15,13 @@ import Link from 'next/link'
  * 手刻 markup，視覺上跟 Payload 原生 group 一致；折疊狀態由元件
  * 自己 state + sessionStorage 管，不依賴 Payload 的內部 store。
  *
- * 4 個項目：
+ * 目前項目（部落格工作台已移到「Ⓚ 金老佛爺部落格」專屬 group，
+ * 見 KimBlogNavGroup.tsx，此處不再重複）：
  *   - 營運總覽 (/admin)
+ *   - 消費者分析 (/admin/consumer-insights)
  *   - 會員分群分析 (/admin/member-analytics)
  *   - 回購分析 (/admin/repeat-purchase)
+ *   - 連結完整性診斷 (/admin/diagnostics/link-integrity)
  *   - 使用說明 (/admin/help)
  */
 
@@ -26,11 +29,6 @@ const KEY = 'ckmu_admin_dashboard_group_collapsed'
 
 const items: { href: string; label: string; id: string }[] = [
   { href: '/admin', label: '營運總覽', id: 'nav-ckmu-overview' },
-  {
-    href: '/admin/blog-studio',
-    label: '部落格工作台',
-    id: 'nav-ckmu-blog-studio',
-  },
   {
     href: '/admin/consumer-insights',
     label: '消費者分析',

@@ -16,7 +16,7 @@ export const BlogCategories: CollectionConfig = {
   slug: 'blog-categories',
   labels: { singular: '部落格分類', plural: '部落格分類' },
   admin: {
-    group: '⑥ 內容與頁面',
+    group: 'Ⓚ 金老佛爺部落格',
     useAsTitle: 'name',
     defaultColumns: ['name', 'value', 'slug', 'displayOrder'],
     description: '穿搭誌文章分類：顯示名稱、排序、SEO。value 須對應 BlogPosts 的分類值。',

@@ -9,7 +9,9 @@ const DARK = '#1A1F36'
 const GOLD_LIGHT = '#F3E8D5'
 const GOLD_DARK = '#9A7A3E'
 const CARD_BG = '#FFFFFF'
-const BORDER = '#D4C7B5'
+// 色弱無障礙（2026-07-30）：原 #D4C7B5 太淡，改深一階的暖棕
+// （同色系、對白底約 4:1 明度對比），全 Dashboard 邊線一次生效。
+const BORDER = '#8F7B54'
 const MUTED = '#544940'        // 6.7:1 on white (was #6B6560 = 4.6:1, too faint for KPI labels / axis ticks)
 const MUTED_HEADER = '#E8DFC9' // header subtitle on navy (was #C4B49A = 4.0:1, just under WCAG AA)
 const TEXT = '#1A1F36'

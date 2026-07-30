@@ -19,9 +19,10 @@ import React, { useEffect } from 'react'
  * 失效模式：Payload 重新渲染 sidebar 時注入會掉，所以掛 MutationObserver
  * 監看 DOM 變動，每次都重做（會檢查是否已注入避免重複）。
  *
- * 目前條目（GraphQL Playground 已下架，2026-05-11）：
- *   - AI 部落格草稿產生器 (/admin/tools/blog-ai-draft)
+ * 目前條目（GraphQL Playground 已下架 2026-05-11；AI 部落格草稿產生器
+ * 已移到「Ⓚ 金老佛爺部落格」group，見 KimBlogNavGroup.tsx）：
  *   - 一鍵刪除未上架商品 (/admin/tools/bulk-delete-products)
+ *   - 白帽自動化行銷中台 (/admin/tools/whitehat-marketing)
  *   - Email 模板預覽 / 測試寄送 (/admin/tools/email-templates)
  *   - REST API 文件 (/admin/api-docs)
  *
@@ -38,11 +39,6 @@ const TARGET_GROUP_LABEL = '⑦ 系統與安全'
 const INJECTED_ATTR = 'data-ckmu-systools-injected'
 
 const items: Item[] = [
-  {
-    href: '/admin/tools/blog-ai-draft',
-    label: '✨ AI 部落格草稿產生器',
-    id: 'nav-ckmu-blog-ai-draft',
-  },
   {
     href: '/admin/tools/bulk-delete-products',
     label: '🗑️ 一鍵刪除未上架商品',

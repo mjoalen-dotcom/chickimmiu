@@ -72,7 +72,7 @@ export const BlogPosts: CollectionConfig = {
   admin: {
     useAsTitle: 'title',
     defaultColumns: ['title', 'category', 'status', 'publishToKimLafayette', 'publishedAt'],
-    group: '⑥ 內容與頁面',
+    group: 'Ⓚ 金老佛爺部落格',
     listSearchableFields: ['title', 'slug', 'excerpt'],
     pagination: {
       defaultLimit: 25,
