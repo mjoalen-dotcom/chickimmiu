@@ -1,0 +1,448 @@
+import { DefaultTemplate } from '@payloadcms/next/templates'
+import { FilePenLine, FileText, Images, Radio, Tags } from 'lucide-react'
+import type { AdminViewServerProps } from 'payload'
+import React from 'react'
+
+import BlogStudioNav from './BlogStudioNav'
+
+type BlogPostRow = {
+  id: number | string
+  title?: string | null
+  category?: string | null
+  status?: string | null
+  publishToKimLafayette?: boolean | null
+  publishedAt?: string | null
+  updatedAt?: string | null
+}
+
+const categoryLabels: Record<string, string> = {
+  styling: '穿搭教學',
+  'new-arrivals': '新品介紹',
+  'brand-story': '品牌故事',
+  promotions: '優惠活動',
+  trends: '時尚趨勢',
+  fashion: '時尚流行',
+  beauty: '美容彩妝',
+  shopping: '購物情報',
+  food: '美食料理',
+  lifestyle: '生活綜合',
+  parenting: '親子育兒',
+  travel: '旅遊紀錄',
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return '尚未設定'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'Asia/Taipei',
+  }).format(date)
+}
+
+const BlogStudioView: React.FC<AdminViewServerProps> = async ({
+  initPageResult,
+  params,
+  searchParams,
+}) => {
+  const req = initPageResult.req
+  const user = req.user as { role?: string } | null
+  const isAdmin = user?.role === 'admin'
+
+  if (!isAdmin) {
+    return (
+      <DefaultTemplate
+        i18n={req.i18n}
+        locale={initPageResult.locale}
+        params={params}
+        payload={req.payload}
+        permissions={initPageResult.permissions}
+        searchParams={searchParams}
+        user={req.user || undefined}
+        visibleEntities={initPageResult.visibleEntities}
+      >
+        <div style={{ padding: 32 }}>需要管理員權限。</div>
+      </DefaultTemplate>
+    )
+  }
+
+  const [recentPosts, allPosts, publishedPosts, draftPosts, syndicatedPosts, media, categories] =
+    await Promise.all([
+      req.payload.find({
+        collection: 'blog-posts',
+        depth: 0,
+        limit: 8,
+        sort: '-updatedAt',
+      }),
+      req.payload.find({ collection: 'blog-posts', depth: 0, limit: 1 }),
+      req.payload.find({
+        collection: 'blog-posts',
+        depth: 0,
+        limit: 1,
+        where: { status: { equals: 'published' } },
+      }),
+      req.payload.find({
+        collection: 'blog-posts',
+        depth: 0,
+        limit: 1,
+        where: { status: { equals: 'draft' } },
+      }),
+      req.payload.find({
+        collection: 'blog-posts',
+        depth: 0,
+        limit: 1,
+        where: { publishToKimLafayette: { equals: true } },
+      }),
+      req.payload.find({
+        collection: 'media',
+        depth: 0,
+        limit: 1,
+        where: { mimeType: { contains: 'image/' } },
+      }),
+      req.payload.find({
+        collection: 'blog-categories',
+        depth: 0,
+        limit: 1,
+      }),
+    ])
+
+  const stats = [
+    {
+      label: '全部文章',
+      value: allPosts.totalDocs,
+      href: '/admin/collections/blog-posts',
+      color: '#202124',
+    },
+    {
+      label: '已發佈',
+      value: publishedPosts.totalDocs,
+      href: '/admin/collections/blog-posts?where[status][equals]=published',
+      color: '#087f5b',
+    },
+    {
+      label: '草稿',
+      value: draftPosts.totalDocs,
+      href: '/admin/collections/blog-posts?where[status][equals]=draft',
+      color: '#9a3412',
+    },
+    {
+      label: 'Kim 已同步',
+      value: syndicatedPosts.totalDocs,
+      href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true',
+      color: '#a25e5e',
+    },
+  ]
+
+  const recent = recentPosts.docs as BlogPostRow[]
+
+  return (
+    <DefaultTemplate
+      i18n={req.i18n}
+      locale={initPageResult.locale}
+      params={params}
+      payload={req.payload}
+      permissions={initPageResult.permissions}
+      searchParams={searchParams}
+      user={req.user || undefined}
+      visibleEntities={initPageResult.visibleEntities}
+    >
+      <main style={{ maxWidth: 1320, margin: '0 auto', padding: '24px 32px 48px' }}>
+        <BlogStudioNav />
+
+        <header
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'flex-end',
+            justifyContent: 'space-between',
+            gap: 16,
+            marginBottom: 22,
+          }}
+        >
+          <div>
+            <p
+              style={{
+                margin: '0 0 5px',
+                color: '#a25e5e',
+                fontSize: 11,
+                fontWeight: 750,
+                textTransform: 'uppercase',
+              }}
+            >
+              Blog Control Panel
+            </p>
+            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>部落格儀表板</h1>
+          </div>
+          <a
+            href="/admin/collections/blog-posts/create"
+            style={{
+              display: 'inline-flex',
+              minHeight: 40,
+              alignItems: 'center',
+              gap: 8,
+              padding: '9px 14px',
+              borderRadius: 6,
+              background: '#202124',
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 700,
+              textDecoration: 'none',
+            }}
+          >
+            <FilePenLine aria-hidden size={17} />
+            寫文章
+          </a>
+        </header>
+
+        <section
+          aria-label="文章統計"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            borderTop: '1px solid var(--theme-elevation-200, #dedede)',
+            borderBottom: '1px solid var(--theme-elevation-200, #dedede)',
+            marginBottom: 30,
+          }}
+        >
+          {stats.map((stat, index) => (
+            <a
+              key={stat.label}
+              href={stat.href}
+              style={{
+                minHeight: 92,
+                padding: '18px 20px',
+                borderLeft: index === 0 ? 'none' : '1px solid var(--theme-elevation-200, #dedede)',
+                color: 'inherit',
+                textDecoration: 'none',
+              }}
+            >
+              <span
+                style={{
+                  display: 'block',
+                  color: 'var(--theme-elevation-600, #666)',
+                  fontSize: 12,
+                }}
+              >
+                {stat.label}
+              </span>
+              <strong
+                style={{
+                  display: 'block',
+                  marginTop: 7,
+                  color: stat.color,
+                  fontSize: 27,
+                  lineHeight: 1,
+                }}
+              >
+                {stat.value.toLocaleString('zh-TW')}
+              </strong>
+            </a>
+          ))}
+        </section>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: 30,
+          }}
+        >
+          <section aria-labelledby="recent-posts-title">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                marginBottom: 12,
+              }}
+            >
+              <h2 id="recent-posts-title" style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
+                最近文章
+              </h2>
+              <a
+                href="/admin/collections/blog-posts"
+                style={{ color: '#a25e5e', fontSize: 12, fontWeight: 700 }}
+              >
+                查看全部
+              </a>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table
+                style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  fontSize: 12,
+                }}
+              >
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #d8d8d8' }}>
+                    {['文章', '狀態', '分類', '更新時間', ''].map((heading) => (
+                      <th
+                        key={heading}
+                        style={{
+                          padding: '10px 8px',
+                          color: 'var(--theme-elevation-550, #6a6a6a)',
+                          fontWeight: 650,
+                          textAlign: 'left',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {heading}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {recent.map((post) => (
+                    <tr
+                      key={String(post.id)}
+                      style={{
+                        borderBottom: '1px solid var(--theme-elevation-150, #ececec)',
+                      }}
+                    >
+                      <td style={{ maxWidth: 360, padding: '13px 8px' }}>
+                        <a
+                          href={`/admin/collections/blog-posts/${post.id}`}
+                          style={{
+                            display: 'block',
+                            overflow: 'hidden',
+                            color: 'var(--theme-text, #202124)',
+                            fontWeight: 650,
+                            textOverflow: 'ellipsis',
+                            textDecoration: 'none',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {post.title || '未命名文章'}
+                        </a>
+                      </td>
+                      <td style={{ padding: '13px 8px', whiteSpace: 'nowrap' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            padding: '3px 8px',
+                            border: `1px solid ${
+                              post.status === 'published' ? '#a7f3d0' : '#fed7aa'
+                            }`,
+                            borderRadius: 999,
+                            background: post.status === 'published' ? '#ecfdf5' : '#fff1e6',
+                            color: post.status === 'published' ? '#087f5b' : '#9a3412',
+                            fontSize: 11,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {post.status === 'published' ? '公開' : '草稿'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '13px 8px', whiteSpace: 'nowrap' }}>
+                        {post.category ? categoryLabels[post.category] || post.category : '未分類'}
+                      </td>
+                      <td
+                        style={{
+                          padding: '13px 8px',
+                          color: 'var(--theme-elevation-550, #6a6a6a)',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {formatDate(post.updatedAt || post.publishedAt)}
+                      </td>
+                      <td style={{ padding: '13px 8px', textAlign: 'right' }}>
+                        <a
+                          href={`/admin/collections/blog-posts/${post.id}`}
+                          style={{ color: '#a25e5e', fontWeight: 700 }}
+                        >
+                          編輯
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <aside aria-labelledby="content-tools-title">
+            <h2
+              id="content-tools-title"
+              style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 700 }}
+            >
+              內容管理
+            </h2>
+            <div
+              style={{
+                borderTop: '1px solid var(--theme-elevation-200, #dedede)',
+              }}
+            >
+              {[
+                {
+                  href: '/admin/collections/blog-posts',
+                  label: '文章',
+                  value: `${allPosts.totalDocs} 篇`,
+                  icon: FileText,
+                },
+                {
+                  href: '/admin/blog-studio/albums',
+                  label: '相簿',
+                  value: `${media.totalDocs} 張`,
+                  icon: Images,
+                },
+                {
+                  href: '/admin/collections/blog-categories',
+                  label: '分類',
+                  value: `${categories.totalDocs} 個`,
+                  icon: Tags,
+                },
+                {
+                  href: 'https://blog.kimlafayette.com/blog/',
+                  label: '正式部落格',
+                  value: '開啟',
+                  icon: Radio,
+                  external: true,
+                },
+              ].map((item) => {
+                const Icon = item.icon
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    target={item.external ? '_blank' : undefined}
+                    rel={item.external ? 'noopener noreferrer' : undefined}
+                    style={{
+                      display: 'flex',
+                      minHeight: 58,
+                      alignItems: 'center',
+                      gap: 10,
+                      borderBottom: '1px solid var(--theme-elevation-200, #dedede)',
+                      color: 'inherit',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <Icon aria-hidden size={18} strokeWidth={1.7} />
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 650 }}>{item.label}</span>
+                    <span
+                      style={{
+                        color: 'var(--theme-elevation-550, #6a6a6a)',
+                        fontSize: 12,
+                      }}
+                    >
+                      {item.value}
+                    </span>
+                  </a>
+                )
+              })}
+            </div>
+          </aside>
+        </div>
+      </main>
+    </DefaultTemplate>
+  )
+}
+
+export default BlogStudioView

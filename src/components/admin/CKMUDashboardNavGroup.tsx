@@ -26,10 +26,31 @@ const KEY = 'ckmu_admin_dashboard_group_collapsed'
 
 const items: { href: string; label: string; id: string }[] = [
   { href: '/admin', label: '營運總覽', id: 'nav-ckmu-overview' },
-  { href: '/admin/consumer-insights', label: '消費者分析', id: 'nav-ckmu-consumer-insights' },
-  { href: '/admin/member-analytics', label: '會員分群分析', id: 'nav-ckmu-member-analytics' },
-  { href: '/admin/repeat-purchase', label: '回購分析', id: 'nav-ckmu-repeat-purchase' },
-  { href: '/admin/diagnostics/link-integrity', label: '連結完整性診斷', id: 'nav-ckmu-link-integrity' },
+  {
+    href: '/admin/blog-studio',
+    label: '部落格工作台',
+    id: 'nav-ckmu-blog-studio',
+  },
+  {
+    href: '/admin/consumer-insights',
+    label: '消費者分析',
+    id: 'nav-ckmu-consumer-insights',
+  },
+  {
+    href: '/admin/member-analytics',
+    label: '會員分群分析',
+    id: 'nav-ckmu-member-analytics',
+  },
+  {
+    href: '/admin/repeat-purchase',
+    label: '回購分析',
+    id: 'nav-ckmu-repeat-purchase',
+  },
+  {
+    href: '/admin/diagnostics/link-integrity',
+    label: '連結完整性診斷',
+    id: 'nav-ckmu-link-integrity',
+  },
   { href: '/admin/help', label: '使用說明', id: 'nav-ckmu-help' },
 ]
 

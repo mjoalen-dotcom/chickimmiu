@@ -57,6 +57,7 @@ import { default as default_dad6df07f5ce6091043bf2907b451c8b } from '@/component
 import { default as default_2155efc8584149395a6a7408e7342b75 } from '@/components/admin/MemberTreasureBoxPanel'
 import { default as default_f9f3bd50e8c71daeaf79c761e8047d29 } from '@/components/admin/ShoplineCustomerImporter'
 import { default as default_35c860dac7cd35087c887518997aff75 } from '@/components/admin/PageTemplatePicker'
+import { default as default_916617e4baba23f7b71ea02488bb8afa } from '@/components/admin/BlogEditorHeader'
 import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { TableFeatureClient as TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { FixedToolbarFeatureClient as FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
@@ -81,6 +82,8 @@ import { default as default_6935afc6ffc87a7d434a45937e35c56e } from '@/component
 import { default as default_340cf3538fa47d0416e0abd461790ca4 } from '@/components/admin/AdminStyles'
 import { default as default_550b036f5ba594f02403b10f8dc4b8c7 } from '@/components/admin/NavScrollPersist'
 import { default as default_c4734b417dd2f37db2adf0e6ec330b48 } from '@/components/admin/AdminUserMenu'
+import { default as default_870d6594408b76ace6f11f3de206bdb6 } from '@/components/admin/BlogStudioView'
+import { default as default_2d06cb1f7cc5e626d7a62ddfe11d9bc5 } from '@/components/admin/BlogAlbumsView'
 import { default as default_b49611ccd828469519fd79e264a9eb51 } from '@/components/admin/HelpView'
 import { default as default_b3d544e796f2e72482a7e1ca06c557a3 } from '@/components/admin/MemberAnalyticsView'
 import { default as default_ff00d70a4277286e7d2a45db4d136e59 } from '@/components/admin/RepeatPurchaseView'
@@ -156,6 +159,7 @@ export const importMap = {
   "@/components/admin/MemberTreasureBoxPanel#default": default_2155efc8584149395a6a7408e7342b75,
   "@/components/admin/ShoplineCustomerImporter#default": default_f9f3bd50e8c71daeaf79c761e8047d29,
   "@/components/admin/PageTemplatePicker#default": default_35c860dac7cd35087c887518997aff75,
+  "@/components/admin/BlogEditorHeader#default": default_916617e4baba23f7b71ea02488bb8afa,
   "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#TableFeatureClient": TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#FixedToolbarFeatureClient": FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
@@ -180,6 +184,8 @@ export const importMap = {
   "@/components/admin/AdminStyles#default": default_340cf3538fa47d0416e0abd461790ca4,
   "@/components/admin/NavScrollPersist#default": default_550b036f5ba594f02403b10f8dc4b8c7,
   "@/components/admin/AdminUserMenu#default": default_c4734b417dd2f37db2adf0e6ec330b48,
+  "@/components/admin/BlogStudioView#default": default_870d6594408b76ace6f11f3de206bdb6,
+  "@/components/admin/BlogAlbumsView#default": default_2d06cb1f7cc5e626d7a62ddfe11d9bc5,
   "@/components/admin/HelpView#default": default_b49611ccd828469519fd79e264a9eb51,
   "@/components/admin/MemberAnalyticsView#default": default_b3d544e796f2e72482a7e1ca06c557a3,
   "@/components/admin/RepeatPurchaseView#default": default_ff00d70a4277286e7d2a45db4d136e59,

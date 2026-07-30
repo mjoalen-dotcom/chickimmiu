@@ -254,7 +254,9 @@ if (
   ]
     .filter(Boolean)
     .join(', ')
-  throw new Error(`[payload.config] production 環境缺少必要 env：${missing}（拒絕以 dev fallback 啟動）`)
+  throw new Error(
+    `[payload.config] production 環境缺少必要 env：${missing}（拒絕以 dev fallback 啟動）`,
+  )
 }
 
 export default buildConfig({
@@ -335,6 +337,14 @@ export default buildConfig({
       // 進「⑦ 系統與安全」原生 group 的 nav 列表，視覺合而為一。
       afterNavLinks: ['@/components/admin/CKMUSystemToolsNavGroup'],
       views: {
+        blogStudio: {
+          Component: '@/components/admin/BlogStudioView',
+          path: '/blog-studio',
+        },
+        blogAlbums: {
+          Component: '@/components/admin/BlogAlbumsView',
+          path: '/blog-studio/albums',
+        },
         help: {
           Component: '@/components/admin/HelpView',
           path: '/help',
@@ -393,7 +403,6 @@ export default buildConfig({
           Component: '@/components/admin/EmailTemplatePreviewView',
           path: '/tools/email-templates',
         },
-
       },
     },
   },
