@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons'
 import type { SocialProviderFlags } from '@/lib/auth/socialProviders'
+import { safeInternalRedirect } from '@/lib/auth/safeRedirect'
 import { getCurrentAttribution } from '@/lib/tracking'
 
 /**
@@ -18,9 +19,8 @@ import { getCurrentAttribution } from '@/lib/tracking'
  * 推薦碼（選填）→ 後端查出 referrer 寫入 referredBy
  */
 export default function RegisterClient({ socialProviders }: { socialProviders: SocialProviderFlags }) {
-  const router = useRouter()
   const search = useSearchParams()
-  const redirectTo = search.get('redirect') || '/account'
+  const redirectTo = safeInternalRedirect(search.get('redirect'))
 
   const [form, setForm] = useState({
     name: '',
@@ -76,12 +76,18 @@ export default function RegisterClient({ socialProviders }: { socialProviders: S
       }
       if (data.requiresVerification) {
         // 後台開啟 email 驗證 → 沒下 cookie，導去登入頁並提示檢查信箱
-        router.replace('/login?registered=1&verify=1')
+        const loginParams = new URLSearchParams({
+          registered: '1',
+          verify: '1',
+        })
+        if (redirectTo !== '/account') {
+          loginParams.set('redirect', redirectTo)
+        }
+        window.location.assign(`/login?${loginParams.toString()}`)
         return
       }
       // 驗證關閉 → 後端已下 cookie，直接進會員頁
-      router.replace(redirectTo)
-      router.refresh()
+      window.location.assign(redirectTo)
     } catch {
       setError('網路錯誤，請稍後再試')
     } finally {
@@ -225,7 +231,10 @@ export default function RegisterClient({ socialProviders }: { socialProviders: S
         <div className="text-center pt-2 border-t border-cream-200">
           <p className="text-sm text-muted-foreground pt-4">
             已有帳號？
-            <Link href="/login" className="text-gold-600 ml-1 hover:underline">
+            <Link
+              href={`/login${redirectTo !== '/account' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`}
+              className="text-gold-600 ml-1 hover:underline"
+            >
               立即登入
             </Link>
           </p>

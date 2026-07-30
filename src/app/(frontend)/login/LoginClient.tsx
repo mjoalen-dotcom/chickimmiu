@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons'
 import type { SocialProviderFlags } from '@/lib/auth/socialProviders'
+import { safeInternalRedirect } from '@/lib/auth/safeRedirect'
 
 /**
  * 客戶登入頁（client 端）
@@ -17,9 +18,8 @@ import type { SocialProviderFlags } from '@/lib/auth/socialProviders'
  * 忘記密碼：連 `/forgot-password`
  */
 export default function LoginClient({ socialProviders }: { socialProviders: SocialProviderFlags }) {
-  const router = useRouter()
   const search = useSearchParams()
-  const redirectTo = search.get('redirect') || '/account'
+  const redirectTo = safeInternalRedirect(search.get('redirect'))
   const registeredFlag = search.get('registered') === '1'
   const needVerifyFlag = search.get('verify') === '1'
   const verifiedFlag = search.get('verified') === '1'
@@ -73,9 +73,9 @@ export default function LoginClient({ socialProviders }: { socialProviders: Soci
         setError(msg === 'The email or password provided is incorrect.' ? 'Email 或密碼錯誤' : msg)
         return
       }
-      // Payload login 成功 → cookie 已設、refresh 當前路由讓 SSR 取新 session
-      router.replace(redirectTo)
-      router.refresh()
+      // Use a full navigation so the freshly-issued Payload cookie is present
+      // when the SSO authorize endpoint resumes the original blog request.
+      window.location.assign(redirectTo)
     } catch {
       setError('網路錯誤，請稍後再試')
     } finally {
@@ -168,7 +168,10 @@ export default function LoginClient({ socialProviders }: { socialProviders: Soci
           </button>
 
           <div className="flex items-center justify-between text-xs">
-            <Link href="/forgot-password" className="text-muted-foreground hover:text-gold-600 hover:underline">
+            <Link
+              href={`/forgot-password${redirectTo !== '/account' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`}
+              className="text-muted-foreground hover:text-gold-600 hover:underline"
+            >
               忘記密碼？
             </Link>
             <Link href={`/register${redirectTo !== '/account' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`} className="text-gold-600 hover:underline">
