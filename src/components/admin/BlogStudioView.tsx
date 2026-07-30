@@ -56,6 +56,13 @@ const BlogStudioView: React.FC<AdminViewServerProps> = async ({
   const req = initPageResult.req
   const user = req.user as { role?: string } | null
   const isAdmin = user?.role === 'admin'
+  const rawDays = Array.isArray(searchParams?.days)
+    ? searchParams.days[0]
+    : searchParams?.days
+  const requestedDays = Number(rawDays)
+  const analyticsDays = [7, 30, 90].includes(requestedDays)
+    ? requestedDays
+    : 30
 
   if (!isAdmin) {
     return (
@@ -141,7 +148,7 @@ const BlogStudioView: React.FC<AdminViewServerProps> = async ({
         depth: 0,
         limit: 1,
       }),
-      getKimBlogAnalytics(req.payload, 30),
+      getKimBlogAnalytics(req.payload, analyticsDays),
     ])
 
   const stats = [

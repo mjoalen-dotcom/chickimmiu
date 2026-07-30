@@ -80,6 +80,7 @@ export default function BlogStudioNav() {
 
   return (
     <div
+      className="blog-studio-nav"
       style={{
         marginBottom: 24,
         borderTop: '2px solid var(--theme-text, #202124)',

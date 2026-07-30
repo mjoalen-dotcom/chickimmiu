@@ -9,6 +9,7 @@ import {
 } from '@payloadcms/richtext-lexical'
 
 import { isAdmin } from '../access/isAdmin'
+import { BlogImageResizeFeature } from '../components/admin/lexical/BlogImageResizeFeature'
 import { safeRevalidate } from '../lib/revalidate'
 import { triggerKimBlogDeploy } from '../lib/blog/kimSyndication'
 
@@ -25,10 +26,20 @@ const blogImageDisplayFields: Field[] = [
     admin: {
       step: 4,
       description:
-        '拖曳滑桿或輸入像素值；手機版仍會自動縮到畫面寬度內，不會超出文章。',
+        '可在文章畫布點選圖片後拖曳四角調整；此欄位可輸入精確像素值。',
       components: {
         Field: '@/components/admin/BlogImageSizeField',
       },
+    },
+  },
+  {
+    name: 'displayHeight',
+    label: '圖片顯示高度',
+    type: 'number',
+    min: 1,
+    max: 12000,
+    admin: {
+      hidden: true,
     },
   },
   {
@@ -166,11 +177,17 @@ export const BlogPosts: CollectionConfig = {
               admin: { description: '顯示在文章列表的簡短說明' },
             },
             {
-              name: 'content',
-              label: '文章內容',
-              type: 'richText',
-              required: true,
-              editor: lexicalEditor({
+              type: 'row',
+              admin: {
+                className: 'kim-blog-editor-layout',
+              },
+              fields: [
+                {
+                  name: 'content',
+                  label: '文章內容',
+                  type: 'richText',
+                  required: true,
+                  editor: lexicalEditor({
                 // 部落格專用「完整編輯器」：在全域 defaultFeatures 之上加上
                 //   1. FixedToolbarFeature — 頂部固定工具列（傳統 WYSIWYG 體驗，
                 //      比預設的 floating toolbar 對非技術作者更直覺）
@@ -192,6 +209,7 @@ export const BlogPosts: CollectionConfig = {
                       media: { fields: blogImageDisplayFields },
                     },
                   }),
+                  BlogImageResizeFeature(),
                   BlocksFeature({
                     blocks: [
                       {
@@ -245,6 +263,11 @@ export const BlogPosts: CollectionConfig = {
                           singular: '表情圖案',
                           plural: '表情圖案',
                         },
+                        admin: {
+                          components: {
+                            Block: '@/components/admin/EmoticonResizeBlock',
+                          },
+                        },
                         fields: [
                           {
                             name: 'image',
@@ -271,10 +294,20 @@ export const BlogPosts: CollectionConfig = {
                             admin: {
                               step: 4,
                               description:
-                                '可自由縮放 24–800px；手機版會自動限制在文章寬度內。',
+                                '在文章畫布點選表情圖案後，可拖曳四角自由縮放；此欄位可輸入精確像素值。',
                               components: {
                                 Field: '@/components/admin/BlogImageSizeField',
                               },
+                            },
+                          },
+                          {
+                            name: 'displayHeight',
+                            label: '表情圖案顯示高度',
+                            type: 'number',
+                            min: 1,
+                            max: 12000,
+                            admin: {
+                              hidden: true,
                             },
                           },
                           {
@@ -294,22 +327,105 @@ export const BlogPosts: CollectionConfig = {
                     ],
                   }),
                 ],
-              }),
-              admin: {
-                description:
-                  '支援標題（H1–H6）、粗體 / 斜體 / 底線 / 刪除線、引言、條列、核取清單、超連結、' +
-                  '表格、水平線、圖片、左右對齊與縮排。插入圖片後可編輯顯示寬度與對齊；' +
-                  '頂部工具列永遠顯示，選取文字可叫出浮動選單。另可用「區塊」插入商品按鈕或表情圖案。',
-              },
-            },
-            {
-              name: 'featuredImage',
-              label: '封面圖片',
-              type: 'upload',
-              relationTo: 'media',
-              admin: {
-                description: '顯示於文章列表及文章頁首圖；建議使用橫式照片。',
-              },
+                  }),
+                  admin: {
+                    width: '72%',
+                    className: 'kim-blog-editor-canvas',
+                    description:
+                      '支援標題（H1–H6）、粗體 / 斜體 / 底線 / 刪除線、引言、條列、核取清單、超連結、' +
+                      '表格、水平線、圖片、左右對齊與縮排。插入圖片後，點選圖片即可拖曳四角縮放；' +
+                      '頂部工具列永遠顯示，選取文字可叫出浮動選單。另可用「區塊」插入商品按鈕或表情圖案。',
+                  },
+                },
+                {
+                  type: 'collapsible',
+                  label: '文章設定',
+                  admin: {
+                    width: '28%',
+                    className: 'kim-blog-editor-settings',
+                    initCollapsed: false,
+                  },
+                  fields: [
+                    {
+                      name: 'featuredImage',
+                      label: '封面圖片',
+                      type: 'upload',
+                      relationTo: 'media',
+                      admin: {
+                        description: '顯示於文章列表及文章頁首圖；建議使用橫式照片。',
+                      },
+                    },
+                    {
+                      name: 'publishedAt',
+                      label: '發佈日期',
+                      type: 'date',
+                      admin: {
+                        date: { pickerAppearance: 'dayAndTime' },
+                        description: '設定文章顯示的發佈日期與時間。',
+                        components: {
+                          Cell: '@/components/admin/BlogPublishedAtCell',
+                        },
+                      },
+                    },
+                    {
+                      name: 'author',
+                      label: '作者',
+                      type: 'relationship',
+                      relationTo: 'users',
+                      required: true,
+                    },
+                    {
+                      name: 'category',
+                      label: '文章分類',
+                      type: 'select',
+                      options: [
+                        { label: '穿搭教學', value: 'styling' },
+                        { label: '新品介紹', value: 'new-arrivals' },
+                        { label: '品牌故事', value: 'brand-story' },
+                        { label: '優惠活動', value: 'promotions' },
+                        { label: '時尚趨勢', value: 'trends' },
+                        { label: '時尚流行', value: 'fashion' },
+                        { label: '美容彩妝', value: 'beauty' },
+                        { label: '購物情報', value: 'shopping' },
+                        { label: '美食料理', value: 'food' },
+                        { label: '生活綜合', value: 'lifestyle' },
+                        { label: '親子育兒', value: 'parenting' },
+                        { label: '旅遊紀錄', value: 'travel' },
+                      ],
+                    },
+                    {
+                      name: 'publishToKimLafayette',
+                      label: '發佈到金老佛爺部落格',
+                      type: 'checkbox',
+                      defaultValue: false,
+                      index: true,
+                      admin: {
+                        description:
+                          '勾選＝blog.kimlafayette.com；不勾選＝購物網站部落格。兩站文章分開管理。',
+                        components: {
+                          Cell: '@/components/admin/BlogSyncCell',
+                        },
+                      },
+                    },
+                    {
+                      name: 'status',
+                      label: '文章狀態',
+                      type: 'select',
+                      required: true,
+                      defaultValue: 'draft',
+                      options: [
+                        { label: '草稿（不公開）', value: 'draft' },
+                        { label: '已發佈', value: 'published' },
+                      ],
+                      admin: {
+                        components: {
+                          Cell: '@/components/admin/BlogStatusCell',
+                        },
+                      },
+                    },
+                  ],
+                },
+              ],
             },
           ],
         },
@@ -377,81 +493,28 @@ export const BlogPosts: CollectionConfig = {
           ],
         },
         {
-          label: '分類與發佈',
-          description: '作者、分類、標籤、同步及發佈狀態',
+          label: '進階設定',
+          description: '文章標籤與舊站來源',
           fields: [
             {
-              name: 'author',
-              label: '作者',
-              type: 'relationship',
-              relationTo: 'users',
-              required: true,
-            },
-            {
-              name: 'category',
-              label: '文章分類',
-              type: 'select',
-              options: [
-                { label: '穿搭教學', value: 'styling' },
-                { label: '新品介紹', value: 'new-arrivals' },
-                { label: '品牌故事', value: 'brand-story' },
-                { label: '優惠活動', value: 'promotions' },
-                { label: '時尚趨勢', value: 'trends' },
-                { label: '時尚流行', value: 'fashion' },
-                { label: '美容彩妝', value: 'beauty' },
-                { label: '購物情報', value: 'shopping' },
-                { label: '美食料理', value: 'food' },
-                { label: '生活綜合', value: 'lifestyle' },
-                { label: '親子育兒', value: 'parenting' },
-                { label: '旅遊紀錄', value: 'travel' },
-              ],
-              admin: {
-                description: '分類會顯示在文章列表與文章頁，選擇方式與 PIXNET 個人分類相同。',
-              },
-            },
-            {
-              type: 'collapsible',
-              label: '發佈網站（務必確認）',
+              name: 'sourceUrl',
+              label: '原始文章網址（選填）',
+              type: 'text',
               admin: {
                 description:
-                  '未勾選＝只發佈在購物網站；勾選＝發佈至金老佛爺部落格 blog.kimlafayette.com。兩站文章分開管理。',
+                  'PIXNET 搬家文章可保留原始網址；新文章留空即可使用 Kim 部落格正式網址。',
               },
-              fields: [
-                {
-                  name: 'publishToKimLafayette',
-                  label: '發佈到金老佛爺部落格 blog.kimlafayette.com',
-                  type: 'checkbox',
-                  defaultValue: false,
-                  index: true,
-                  admin: {
-                    description:
-                      '勾選後，只有「已發佈」狀態會出現在金老佛爺部落格；不勾選則保留為購物網站文章。',
-                    components: {
-                      Cell: '@/components/admin/BlogSyncCell',
-                    },
-                  },
-                },
-                {
-                  name: 'sourceUrl',
-                  label: '原始文章網址（選填）',
-                  type: 'text',
-                  admin: {
-                    description:
-                      'PIXNET 搬家文章可保留原始網址；新文章留空即可使用 Kim 部落格正式網址。',
-                  },
-                  validate: (value: unknown) => {
-                    if (value == null || value === '') return true
-                    try {
-                      const url = new URL(String(value))
-                      return url.protocol === 'https:' || url.protocol === 'http:'
-                        ? true
-                        : '網址必須使用 http 或 https'
-                    } catch {
-                      return '請輸入完整網址'
-                    }
-                  },
-                },
-              ],
+              validate: (value: unknown) => {
+                if (value == null || value === '') return true
+                try {
+                  const url = new URL(String(value))
+                  return url.protocol === 'https:' || url.protocol === 'http:'
+                    ? true
+                    : '網址必須使用 http 或 https'
+                } catch {
+                  return '請輸入完整網址'
+                }
+              },
             },
             {
               name: 'tags',
@@ -465,36 +528,6 @@ export const BlogPosts: CollectionConfig = {
                   required: true,
                 },
               ],
-            },
-            {
-              name: 'status',
-              label: '狀態',
-              type: 'select',
-              required: true,
-              defaultValue: 'draft',
-              options: [
-                { label: '草稿（不公開）', value: 'draft' },
-                { label: '已發佈', value: 'published' },
-              ],
-              admin: {
-                description:
-                  '建議先儲存草稿並完成檢查，再改為已發佈；仍需勾選 Kim 同步才會出現在正式部落格。',
-                components: {
-                  Cell: '@/components/admin/BlogStatusCell',
-                },
-              },
-            },
-            {
-              name: 'publishedAt',
-              label: '發佈日期',
-              type: 'date',
-              admin: {
-                date: { pickerAppearance: 'dayAndTime' },
-                description: '設定文章顯示的發佈日期與時間。',
-                components: {
-                  Cell: '@/components/admin/BlogPublishedAtCell',
-                },
-              },
             },
           ],
         },

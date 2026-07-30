@@ -1,116 +1,110 @@
 'use client'
 
-import { useAllFormFields } from '@payloadcms/ui'
+import {
+  useAllFormFields,
+  useDocumentInfo,
+  useFormBackgroundProcessing,
+  useFormModified,
+} from '@payloadcms/ui'
+import { Eye, Settings2 } from 'lucide-react'
 import { reduceFieldsToValues } from 'payload/shared'
 import React, { useMemo } from 'react'
 
 import BlogStudioNav from './BlogStudioNav'
 
 type EditorValues = {
-  title?: string
-  status?: string
-  publishToKimLafayette?: boolean
   gallery?: unknown[]
+  publishToKimLafayette?: boolean
+  slug?: string
+  status?: string
+  title?: string
+}
+
+function savedLabel({
+  backgroundProcessing,
+  lastUpdateTime,
+  modified,
+}: {
+  backgroundProcessing: boolean
+  lastUpdateTime: number
+  modified: boolean
+}) {
+  if (backgroundProcessing) return '正在儲存'
+  if (modified) return '尚未儲存'
+  if (!lastUpdateTime) return '新文章'
+
+  return `已儲存 ${new Intl.DateTimeFormat('zh-TW', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(lastUpdateTime))}`
 }
 
 export default function BlogEditorHeader() {
   const [fields] = useAllFormFields()
-  const values = useMemo(() => reduceFieldsToValues(fields, true) as EditorValues, [fields])
+  const values = useMemo(
+    () => reduceFieldsToValues(fields, true) as EditorValues,
+    [fields],
+  )
+  const modified = useFormModified()
+  const backgroundProcessing = useFormBackgroundProcessing()
+  const { lastUpdateTime } = useDocumentInfo()
   const published = values.status === 'published'
   const galleryCount = Array.isArray(values.gallery) ? values.gallery.length : 0
+  const publicURL =
+    published && values.publishToKimLafayette && values.slug
+      ? `https://blog.kimlafayette.com/blog/${encodeURIComponent(values.slug)}/`
+      : null
+
+  function focusArticleSettings() {
+    const settings = document.querySelector<HTMLElement>(
+      '.kim-blog-editor-settings',
+    )
+    settings?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    settings?.querySelector<HTMLButtonElement>('button')?.focus()
+  }
 
   return (
-    <section style={{ marginBottom: 18 }}>
+    <section className="kim-blog-editor-header">
       <BlogStudioNav />
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-          paddingBottom: 14,
-          borderBottom: '1px solid var(--theme-elevation-200, #ddd)',
-        }}
-      >
-        <div>
-          <p
-            style={{
-              margin: '0 0 4px',
-              color: '#a25e5e',
-              fontSize: 11,
-              fontWeight: 750,
-              textTransform: 'uppercase',
-            }}
+      <div className="kim-blog-editor-header__bar">
+        <div className="kim-blog-editor-header__identity">
+          <p>寫文章</p>
+          <h2>{values.title || '新增文章'}</h2>
+          <span
+            data-state={
+              backgroundProcessing ? 'saving' : modified ? 'modified' : 'saved'
+            }
           >
-            Article Editor
-          </p>
-          <h2
-            style={{
-              maxWidth: 700,
-              margin: 0,
-              overflow: 'hidden',
-              fontSize: 18,
-              fontWeight: 700,
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {values.title || '新增文章'}
-          </h2>
+            {savedLabel({
+              backgroundProcessing,
+              lastUpdateTime,
+              modified,
+            })}
+          </span>
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-          <span
-            style={{
-              display: 'inline-flex',
-              minHeight: 28,
-              alignItems: 'center',
-              padding: '4px 9px',
-              border: `1px solid ${published ? '#a7f3d0' : '#fed7aa'}`,
-              borderRadius: 999,
-              background: published ? '#ecfdf5' : '#fff1e6',
-              color: published ? '#087f5b' : '#9a3412',
-              fontSize: 11,
-              fontWeight: 700,
-            }}
-          >
-            {published ? '公開' : '草稿'}
-          </span>
-          <span
-            style={{
-              display: 'inline-flex',
-              minHeight: 28,
-              alignItems: 'center',
-              padding: '4px 9px',
-              border: '1px solid var(--theme-elevation-200, #ddd)',
-              borderRadius: 999,
-              borderColor: values.publishToKimLafayette ? '#e7c2c2' : '#bfdbfe',
-              background: values.publishToKimLafayette ? '#fff7f7' : '#eff6ff',
-              color: values.publishToKimLafayette ? '#a25e5e' : '#1d4ed8',
-              fontSize: 11,
-              fontWeight: 650,
-            }}
-          >
+        <div className="kim-blog-editor-header__actions">
+          <span className="kim-blog-editor-header__site">
             {values.publishToKimLafayette
-              ? '發佈至：金老佛爺部落格'
-              : '發佈至：購物網站部落格'}
+              ? '金老佛爺部落格'
+              : '購物網站部落格'}
           </span>
-          <span
-            style={{
-              display: 'inline-flex',
-              minHeight: 28,
-              alignItems: 'center',
-              padding: '4px 9px',
-              border: '1px solid var(--theme-elevation-200, #ddd)',
-              borderRadius: 999,
-              color: 'var(--theme-elevation-650, #555)',
-              fontSize: 11,
-              fontWeight: 650,
-            }}
-          >
+          <span className="kim-blog-editor-header__status">
+            {published ? '已發佈' : '草稿'}
+          </span>
+          <span className="kim-blog-editor-header__gallery">
             相簿 {galleryCount} 張
           </span>
+          <button type="button" onClick={focusArticleSettings}>
+            <Settings2 aria-hidden size={16} strokeWidth={1.8} />
+            文章設定
+          </button>
+          {publicURL ? (
+            <a href={publicURL} target="_blank" rel="noopener noreferrer">
+              <Eye aria-hidden size={16} strokeWidth={1.8} />
+              預覽
+            </a>
+          ) : null}
         </div>
       </div>
     </section>

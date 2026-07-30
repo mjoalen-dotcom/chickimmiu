@@ -78,44 +78,39 @@ export default function BlogImageSizeField({
 
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(140px, 1fr) 88px',
+          display: 'flex',
           alignItems: 'center',
           gap: 12,
         }}
       >
         <input
           id={`${path}-range`}
-          type="range"
-          aria-label="圖片顯示寬度"
+          type="number"
+          aria-label="圖片寬度像素"
           min={min}
           max={max}
           step={step}
           value={width}
           onChange={(event) => update(event.currentTarget.valueAsNumber)}
-          style={{ width: '100%', accentColor: '#a25e5e' }}
+          style={{
+            width: 120,
+            minHeight: 38,
+            padding: '7px 10px',
+            border: '1px solid var(--theme-elevation-250)',
+            borderRadius: 6,
+            background: 'var(--theme-input-bg)',
+            color: 'var(--theme-text)',
+            fontSize: 13,
+          }}
         />
-        <div>
-          <input
-            type="number"
-            aria-label="圖片寬度像素"
-            min={min}
-            max={max}
-            step={step}
-            value={width}
-            onChange={(event) => update(event.currentTarget.valueAsNumber)}
-            style={{
-              width: '100%',
-              minHeight: 38,
-              padding: '7px 10px',
-              border: '1px solid var(--theme-elevation-250)',
-              borderRadius: 6,
-              background: 'var(--theme-input-bg)',
-              color: 'var(--theme-text)',
-              fontSize: 13,
-            }}
-          />
-        </div>
+        <span
+          style={{
+            color: 'var(--theme-elevation-550)',
+            fontSize: 12,
+          }}
+        >
+          px
+        </span>
       </div>
 
       <div

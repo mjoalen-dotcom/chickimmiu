@@ -125,6 +125,28 @@ const nextConfig = {
         ],
       },
       {
+        // Payload media files are public content and are embedded by the
+        // standalone Kim Lafayette blog on a separate origin.
+        source: '/api/media/file/:path*',
+        headers: [
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/media/:path*',
+        headers: [
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
         // Static assets — long cache
         source: '/images/:path*',
         headers: [

@@ -60,11 +60,13 @@ import { default as default_35c860dac7cd35087c887518997aff75 } from '@/component
 import { default as default_916617e4baba23f7b71ea02488bb8afa } from '@/components/admin/BlogEditorHeader'
 import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { default as default_fc18f198025fd75884468788785f22db } from '@/components/admin/BlogImageSizeField'
+import { default as default_d7f09f9e8d99149f4027217ae38f03b3 } from '@/components/admin/EmoticonResizeBlock'
+import { BlogImageResizeFeatureClient as BlogImageResizeFeatureClient_74cb45170de7b84dad1e6ef6cecb4d00 } from '@/components/admin/lexical/BlogImageResizeFeature.client'
 import { TableFeatureClient as TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { FixedToolbarFeatureClient as FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { default as default_603a2b8138cd47687180f37ca2cfb3ae } from '@/components/admin/BlogPublishedAtCell'
 import { default as default_fce296b7499db768c8bb0fc89b6e5f6b } from '@/components/admin/BlogSyncCell'
 import { default as default_8caf9717c60858cb0f0c579495ac02be } from '@/components/admin/BlogStatusCell'
-import { default as default_603a2b8138cd47687180f37ca2cfb3ae } from '@/components/admin/BlogPublishedAtCell'
 import { default as default_7ac7d8af5819af6361453ab081f6e0e0 } from '@/components/admin/BlogListDashboard'
 import { default as default_2d3b6dcbebce75fc2ef5ac094f4218f0 } from '@/components/admin/ColorField'
 import { default as default_7daf04b168de0230737ba8fdd5db8d46 } from '@/components/admin/MediaUploadRulesNotice'
@@ -163,11 +165,13 @@ export const importMap = {
   "@/components/admin/BlogEditorHeader#default": default_916617e4baba23f7b71ea02488bb8afa,
   "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@/components/admin/BlogImageSizeField#default": default_fc18f198025fd75884468788785f22db,
+  "@/components/admin/EmoticonResizeBlock#default": default_d7f09f9e8d99149f4027217ae38f03b3,
+  "@/components/admin/lexical/BlogImageResizeFeature.client#BlogImageResizeFeatureClient": BlogImageResizeFeatureClient_74cb45170de7b84dad1e6ef6cecb4d00,
   "@payloadcms/richtext-lexical/client#TableFeatureClient": TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#FixedToolbarFeatureClient": FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  "@/components/admin/BlogPublishedAtCell#default": default_603a2b8138cd47687180f37ca2cfb3ae,
   "@/components/admin/BlogSyncCell#default": default_fce296b7499db768c8bb0fc89b6e5f6b,
   "@/components/admin/BlogStatusCell#default": default_8caf9717c60858cb0f0c579495ac02be,
-  "@/components/admin/BlogPublishedAtCell#default": default_603a2b8138cd47687180f37ca2cfb3ae,
   "@/components/admin/BlogListDashboard#default": default_7ac7d8af5819af6361453ab081f6e0e0,
   "@/components/admin/ColorField#default": default_2d3b6dcbebce75fc2ef5ac094f4218f0,
   "@/components/admin/MediaUploadRulesNotice#default": default_7daf04b168de0230737ba8fdd5db8d46,
