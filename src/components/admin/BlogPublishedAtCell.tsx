@@ -8,9 +8,20 @@ const formatter = new Intl.DateTimeFormat('zh-TW', {
   day: '2-digit',
   hour: '2-digit',
   minute: '2-digit',
-  hour12: false,
+  hourCycle: 'h23',
   timeZone: 'Asia/Taipei',
 })
+
+function formatPublishedAt(date: Date) {
+  const parts = formatter
+    .formatToParts(date)
+    .reduce<Record<string, string>>((result, part) => {
+      if (part.type !== 'literal') result[part.type] = part.value
+      return result
+    }, {})
+
+  return `${parts.year}/${parts.month}/${parts.day} ${parts.hour}:${parts.minute}`
+}
 
 export default function BlogPublishedAtCell(
   props: DefaultCellComponentProps,
@@ -25,8 +36,12 @@ export default function BlogPublishedAtCell(
   if (Number.isNaN(date.getTime())) return <span>{raw}</span>
 
   return (
-    <time dateTime={raw} style={{ whiteSpace: 'nowrap', fontSize: 12 }}>
-      {formatter.format(date)}
+    <time
+      dateTime={raw}
+      suppressHydrationWarning
+      style={{ whiteSpace: 'nowrap', fontSize: 12 }}
+    >
+      {formatPublishedAt(date)}
     </time>
   )
 }
