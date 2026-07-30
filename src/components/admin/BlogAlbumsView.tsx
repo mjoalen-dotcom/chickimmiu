@@ -1,9 +1,9 @@
-/* eslint-disable @next/next/no-img-element */
 import { DefaultTemplate } from '@payloadcms/next/templates'
-import { FolderOpen, ImagePlus, Images } from 'lucide-react'
+import { FolderOpen, ImagePlus, Plus } from 'lucide-react'
 import type { AdminViewServerProps } from 'payload'
 import React from 'react'
 
+import BlogAlbumsGrid, { type BlogAlbumAdminCard } from './BlogAlbumsGrid'
 import BlogStudioNav from './BlogStudioNav'
 
 type MediaRow = {
@@ -11,8 +11,6 @@ type MediaRow = {
   filename?: string | null
   alt?: string | null
   url?: string | null
-  mimeType?: string | null
-  updatedAt?: string | null
   sizes?: {
     thumbnail?: {
       url?: string | null
@@ -20,15 +18,17 @@ type MediaRow = {
   } | null
 }
 
-type BlogPostMediaRefs = {
+type BlogPostAlbumRow = {
+  id: number | string
+  title?: string | null
+  slug?: string | null
+  category?: string | null
+  status?: string | null
+  publishedAt?: string | null
+  updatedAt?: string | null
   featuredImage?: number | string | { id?: number | string } | null
   gallery?: (number | string | { id?: number | string })[] | null
-  heroVideo?: number | string | { id?: number | string } | null
-  heroAudio?: number | string | { id?: number | string } | null
   content?: unknown
-  seo?: {
-    metaImage?: number | string | { id?: number | string } | null
-  } | null
 }
 
 function relationId(value: unknown) {
@@ -55,44 +55,27 @@ function collectContentMedia(value: unknown, ids: Set<number | string>) {
   for (const child of Object.values(row)) collectContentMedia(child, ids)
 }
 
-function collectPostMedia(posts: BlogPostMediaRefs[]) {
+function collectAlbumMedia(post: BlogPostAlbumRow) {
   const ids = new Set<number | string>()
-  for (const post of posts) {
-    for (const value of [
-      post.featuredImage,
-      ...(post.gallery || []),
-      post.heroVideo,
-      post.heroAudio,
-      post.seo?.metaImage,
-    ]) {
-      const id = relationId(value)
-      if (id != null) ids.add(id)
-    }
-    collectContentMedia(post.content, ids)
+  for (const value of [post.featuredImage, ...(post.gallery || [])]) {
+    const id = relationId(value)
+    if (id != null) ids.add(id)
   }
+  if (ids.size === 0) collectContentMedia(post.content, ids)
   return [...ids]
 }
 
-function imageUrl(media: MediaRow) {
+function imageUrl(media: MediaRow, baseUrl: string) {
   const thumbnail = media.sizes?.thumbnail?.url
-  if (thumbnail) return thumbnail
-  if (media.url) return media.url
-  if (media.filename) {
-    return `/api/media/file/${encodeURIComponent(media.filename)}`
-  }
-  return ''
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat('zh-TW', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    timeZone: 'Asia/Taipei',
-  }).format(date)
+  const source =
+    thumbnail ||
+    media.url ||
+    (media.filename
+      ? `/api/media/file/${encodeURIComponent(media.filename)}`
+      : '')
+  if (!source) return ''
+  if (/^https?:\/\//i.test(source) || !baseUrl) return source
+  return `${baseUrl.replace(/\/$/, '')}/${source.replace(/^\//, '')}`
 }
 
 const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
@@ -125,22 +108,62 @@ const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
     collection: 'blog-posts',
     depth: 0,
     limit: 500,
+    sort: '-updatedAt',
     where: { publishToKimLafayette: { equals: true } },
   })
-  const mediaIds = collectPostMedia(postsResult.docs as BlogPostMediaRefs[])
+  const posts = postsResult.docs as BlogPostAlbumRow[]
+  const albumMedia = new Map(
+    posts.map((post) => [String(post.id), collectAlbumMedia(post)]),
+  )
+  const previewMediaIds = [
+    ...new Set(
+      [...albumMedia.values()].flatMap((ids) => ids.slice(0, 4)),
+    ),
+  ]
   const mediaResult =
-    mediaIds.length > 0
+    previewMediaIds.length > 0
       ? await req.payload.find({
           collection: 'media',
           depth: 0,
           limit: 100,
-          sort: '-updatedAt',
           where: {
-            and: [{ mimeType: { contains: 'image/' } }, { id: { in: mediaIds } }],
+            and: [
+              { mimeType: { contains: 'image/' } },
+              { id: { in: previewMediaIds } },
+            ],
           },
         })
-      : { docs: [], totalDocs: 0 }
-  const media = mediaResult.docs as MediaRow[]
+      : { docs: [] }
+  const mediaById = new Map(
+    (mediaResult.docs as MediaRow[]).map((media) => [String(media.id), media]),
+  )
+  const publicServerUrl =
+    process.env.NEXT_PUBLIC_SERVER_URL ||
+    process.env.PAYLOAD_PUBLIC_SERVER_URL ||
+    ''
+
+  const albums: BlogAlbumAdminCard[] = posts.map((post) => {
+    const ids = albumMedia.get(String(post.id)) || []
+    return {
+      id: String(post.id),
+      slug: post.slug || '',
+      title: post.title || '未命名相簿',
+      category: post.category || 'lifestyle',
+      status: post.status || 'draft',
+      publishedAt: post.publishedAt || null,
+      updatedAt: post.updatedAt || null,
+      photoCount: ids.length,
+      previews: ids.slice(0, 4).flatMap((id) => {
+        const media = mediaById.get(String(id))
+        if (!media) return []
+        const src = imageUrl(media, publicServerUrl)
+        return src
+          ? [{ id: String(media.id), src, alt: media.alt || media.filename || '' }]
+          : []
+      }),
+    }
+  })
+  const totalPhotos = albums.reduce((total, album) => total + album.photoCount, 0)
 
   return (
     <DefaultTemplate
@@ -153,8 +176,48 @@ const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
       user={req.user || undefined}
       visibleEntities={initPageResult.visibleEntities}
     >
-      <main style={{ maxWidth: 1320, margin: '0 auto', padding: '24px 32px 48px' }}>
+      <main style={{ maxWidth: 1420, margin: '0 auto', padding: '24px 32px 48px' }}>
         <BlogStudioNav />
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 22,
+            minHeight: 48,
+            marginBottom: 22,
+            borderBottom: '1px solid var(--theme-elevation-200, #dedede)',
+          }}
+        >
+          <span
+            style={{
+              alignSelf: 'stretch',
+              display: 'inline-flex',
+              alignItems: 'center',
+              borderBottom: '2px solid #a25e5e',
+              color: 'var(--theme-text, #202124)',
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            我的相簿
+          </span>
+          <a
+            href="/admin/collections/media"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              color: 'var(--theme-elevation-650, #555)',
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}
+          >
+            <FolderOpen aria-hidden size={16} />
+            資料夾
+          </a>
+        </div>
 
         <header
           style={{
@@ -162,8 +225,8 @@ const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
             flexWrap: 'wrap',
             alignItems: 'flex-end',
             justifyContent: 'space-between',
-            gap: 16,
-            marginBottom: 24,
+            gap: 18,
+            marginBottom: 22,
           }}
         >
           <div>
@@ -179,7 +242,7 @@ const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
               Kim Albums
             </p>
             <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>
-              金老佛爺文章相簿
+              我的相簿
             </h1>
             <p
               style={{
@@ -188,13 +251,14 @@ const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
                 fontSize: 13,
               }}
             >
-              {mediaResult.totalDocs.toLocaleString('zh-TW')} 張文章使用圖片，不含購物網站媒體
+              {albums.length.toLocaleString('zh-TW')} 本相簿 ·{' '}
+              {totalPhotos.toLocaleString('zh-TW')} 個檔案
             </p>
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             <a
-              href="/admin/collections/media"
+              href="/admin/collections/media/create"
               style={{
                 display: 'inline-flex',
                 minHeight: 40,
@@ -209,123 +273,32 @@ const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
                 textDecoration: 'none',
               }}
             >
-              <FolderOpen aria-hidden size={17} />
-              全站媒體庫
+              <ImagePlus aria-hidden size={17} />
+              上傳照片
             </a>
             <a
-              href="/admin/collections/media/create"
+              href="/admin/collections/blog-posts/create"
               style={{
                 display: 'inline-flex',
                 minHeight: 40,
                 alignItems: 'center',
                 gap: 7,
-                padding: '9px 13px',
+                padding: '9px 14px',
                 borderRadius: 6,
-                background: '#202124',
+                background: '#a25e5e',
                 color: '#fff',
                 fontSize: 13,
                 fontWeight: 700,
                 textDecoration: 'none',
               }}
             >
-              <ImagePlus aria-hidden size={17} />
-              上傳 Kim 照片
+              <Plus aria-hidden size={17} />
+              建立相簿
             </a>
           </div>
         </header>
 
-        {media.length === 0 ? (
-          <div
-            style={{
-              display: 'grid',
-              minHeight: 240,
-              placeItems: 'center',
-              borderTop: '1px solid var(--theme-elevation-200, #ddd)',
-              borderBottom: '1px solid var(--theme-elevation-200, #ddd)',
-              color: 'var(--theme-elevation-550, #666)',
-            }}
-          >
-            <div style={{ textAlign: 'center' }}>
-              <Images aria-hidden size={30} strokeWidth={1.4} />
-              <p>尚無金老佛爺文章使用的圖片</p>
-              <p style={{ maxWidth: 460, fontSize: 12, lineHeight: 1.7 }}>
-                圖片上傳後，請附加到已勾選「發佈到金老佛爺部落格」的文章，才會出現在這裡。
-              </p>
-            </div>
-          </div>
-        ) : (
-          <section
-            aria-label="最近圖片"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-              gap: 14,
-            }}
-          >
-            {media.map((item) => {
-              const src = imageUrl(item)
-              return (
-                <a
-                  key={String(item.id)}
-                  href={`/admin/collections/media/${item.id}`}
-                  style={{
-                    display: 'block',
-                    overflow: 'hidden',
-                    border: '1px solid var(--theme-elevation-200, #ddd)',
-                    borderRadius: 6,
-                    background: 'var(--theme-elevation-0, #fff)',
-                    color: 'inherit',
-                    textDecoration: 'none',
-                  }}
-                >
-                  <div
-                    style={{
-                      aspectRatio: '1 / 1',
-                      overflow: 'hidden',
-                      background: 'var(--theme-elevation-100, #f3f3f3)',
-                    }}
-                  >
-                    {src ? (
-                      <img
-                        src={src}
-                        alt={item.alt || item.filename || ''}
-                        loading="lazy"
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                        }}
-                      />
-                    ) : null}
-                  </div>
-                  <div style={{ padding: '9px 10px' }}>
-                    <strong
-                      style={{
-                        display: 'block',
-                        overflow: 'hidden',
-                        fontSize: 12,
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {item.filename || '未命名圖片'}
-                    </strong>
-                    <span
-                      style={{
-                        display: 'block',
-                        marginTop: 4,
-                        color: 'var(--theme-elevation-550, #666)',
-                        fontSize: 11,
-                      }}
-                    >
-                      {formatDate(item.updatedAt)}
-                    </span>
-                  </div>
-                </a>
-              )
-            })}
-          </section>
-        )}
+        <BlogAlbumsGrid albums={albums} />
       </main>
     </DefaultTemplate>
   )
