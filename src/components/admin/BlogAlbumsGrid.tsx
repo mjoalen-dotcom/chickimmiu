@@ -15,6 +15,7 @@ export type BlogAlbumAdminCard = {
   previews: Array<{
     id: string
     src: string
+    fallbackSrc: string
     alt: string
   }>
 }
@@ -257,6 +258,17 @@ export default function BlogAlbumsGrid({
                             src={preview.src}
                             alt=""
                             loading="lazy"
+                            onError={(event) => {
+                              const image = event.currentTarget
+                              if (
+                                !preview.fallbackSrc ||
+                                image.dataset.fallbackApplied === 'true'
+                              ) {
+                                return
+                              }
+                              image.dataset.fallbackApplied = 'true'
+                              image.src = preview.fallbackSrc
+                            }}
                             style={{
                               position: 'absolute',
                               inset: 0,
