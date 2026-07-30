@@ -16,14 +16,14 @@
 | LB-01 | 🔴 P0 | 金流 | 線上金流零串接 + prod 一個付款方式都沒開 | 程式+設定 | ✅ 2026-07-27 現金版：防呆+預設修正 `a049848`；enabledMethods 由 enable-cash-launch.ts 開 cash_cod/meetup（線上金流串接仍未做，見 §4） |
 | LB-02 | 🔴 P0 | 金流 | 選變體 → NT$0 結帳 | 程式(+資料) | ✅ 2026-07-27 `4383555`，prod 購物車實測 3480 非 0 |
 | LB-03 | 🔴 P0 | 庫存 | 超賣無防護 + 下單/處理雙重扣庫存 | 程式 | ✅ 2026-07-27 `4383555`（閘門在關預購後才實際生效） |
-| LB-04 | 🔴 P0 | 庫存 | 1395 件商品 stock 全 0，只靠全站預購 | 資料+決策 | ⏳ 待拍板（現況=全站預購接單，可先賣） |
+| LB-04 | 🔴 P0 | 庫存 | ~~1395 件商品 stock 全 0~~ **前提修正（07-28 DB 實測）**：真庫存早已在，但是 5 月匯入的舊快照 | 資料+決策 | ⏳ 待拍板：同步最新 Shopline 庫存（推薦）或轉全預購（詳見 LB-04 節 07-28 補記） |
 | LB-05 | 🔴 P0 | 通知 | 下單當下不發確認信，且文案謊稱「已收到付款」 | 程式 | ✅ 2026-07-27 `a049848` create 即寄 + statusLine 動態文案 |
 | LB-06 | 🔴 P0 | 訂單 | 60 分鐘自動取消誤殺貨到付款訂單 | 程式/設定 | ✅ 2026-07-27 `a049848` 排除現金單（註：outage crontab 本來就沒排 auto-cancel，此為回歸保險） |
 | LB-07 | 🔴 P0 | 法遵 | 首頁假網紅 + 假讚數 live（不實廣告曝險） | 程式/資料 | ✅ 2026-07-27 `a049848` DEMO_UGC 全移除，空集合不渲染 |
 | LB-08 | 🟠 P1 | 設定 | PAYLOAD_SECRET / DATABASE_URI 靜默 dev fallback | 設定(+程式) | ✅ 2026-07-27 晚 `ee6472c` production 缺任一即 throw fail-fast；prod build 通過（= env 齊全實證） |
 | LB-09 | 🟠 P1 | 內容 | 7 個導覽主題系列全空 | 資料 | ✅ 2026-07-27 七系列綁真商品 197 tags（來源=Shopline tags/分類/舊站分類爬回比對；scripts/oneoff/seed-collection-tags-20260727.py；demo 商品 id1-9 的暫時 tags 已移除） |
 | LB-10 | 🟠 P1 | SEO | 封測站 robots 仍 allow:/ | 程式/設定 | ✅ 2026-07-27 robots.ts 依 NEXT_PUBLIC_SITE_URL host（pre./staging. 前綴）或 DISABLE_INDEXING=1 全站 Disallow；prod env 已確認設 pre. |
-| LB-11 | 🟠 P1 | 上線 | www 仍是舊 Shopline，需域名切換計畫 | 營運 | — |
+| LB-11 | 🟠 P1 | 上線 | www 仍是舊 Shopline，需域名切換計畫 | 營運 | 📋 2026-07-28 runbook 完成：`docs/LAUNCH_LB11_WWW_CUTOVER_RUNBOOK.md`（含 DNS/憑證預簽/回滾；DNS 在 GoDaddy） |
 | LB-12 | 🟠 P1 | 物流 | ShippingMethods 後台無效（運費寫死前端） | 程式 | ✅ 2026-07-27 結帳改讀 /api/shipping-methods（isActive+sortOrder；carrier→tab 類型 derive；API 掛掉 fallback 硬編碼）；prod 後台既有 8 筆設定直接生效 |
 | LB-13 | 🟠 P1 | 轉換 | 結帳強制填生日+性別、店家新單通知信箱空 | 設定 | ✅ 2026-07-27 晚 `scripts/oneoff/launch-settings-20260727.ts`：生日/性別必填=false + adminAlertEmails=service@chickimmiu.com + sendAdminNewOrderAlert=true（prod API 驗證生效） |
 | LB-14 | 🟡 P2 | 收尾 | 客服資訊不一致 / 退款不回補 / 訪客結帳名實不符等 | 雜項 | 1 天 |
@@ -90,6 +90,15 @@
 - 決定預購政策：若「現貨為主」→ 匯入真實庫存（stocktake/import），並把非現貨商品才開 `allowPreOrder`。
 - 若「全預購接單」→ 明確保留 allowPreOrder，但需搭配 LB-05 文案講清出貨時程。
 **驗收**：預購政策拍板；若非全預購，主要在售商品有真實庫存數。
+
+> **⚠️ 2026-07-28 前提修正（直接 SQLite 實測，推翻上述根因）**
+> - **庫存不是全 0**：1395 件商品有 **1309 件 `stock>0`**（分布是真實長尾：562 件剩 1、331 件剩 2…）；4547 個變體有 **2594 個 `stock>0`**。資料來自 **5/10 前後的 Shopline 匯入**（987 件 5/10 更新、僅 225 件 6/16 刷新），距今約 2.5 個月。
+> - **也不是全站預購**：`allowPreOrder=1` 只有 **138 件**，其餘 1257 件 =0。
+> - **後果：LB-03 庫存閘門在 prod 已經是生效狀態** —— 1953 個 stock=0 變體（43%）現在就會被拒單；PDP 端一致（售完鎖選 + 僅剩 N 件標示）。若這些變體其實有貨（庫存漂移），= 正在漏接單；若真沒貨，= 正確行為。
+> - **決策題因此改變**：不是「要不要載庫存」，而是「**5 月的舊快照要不要刷新**」。期間 Shopline 正站持續在賣，數字必然漂移。
+>   - **選項 A（推薦）**：切換前一晚從 Shopline 匯出最新庫存 → 跑 stock-only 同步腳本（upsert by SKU；勿重跑全量 import，會蓋掉新後台改過的價格/文案）→ 切換日 Shopline 停收單，漂移歸零。
+>   - **選項 B**：接受現值直接賣（風險：超賣已售出品項＋漏接補貨品項）。
+>   - **選項 C**：全開 `allowPreOrder` 轉預購模式（放棄既有真實資料，不推薦）。
 
 ---
 
@@ -229,3 +238,47 @@ prod `/api/checkout-settings` 顯示 `birthdayRequired:true, genderRequired:true
 2. **現金版開賣（路徑 A）**：+ LB-01(設定+防呆)、LB-05、LB-06、LB-07、LB-04(決策)、§5 清單 → **2–4 天可實際收單**。
 3. **疊上線上刷卡（路徑 B）**：§4 ECPay 串接（需憑證）→ **額外 1–2 週**。
 4. P1/P2 與域名切換（LB-11）並行收尾。
+
+---
+
+## 6. 2026-07-29 全站複核（10 面向 workflow 稽核 + 登入鏈真瀏覽器實測）
+
+**總判定：🔴 尚不可正式開賣。** 收錢程式鏈已就緒（金流/發票正式憑證 07-29 已切、E2E 防呆齊），但 1 個 P0（庫存舊快照）+ 一批 P1 營運缺口未清。**LOGIN 不是問題**——email/密碼與 LINE Login 皆實測通過（詳下）。
+
+### 6.1 登入鏈實測（本日）
+- ✅ **Email 註冊/登入全鏈 PASS**：`/api/users/register`（需 `acceptTerms:true`）201 → 登入 200 → `/account` 會員中心完整渲染（真 Chrome 實測）；歡迎信 + 忘記密碼 reset 信皆真寄達（Resend `no-reply@chickimmiu.com`）。測試帳號 user id=13 `mjoalen+launchcheck0729@gmail.com`。
+- ✅ **LINE Login 已串**：prod 有 `AUTH_LINE_CHANNEL_ID/SECRET`+`AUTH_SECRET`+`AUTH_URL`；OAuth 鏈（PKCE+state+nonce）通到 LINE 官方登入頁、channel 2009827245 接受 pre callback。剩「真 LINE 帳號按完登入→callback→bridge」最後一哩需真人實測（C#1）。
+- ⚪ Google/Facebook 憑證空 → 按鈕自動隱藏（設計行為）；Apple 未設。
+- P2 加固：login form 無 `method="post"` fallback（hydration 完成前按 Enter 會 GET 提交、密碼上 URL）；`AUTH_DEBUG=true` 掛在 prod；`ADMIN_RESET_PASSWORD=` 空字串 + `??` 守門（誤跑 resetAdmin.ts 會把 admin 密碼設空）；`adminPermissions.canManageX` 全 repo 零引用（死欄位、customer 預設 true 具誤導性）。
+
+### 6.2 P0（開賣絕對前提）
+| # | 問題 | 現況證據 | 修法 |
+|---|---|---|---|
+| 1 | **庫存快照仍停 2026-05-10（80 天前），期間 Shopline 正站持續銷售** | 1395 商品 80% updated_at=05-10/11；1389 個 0-stock 變體被 LB-03 閘門拒單（可能漏接單）、帳面有貨的可能已在舊站賣掉（收錢出不了貨） | Shopline 匯出最新庫存 → prod 跑 `sync-shopline-stock.ts`（已在 prod `54cd9e6`，dry-run 防呆）→ 抽查 → 真寫入。**等 user 給匯出檔+拍板** |
+
+### 6.3 P1（正式開賣前必清）
+1. **ECPay production 零真實交易**：切正式後全鏈（3018203 簽章→導向→callback→發票）未驗。→ 內部真卡小額下一單驗全鏈。
+2. **物流整組死路**：`ECPAY_LOGISTICS_*` 五 key 全缺 + `ECPAY_ENV=production` 連帶 → 地圖 503（顧客退回手打門市）、cvs/home/return 託運單全發不了號；超商寄件人手機仍 `0912345678`；宅配寄件人四欄全空。→ 拿正式物流憑證跑 `scripts/setup-ecpay-logistics-prod.sh` + 後台補寄件人。
+3. ~~**auto-cancel-orders 無排程**~~ ✅ **2026-07-29 已修**（`6419205`）：crontab 補 `*/10` job + cron.yml 同步；prod 實測回 `{"ok":true,"minutes":60,...}`、無 token 401。
+4. ~~**發票 retry 死碼**~~ ✅ **2026-07-29 已修**（`6419205`）：新增 `/api/cron/retry-invoices`（包 `retryFailedInvoices` + 本輪仍失敗時寄 admin 警示信到 adminAlertEmails，每張最多 3 封）+ crontab `*/30` + cron.yml；prod 實測 `{"retried":0,...}`（3 張封存單正確排除）。**殘餘**：發票 PDF 賣方「統編」仍空白——global 從未儲存、名稱/地址有 default 頂著只缺 UBN；但 `ecpayConfig.merchantId/hashKey/hashIV` 是 required+NOT NULL 死欄位（引擎只讀 env），seed 腳本被驗證擋（`scripts/oneoff/seed-invoice-settings-20260729.ts` 已備好、冪等）。**擇一**：(a) 後台 InvoiceSettings 一次填齊（含三格憑證=env 同組值，1 分鐘）；(b) 改 schema required:false + 手寫 migration 後重跑 seed。另發現 invoicePdfGenerator.ts:432 sellerPhone 列 `<\span>` 反斜線筆誤（潛伏 HTML bug，已開背景工單）。
+5. **行銷追蹤全空**：GTM/GA4/Pixel env 與 DB 兩層皆空、首頁 HTML 零追蹤碼；CAPI token 有值但缺 pixel id 一樣 no-op。Google Ads 投放中=轉換零回傳。→ 最快走後台 GlobalSettings.tracking 填 ID（runtime 讀 DB，免 rebuild）。
+6. **LINE Messaging token 缺**（`LINE_CHANNEL_ACCESS_TOKEN/SECRET`，channel 1661280982）：推播/webhook 雙向 inert（靜默降級不炸）。且 prod 0 會員綁 lineUid，補 token 後觸達仍是 0，需綁定流程。→ user 抄 token/secret + 開 lineMessagingEnabled。
+7. **LB-11 runbook 兩個 callback 缺口**：①pre 全站 301 會斷綠界 server-to-server callback（定期定額 PeriodReturnURL/物流 ServerReplyURL 註冊時已寫死 pre host）→ §2.6 改「頁面 301、/api/ 不轉址」；②LINE Messaging webhook URL 換 host 不在清單。另 Phase 1 前置（TTL 降檔/nginx 預埋/憑證預簽）今日實測一項都沒做。
+
+### 6.4 P2 / 收尾（可上線後）
+- 退款(refunded)/退回(returned)不回補庫存（僅 cancelled 回補）→ SOP「先 cancelled 再 refunded」。
+- 庫存檢查與扣減非原子（併發搶最後一件可超賣 1 件）— 量小可接受。
+- `/checkout/success/[orderId]` 任意訂單號都渲染成功 UI；checkoutAsGuest 名實不符仍在。
+- `voidInvoice`/`allowanceInvoice` 無 caller → 退款須手動去綠界作廢發票。
+- prod 兩個孤兒 `payload generate:types` 程序（keep-alive patch 副作用）建議 kill；22 把死 env key 建議清理；`ADMIN_BASIC_*` 未設（/admin 無 BasicAuth 外層）。
+- whitehat-marketing/annual-tier-reset 未排程（低庫存 digest 不會發；12/31 前必須補 annual-tier-reset）；cron.yml 落後 crontab 4 條，GitHub 恢復切回前必先同步。
+- tier_upgrade_email 模板 slug 缺（fallback 有寄）；`/api/v1/points` 公開曝露 lotteryConfig.winRate。
+- ecpay-logistics status callback 有「找不到訂單」錯誤 log（07-28 測試單殘留）；測試訂單/測試會員開賣前清理。
+
+### 6.5 已驗證就緒（本日實測）
+- 金流 production 設定/重啟順序/fail-safe/CSP form-action/callback 驗章冪等全數 PASS；subscription 四路由同步吃 ECPAY_ENV。
+- 發票 production 憑證閘道實測 PASS（GetIssue 查詢連通、AES 雙向 OK、未產生交易）；`3a50cf7`+`ce334a1` 皆在 prod HEAD。
+- 前台 smoke 26/27（唯一 fail=既知 soft-404）；七導覽系列全綁真商品；假 UGC 0 命中；PDP 價格非 0。
+- 會員中心 25 路由未登入全數正確 redirect；自助服務 API 全數 401/403 守門；點數兌換/錢包/評論寫入端點皆有保護。
+- cron 近 3 日 22,378 筆執行僅 1 筆非 200；LB-06 現金單排除在 prod 生效；訂閱 period-callback 路由在、expire-subscriptions 已排。
+- robots pre.* Disallow 生效；www 切換後 robots 自動恢復 allow（host-based）。
