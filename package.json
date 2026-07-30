@@ -28,6 +28,7 @@
     "seed:journeys:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedAutomationJourneys.ts -- --dry-run",
     "migrate:media:r2": "cross-env NODE_OPTIONS=--no-deprecation payload run scripts/migrate-media-to-r2.ts",
     "migrate:media:r2:dry": "cross-env MIGRATE_DRY_RUN=1 NODE_OPTIONS=--no-deprecation payload run scripts/migrate-media-to-r2.ts",
+    "import:kim-pixnet:directory": "node scripts/import-kim-pixnet-directory.mjs",
     "smoke:storefront": "node --import tsx/esm scripts/smoke-storefront.ts"
   },
   "dependencies": {
