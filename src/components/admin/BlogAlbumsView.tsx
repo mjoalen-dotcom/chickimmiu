@@ -31,6 +31,21 @@ type BlogPostAlbumRow = {
   content?: unknown
 }
 
+const migratedPreviewFallbacks: Record<string, readonly string[]> = {
+  '5070946584': [
+    'https://blog.kimlafayette.com/blog-media/5070946584/001-7204b7f0e3cd-480.webp',
+    'https://blog.kimlafayette.com/blog-media/5070946584/002-7a3b5a74ca52-480.webp',
+    'https://blog.kimlafayette.com/blog-media/5070946584/003-418d0a495ed7-480.webp',
+    'https://blog.kimlafayette.com/blog-media/5070946584/004-ae55f0ad522c-480.webp',
+  ],
+  '5071097148': [
+    'https://blog.kimlafayette.com/blog-media/5071097148/001-16cc1f9e6e07-480.webp',
+    'https://blog.kimlafayette.com/blog-media/5071097148/002-6f850805095e-480.webp',
+    'https://blog.kimlafayette.com/blog-media/5071097148/003-713db93d8030-480.webp',
+    'https://blog.kimlafayette.com/blog-media/5071097148/004-f4dce00b30cd-480.webp',
+  ],
+}
+
 function relationId(value: unknown) {
   if (typeof value === 'number' || typeof value === 'string') return value
   if (value && typeof value === 'object' && 'id' in value) {
@@ -162,7 +177,7 @@ const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
       publishedAt: post.publishedAt || null,
       updatedAt: post.updatedAt || null,
       photoCount: ids.length,
-      previews: ids.slice(0, 4).flatMap((id) => {
+      previews: ids.slice(0, 4).flatMap((id, index) => {
         const media = mediaById.get(String(id))
         if (!media) return []
         const sources = imageSources(media, publicServerUrl)
@@ -170,7 +185,9 @@ const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
           ? [{
               id: String(media.id),
               src: sources.src,
-              fallbackSrc: sources.fallbackSrc,
+              fallbackSrc:
+                migratedPreviewFallbacks[post.slug || '']?.[index] ||
+                sources.fallbackSrc,
               alt: media.alt || media.filename || '',
             }]
           : []
