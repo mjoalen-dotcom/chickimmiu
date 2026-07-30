@@ -43,6 +43,9 @@ export const BlogPosts: CollectionConfig = {
       defaultLimit: 25,
       limits: [10, 25, 50, 100],
     },
+    components: {
+      beforeListTable: ['@/components/admin/BlogListDashboard'],
+    },
     preview: (doc) => {
       const slug = typeof doc.slug === 'string' ? doc.slug.trim() : ''
       if (
@@ -311,6 +314,9 @@ export const BlogPosts: CollectionConfig = {
           admin: {
             description:
               '只有「已發佈」狀態會對外提供。取消勾選會在下一次同步或自動部署時移除。',
+            components: {
+              Cell: '@/components/admin/BlogSyncCell',
+            },
           },
         },
         {
@@ -361,6 +367,9 @@ export const BlogPosts: CollectionConfig = {
       admin: {
         description:
           '建議先儲存草稿並完成檢查，再改為已發佈；仍需勾選 Kim 同步才會出現在正式部落格。',
+        components: {
+          Cell: '@/components/admin/BlogStatusCell',
+        },
       },
     },
     {
@@ -370,6 +379,9 @@ export const BlogPosts: CollectionConfig = {
       admin: {
         date: { pickerAppearance: 'dayAndTime' },
         description: '設定文章顯示的發佈日期與時間。',
+        components: {
+          Cell: '@/components/admin/BlogPublishedAtCell',
+        },
       },
     },
     // ── SEO ──

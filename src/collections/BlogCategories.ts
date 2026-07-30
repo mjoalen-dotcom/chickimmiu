@@ -7,7 +7,7 @@ import { safeRevalidate } from '../lib/revalidate'
  * 部落格分類（獨立 collection，可後台管理顯示名稱 / 排序 / SEO）。
  *
  * 設計取捨：BlogPosts.category 維持 select（值不動，避免文章資料遷移風險）；
- * 本 collection 的 `value` 與 BlogPosts.category 的 5 個 select 值一一對應，
+ * 本 collection 的 `value` 與 BlogPosts.category 的 select 值一一對應，
  * 前台依此 collection 渲染分類頁籤（標籤 + 排序），post 仍以 category 值過濾。
  *
  * 對應 migration：20260608_170000_add_blog_categories（CREATE TABLE + seed 5 筆）。
@@ -52,6 +52,13 @@ export const BlogCategories: CollectionConfig = {
         { label: '品牌故事', value: 'brand-story' },
         { label: '優惠活動', value: 'promotions' },
         { label: '時尚趨勢', value: 'trends' },
+        { label: '時尚流行', value: 'fashion' },
+        { label: '美容彩妝', value: 'beauty' },
+        { label: '購物情報', value: 'shopping' },
+        { label: '美食料理', value: 'food' },
+        { label: '生活綜合', value: 'lifestyle' },
+        { label: '親子育兒', value: 'parenting' },
+        { label: '旅遊紀錄', value: 'travel' },
       ],
       admin: { description: '必須對應 BlogPosts.category 的 select 值，前台才能正確過濾' },
     },
