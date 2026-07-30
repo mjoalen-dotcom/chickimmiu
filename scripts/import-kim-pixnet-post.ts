@@ -158,7 +158,9 @@ async function main() {
   }
 
   process.env.KIM_BLOG_DEPLOY_HOOK_URL = ''
+  console.log('source validated; initializing Payload')
   const payload = await getPayload({ config })
+  console.log('Payload initialized; checking for an existing article')
   const existingPost = await payload.find({
     collection: 'blog-posts',
     where: { slug: { equals: post.slug } },
@@ -180,6 +182,7 @@ async function main() {
   if (!author) throw new Error('No admin user is available for the article author')
 
   const folderName = `kim-pixnet-${post.slug}`
+  console.log('author resolved; checking reusable media')
   const existingMedia = await payload.find({
     collection: 'media',
     where: { folderName: { equals: folderName } },
