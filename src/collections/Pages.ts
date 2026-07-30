@@ -207,16 +207,15 @@ const Divider: Block = {
 const MagazineCover: Block = {
   slug: 'magazine-cover',
   labels: { singular: '雜誌封面 Hero', plural: '雜誌封面 Hero' },
-  admin: {
-    description:
-      '頁面最上方主視覺。**含人物臉部的圖建議選「左右分欄」layout**（圖文不重疊、臉部完整露出）；純風景圖才用「覆蓋」layout。',
-  },
   fields: [
     {
       name: 'issueLabel',
       label: '上方期號小標（可選）',
       type: 'text',
-      admin: { description: '例：ISSUE 04 · APR 2026 / CKMU ON SHOW' },
+      admin: {
+        description:
+          '頁面最上方主視覺。含人物臉部的圖建議選「左右分欄」layout；純風景圖才用「覆蓋」layout。期號例：ISSUE 04 · APR 2026 / CKMU ON SHOW',
+      },
     },
     { name: 'heading', label: '主標題（大字）', type: 'text', required: true },
     { name: 'subheading', label: '副標題（一行）', type: 'text' },

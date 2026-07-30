@@ -10,6 +10,7 @@ import {
 
 import { isAdmin } from '../access/isAdmin'
 import { safeRevalidate } from '../lib/revalidate'
+import { triggerKimBlogDeploy } from '../lib/blog/kimSyndication'
 
 // SSR consumers (as of Phase 5.1 Batch 3, 2026-04-16):
 //   - /blog                  (src/app/(frontend)/blog/page.tsx)
@@ -27,9 +28,35 @@ export const BlogPosts: CollectionConfig = {
   labels: { singular: '部落格文章', plural: '部落格文章' },
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['title', 'author', 'status', 'publishedAt'],
+    defaultColumns: [
+      'title',
+      'category',
+      'status',
+      'publishToKimLafayette',
+      'publishedAt',
+    ],
     group: '⑥ 內容與頁面',
-    description: '部落格文章管理',
+    description:
+      'PIXNET 式流程：新增文章 → 編輯內文與相簿 → 設定分類/標籤 → 儲存草稿或發佈。勾選「同步到金老佛爺部落格」後才會出現在 Kim Lafayette。',
+    listSearchableFields: ['title', 'slug', 'excerpt'],
+    pagination: {
+      defaultLimit: 25,
+      limits: [10, 25, 50, 100],
+    },
+    preview: (doc) => {
+      const slug = typeof doc.slug === 'string' ? doc.slug.trim() : ''
+      if (
+        !slug ||
+        doc.status !== 'published' ||
+        doc.publishToKimLafayette !== true
+      ) {
+        return null
+      }
+      const baseUrl = (
+        process.env.KIM_BLOG_PUBLIC_URL || 'https://blog.kimlafayette.com'
+      ).replace(/\/$/, '')
+      return `${baseUrl}/blog/${encodeURIComponent(slug)}/`
+    },
   },
   access: {
     read: ({ req: { user } }) => {
@@ -50,11 +77,30 @@ export const BlogPosts: CollectionConfig = {
         revalidateBlog(slug)
         if (prevSlug && prevSlug !== slug) revalidateBlog(prevSlug)
       },
+      async ({ doc, previousDoc }) => {
+        const current = doc as Record<string, unknown>
+        const previous = previousDoc as Record<string, unknown> | undefined
+        const currentlyPublished =
+          current.publishToKimLafayette === true && current.status === 'published'
+        const previouslyPublished =
+          previous?.publishToKimLafayette === true && previous.status === 'published'
+        if (currentlyPublished) {
+          await triggerKimBlogDeploy('published', current)
+        } else if (previouslyPublished) {
+          await triggerKimBlogDeploy('unpublished', current)
+        }
+      },
     ],
     afterDelete: [
       ({ doc }) => {
         const slug = (doc as Record<string, unknown>)?.slug as string | undefined
         revalidateBlog(slug)
+      },
+      async ({ doc }) => {
+        const deleted = doc as Record<string, unknown>
+        if (deleted.publishToKimLafayette === true) {
+          await triggerKimBlogDeploy('deleted', deleted)
+        }
       },
     ],
   },
@@ -161,6 +207,20 @@ export const BlogPosts: CollectionConfig = {
       label: '封面圖片',
       type: 'upload',
       relationTo: 'media',
+      admin: {
+        description: '顯示於文章列表及文章頁首圖；建議使用橫式照片。',
+      },
+    },
+    {
+      name: 'gallery',
+      label: '文章相簿',
+      type: 'upload',
+      relationTo: 'media',
+      hasMany: true,
+      admin: {
+        description:
+          '可一次選擇多張已上傳圖片，操作方式接近 PIXNET 文章相簿。圖片也可直接插入上方文章內容。',
+      },
     },
     // ── 釘選 / 影音 hero（PR: 品牌主題曲 blog post 用） ─────────────────
     {
@@ -222,6 +282,57 @@ export const BlogPosts: CollectionConfig = {
         { label: '品牌故事', value: 'brand-story' },
         { label: '優惠活動', value: 'promotions' },
         { label: '時尚趨勢', value: 'trends' },
+        { label: '時尚流行', value: 'fashion' },
+        { label: '美容彩妝', value: 'beauty' },
+        { label: '購物情報', value: 'shopping' },
+        { label: '美食料理', value: 'food' },
+        { label: '生活綜合', value: 'lifestyle' },
+        { label: '親子育兒', value: 'parenting' },
+        { label: '旅遊紀錄', value: 'travel' },
+      ],
+      admin: {
+        description: '分類會顯示在文章列表與文章頁，選擇方式與 PIXNET 個人分類相同。',
+      },
+    },
+    {
+      type: 'collapsible',
+      label: 'Kim Lafayette 部落格同步',
+      admin: {
+        description:
+          '勾選後，已發佈文章會出現在 blog.kimlafayette.com 的唯讀 feed；若已設定部署 hook，儲存後會自動觸發重建。',
+      },
+      fields: [
+        {
+          name: 'publishToKimLafayette',
+          label: '同步到金老佛爺部落格',
+          type: 'checkbox',
+          defaultValue: false,
+          index: true,
+          admin: {
+            description:
+              '只有「已發佈」狀態會對外提供。取消勾選會在下一次同步或自動部署時移除。',
+          },
+        },
+        {
+          name: 'sourceUrl',
+          label: '原始文章網址（選填）',
+          type: 'text',
+          admin: {
+            description:
+              'PIXNET 搬家文章可保留原始網址；新文章留空即可使用 Kim 部落格正式網址。',
+          },
+          validate: (value: unknown) => {
+            if (value == null || value === '') return true
+            try {
+              const url = new URL(String(value))
+              return url.protocol === 'https:' || url.protocol === 'http:'
+                ? true
+                : '網址必須使用 http 或 https'
+            } catch {
+              return '請輸入完整網址'
+            }
+          },
+        },
       ],
     },
     {
@@ -244,9 +355,13 @@ export const BlogPosts: CollectionConfig = {
       required: true,
       defaultValue: 'draft',
       options: [
-        { label: '草稿', value: 'draft' },
+        { label: '草稿（不公開）', value: 'draft' },
         { label: '已發佈', value: 'published' },
       ],
+      admin: {
+        description:
+          '建議先儲存草稿並完成檢查，再改為已發佈；仍需勾選 Kim 同步才會出現在正式部落格。',
+      },
     },
     {
       name: 'publishedAt',
@@ -254,7 +369,7 @@ export const BlogPosts: CollectionConfig = {
       type: 'date',
       admin: {
         date: { pickerAppearance: 'dayAndTime' },
-        description: '設定發佈時間',
+        description: '設定文章顯示的發佈日期與時間。',
       },
     },
     // ── SEO ──
