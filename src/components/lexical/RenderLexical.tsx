@@ -35,6 +35,22 @@ interface RenderOptions {
   blogSlug?: string
 }
 
+function imageDisplayWidth(
+  value: unknown,
+  fallback?: number,
+  max = 1200,
+): number | null {
+  const parsed = Number(value)
+  const width = Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+  return width == null ? null : Math.min(max, Math.max(24, Math.round(width)))
+}
+
+function imageAlignmentClass(value: unknown) {
+  if (value === 'left') return 'mr-auto'
+  if (value === 'right') return 'ml-auto'
+  return 'mx-auto'
+}
+
 export function RenderLexical({
   content,
   blogSlug,
@@ -147,8 +163,13 @@ function LexicalNodeRenderer({
       }
       const w = value.width || 1200
       const h = value.height || 800
+      const displayWidth = imageDisplayWidth(node.fields?.displayWidth)
+      const alignment = imageAlignmentClass(node.fields?.displayAlignment)
       return (
-        <div className="my-4 rounded-lg overflow-hidden">
+        <div
+          className={`my-4 max-w-full rounded-lg overflow-hidden ${alignment}`}
+          style={displayWidth ? { width: `${displayWidth}px` } : undefined}
+        >
           <Image
             src={src}
             alt={value.alt || value.filename || ''}
@@ -156,6 +177,7 @@ function LexicalNodeRenderer({
             height={h}
             className="w-full h-auto"
             sizes="(max-width: 768px) 100vw, 768px"
+            unoptimized={value.mimeType === 'image/gif'}
           />
         </div>
       )
@@ -178,7 +200,50 @@ function BlockNodeRenderer({
   if (blockType === 'productButton') {
     return <ProductButtonBlock fields={fields} blogSlug={options.blogSlug} />
   }
+  if (blockType === 'emoticon') {
+    return <EmoticonBlock fields={fields} />
+  }
   return null
+}
+
+function EmoticonBlock({ fields }: { fields: Record<string, unknown> }) {
+  const image = fields.image as
+    | {
+        alt?: string
+        filename?: string
+        height?: number
+        mimeType?: string
+        url?: string
+        width?: number
+      }
+    | number
+    | string
+    | null
+    | undefined
+  if (!image || typeof image !== 'object') return null
+  const src = normalizeMediaUrl(image.url)
+  if (!src || image.mimeType?.startsWith('video/')) return null
+  const displayWidth = imageDisplayWidth(fields.displayWidth, 96, 800) || 96
+  const alignment = imageAlignmentClass(fields.displayAlignment)
+
+  return (
+    <figure
+      className={`my-5 max-w-full not-prose ${alignment}`}
+      style={{ width: `${displayWidth}px` }}
+    >
+      {/* Animated GIF emoticons must remain unoptimized. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={image.alt || image.filename || '表情圖案'}
+        width={image.width}
+        height={image.height}
+        loading="lazy"
+        decoding="async"
+        className="block h-auto w-full"
+      />
+    </figure>
+  )
 }
 
 function ProductButtonBlock({

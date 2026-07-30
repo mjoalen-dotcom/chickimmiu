@@ -59,6 +59,7 @@ import { default as default_f9f3bd50e8c71daeaf79c761e8047d29 } from '@/component
 import { default as default_35c860dac7cd35087c887518997aff75 } from '@/components/admin/PageTemplatePicker'
 import { default as default_916617e4baba23f7b71ea02488bb8afa } from '@/components/admin/BlogEditorHeader'
 import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { default as default_fc18f198025fd75884468788785f22db } from '@/components/admin/BlogImageSizeField'
 import { TableFeatureClient as TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { FixedToolbarFeatureClient as FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { default as default_fce296b7499db768c8bb0fc89b6e5f6b } from '@/components/admin/BlogSyncCell'
@@ -161,6 +162,7 @@ export const importMap = {
   "@/components/admin/PageTemplatePicker#default": default_35c860dac7cd35087c887518997aff75,
   "@/components/admin/BlogEditorHeader#default": default_916617e4baba23f7b71ea02488bb8afa,
   "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  "@/components/admin/BlogImageSizeField#default": default_fc18f198025fd75884468788785f22db,
   "@payloadcms/richtext-lexical/client#TableFeatureClient": TableFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#FixedToolbarFeatureClient": FixedToolbarFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@/components/admin/BlogSyncCell#default": default_fce296b7499db768c8bb0fc89b6e5f6b,

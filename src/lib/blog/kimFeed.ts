@@ -81,6 +81,16 @@ function numericDimension(value: unknown): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : null
 }
 
+function displayWidth(value: unknown, fallback?: number): number | null {
+  const parsed = numericDimension(value) ?? fallback ?? null
+  return parsed == null ? null : Math.min(1200, Math.max(24, parsed))
+}
+
+function displayAlignment(value: unknown): 'center' | 'left' | 'right' {
+  const alignment = String(value ?? '')
+  return alignment === 'left' || alignment === 'right' ? alignment : 'center'
+}
+
 function childrenOf(node: LexicalNode, baseUrl: string): string {
   return (node.children ?? []).map((child) => renderNode(child, baseUrl)).join('')
 }
@@ -119,7 +129,11 @@ function renderUpload(node: LexicalNode, baseUrl: string): string {
   const height = numericDimension(media.height)
   const dimensions =
     width && height ? ` width="${width}" height="${height}"` : ''
-  return `<img src="${escapeHtml(src)}" alt="${alt}"${dimensions} loading="lazy" decoding="async">`
+  const image = `<img src="${escapeHtml(src)}" alt="${alt}"${dimensions} loading="lazy" decoding="async">`
+  const renderedWidth = displayWidth(node.fields?.displayWidth)
+  if (!renderedWidth) return image
+  const alignment = displayAlignment(node.fields?.displayAlignment)
+  return `<figure class="kim-blog-media kim-blog-media--${alignment}" style="--kim-media-width:${renderedWidth}px">${image}</figure>`
 }
 
 function renderProductButton(node: LexicalNode): string {
@@ -134,6 +148,36 @@ function renderProductButton(node: LexicalNode): string {
   const label = escapeHtml(String(fields.label || '立即購買').trim() || '立即購買')
   const href = `https://www.chickimmiu.com/products/${encodeURIComponent(slug)}?ref=kim-blog`
   return `<p class="kim-blog-product-link"><a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a></p>`
+}
+
+function renderEmoticon(node: LexicalNode, baseUrl: string): string {
+  const fields = node.fields
+  if (!fields || fields.blockType !== 'emoticon') return ''
+  const media =
+    fields.image && typeof fields.image === 'object'
+      ? (fields.image as UnknownRecord)
+      : null
+  if (!media) return ''
+  const src = absoluteMediaUrl(media.url, baseUrl)
+  if (!src || String(media.mimeType ?? '').startsWith('video/')) return ''
+  const alt = escapeHtml(media.alt || media.filename || '表情圖案')
+  const width = numericDimension(media.width)
+  const height = numericDimension(media.height)
+  const dimensions =
+    width && height ? ` width="${width}" height="${height}"` : ''
+  const renderedWidth = displayWidth(fields.displayWidth, 96)
+  const alignment = displayAlignment(fields.displayAlignment)
+  return `<figure class="kim-blog-emoticon kim-blog-emoticon--${alignment}" style="--kim-media-width:${renderedWidth}px"><img src="${escapeHtml(src)}" alt="${alt}"${dimensions} loading="lazy" decoding="async"></figure>`
+}
+
+function renderBlock(node: LexicalNode, baseUrl: string): string {
+  if (node.fields?.blockType === 'productButton') {
+    return renderProductButton(node)
+  }
+  if (node.fields?.blockType === 'emoticon') {
+    return renderEmoticon(node, baseUrl)
+  }
+  return ''
 }
 
 function renderNode(node: LexicalNode, baseUrl: string): string {
@@ -171,7 +215,7 @@ function renderNode(node: LexicalNode, baseUrl: string): string {
     case 'upload':
       return renderUpload(node, baseUrl)
     case 'block':
-      return renderProductButton(node)
+      return renderBlock(node, baseUrl)
     case 'table':
       return `<div class="kim-blog-table-wrap"><table>${children}</table></div>`
     case 'tablerow':
@@ -205,27 +249,38 @@ export function collectKimBlogImages(
   const images: KimBlogFeedImage[] = []
   const seen = new Set<string>()
 
+  const addImage = (value: unknown) => {
+    if (!value || typeof value !== 'object') return
+    const media = value as UnknownRecord
+    const src = absoluteMediaUrl(media.url, baseUrl)
+    if (
+      !src ||
+      seen.has(src) ||
+      String(media.mimeType ?? '').startsWith('video/')
+    ) {
+      return
+    }
+    seen.add(src)
+    images.push({
+      sourceUrl: src,
+      alt: String(media.alt || media.filename || ''),
+      src,
+      mobileSrc: null,
+      srcSet: src,
+      width: numericDimension(media.width),
+      height: numericDimension(media.height),
+      bytes: numericDimension(media.filesize) ?? 0,
+    })
+  }
+
   const visit = (node: LexicalNode) => {
-    if (node.type === 'upload' && node.value && typeof node.value === 'object') {
-      const media = node.value as UnknownRecord
-      const src = absoluteMediaUrl(media.url, baseUrl)
-      if (
-        src &&
-        !seen.has(src) &&
-        !String(media.mimeType ?? '').startsWith('video/')
-      ) {
-        seen.add(src)
-        images.push({
-          sourceUrl: src,
-          alt: String(media.alt || media.filename || ''),
-          src,
-          mobileSrc: null,
-          srcSet: src,
-          width: numericDimension(media.width),
-          height: numericDimension(media.height),
-          bytes: numericDimension(media.filesize) ?? 0,
-        })
-      }
+    if (node.type === 'upload') {
+      addImage(node.value)
+    } else if (
+      node.type === 'block' &&
+      node.fields?.blockType === 'emoticon'
+    ) {
+      addImage(node.fields.image)
     }
     for (const child of node.children ?? []) visit(child)
   }
