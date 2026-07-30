@@ -95,7 +95,7 @@ export default function BlogImageSizeField({
           onChange={(event) => update(event.currentTarget.valueAsNumber)}
           style={{ width: '100%', accentColor: '#a25e5e' }}
         />
-        <div style={{ position: 'relative' }}>
+        <div>
           <input
             type="number"
             aria-label="圖片寬度像素"
@@ -107,7 +107,7 @@ export default function BlogImageSizeField({
             style={{
               width: '100%',
               minHeight: 38,
-              padding: '7px 28px 7px 10px',
+              padding: '7px 10px',
               border: '1px solid var(--theme-elevation-250)',
               borderRadius: 6,
               background: 'var(--theme-input-bg)',
@@ -115,19 +115,6 @@ export default function BlogImageSizeField({
               fontSize: 13,
             }}
           />
-          <span
-            aria-hidden
-            style={{
-              position: 'absolute',
-              top: '50%',
-              right: 9,
-              color: 'var(--theme-elevation-550)',
-              fontSize: 11,
-              transform: 'translateY(-50%)',
-            }}
-          >
-            px
-          </span>
         </div>
       </div>
 
