@@ -2,7 +2,20 @@
 
 import React, { useState } from 'react'
 
-import type { BlogAIDraftInput, BlogAIDraftOutput } from '@/lib/blog/aiDraft'
+import {
+  validateBlogDraftTopic,
+  type BlogAIDraftInput,
+  type BlogAIDraftOutput,
+} from '@/lib/blog/aiDraft'
+import {
+  getArticleStudioTemplate,
+  type ArticleStudioTemplateKey,
+} from '@/lib/blog/articleStudio'
+
+import BlogStudioImagePanel, {
+  type BlogStudioImageValue,
+  type BlogStudioResearchSource,
+} from './BlogStudioImagePanel'
 
 /**
  * BlogAIDraftClient — 客端表單 + 結果預覽 + 落地按鈕
@@ -35,12 +48,40 @@ const CATEGORY_OPTIONS: Array<{ value: NonNullable<BlogAIDraftInput['category']>
   { value: 'trends', label: '時尚趨勢' },
 ]
 
+const TEMPLATE_OPTIONS: Array<{
+  description: string
+  label: string
+  value: ArticleStudioTemplateKey
+}> = [
+  {
+    value: 'fashion',
+    label: '時尚／穿搭文章',
+    description: '沿用 CHIC KIM & MIU 原本的穿搭與新品文章格式',
+  },
+  {
+    value: 'kpop-boy-group',
+    label: 'KPOP 男團介紹',
+    description: '團體背景、成員介紹、成長歷程、作品與新手入坑指南',
+  },
+  {
+    value: 'kpop-girl-group',
+    label: 'KPOP 女團介紹',
+    description: '團體背景、成員介紹、成長歷程、作品與新手入坑指南',
+  },
+]
+
 interface Props {
+  defaultTakedownEmail: string
   groqConfigured: boolean
 }
 
-const BlogAIDraftClient: React.FC<Props> = ({ groqConfigured }) => {
+const BlogAIDraftClient: React.FC<Props> = ({
+  defaultTakedownEmail,
+  groqConfigured,
+}) => {
   // ── 表單狀態 ──
+  const [templateKey, setTemplateKey] =
+    useState<ArticleStudioTemplateKey>('fashion')
   const [topic, setTopic] = useState('')
   const [season, setSeason] = useState<NonNullable<BlogAIDraftInput['season']>>('all')
   const [category, setCategory] =
@@ -48,6 +89,12 @@ const BlogAIDraftClient: React.FC<Props> = ({ groqConfigured }) => {
   const [wordCountTarget, setWordCountTarget] = useState<number>(1000)
   const [productHints, setProductHints] = useState('')
   const [styleKeywords, setStyleKeywords] = useState('')
+  const [studioImages, setStudioImages] = useState<BlogStudioImageValue[]>([])
+  const [researchContext, setResearchContext] = useState('')
+  const [researchSources, setResearchSources] =
+    useState<BlogStudioResearchSource[]>([])
+  const [researchCheckedAt, setResearchCheckedAt] = useState('')
+  const [takedownEmail, setTakedownEmail] = useState(defaultTakedownEmail)
 
   // ── 互動狀態 ──
   const [generating, setGenerating] = useState(false)
@@ -55,25 +102,84 @@ const BlogAIDraftClient: React.FC<Props> = ({ groqConfigured }) => {
   const [error, setError] = useState<string | null>(null)
   const [draft, setDraft] = useState<BlogAIDraftOutput | null>(null)
 
-  const buildInput = (): BlogAIDraftInput => ({
-    topic: topic.trim(),
-    season,
-    category,
-    wordCountTarget,
-    productHints: productHints
-      .split(/[,，、\n]/)
-      .map((s) => s.trim())
-      .filter(Boolean),
-    styleKeywords: styleKeywords
-      .split(/[,，、\n]/)
-      .map((s) => s.trim())
-      .filter(Boolean),
-  })
+  const isKpop = templateKey !== 'fashion'
+  const template = getArticleStudioTemplate(templateKey)
+
+  const buildInput = (): BlogAIDraftInput => {
+    const sourceUrls = researchSources.map((source) => source.url)
+    return {
+      topic: topic.trim(),
+      templateKey,
+      season: isKpop ? 'all' : season,
+      category: isKpop ? template.category : category,
+      wordCountTarget,
+      productHints: isKpop
+        ? []
+        : productHints
+            .split(/[,，、\n]/)
+            .map((s) => s.trim())
+            .filter(Boolean),
+      styleKeywords: styleKeywords
+        .split(/[,，、\n]/)
+        .map((s) => s.trim())
+        .filter(Boolean),
+      researchContext: isKpop ? researchContext : undefined,
+      sourceUrls: isKpop ? sourceUrls : [],
+    }
+  }
+
+  const handleTemplateChange = (value: ArticleStudioTemplateKey) => {
+    setTemplateKey(value)
+    setDraft(null)
+    setError(null)
+    if (value === 'fashion') {
+      setCategory('styling')
+      setWordCountTarget(1000)
+    } else {
+      setCategory(
+        value === 'kpop-boy-group' ? 'kpop-boy-groups' : 'kpop-girl-groups',
+      )
+      setWordCountTarget(1400)
+    }
+  }
+
+  const persistImageRights = async (image: BlogStudioImageValue) => {
+    const response = await fetch(`/api/media/${encodeURIComponent(String(image.mediaId))}`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        alt: image.alt,
+        usageRights: {
+          creator: image.creator || '',
+          evidenceUrl: image.evidenceUrl || '',
+          licenseKind: image.licenseKind,
+          licenseUrl: image.licenseUrl || '',
+          promotionalUseAllowed: image.promotionalUseAllowed === true,
+          sourceLabel: image.sourceLabel || '',
+          sourceUrl: image.sourceUrl || '',
+          verifiedAt: image.verifiedAt || new Date().toISOString(),
+          verificationNote:
+            '由金老佛爺自動文章工具儲存；正式發布前仍須通過授權白名單。',
+        },
+      }),
+    })
+    const json = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(
+        json?.errors?.[0]?.message ||
+          json?.message ||
+          `媒體 #${String(image.mediaId)} 授權資料儲存失敗`,
+      )
+    }
+  }
 
   const handleGenerate = async () => {
     setError(null)
-    if (topic.trim().length < 4) {
-      setError('請輸入至少 4 個字的文章主題')
+    const input = buildInput()
+    const topicValidation = validateBlogDraftTopic(input)
+    if (!topicValidation.valid) {
+      setError(`請輸入至少 ${topicValidation.minLength} 個字的文章主題或團名`)
       return
     }
     setGenerating(true)
@@ -82,7 +188,7 @@ const BlogAIDraftClient: React.FC<Props> = ({ groqConfigured }) => {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ action: 'generate', input: buildInput() }),
+        body: JSON.stringify({ action: 'generate', input }),
       })
       const json = await res.json()
       if (!res.ok || !json.ok) {
@@ -102,11 +208,29 @@ const BlogAIDraftClient: React.FC<Props> = ({ groqConfigured }) => {
     setError(null)
     setCreating(true)
     try {
+      await Promise.all(studioImages.map(persistImageRights))
       const res = await fetch('/api/admin/blog/ai-draft', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ action: 'create', input: buildInput(), draft }),
+        body: JSON.stringify({
+          action: 'create',
+          input: buildInput(),
+          draft,
+          images: studioImages.map((image) => ({
+            alt: image.alt,
+            mediaId: image.mediaId,
+            personName: image.personName,
+            role: image.role,
+          })),
+          researchCheckedAt,
+          researchSources: researchSources.map(({ label, provider, url }) => ({
+            label,
+            provider,
+            url,
+          })),
+          takedownEmail,
+        }),
       })
       const json = await res.json()
       if (!res.ok || !json.ok) {
@@ -168,9 +292,57 @@ const BlogAIDraftClient: React.FC<Props> = ({ groqConfigured }) => {
       {/* ── 表單 ── */}
       <div style={cardStyle}>
         <h2 style={{ margin: 0, marginBottom: 16, fontSize: 18, fontWeight: 600 }}>
-          1. 描述你想要的文章
+          1. 選擇樣板與文章主題
         </h2>
         <div style={{ display: 'grid', gap: 16 }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+              gap: 10,
+            }}
+          >
+            {TEMPLATE_OPTIONS.map((option) => {
+              const selected = templateKey === option.value
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => handleTemplateChange(option.value)}
+                  disabled={generating || creating}
+                  style={{
+                    padding: 14,
+                    border: selected
+                      ? '2px solid var(--theme-success-500, #22c55e)'
+                      : '1px solid var(--theme-elevation-200, #ccc)',
+                    borderRadius: 9,
+                    background: selected
+                      ? 'var(--theme-success-50, #f0fdf4)'
+                      : 'var(--theme-elevation-0, #fff)',
+                    color: 'var(--theme-elevation-900, #111)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <strong style={{ display: 'block', fontSize: 14 }}>
+                    {option.label}
+                  </strong>
+                  <span
+                    style={{
+                      display: 'block',
+                      marginTop: 5,
+                      color: 'var(--theme-elevation-600, #666)',
+                      fontSize: 12,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {option.description}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
           <div>
             <label style={labelStyle}>
               文章主題 <span style={{ color: '#ef4444' }}>*</span>
@@ -179,43 +351,66 @@ const BlogAIDraftClient: React.FC<Props> = ({ groqConfigured }) => {
               type="text"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="例：秋天到冬天的針織疊穿、首爾通勤穿搭、婚禮賓客的優雅選擇"
+              placeholder={
+                isKpop
+                  ? '例：SEVENTEEN 完整介紹、TWICE 成員與成長故事'
+                  : '例：秋天到冬天的針織疊穿、首爾通勤穿搭'
+              }
               style={inputStyle}
               disabled={generating}
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={labelStyle}>季節</label>
-              <select
-                value={season}
-                onChange={(e) => setSeason(e.target.value as typeof season)}
-                style={inputStyle}
-                disabled={generating}
-              >
-                {SEASON_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label style={labelStyle}>文章分類</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as typeof category)}
-                style={inputStyle}
-                disabled={generating}
-              >
-                {CATEGORY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isKpop ? '2fr 1fr' : '1fr 1fr 1fr',
+              gap: 12,
+            }}
+          >
+            {isKpop ? (
+              <div>
+                <label style={labelStyle}>文章分類</label>
+                <input
+                  readOnly
+                  value={template.label}
+                  style={{ ...inputStyle, background: 'var(--theme-elevation-50, #fafafa)' }}
+                />
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label style={labelStyle}>季節</label>
+                  <select
+                    value={season}
+                    onChange={(e) => setSeason(e.target.value as typeof season)}
+                    style={inputStyle}
+                    disabled={generating}
+                  >
+                    {SEASON_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>文章分類</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value as typeof category)}
+                    style={inputStyle}
+                    disabled={generating}
+                  >
+                    {CATEGORY_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
             <div>
               <label style={labelStyle}>目標字數</label>
               <input
@@ -231,19 +426,21 @@ const BlogAIDraftClient: React.FC<Props> = ({ groqConfigured }) => {
             </div>
           </div>
 
-          <div>
-            <label style={labelStyle}>
-              商品提示（可選，用逗號分隔；LLM 會自然帶入但不保證全部提到）
-            </label>
-            <input
-              type="text"
-              value={productHints}
-              onChange={(e) => setProductHints(e.target.value)}
-              placeholder="例：駝色長版針織開衫、酒紅色高腰百褶裙、黑色挺版西外"
-              style={inputStyle}
-              disabled={generating}
-            />
-          </div>
+          {!isKpop ? (
+            <div>
+              <label style={labelStyle}>
+                商品提示（可選，用逗號分隔；LLM 會自然帶入但不保證全部提到）
+              </label>
+              <input
+                type="text"
+                value={productHints}
+                onChange={(e) => setProductHints(e.target.value)}
+                placeholder="例：駝色長版針織開衫、酒紅色高腰百褶裙、黑色挺版西外"
+                style={inputStyle}
+                disabled={generating}
+              />
+            </div>
+          ) : null}
 
           <div>
             <label style={labelStyle}>風格 / 方向關鍵字（可選）</label>
@@ -251,10 +448,60 @@ const BlogAIDraftClient: React.FC<Props> = ({ groqConfigured }) => {
               type="text"
               value={styleKeywords}
               onChange={(e) => setStyleKeywords(e.target.value)}
-              placeholder="例：知性、極簡、溫柔復古、上班族、約會、旅行"
+              placeholder={
+                isKpop
+                  ? '例：新手友善、溫暖、成長故事、完整成員資料'
+                  : '例：知性、極簡、溫柔復古、上班族、約會、旅行'
+              }
               style={inputStyle}
               disabled={generating}
             />
+          </div>
+
+          <div
+            style={{
+              borderTop: '1px solid var(--theme-elevation-150, #e4e4e7)',
+              paddingTop: 16,
+            }}
+          >
+            <h2 style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 600 }}>
+              2. 研究資料與照片
+            </h2>
+            <BlogStudioImagePanel
+              disabled={generating || creating}
+              images={studioImages}
+              onImagesChange={setStudioImages}
+              onResearchReady={({ checkedAt, context, sources }) => {
+                setResearchCheckedAt(checkedAt)
+                setResearchContext(context)
+                setResearchSources(sources)
+              }}
+              templateKey={templateKey}
+              topic={topic}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>圖片權利聯絡信箱</label>
+            <input
+              type="email"
+              value={takedownEmail}
+              onChange={(event) => setTakedownEmail(event.target.value)}
+              placeholder="service@chickimmiu.com"
+              style={inputStyle}
+              disabled={generating || creating}
+            />
+            <small
+              style={{
+                display: 'block',
+                marginTop: 5,
+                color: 'var(--theme-elevation-600, #666)',
+                lineHeight: 1.5,
+              }}
+            >
+              系統會自動附上圖片來源與下架聯絡說明；這段說明不等於取得授權，
+              未通過白名單的圖片只能保留在草稿。
+            </small>
           </div>
 
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -268,7 +515,7 @@ const BlogAIDraftClient: React.FC<Props> = ({ groqConfigured }) => {
                 cursor: generating || !groqConfigured ? 'not-allowed' : 'pointer',
               }}
             >
-              {generating ? '生成中…（5-15 秒）' : '✨ 產生草稿'}
+              {generating ? '生成中…（5-15 秒）' : '✨ 3. 產生草稿'}
             </button>
             {draft && (
               <button
@@ -302,7 +549,7 @@ const BlogAIDraftClient: React.FC<Props> = ({ groqConfigured }) => {
       {draft && (
         <div style={cardStyle}>
           <h2 style={{ margin: 0, marginBottom: 16, fontSize: 18, fontWeight: 600 }}>
-            2. 確認草稿（建立前可在這裡微調）
+            4. 確認草稿（建立前可在這裡微調）
           </h2>
           <div style={{ display: 'grid', gap: 12 }}>
             <div>

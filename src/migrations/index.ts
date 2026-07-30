@@ -82,6 +82,7 @@ import * as migration_20260729_150000_add_social_login_credentials from './20260
 import * as migration_20260730_010000_fix_kim_blog_gallery_rels from './20260730_010000_fix_kim_blog_gallery_rels';
 import * as migration_20260730_133000_add_kim_blog_subscription from './20260730_133000_add_kim_blog_subscription';
 import * as migration_20260730_150000_add_packaging_page_settings from './20260730_150000_add_packaging_page_settings';
+import * as migration_20260730_233000_add_kim_article_studio from './20260730_233000_add_kim_article_studio';
 
 export const migrations = [
   {
@@ -503,5 +504,10 @@ export const migrations = [
     up: migration_20260730_150000_add_packaging_page_settings.up,
     down: migration_20260730_150000_add_packaging_page_settings.down,
     name: '20260730_150000_add_packaging_page_settings',
+  },
+  {
+    up: migration_20260730_233000_add_kim_article_studio.up,
+    down: migration_20260730_233000_add_kim_article_studio.down,
+    name: '20260730_233000_add_kim_article_studio',
   },
 ];

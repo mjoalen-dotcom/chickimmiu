@@ -37,6 +37,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   'brand-story': '品牌故事',
   promotions: '優惠活動',
   trends: '時尚趨勢',
+  'kpop-boy-groups': 'KPOP 男團介紹',
+  'kpop-girl-groups': 'KPOP 女團介紹',
 }
 function catLabel(v: unknown): string {
   const s = typeof v === 'string' ? v : ''

@@ -12,11 +12,18 @@ interface LexicalNode extends UnknownRecord {
   fields?: UnknownRecord
 }
 
+interface MediaSize extends UnknownRecord {
+  filesize?: number
+  height?: number
+  url?: string
+  width?: number
+}
+
 export interface KimBlogFeedImage {
   sourceUrl: string
   alt: string
   src: string
-  mobileSrc: null
+  mobileSrc: string | null
   srcSet: string
   width: number | null
   height: number | null
@@ -36,6 +43,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   lifestyle: '生活綜合',
   parenting: '親子育兒',
   travel: '旅遊紀錄',
+  'kpop-boy-groups': 'KPOP 男團介紹',
+  'kpop-girl-groups': 'KPOP 女團介紹',
 }
 
 function escapeHtml(value: unknown): string {
@@ -73,6 +82,40 @@ function absoluteMediaUrl(value: unknown, baseUrl: string): string | null {
     return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : null
   } catch {
     return null
+  }
+}
+
+function mediaSize(
+  media: UnknownRecord,
+  name: 'blog800' | 'blog1000',
+): MediaSize | null {
+  const sizes =
+    media.sizes && typeof media.sizes === 'object'
+      ? (media.sizes as UnknownRecord)
+      : null
+  const value = sizes?.[name]
+  return value && typeof value === 'object' ? (value as MediaSize) : null
+}
+
+function responsiveMedia(media: UnknownRecord, baseUrl: string) {
+  const original = absoluteMediaUrl(media.url, baseUrl)
+  const blog800 = mediaSize(media, 'blog800')
+  const blog1000 = mediaSize(media, 'blog1000')
+  const src800 = absoluteMediaUrl(blog800?.url, baseUrl)
+  const src1000 = absoluteMediaUrl(blog1000?.url, baseUrl)
+  const srcSet = [
+    src800 ? `${src800} 800w` : '',
+    src1000 ? `${src1000} 1000w` : '',
+  ]
+    .filter(Boolean)
+    .join(', ')
+  return {
+    original,
+    src800,
+    src1000,
+    srcSet,
+    blog800,
+    blog1000,
   }
 }
 
@@ -119,21 +162,83 @@ function renderUpload(node: LexicalNode, baseUrl: string): string {
   const media =
     node.value && typeof node.value === 'object' ? (node.value as UnknownRecord) : null
   if (!media) return ''
-  const src = absoluteMediaUrl(media.url, baseUrl)
+  const responsive = responsiveMedia(media, baseUrl)
+  const requestedWidth = displayWidth(node.fields?.displayWidth)
+  const src =
+    requestedWidth && requestedWidth <= 800
+      ? responsive.src800 || responsive.src1000 || responsive.original
+      : responsive.src1000 || responsive.src800 || responsive.original
   if (!src) return ''
   const alt = escapeHtml(media.alt || media.filename || '')
   if (String(media.mimeType ?? '').startsWith('video/')) {
     return `<video src="${escapeHtml(src)}" controls playsinline preload="metadata"></video>`
   }
-  const width = numericDimension(media.width)
-  const height = numericDimension(media.height)
+  const selectedSize =
+    src === responsive.src800
+      ? responsive.blog800
+      : src === responsive.src1000
+        ? responsive.blog1000
+        : media
+  const width = numericDimension(selectedSize?.width)
+  const height = numericDimension(selectedSize?.height)
   const dimensions =
     width && height ? ` width="${width}" height="${height}"` : ''
-  const image = `<img src="${escapeHtml(src)}" alt="${alt}"${dimensions} loading="lazy" decoding="async">`
-  const renderedWidth = displayWidth(node.fields?.displayWidth)
-  if (!renderedWidth) return image
+  const responsiveAttributes = responsive.srcSet
+    ? ` srcset="${escapeHtml(responsive.srcSet)}" sizes="(max-width: 840px) 100vw, ${requestedWidth || 1000}px"`
+    : ''
+  const image = `<img src="${escapeHtml(src)}" alt="${alt}"${dimensions}${responsiveAttributes} loading="lazy" decoding="async">`
+  const renderedWidth = requestedWidth
+  const rights =
+    media.usageRights && typeof media.usageRights === 'object'
+      ? (media.usageRights as UnknownRecord)
+      : null
+  const credit = rights ? renderImageCredit(rights) : ''
+  if (!renderedWidth && !credit) return image
   const alignment = displayAlignment(node.fields?.displayAlignment)
-  return `<figure class="kim-blog-media kim-blog-media--${alignment}" style="--kim-media-width:${renderedWidth}px">${image}</figure>`
+  const widthStyle = renderedWidth
+    ? ` style="--kim-media-width:${renderedWidth}px"`
+    : ''
+  return `<figure class="kim-blog-media kim-blog-media--${alignment}"${widthStyle}>${image}${credit}</figure>`
+}
+
+function renderImageCredit(rights: UnknownRecord): string {
+  const sourceLabel = String(rights.sourceLabel || '').trim()
+  const sourceUrl = safeLink(rights.sourceUrl)
+  const creator = String(rights.creator || '').trim()
+  const licenseKind = String(rights.licenseKind || '').trim()
+  const licenseUrl = safeLink(rights.licenseUrl)
+  const licenseLabels: Record<string, string> = {
+    owned: '自有圖片',
+    'explicit-permission': '權利人明確授權',
+    'official-promo': '官方宣傳素材',
+    'public-domain': '公有領域',
+    cc0: 'CC0',
+    'cc-by': 'CC BY',
+    'cc-by-sa': 'CC BY-SA',
+    'cc-by-nc': 'CC BY-NC',
+    unknown: '授權待確認',
+  }
+  const parts: string[] = []
+  if (sourceLabel || sourceUrl) {
+    const label = escapeHtml(sourceLabel || sourceUrl || '')
+    parts.push(
+      sourceUrl
+        ? `圖片來源：<a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">${label}</a>`
+        : `圖片來源：${label}`,
+    )
+  }
+  if (creator) parts.push(`攝影／權利人：${escapeHtml(creator)}`)
+  if (licenseLabels[licenseKind]) {
+    const licenseLabel = escapeHtml(licenseLabels[licenseKind])
+    parts.push(
+      licenseUrl
+        ? `授權：<a href="${escapeHtml(licenseUrl)}" target="_blank" rel="noopener noreferrer">${licenseLabel}</a>`
+        : `授權：${licenseLabel}`,
+    )
+  }
+  return parts.length > 0
+    ? `<figcaption class="kim-blog-image-credit">${parts.join('｜')}</figcaption>`
+    : ''
 }
 
 function renderProductButton(node: LexicalNode): string {
@@ -252,7 +357,9 @@ export function collectKimBlogImages(
   const addImage = (value: unknown) => {
     if (!value || typeof value !== 'object') return
     const media = value as UnknownRecord
-    const src = absoluteMediaUrl(media.url, baseUrl)
+    const responsive = responsiveMedia(media, baseUrl)
+    const src =
+      responsive.src1000 || responsive.src800 || responsive.original
     if (
       !src ||
       seen.has(src) ||
@@ -261,15 +368,21 @@ export function collectKimBlogImages(
       return
     }
     seen.add(src)
+    const selectedSize =
+      src === responsive.src1000
+        ? responsive.blog1000
+        : src === responsive.src800
+          ? responsive.blog800
+          : media
     images.push({
-      sourceUrl: src,
+      sourceUrl: responsive.original || src,
       alt: String(media.alt || media.filename || ''),
       src,
-      mobileSrc: null,
-      srcSet: src,
-      width: numericDimension(media.width),
-      height: numericDimension(media.height),
-      bytes: numericDimension(media.filesize) ?? 0,
+      mobileSrc: responsive.src800,
+      srcSet: responsive.srcSet || src,
+      width: numericDimension(selectedSize?.width),
+      height: numericDimension(selectedSize?.height),
+      bytes: numericDimension(selectedSize?.filesize) ?? 0,
     })
   }
 
@@ -298,7 +411,9 @@ export function collectKimBlogGallery(
   for (const item of value) {
     if (!item || typeof item !== 'object') continue
     const media = item as UnknownRecord
-    const src = absoluteMediaUrl(media.url, baseUrl)
+    const responsive = responsiveMedia(media, baseUrl)
+    const src =
+      responsive.src1000 || responsive.src800 || responsive.original
     if (
       !src ||
       seen.has(src) ||
@@ -307,15 +422,21 @@ export function collectKimBlogGallery(
       continue
     }
     seen.add(src)
+    const selectedSize =
+      src === responsive.src1000
+        ? responsive.blog1000
+        : src === responsive.src800
+          ? responsive.blog800
+          : media
     images.push({
-      sourceUrl: src,
+      sourceUrl: responsive.original || src,
       alt: String(media.alt || media.filename || ''),
       src,
-      mobileSrc: null,
-      srcSet: src,
-      width: numericDimension(media.width),
-      height: numericDimension(media.height),
-      bytes: numericDimension(media.filesize) ?? 0,
+      mobileSrc: responsive.src800,
+      srcSet: responsive.srcSet || src,
+      width: numericDimension(selectedSize?.width),
+      height: numericDimension(selectedSize?.height),
+      bytes: numericDimension(selectedSize?.filesize) ?? 0,
     })
   }
   return images
@@ -339,7 +460,9 @@ export function kimBlogTags(value: unknown): string[] {
 
 export function kimBlogMediaUrl(value: unknown, baseUrl: string): string | null {
   if (!value || typeof value !== 'object') return null
-  return absoluteMediaUrl((value as UnknownRecord).url, baseUrl)
+  const media = value as UnknownRecord
+  const responsive = responsiveMedia(media, baseUrl)
+  return responsive.src1000 || responsive.src800 || responsive.original
 }
 
 export function kimBlogSourceUrl(

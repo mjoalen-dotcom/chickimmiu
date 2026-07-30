@@ -172,3 +172,77 @@ test('rejects unsafe source URLs and falls back to the canonical blog URL', () =
     'https://blog.kimlafayette.com/blog/article-1/',
   )
 })
+
+test('uses the forced 800/1000 blog variants and renders a source credit', () => {
+  const responsiveContent = {
+    root: {
+      type: 'root',
+      children: [
+        {
+          type: 'upload',
+          fields: {
+            displayWidth: 1000,
+            displayAlignment: 'center',
+          },
+          value: {
+            url: '/api/media/file/group-original.jpg',
+            alt: 'KPOP group',
+            mimeType: 'image/jpeg',
+            width: 2000,
+            height: 1333,
+            sizes: {
+              blog800: {
+                url: '/api/media/file/group-800.webp',
+                width: 800,
+                height: 533,
+                filesize: 80000,
+              },
+              blog1000: {
+                url: '/api/media/file/group-1000.webp',
+                width: 1000,
+                height: 667,
+                filesize: 110000,
+              },
+            },
+            usageRights: {
+              creator: 'Example Photographer',
+              sourceLabel: 'Wikimedia Commons',
+              sourceUrl: 'https://commons.wikimedia.org/wiki/File:Group.jpg',
+              licenseKind: 'cc-by',
+              licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+            },
+          },
+        },
+      ],
+    },
+  }
+
+  const html = serializeLexicalForKimBlog(
+    responsiveContent,
+    'https://pre.chickimmiu.com',
+  )
+  assert.match(html, /src="https:\/\/pre\.chickimmiu\.com\/api\/media\/file\/group-1000\.webp"/)
+  assert.match(html, /group-800\.webp 800w/)
+  assert.match(html, /group-1000\.webp 1000w/)
+  assert.match(html, /Example Photographer/)
+  assert.match(html, /Wikimedia Commons/)
+  assert.match(
+    html,
+    /href="https:\/\/creativecommons\.org\/licenses\/by\/4\.0\/"/,
+  )
+
+  const images = collectKimBlogImages(
+    responsiveContent,
+    'https://pre.chickimmiu.com',
+  )
+  assert.equal(
+    images[0].src,
+    'https://pre.chickimmiu.com/api/media/file/group-1000.webp',
+  )
+  assert.equal(
+    images[0].mobileSrc,
+    'https://pre.chickimmiu.com/api/media/file/group-800.webp',
+  )
+  assert.match(images[0].srcSet, /800w/)
+  assert.match(images[0].srcSet, /1000w/)
+})

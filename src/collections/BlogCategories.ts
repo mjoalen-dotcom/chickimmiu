@@ -59,6 +59,8 @@ export const BlogCategories: CollectionConfig = {
         { label: '生活綜合', value: 'lifestyle' },
         { label: '親子育兒', value: 'parenting' },
         { label: '旅遊紀錄', value: 'travel' },
+        { label: 'KPOP 男團介紹', value: 'kpop-boy-groups' },
+        { label: 'KPOP 女團介紹', value: 'kpop-girl-groups' },
       ],
       admin: { description: '必須對應 BlogPosts.category 的 select 值，前台才能正確過濾' },
     },

@@ -54,6 +54,8 @@ const BlogAIDraftView: React.FC<AdminViewServerProps> = async ({
   }
 
   const groqConfigured = Boolean(process.env.GROQ_API_KEY)
+  const defaultTakedownEmail =
+    process.env.KIM_BLOG_TAKEDOWN_EMAIL || 'service@chickimmiu.com'
 
   return (
     <DefaultTemplate
@@ -68,7 +70,7 @@ const BlogAIDraftView: React.FC<AdminViewServerProps> = async ({
     >
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 32px' }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, marginBottom: 4 }}>
-          ✨ AI 部落格草稿產生器
+          📝 金老佛爺自動文章工具
         </h1>
         <p
           style={{
@@ -78,8 +80,9 @@ const BlogAIDraftView: React.FC<AdminViewServerProps> = async ({
             fontSize: 14,
           }}
         >
-          用 Groq Llama 3.3 70B 為 CHIC KIM &amp; MIU 寫第一稿時尚穿搭文章。
-          產出的草稿會以「未發布（draft）」狀態存進部落格文章，作者可在 Lexical 編輯器內 polish 後再發佈。
+          依金老佛爺版型產生時尚、KPOP 男團或女團介紹；可研究來源、挑選授權圖片，
+          並自動輸出 800px／1000px 圖文草稿。所有文章先以「未發布（draft）」保存，
+          經人工核實後才可發佈。
         </p>
         {!groqConfigured && (
           <div
@@ -102,11 +105,14 @@ const BlogAIDraftView: React.FC<AdminViewServerProps> = async ({
             >
               console.groq.com/keys
             </a>{' '}
-            申請（免費）→ 寫進 prod <code>.env</code> → <code>pm2 restart</code>。
-            目前可填表預覽介面，但「產生草稿」會回 503。
+            申請 → 寫進 prod <code>.env</code> → <code>pm2 restart</code>。
+            Wikimedia 研究與圖片整理仍可使用，但「產生草稿」會回 503。
           </div>
         )}
-        <BlogAIDraftClient groqConfigured={groqConfigured} />
+        <BlogAIDraftClient
+          defaultTakedownEmail={defaultTakedownEmail}
+          groqConfigured={groqConfigured}
+        />
       </div>
     </DefaultTemplate>
   )

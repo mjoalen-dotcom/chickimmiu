@@ -56,7 +56,7 @@ const items = [
   },
   {
     href: '/admin/tools/blog-ai-draft',
-    label: 'AI 草稿',
+    label: '自動文章',
     icon: Sparkles,
     match: (pathname: string) => pathname.startsWith('/admin/tools/blog-ai-draft'),
   },

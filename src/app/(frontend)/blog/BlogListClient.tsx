@@ -12,6 +12,8 @@ const FALLBACK_CATEGORIES: Array<{ value: string; label: string }> = [
   { value: 'new-arrivals', label: '新品介紹' },
   { value: 'brand-story', label: '品牌故事' },
   { value: 'promotions', label: '優惠活動' },
+  { value: 'kpop-boy-groups', label: 'KPOP 男團介紹' },
+  { value: 'kpop-girl-groups', label: 'KPOP 女團介紹' },
 ]
 
 /** 從 post.category 取分類「值」（字串值 or relationship 物件的 value/slug） */

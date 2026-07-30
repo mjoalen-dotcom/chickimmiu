@@ -9,6 +9,18 @@ import { importFromSupplierEndpoint } from '../endpoints/importFromSupplier'
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
+function validateOptionalHttpUrl(value: unknown) {
+  if (value == null || value === '') return true
+  try {
+    const url = new URL(String(value))
+    return url.protocol === 'https:' || url.protocol === 'http:'
+      ? true
+      : '網址必須使用 http 或 https'
+  } catch {
+    return '請輸入完整網址'
+  }
+}
+
 /**
  * Media Collection
  * ----------------
@@ -157,6 +169,24 @@ export const Media: CollectionConfig = {
         position: 'centre',
       },
       {
+        name: 'blog800',
+        width: 800,
+        withoutEnlargement: true,
+        formatOptions: {
+          format: 'webp',
+          options: { quality: 84, effort: 4 },
+        },
+      },
+      {
+        name: 'blog1000',
+        width: 1000,
+        withoutEnlargement: true,
+        formatOptions: {
+          format: 'webp',
+          options: { quality: 84, effort: 4 },
+        },
+      },
+      {
         name: 'tablet',
         width: 1024,
         position: 'centre',
@@ -211,6 +241,92 @@ export const Media: CollectionConfig = {
           '純文字標籤，給搜尋與供應商批次匯入使用；建議優先用左側資料夾樹（folder）整理。' +
           '範例：商品貨號（SS25-001）、活動名稱（2026-春季型錄）、用途分類（banner / lookbook / ugc）。',
       },
+    },
+    {
+      name: 'usageRights',
+      label: '圖片來源與使用權',
+      type: 'group',
+      admin: {
+        description:
+          'KPOP／人物文章使用圖片時請完整記錄。標註來源或下架聲明不能取代授權；' +
+          '未知授權可留在草稿，但自動文章不能直接發布。',
+      },
+      fields: [
+        {
+          name: 'sourceLabel',
+          label: '來源名稱',
+          type: 'text',
+          admin: {
+            description: '例：Wikimedia Commons、官方 Press Kit、攝影者網站',
+          },
+        },
+        {
+          name: 'sourceUrl',
+          label: '原始圖片頁',
+          type: 'text',
+          validate: validateOptionalHttpUrl,
+        },
+        {
+          name: 'creator',
+          label: '攝影／權利人',
+          type: 'text',
+        },
+        {
+          name: 'licenseKind',
+          label: '授權類型',
+          type: 'select',
+          defaultValue: 'unknown',
+          options: [
+            { label: '自有圖片', value: 'owned' },
+            { label: '權利人明確授權', value: 'explicit-permission' },
+            { label: '官方宣傳素材', value: 'official-promo' },
+            { label: '公有領域', value: 'public-domain' },
+            { label: 'CC0', value: 'cc0' },
+            { label: 'CC BY', value: 'cc-by' },
+            { label: 'CC BY-SA', value: 'cc-by-sa' },
+            { label: 'CC BY-NC（須人工確認）', value: 'cc-by-nc' },
+            { label: '授權待確認', value: 'unknown' },
+          ],
+        },
+        {
+          name: 'licenseUrl',
+          label: '授權條款網址',
+          type: 'text',
+          validate: validateOptionalHttpUrl,
+        },
+        {
+          name: 'evidenceUrl',
+          label: '授權／宣傳使用證明網址',
+          type: 'text',
+          validate: validateOptionalHttpUrl,
+          admin: {
+            description:
+              '官方素材或書面授權請保留可查核頁面；僅寫「侵權請告知」不算授權。',
+          },
+        },
+        {
+          name: 'promotionalUseAllowed',
+          label: '條款明確允許此類宣傳使用',
+          type: 'checkbox',
+          defaultValue: false,
+        },
+        {
+          name: 'verifiedAt',
+          label: '最後查核時間',
+          type: 'date',
+          admin: {
+            date: { pickerAppearance: 'dayAndTime' },
+          },
+        },
+        {
+          name: 'verificationNote',
+          label: '查核備註',
+          type: 'textarea',
+          admin: {
+            rows: 3,
+          },
+        },
+      ],
     },
   ],
 }

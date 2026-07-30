@@ -33,6 +33,8 @@ const categoryLabels: Record<string, string> = {
   lifestyle: '生活綜合',
   parenting: '親子育兒',
   travel: '旅遊紀錄',
+  'kpop-boy-groups': 'KPOP 男團介紹',
+  'kpop-girl-groups': 'KPOP 女團介紹',
 }
 
 function formatDate(value: string | null) {

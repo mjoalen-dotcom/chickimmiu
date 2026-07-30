@@ -10,6 +10,11 @@ import {
 
 import { isAdmin } from '../access/isAdmin'
 import { BlogImageResizeFeature } from '../components/admin/lexical/BlogImageResizeFeature'
+import {
+  evaluateImageRights,
+  validateArticleImageVariant,
+  type ImageRightsMetadata,
+} from '../lib/blog/articleStudio'
 import { safeRevalidate } from '../lib/revalidate'
 import { triggerKimBlogDeploy } from '../lib/blog/kimSyndication'
 
@@ -103,6 +108,107 @@ export const BlogPosts: CollectionConfig = {
     delete: isAdmin,
   },
   hooks: {
+    beforeChange: [
+      async ({ data, originalDoc, req }) => {
+        const next = {
+          ...((originalDoc || {}) as Record<string, unknown>),
+          ...((data || {}) as Record<string, unknown>),
+        }
+        const studio =
+          next.articleStudio && typeof next.articleStudio === 'object'
+            ? (next.articleStudio as Record<string, unknown>)
+            : null
+        if (
+          next.status !== 'published' ||
+          studio?.generatedByStudio !== true
+        ) {
+          return data
+        }
+
+        const relationId = (value: unknown): number | string | null => {
+          if (typeof value === 'number' || typeof value === 'string') return value
+          if (value && typeof value === 'object') {
+            const id = (value as { id?: unknown }).id
+            if (typeof id === 'number' || typeof id === 'string') return id
+          }
+          return null
+        }
+        const gallery = Array.isArray(next.gallery) ? next.gallery : []
+        const featuredImageId = relationId(next.featuredImage)
+        const mediaIds = [
+          featuredImageId,
+          ...gallery.map(relationId),
+        ].filter((value): value is number | string => value != null)
+        const uniqueMediaIds = [...new Set(mediaIds.map(String))]
+        if (uniqueMediaIds.length === 0) {
+          throw new Error('自動文章至少需要一張已確認來源的圖片才能發布。')
+        }
+
+        const mediaDocs = await Promise.all(
+          uniqueMediaIds.map((id) =>
+            req.payload.findByID({
+              collection: 'media',
+              id,
+              depth: 0,
+            }),
+          ),
+        )
+        const errors = mediaDocs.flatMap((media, index) => {
+          const rights =
+            media.usageRights && typeof media.usageRights === 'object'
+              ? (media.usageRights as Record<string, unknown>)
+              : {}
+          const decision = evaluateImageRights({
+            creator:
+              typeof rights.creator === 'string' ? rights.creator : undefined,
+            evidenceUrl:
+              typeof rights.evidenceUrl === 'string'
+                ? rights.evidenceUrl
+                : undefined,
+            licenseKind:
+              typeof rights.licenseKind === 'string'
+                ? rights.licenseKind
+                : 'unknown',
+            licenseUrl:
+              typeof rights.licenseUrl === 'string'
+                ? rights.licenseUrl
+                : undefined,
+            promotionalUseAllowed: rights.promotionalUseAllowed === true,
+            sourceLabel:
+              typeof rights.sourceLabel === 'string'
+                ? rights.sourceLabel
+                : undefined,
+            sourceUrl:
+              typeof rights.sourceUrl === 'string'
+                ? rights.sourceUrl
+                : undefined,
+          } as ImageRightsMetadata)
+          const isFeatured =
+            featuredImageId != null &&
+            String(media.id) === String(featuredImageId)
+          const forcedSizeValid = isFeatured
+            ? validateArticleImageVariant('hero', media).valid
+            : validateArticleImageVariant('member', media).valid ||
+              validateArticleImageVariant('story', media).valid
+          return [
+            ...(decision.allowed
+              ? []
+              : [`圖片 ${index + 1}：${decision.reason}`]),
+            ...(forcedSizeValid
+              ? []
+              : [
+                  `圖片 ${index + 1}：缺少實際 800px／1000px 部落格版本，請重新上傳。`,
+                ]),
+          ]
+        })
+        if (errors.length > 0) {
+          throw new Error(
+            `自動文章仍有圖片授權待確認，請先保留草稿：${errors.join('；')}`,
+          )
+        }
+        return data
+      },
+    ],
     afterChange: [
       ({ doc, previousDoc }) => {
         const slug = (doc as Record<string, unknown>)?.slug as string | undefined
@@ -391,6 +497,8 @@ export const BlogPosts: CollectionConfig = {
                         { label: '生活綜合', value: 'lifestyle' },
                         { label: '親子育兒', value: 'parenting' },
                         { label: '旅遊紀錄', value: 'travel' },
+                        { label: 'KPOP 男團介紹', value: 'kpop-boy-groups' },
+                        { label: 'KPOP 女團介紹', value: 'kpop-girl-groups' },
                       ],
                     },
                     {
@@ -489,6 +597,93 @@ export const BlogPosts: CollectionConfig = {
               label: '影音署名 / Credit line',
               type: 'text',
               admin: { description: '例：作詞作曲 / 監製：Alan Miao' },
+            },
+          ],
+        },
+        {
+          label: '自動文章紀錄',
+          description: '文章模板、查核來源、圖片權利與下架聯絡資訊',
+          fields: [
+            {
+              name: 'articleStudio',
+              label: '自動文章工具',
+              type: 'group',
+              fields: [
+                {
+                  name: 'generatedByStudio',
+                  label: '由自動文章工具建立',
+                  type: 'checkbox',
+                  defaultValue: false,
+                  index: true,
+                },
+                {
+                  name: 'templateKey',
+                  label: '文章模板',
+                  type: 'select',
+                  options: [
+                    { label: '金老佛爺時尚文章', value: 'fashion' },
+                    { label: 'KPOP 男團介紹', value: 'kpop-boy-group' },
+                    { label: 'KPOP 女團介紹', value: 'kpop-girl-group' },
+                  ],
+                },
+                {
+                  name: 'researchCheckedAt',
+                  label: '資料最後查核時間',
+                  type: 'date',
+                  admin: {
+                    date: { pickerAppearance: 'dayAndTime' },
+                  },
+                },
+                {
+                  name: 'researchSources',
+                  label: '資料來源',
+                  type: 'array',
+                  fields: [
+                    {
+                      name: 'label',
+                      label: '來源名稱',
+                      type: 'text',
+                      required: true,
+                    },
+                    {
+                      name: 'url',
+                      label: '來源網址',
+                      type: 'text',
+                      required: true,
+                    },
+                    {
+                      name: 'provider',
+                      label: '來源類型',
+                      type: 'select',
+                      defaultValue: 'manual',
+                      options: [
+                        { label: '官方來源', value: 'official' },
+                        { label: 'Wikipedia', value: 'wikipedia' },
+                        { label: 'Wikidata', value: 'wikidata' },
+                        { label: '人工補充', value: 'manual' },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  name: 'takedownEmail',
+                  label: '圖片下架聯絡信箱',
+                  type: 'email',
+                  defaultValue: 'service@chickimmiu.com',
+                },
+                {
+                  name: 'rightsNotice',
+                  label: '圖片用途與下架說明',
+                  type: 'textarea',
+                  defaultValue:
+                    '本文圖片用於團體介紹與宣傳資訊整理，圖片權利歸原權利人所有。如您為權利人並認為使用不妥，請來信告知，我們將儘速確認並下架。',
+                  admin: {
+                    rows: 4,
+                    description:
+                      '此說明是聯絡與處理機制，不取代圖片授權。',
+                  },
+                },
+              ],
             },
           ],
         },

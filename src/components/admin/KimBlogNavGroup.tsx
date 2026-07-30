@@ -10,7 +10,7 @@ import React, { useEffect } from 'react'
  *
  * 注入後群組內最終順序：
  *   部落格工作台（prepend）→ 部落格文章 → 部落格分類（原生連結）→
- *   相簿 → ✨ AI 草稿產生器 → 查看部落格 ↗（append）
+ *   相簿 → 📝 自動文章工具 → 查看部落格 ↗（append）
  *
  * 為什麼 DOM 注入：同 CKMUSystemToolsNavGroup — Payload v3 group 由
  * collections/globals 的 admin.group 自動聚合，沒有公開 API 讓自訂 view
@@ -49,7 +49,7 @@ const appendItems: Item[] = [
   },
   {
     href: '/admin/tools/blog-ai-draft',
-    label: '✨ AI 草稿產生器',
+    label: '📝 自動文章工具',
     id: 'nav-kimblog-ai-draft',
   },
   {
