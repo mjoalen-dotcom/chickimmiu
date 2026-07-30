@@ -1,4 +1,4 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, Field } from 'payload'
 import {
   BlocksFeature,
   EXPERIMENTAL_TableFeature,
@@ -11,6 +11,38 @@ import {
 import { isAdmin } from '../access/isAdmin'
 import { safeRevalidate } from '../lib/revalidate'
 import { triggerKimBlogDeploy } from '../lib/blog/kimSyndication'
+
+const EMOTICON_FOLDER_NAME = 'Kim 表情圖案（PIXNET 117824267）'
+
+const blogImageDisplayFields: Field[] = [
+  {
+    name: 'displayWidth',
+    label: '圖片顯示寬度',
+    type: 'number',
+    min: 24,
+    max: 1200,
+    defaultValue: 720,
+    admin: {
+      step: 4,
+      description:
+        '拖曳滑桿或輸入像素值；手機版仍會自動縮到畫面寬度內，不會超出文章。',
+      components: {
+        Field: '@/components/admin/BlogImageSizeField',
+      },
+    },
+  },
+  {
+    name: 'displayAlignment',
+    label: '圖片對齊',
+    type: 'select',
+    defaultValue: 'center',
+    options: [
+      { label: '靠左', value: 'left' },
+      { label: '置中', value: 'center' },
+      { label: '靠右', value: 'right' },
+    ],
+  },
+]
 
 // SSR consumers (as of Phase 5.1 Batch 3, 2026-04-16):
 //   - /blog                  (src/app/(frontend)/blog/page.tsx)
@@ -145,11 +177,8 @@ export const BlogPosts: CollectionConfig = {
                 //   2. EXPERIMENTAL_TableFeature — 表格（比較表、尺寸對照、時程表常用）
                 //   3. HorizontalRuleFeature — 水平分隔線（顯式加入，defaultFeatures 有
                 //      但若未來全域被精簡這裡仍保有）
-                //   4. UploadFeature — 內嵌圖片（與全域一致）
-                //   5. BlocksFeature — 自訂區塊：目前有「商品按鈕」（productButton），
-                //      在文章任意位置插入連往商品頁的 CTA 按鈕，前台渲染成金色膠囊按鈕
-                //      並附 ?ref=blog-{slug} 便於分析；商品透過 relationship 選取，
-                //      不會因商品改名/改 slug 而失效。
+                //   4. UploadFeature — 內嵌圖片，另加顯示寬度與對齊控制
+                //   5. BlocksFeature — 「商品按鈕」與 PIXNET 搬移的「表情圖案」
                 // 其它 defaults（Heading/Bold/Italic/Underline/Strikethrough/InlineCode/
                 // Subscript/Superscript/Link/AutoLink/Lists/Checklist/Blockquote/Align/
                 // Indent/Relationship/ParagraphFeature）照用。
@@ -158,7 +187,11 @@ export const BlogPosts: CollectionConfig = {
                   FixedToolbarFeature(),
                   HorizontalRuleFeature(),
                   EXPERIMENTAL_TableFeature(),
-                  UploadFeature({ collections: { media: { fields: [] } } }),
+                  UploadFeature({
+                    collections: {
+                      media: { fields: blogImageDisplayFields },
+                    },
+                  }),
                   BlocksFeature({
                     blocks: [
                       {
@@ -206,6 +239,58 @@ export const BlogPosts: CollectionConfig = {
                           },
                         ],
                       },
+                      {
+                        slug: 'emoticon',
+                        labels: {
+                          singular: '表情圖案',
+                          plural: '表情圖案',
+                        },
+                        fields: [
+                          {
+                            name: 'image',
+                            label: '選擇表情圖案',
+                            type: 'upload',
+                            relationTo: 'media',
+                            required: true,
+                            filterOptions: {
+                              folderName: { equals: EMOTICON_FOLDER_NAME },
+                            },
+                            admin: {
+                              description:
+                                '只顯示從 PIXNET 相簿 117824267 搬入的表情圖案。',
+                            },
+                          },
+                          {
+                            name: 'displayWidth',
+                            label: '表情圖案大小',
+                            type: 'number',
+                            min: 24,
+                            max: 800,
+                            defaultValue: 96,
+                            required: true,
+                            admin: {
+                              step: 4,
+                              description:
+                                '可自由縮放 24–800px；手機版會自動限制在文章寬度內。',
+                              components: {
+                                Field: '@/components/admin/BlogImageSizeField',
+                              },
+                            },
+                          },
+                          {
+                            name: 'displayAlignment',
+                            label: '對齊方式',
+                            type: 'select',
+                            defaultValue: 'center',
+                            required: true,
+                            options: [
+                              { label: '靠左', value: 'left' },
+                              { label: '置中', value: 'center' },
+                              { label: '靠右', value: 'right' },
+                            ],
+                          },
+                        ],
+                      },
                     ],
                   }),
                 ],
@@ -213,8 +298,8 @@ export const BlogPosts: CollectionConfig = {
               admin: {
                 description:
                   '支援標題（H1–H6）、粗體 / 斜體 / 底線 / 刪除線、引言、條列、核取清單、超連結、' +
-                  '表格、水平線、圖片、左右對齊與縮排。頂部工具列永遠顯示；選取文字可叫出浮動選單做快速格式化。' +
-                  '另可用「區塊」按鈕插入「商品按鈕」CTA，直接連到任一商品頁。',
+                  '表格、水平線、圖片、左右對齊與縮排。插入圖片後可編輯顯示寬度與對齊；' +
+                  '頂部工具列永遠顯示，選取文字可叫出浮動選單。另可用「區塊」插入商品按鈕或表情圖案。',
               },
             },
             {

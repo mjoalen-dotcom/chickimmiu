@@ -65,6 +65,70 @@ test('collects normalized image metadata without duplicates', () => {
   assert.equal(images[0].bytes, 12345)
 })
 
+test('serializes resizable article images and emoticon blocks', () => {
+  const resizableContent = {
+    root: {
+      type: 'root',
+      children: [
+        {
+          type: 'upload',
+          fields: {
+            displayWidth: 320,
+            displayAlignment: 'right',
+          },
+          value: {
+            url: '/api/media/file/article-image.webp',
+            alt: 'Article image',
+            mimeType: 'image/webp',
+            width: 1200,
+            height: 800,
+          },
+        },
+        {
+          type: 'block',
+          fields: {
+            blockType: 'emoticon',
+            displayWidth: 96,
+            displayAlignment: 'center',
+            image: {
+              url: '/api/media/file/kim-emoticon-117824267-001.png',
+              alt: '金老佛爺表情圖案 01',
+              mimeType: 'image/png',
+              width: 200,
+              height: 133,
+              filesize: 4321,
+            },
+          },
+        },
+      ],
+    },
+  }
+
+  const html = serializeLexicalForKimBlog(
+    resizableContent,
+    'https://pre.chickimmiu.com',
+  )
+  assert.match(
+    html,
+    /class="kim-blog-media kim-blog-media--right" style="--kim-media-width:320px"/,
+  )
+  assert.match(
+    html,
+    /class="kim-blog-emoticon kim-blog-emoticon--center" style="--kim-media-width:96px"/,
+  )
+
+  const images = collectKimBlogImages(
+    resizableContent,
+    'https://pre.chickimmiu.com',
+  )
+  assert.equal(images.length, 2)
+  assert.equal(
+    images[1].src,
+    'https://pre.chickimmiu.com/api/media/file/kim-emoticon-117824267-001.png',
+  )
+  assert.equal(images[1].bytes, 4321)
+})
+
 test('collects a PIXNET-style gallery and ignores videos', () => {
   const images = collectKimBlogGallery(
     [
