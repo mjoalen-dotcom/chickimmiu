@@ -332,11 +332,16 @@ async function main() {
   }
 }
 
+let exitCode = 0
 await main().catch((error) => {
   process.stderr.write(
     `[import-kim-pixnet-post] FATAL: ${
       error instanceof Error ? error.message : String(error)
     }\n`,
   )
-  process.exit(1)
+  exitCode = 1
 })
+
+// Payload keeps a Next.js cache connection open after local API work completes.
+// This is a one-shot CLI, so exit only after every awaited import or rollback is done.
+process.exit(exitCode)
