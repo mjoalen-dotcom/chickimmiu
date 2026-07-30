@@ -27,6 +27,7 @@ interface Options {
   mediaDir: string
   dryRun: boolean
   validateOnly: boolean
+  skipExisting: boolean
 }
 
 const CATEGORY_VALUES: Record<string, string> = {
@@ -54,6 +55,7 @@ function parseArgs(argv: string[]): Options {
       : '',
     dryRun: process.env.KIM_PIXNET_IMPORT_DRY_RUN === '1',
     validateOnly: process.env.KIM_PIXNET_IMPORT_VALIDATE_ONLY === '1',
+    skipExisting: process.env.KIM_PIXNET_IMPORT_SKIP_EXISTING === '1',
   }
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index]
@@ -62,6 +64,7 @@ function parseArgs(argv: string[]): Options {
       options.mediaDir = path.resolve(argv[++index] || '')
     } else if (value === '--dry-run') options.dryRun = true
     else if (value === '--validate-only') options.validateOnly = true
+    else if (value === '--skip-existing') options.skipExisting = true
     else if (value !== '--') throw new Error(`Unknown argument: ${value}`)
   }
   if (!options.source) throw new Error('--source is required')
@@ -168,6 +171,21 @@ async function main() {
     depth: 0,
   })
   if (existingPost.totalDocs > 0) {
+    if (options.skipExisting) {
+      console.log(
+        JSON.stringify(
+          {
+            skipped: true,
+            reason: 'already-exists',
+            slug: post.slug,
+            articleId: existingPost.docs[0]?.id,
+          },
+          null,
+          2,
+        ),
+      )
+      return
+    }
     throw new Error(`Blog post already exists: ${post.slug}`)
   }
 
