@@ -13,6 +13,8 @@ function parseArgs(argv) {
     continueOnError: false,
     slug: '',
     maxPosts: Number.POSITIVE_INFINITY,
+    retries: 0,
+    retryDelayMs: 3000,
   }
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index]
@@ -26,7 +28,10 @@ function parseArgs(argv) {
     else if (value === '--continue-on-error') options.continueOnError = true
     else if (value === '--slug') options.slug = argv[++index] || ''
     else if (value === '--max-posts') options.maxPosts = Number(argv[++index])
-    else if (value !== '--') throw new Error(`Unknown argument: ${value}`)
+    else if (value === '--retries') options.retries = Number(argv[++index])
+    else if (value === '--retry-delay-ms') {
+      options.retryDelayMs = Number(argv[++index])
+    } else if (value !== '--') throw new Error(`Unknown argument: ${value}`)
   }
   if (!options.sourceDir) throw new Error('--source-dir is required')
   if (!options.mediaRoot) throw new Error('--media-root is required')
@@ -38,6 +43,12 @@ function parseArgs(argv) {
     (!Number.isInteger(options.maxPosts) || options.maxPosts < 1)
   ) {
     throw new Error('--max-posts must be a positive integer')
+  }
+  if (!Number.isInteger(options.retries) || options.retries < 0) {
+    throw new Error('--retries must be a non-negative integer')
+  }
+  if (!Number.isInteger(options.retryDelayMs) || options.retryDelayMs < 0) {
+    throw new Error('--retry-delay-ms must be a non-negative integer')
   }
   return options
 }
@@ -153,7 +164,16 @@ for (let index = 0; index < posts.length; index += 1) {
   )
   try {
     const mediaDir = await assertMediaDirectory(options.mediaRoot, post.slug)
-    const result = await runImporter(options, post, mediaDir)
+    let result
+    for (let attempt = 0; attempt <= options.retries; attempt += 1) {
+      result = await runImporter(options, post, mediaDir)
+      if (result.code === 0 || attempt === options.retries) break
+      const delay = options.retryDelayMs * (attempt + 1)
+      process.stderr.write(
+        `[${post.slug}] attempt ${attempt + 1} failed; retrying in ${delay}ms\n`,
+      )
+      await new Promise((resolve) => setTimeout(resolve, delay))
+    }
     results.push({
       slug: post.slug,
       success: result.code === 0,
