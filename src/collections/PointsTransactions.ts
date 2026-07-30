@@ -197,6 +197,7 @@ export const PointsTransactions: CollectionConfig = {
         { label: '歡迎禮', value: 'welcome' },
         { label: '升等贈點', value: 'tier_upgrade' },
         { label: '銷毀造型卡', value: 'card_burn' },
+        { label: '金老佛爺部落格閱讀', value: 'kim_blog_read' },
       ],
     },
     {
