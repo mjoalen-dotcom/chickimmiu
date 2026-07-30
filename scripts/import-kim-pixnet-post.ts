@@ -192,6 +192,7 @@ async function main() {
   const mediaBySource = new Map<string, number | string>()
   const gallery: Array<number | string> = []
   const createdMedia: Array<number | string> = []
+  let reusedMedia = 0
 
   try {
     for (let index = 0; index < post.images.length; index += 1) {
@@ -203,6 +204,7 @@ async function main() {
       if (reused) {
         mediaBySource.set(image.src, reused.id)
         gallery.push(reused.id)
+        reusedMedia += 1
         continue
       }
       if (options.dryRun) {
@@ -249,8 +251,9 @@ async function main() {
       title: post.title,
       images: post.images.length,
       embeddedImages: converted.embeddedMediaIds.length,
-      reusedMedia: gallery.length - createdMedia.length,
+      reusedMedia,
       createdMedia: createdMedia.length,
+      pendingMedia: options.dryRun ? gallery.length - reusedMedia : 0,
       nodeCounts: converted.nodeCounts,
     }
     if (options.dryRun) {
