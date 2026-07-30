@@ -79,8 +79,27 @@ function safeMediaPath(mediaDir: string, source: string): string {
   return resolved
 }
 
-function uploadFilename(slug: string, index: number): string {
-  return `kim-pixnet-${slug}-${String(index + 1).padStart(3, '0')}.webp`
+const MEDIA_TYPES: Record<string, string> = {
+  '.gif': 'image/gif',
+  '.jpeg': 'image/jpeg',
+  '.jpg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+}
+
+function mediaFileMetadata(filePath: string) {
+  const extension = path.extname(filePath).toLowerCase()
+  const mimetype = MEDIA_TYPES[extension]
+  if (!mimetype) throw new Error(`Unsupported media type: ${filePath}`)
+  return { extension, mimetype }
+}
+
+function uploadFilename(
+  slug: string,
+  index: number,
+  extension: string,
+): string {
+  return `kim-pixnet-${slug}-${String(index + 1).padStart(3, '0')}${extension}`
 }
 
 async function validateSource(options: Options) {
@@ -102,6 +121,7 @@ async function validateSource(options: Options) {
     if (!stats.isFile() || stats.size === 0) {
       throw new Error(`Missing media file: ${filename}`)
     }
+    mediaFileMetadata(filename)
     mediaPaths.push(filename)
   }
   return { post, mediaPaths }
@@ -176,7 +196,9 @@ async function main() {
   try {
     for (let index = 0; index < post.images.length; index += 1) {
       const image = post.images[index]!
-      const filename = uploadFilename(post.slug, index)
+      const filePath = mediaPaths[index]!
+      const { extension, mimetype } = mediaFileMetadata(filePath)
+      const filename = uploadFilename(post.slug, index, extension)
       const reused = existingByFilename.get(filename)
       if (reused) {
         mediaBySource.set(image.src, reused.id)
@@ -189,7 +211,6 @@ async function main() {
         continue
       }
 
-      const filePath = mediaPaths[index]!
       const data = await fs.readFile(filePath)
       const media = await payload.create({
         collection: 'media',
@@ -200,7 +221,7 @@ async function main() {
         filePath,
         file: {
           data,
-          mimetype: 'image/webp',
+          mimetype,
           name: filename,
           size: data.byteLength,
         },
