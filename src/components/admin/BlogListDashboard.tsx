@@ -1,29 +1,34 @@
 'use client'
 
-import { ExternalLink, FilePenLine, FileText, FolderTree, Image, Sparkles } from 'lucide-react'
+import { ExternalLink, FilePenLine, FileText, FolderTree, Images, Sparkles, Store } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import BlogStudioNav from './BlogStudioNav'
 
 type Counts = {
-  all: number
-  draft: number
-  published: number
-  syndicated: number
+  kimAll: number
+  kimDraft: number
+  kimPublished: number
+  storeAll: number
 }
 
 const emptyCounts: Counts = {
-  all: 0,
-  draft: 0,
-  published: 0,
-  syndicated: 0,
+  kimAll: 0,
+  kimDraft: 0,
+  kimPublished: 0,
+  storeAll: 0,
 }
 
 const quickLinks = [
   {
-    href: '/admin/collections/blog-posts',
-    label: '我的文章',
+    href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true',
+    label: 'Kim 文章',
     icon: FileText,
+  },
+  {
+    href: '/admin/collections/blog-posts?where[publishToKimLafayette][not_equals]=true',
+    label: '購物網站文章',
+    icon: Store,
   },
   {
     href: '/admin/collections/blog-posts/create',
@@ -32,9 +37,9 @@ const quickLinks = [
     primary: true,
   },
   {
-    href: '/admin/collections/media',
-    label: '相簿',
-    icon: Image,
+    href: '/admin/blog-studio/albums',
+    label: 'Kim 相簿',
+    icon: Images,
   },
   {
     href: '/admin/collections/blog-categories',
@@ -56,28 +61,28 @@ const quickLinks = [
 
 const statusLinks = [
   {
-    key: 'all' as const,
-    label: '全部文章',
-    href: '/admin/collections/blog-posts',
+    key: 'kimAll' as const,
+    label: 'Kim 全部文章',
+    href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true',
     color: '#1f2937',
   },
   {
-    key: 'published' as const,
-    label: '已發佈',
-    href: '/admin/collections/blog-posts?where[status][equals]=published',
+    key: 'kimPublished' as const,
+    label: 'Kim 已發佈',
+    href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true&where[status][equals]=published',
     color: '#087f5b',
   },
   {
-    key: 'draft' as const,
-    label: '草稿',
-    href: '/admin/collections/blog-posts?where[status][equals]=draft',
+    key: 'kimDraft' as const,
+    label: 'Kim 草稿',
+    href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true&where[status][equals]=draft',
     color: '#9a3412',
   },
   {
-    key: 'syndicated' as const,
-    label: 'Kim 已同步',
-    href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true',
-    color: '#a25e5e',
+    key: 'storeAll' as const,
+    label: '購物網站文章',
+    href: '/admin/collections/blog-posts?where[publishToKimLafayette][not_equals]=true',
+    color: '#1d4ed8',
   },
 ]
 
@@ -100,13 +105,13 @@ export default function BlogListDashboard() {
     let active = true
 
     Promise.all([
-      fetchCount(),
-      fetchCount('&where[status][equals]=draft'),
-      fetchCount('&where[status][equals]=published'),
       fetchCount('&where[publishToKimLafayette][equals]=true'),
+      fetchCount('&where[publishToKimLafayette][equals]=true&where[status][equals]=draft'),
+      fetchCount('&where[publishToKimLafayette][equals]=true&where[status][equals]=published'),
+      fetchCount('&where[publishToKimLafayette][not_equals]=true'),
     ])
-      .then(([all, draft, published, syndicated]) => {
-        if (active) setCounts({ all, draft, published, syndicated })
+      .then(([kimAll, kimDraft, kimPublished, storeAll]) => {
+        if (active) setCounts({ kimAll, kimDraft, kimPublished, storeAll })
       })
       .catch(() => {
         if (active) setCounts(emptyCounts)
@@ -156,7 +161,7 @@ export default function BlogListDashboard() {
               Lafayette Kim
             </p>
             <h2 id="blog-workspace-title" style={{ margin: 0, fontSize: 22, fontWeight: 650 }}>
-              文章工作台
+              文章工作台：兩個網站分開管理
             </h2>
           </div>
 

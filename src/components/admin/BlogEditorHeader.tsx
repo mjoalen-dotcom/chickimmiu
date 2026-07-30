@@ -85,12 +85,16 @@ export default function BlogEditorHeader() {
               padding: '4px 9px',
               border: '1px solid var(--theme-elevation-200, #ddd)',
               borderRadius: 999,
-              color: values.publishToKimLafayette ? '#a25e5e' : 'var(--theme-elevation-550, #666)',
+              borderColor: values.publishToKimLafayette ? '#e7c2c2' : '#bfdbfe',
+              background: values.publishToKimLafayette ? '#fff7f7' : '#eff6ff',
+              color: values.publishToKimLafayette ? '#a25e5e' : '#1d4ed8',
               fontSize: 11,
               fontWeight: 650,
             }}
           >
-            {values.publishToKimLafayette ? 'Kim 已同步' : 'Kim 未同步'}
+            {values.publishToKimLafayette
+              ? '發佈至：金老佛爺部落格'
+              : '發佈至：購物網站部落格'}
           </span>
           <span
             style={{

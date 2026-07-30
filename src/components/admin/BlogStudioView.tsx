@@ -1,8 +1,11 @@
 import { DefaultTemplate } from '@payloadcms/next/templates'
-import { FilePenLine, FileText, Images, Radio, Tags } from 'lucide-react'
+import { FilePenLine, FileText, Images, Mail, Radio, Store, Tags } from 'lucide-react'
 import type { AdminViewServerProps } from 'payload'
 import React from 'react'
 
+import { getKimBlogAnalytics } from '@/lib/blog/kimBlogAnalytics'
+
+import BlogAnalyticsPanel from './BlogAnalyticsPanel'
 import BlogStudioNav from './BlogStudioNav'
 
 type BlogPostRow = {
@@ -71,26 +74,22 @@ const BlogStudioView: React.FC<AdminViewServerProps> = async ({
     )
   }
 
-  const [recentPosts, allPosts, publishedPosts, draftPosts, syndicatedPosts, media, categories] =
-    await Promise.all([
+  const [
+    recentPosts,
+    allPosts,
+    publishedPosts,
+    draftPosts,
+    storePosts,
+    subscribers,
+    categories,
+    analytics,
+  ] = await Promise.all([
       req.payload.find({
         collection: 'blog-posts',
         depth: 0,
         limit: 8,
         sort: '-updatedAt',
-      }),
-      req.payload.find({ collection: 'blog-posts', depth: 0, limit: 1 }),
-      req.payload.find({
-        collection: 'blog-posts',
-        depth: 0,
-        limit: 1,
-        where: { status: { equals: 'published' } },
-      }),
-      req.payload.find({
-        collection: 'blog-posts',
-        depth: 0,
-        limit: 1,
-        where: { status: { equals: 'draft' } },
+        where: { publishToKimLafayette: { equals: true } },
       }),
       req.payload.find({
         collection: 'blog-posts',
@@ -99,41 +98,75 @@ const BlogStudioView: React.FC<AdminViewServerProps> = async ({
         where: { publishToKimLafayette: { equals: true } },
       }),
       req.payload.find({
-        collection: 'media',
+        collection: 'blog-posts',
         depth: 0,
         limit: 1,
-        where: { mimeType: { contains: 'image/' } },
+        where: {
+          and: [
+            { publishToKimLafayette: { equals: true } },
+            { status: { equals: 'published' } },
+          ],
+        },
+      }),
+      req.payload.find({
+        collection: 'blog-posts',
+        depth: 0,
+        limit: 1,
+        where: {
+          and: [
+            { publishToKimLafayette: { equals: true } },
+            { status: { equals: 'draft' } },
+          ],
+        },
+      }),
+      req.payload.find({
+        collection: 'blog-posts',
+        depth: 0,
+        limit: 1,
+        where: { publishToKimLafayette: { not_equals: true } },
+      }),
+      req.payload.find({
+        collection: 'newsletter-subscribers',
+        depth: 0,
+        limit: 1,
+        where: {
+          and: [
+            { kimBlogSubscribed: { equals: true } },
+            { status: { equals: 'subscribed' } },
+          ],
+        },
       }),
       req.payload.find({
         collection: 'blog-categories',
         depth: 0,
         limit: 1,
       }),
+      getKimBlogAnalytics(req.payload, 30),
     ])
 
   const stats = [
     {
-      label: '全部文章',
+      label: '金老佛爺文章',
       value: allPosts.totalDocs,
-      href: '/admin/collections/blog-posts',
+      href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true',
       color: '#202124',
     },
     {
       label: '已發佈',
       value: publishedPosts.totalDocs,
-      href: '/admin/collections/blog-posts?where[status][equals]=published',
+      href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true&where[status][equals]=published',
       color: '#087f5b',
     },
     {
       label: '草稿',
       value: draftPosts.totalDocs,
-      href: '/admin/collections/blog-posts?where[status][equals]=draft',
+      href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true&where[status][equals]=draft',
       color: '#9a3412',
     },
     {
-      label: 'Kim 已同步',
-      value: syndicatedPosts.totalDocs,
-      href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true',
+      label: '文章訂閱',
+      value: subscribers.totalDocs,
+      href: '/admin/collections/newsletter-subscribers?where[kimBlogSubscribed][equals]=true',
       color: '#a25e5e',
     },
   ]
@@ -176,31 +209,73 @@ const BlogStudioView: React.FC<AdminViewServerProps> = async ({
             >
               Blog Control Panel
             </p>
-            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>部落格儀表板</h1>
+            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>
+              金老佛爺部落格儀表板
+            </h1>
           </div>
-          <a
-            href="/admin/collections/blog-posts/create"
-            style={{
-              display: 'inline-flex',
-              minHeight: 40,
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 14px',
-              borderRadius: 6,
-              background: '#202124',
-              color: '#fff',
-              fontSize: 13,
-              fontWeight: 700,
-              textDecoration: 'none',
-            }}
-          >
-            <FilePenLine aria-hidden size={17} />
-            寫文章
-          </a>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                minHeight: 40,
+                alignItems: 'center',
+                gap: 7,
+                padding: '9px 12px',
+                border: '1px solid #a25e5e',
+                borderRadius: 6,
+                color: '#a25e5e',
+                fontSize: 12,
+                fontWeight: 700,
+              }}
+            >
+              <Radio aria-hidden size={16} />
+              金老佛爺部落格
+            </span>
+            <a
+              href="/admin/collections/blog-posts?where[publishToKimLafayette][not_equals]=true"
+              style={{
+                display: 'inline-flex',
+                minHeight: 40,
+                alignItems: 'center',
+                gap: 7,
+                padding: '9px 12px',
+                border: '1px solid var(--theme-elevation-250, #ccc)',
+                borderRadius: 6,
+                color: 'var(--theme-text, #202124)',
+                fontSize: 12,
+                fontWeight: 650,
+                textDecoration: 'none',
+              }}
+            >
+              <Store aria-hidden size={16} />
+              購物網站文章 {storePosts.totalDocs}
+            </a>
+            <a
+              href="/admin/collections/blog-posts/create"
+              style={{
+                display: 'inline-flex',
+                minHeight: 40,
+                alignItems: 'center',
+                gap: 8,
+                padding: '9px 14px',
+                borderRadius: 6,
+                background: '#202124',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 700,
+                textDecoration: 'none',
+              }}
+            >
+              <FilePenLine aria-hidden size={17} />
+              寫文章
+            </a>
+          </div>
         </header>
 
+        <BlogAnalyticsPanel analytics={analytics} />
+
         <section
-          aria-label="文章統計"
+          aria-label="金老佛爺文章統計"
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
@@ -263,10 +338,10 @@ const BlogStudioView: React.FC<AdminViewServerProps> = async ({
               }}
             >
               <h2 id="recent-posts-title" style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
-                最近文章
+                金老佛爺最近文章
               </h2>
               <a
-                href="/admin/collections/blog-posts"
+                href="/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true"
                 style={{ color: '#a25e5e', fontSize: 12, fontWeight: 700 }}
               >
                 查看全部
@@ -300,13 +375,14 @@ const BlogStudioView: React.FC<AdminViewServerProps> = async ({
                   </tr>
                 </thead>
                 <tbody>
-                  {recent.map((post) => (
-                    <tr
-                      key={String(post.id)}
-                      style={{
-                        borderBottom: '1px solid var(--theme-elevation-150, #ececec)',
-                      }}
-                    >
+                  {recent.length > 0 ? (
+                    recent.map((post) => (
+                      <tr
+                        key={String(post.id)}
+                        style={{
+                          borderBottom: '1px solid var(--theme-elevation-150, #ececec)',
+                        }}
+                      >
                       <td style={{ maxWidth: 360, padding: '13px 8px' }}>
                         <a
                           href={`/admin/collections/blog-posts/${post.id}`}
@@ -361,8 +437,22 @@ const BlogStudioView: React.FC<AdminViewServerProps> = async ({
                           編輯
                         </a>
                       </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        style={{
+                          padding: '22px 8px',
+                          color: 'var(--theme-elevation-550, #6a6a6a)',
+                        }}
+                      >
+                        尚無金老佛爺文章。新增文章時請在「發佈網站」勾選
+                        blog.kimlafayette.com。
+                      </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -382,22 +472,28 @@ const BlogStudioView: React.FC<AdminViewServerProps> = async ({
             >
               {[
                 {
-                  href: '/admin/collections/blog-posts',
-                  label: '文章',
+                  href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true',
+                  label: '金老佛爺文章',
                   value: `${allPosts.totalDocs} 篇`,
                   icon: FileText,
                 },
                 {
                   href: '/admin/blog-studio/albums',
-                  label: '相簿',
-                  value: `${media.totalDocs} 張`,
+                  label: '金老佛爺相簿',
+                  value: '專屬圖片',
                   icon: Images,
                 },
                 {
                   href: '/admin/collections/blog-categories',
-                  label: '分類',
+                  label: '共用分類',
                   value: `${categories.totalDocs} 個`,
                   icon: Tags,
+                },
+                {
+                  href: '/admin/collections/newsletter-subscribers?where[kimBlogSubscribed][equals]=true',
+                  label: '文章訂閱名單',
+                  value: `${subscribers.totalDocs} 位`,
+                  icon: Mail,
                 },
                 {
                   href: 'https://blog.kimlafayette.com/blog/',

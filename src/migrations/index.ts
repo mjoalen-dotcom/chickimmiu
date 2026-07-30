@@ -80,6 +80,7 @@ import * as migration_20260729_090000_add_home_shipping_return_logistics from '.
 import * as migration_20260729_120000_relax_invoice_settings_ecpay_not_null from './20260729_120000_relax_invoice_settings_ecpay_not_null';
 import * as migration_20260729_150000_add_social_login_credentials from './20260729_150000_add_social_login_credentials';
 import * as migration_20260730_010000_fix_kim_blog_gallery_rels from './20260730_010000_fix_kim_blog_gallery_rels';
+import * as migration_20260730_133000_add_kim_blog_subscription from './20260730_133000_add_kim_blog_subscription';
 
 export const migrations = [
   {
@@ -491,5 +492,10 @@ export const migrations = [
     up: migration_20260730_010000_fix_kim_blog_gallery_rels.up,
     down: migration_20260730_010000_fix_kim_blog_gallery_rels.down,
     name: '20260730_010000_fix_kim_blog_gallery_rels',
+  },
+  {
+    up: migration_20260730_133000_add_kim_blog_subscription.up,
+    down: migration_20260730_133000_add_kim_blog_subscription.down,
+    name: '20260730_133000_add_kim_blog_subscription',
   },
 ];

@@ -21,7 +21,53 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const VALID_SOURCES = new Set(['homepage', 'footer', 'checkout', 'popup', 'import', 'other'])
+const VALID_SOURCES = new Set([
+  'homepage',
+  'footer',
+  'checkout',
+  'popup',
+  'import',
+  'kim-blog',
+  'other',
+])
+const KIM_BLOG_ALLOWED_ORIGINS = new Set([
+  'https://blog.kimlafayette.com',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3001',
+  'http://localhost:3010',
+  'http://127.0.0.1:3010',
+  'http://localhost:3011',
+  'http://127.0.0.1:3011',
+  'http://localhost:3012',
+  'http://127.0.0.1:3012',
+  'http://localhost:3013',
+  'http://127.0.0.1:3013',
+])
+const RATE_WINDOW_MS = 60_000
+const RATE_LIMIT = 12
+const rateBucket = new Map<string, number[]>()
+
+function corsHeaders(req: NextRequest): Record<string, string> {
+  const origin = req.headers.get('origin') || ''
+  if (!KIM_BLOG_ALLOWED_ORIGINS.has(origin)) return {}
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400',
+    Vary: 'Origin',
+  }
+}
+
+function json(
+  req: NextRequest,
+  body: Record<string, unknown>,
+  status = 200,
+) {
+  return NextResponse.json(body, { status, headers: corsHeaders(req) })
+}
 
 function clientIp(req: NextRequest): string | undefined {
   const xff = req.headers.get('x-forwarded-for')
@@ -29,7 +75,29 @@ function clientIp(req: NextRequest): string | undefined {
   return req.headers.get('x-real-ip') || undefined
 }
 
+function isRateLimited(ip: string) {
+  const now = Date.now()
+  const recent = (rateBucket.get(ip) || []).filter(
+    (time) => now - time < RATE_WINDOW_MS,
+  )
+  if (recent.length >= RATE_LIMIT) {
+    rateBucket.set(ip, recent)
+    return true
+  }
+  recent.push(now)
+  rateBucket.set(ip, recent)
+  return false
+}
+
 export async function POST(req: NextRequest) {
+  const origin = req.headers.get('origin') || ''
+  if (origin && !KIM_BLOG_ALLOWED_ORIGINS.has(origin)) {
+    return json(req, { success: false, error: 'origin_not_allowed' }, 403)
+  }
+  if (isRateLimited(clientIp(req) || '0.0.0.0')) {
+    return json(req, { success: false, error: '請稍後再試' }, 429)
+  }
+
   try {
     const payload = await getPayload({ config })
 
@@ -42,13 +110,11 @@ export async function POST(req: NextRequest) {
 
     const email = String(body.email || '').trim().toLowerCase()
     if (!email || !EMAIL_RE.test(email)) {
-      return NextResponse.json(
-        { success: false, error: '請輸入正確的 Email' },
-        { status: 400 },
-      )
+      return json(req, { success: false, error: '請輸入正確的 Email' }, 400)
     }
 
     const source = VALID_SOURCES.has(String(body.source)) ? String(body.source) : 'homepage'
+    const isKimBlogSubscription = source === 'kim-blog'
     const name = body.name ? String(body.name).trim().slice(0, 120) : undefined
     const locale = body.locale ? String(body.locale).trim().slice(0, 12) : undefined
     const ipAddress = clientIp(req)
@@ -82,12 +148,31 @@ export async function POST(req: NextRequest) {
             confirmedAt: now,
             ...(userId && !doc.user ? { user: userId } : {}),
             ...(name && !doc.name ? { name } : {}),
+            ...(isKimBlogSubscription
+              ? {
+                  kimBlogSubscribed: true,
+                  kimBlogSubscribedAt: now,
+                }
+              : {}),
           } as never,
         })
-        return NextResponse.json({ success: true, resubscribed: true })
+        return json(req, { success: true, resubscribed: true })
+      }
+      if (isKimBlogSubscription && !doc.kimBlogSubscribed) {
+        await payload.update({
+          collection: 'newsletter-subscribers',
+          id: String(doc.id),
+          data: {
+            kimBlogSubscribed: true,
+            kimBlogSubscribedAt: now,
+            ...(userId && !doc.user ? { user: userId } : {}),
+            ...(name && !doc.name ? { name } : {}),
+          } as never,
+        })
+        return json(req, { success: true, blogSubscriptionAdded: true })
       }
       // 已訂閱 → 冪等成功
-      return NextResponse.json({ success: true, alreadySubscribed: true })
+      return json(req, { success: true, alreadySubscribed: true })
     }
 
     await payload.create({
@@ -100,16 +185,23 @@ export async function POST(req: NextRequest) {
         locale,
         ipAddress,
         confirmedAt: now,
+        kimBlogSubscribed: isKimBlogSubscription,
+        ...(isKimBlogSubscription ? { kimBlogSubscribedAt: now } : {}),
         ...(userId ? { user: userId } : {}),
       } as never,
     })
 
-    return NextResponse.json({ success: true })
+    return json(req, { success: true })
   } catch (error) {
     console.error('[newsletter/subscribe POST] error:', error)
-    return NextResponse.json(
-      { success: false, error: '訂閱失敗，請稍後再試' },
-      { status: 500 },
-    )
+    return json(req, { success: false, error: '訂閱失敗，請稍後再試' }, 500)
   }
+}
+
+export function OPTIONS(req: NextRequest) {
+  const origin = req.headers.get('origin') || ''
+  if (!KIM_BLOG_ALLOWED_ORIGINS.has(origin)) {
+    return new NextResponse(null, { status: 403 })
+  }
+  return new NextResponse(null, { status: 204, headers: corsHeaders(req) })
 }

@@ -20,6 +20,59 @@ type MediaRow = {
   } | null
 }
 
+type BlogPostMediaRefs = {
+  featuredImage?: number | string | { id?: number | string } | null
+  gallery?: (number | string | { id?: number | string })[] | null
+  heroVideo?: number | string | { id?: number | string } | null
+  heroAudio?: number | string | { id?: number | string } | null
+  content?: unknown
+  seo?: {
+    metaImage?: number | string | { id?: number | string } | null
+  } | null
+}
+
+function relationId(value: unknown) {
+  if (typeof value === 'number' || typeof value === 'string') return value
+  if (value && typeof value === 'object' && 'id' in value) {
+    const id = (value as { id?: unknown }).id
+    if (typeof id === 'number' || typeof id === 'string') return id
+  }
+  return null
+}
+
+function collectContentMedia(value: unknown, ids: Set<number | string>) {
+  if (Array.isArray(value)) {
+    for (const item of value) collectContentMedia(item, ids)
+    return
+  }
+  if (!value || typeof value !== 'object') return
+
+  const row = value as Record<string, unknown>
+  if (row.relationTo === 'media') {
+    const id = relationId(row.value)
+    if (id != null) ids.add(id)
+  }
+  for (const child of Object.values(row)) collectContentMedia(child, ids)
+}
+
+function collectPostMedia(posts: BlogPostMediaRefs[]) {
+  const ids = new Set<number | string>()
+  for (const post of posts) {
+    for (const value of [
+      post.featuredImage,
+      ...(post.gallery || []),
+      post.heroVideo,
+      post.heroAudio,
+      post.seo?.metaImage,
+    ]) {
+      const id = relationId(value)
+      if (id != null) ids.add(id)
+    }
+    collectContentMedia(post.content, ids)
+  }
+  return [...ids]
+}
+
 function imageUrl(media: MediaRow) {
   const thumbnail = media.sizes?.thumbnail?.url
   if (thumbnail) return thumbnail
@@ -68,13 +121,25 @@ const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
     )
   }
 
-  const mediaResult = await req.payload.find({
-    collection: 'media',
+  const postsResult = await req.payload.find({
+    collection: 'blog-posts',
     depth: 0,
-    limit: 24,
-    sort: '-updatedAt',
-    where: { mimeType: { contains: 'image/' } },
+    limit: 500,
+    where: { publishToKimLafayette: { equals: true } },
   })
+  const mediaIds = collectPostMedia(postsResult.docs as BlogPostMediaRefs[])
+  const mediaResult =
+    mediaIds.length > 0
+      ? await req.payload.find({
+          collection: 'media',
+          depth: 0,
+          limit: 100,
+          sort: '-updatedAt',
+          where: {
+            and: [{ mimeType: { contains: 'image/' } }, { id: { in: mediaIds } }],
+          },
+        })
+      : { docs: [], totalDocs: 0 }
   const media = mediaResult.docs as MediaRow[]
 
   return (
@@ -111,9 +176,11 @@ const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
                 textTransform: 'uppercase',
               }}
             >
-              Albums
+              Kim Albums
             </p>
-            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>相簿</h1>
+            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>
+              金老佛爺文章相簿
+            </h1>
             <p
               style={{
                 margin: '7px 0 0',
@@ -121,7 +188,7 @@ const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
                 fontSize: 13,
               }}
             >
-              {mediaResult.totalDocs.toLocaleString('zh-TW')} 張圖片
+              {mediaResult.totalDocs.toLocaleString('zh-TW')} 張文章使用圖片，不含購物網站媒體
             </p>
           </div>
 
@@ -143,7 +210,7 @@ const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
               }}
             >
               <FolderOpen aria-hidden size={17} />
-              資料夾管理
+              全站媒體庫
             </a>
             <a
               href="/admin/collections/media/create"
@@ -162,7 +229,7 @@ const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
               }}
             >
               <ImagePlus aria-hidden size={17} />
-              上傳照片
+              上傳 Kim 照片
             </a>
           </div>
         </header>
@@ -180,7 +247,10 @@ const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
           >
             <div style={{ textAlign: 'center' }}>
               <Images aria-hidden size={30} strokeWidth={1.4} />
-              <p>尚無圖片</p>
+              <p>尚無金老佛爺文章使用的圖片</p>
+              <p style={{ maxWidth: 460, fontSize: 12, lineHeight: 1.7 }}>
+                圖片上傳後，請附加到已勾選「發佈到金老佛爺部落格」的文章，才會出現在這裡。
+              </p>
             </div>
           </div>
         ) : (

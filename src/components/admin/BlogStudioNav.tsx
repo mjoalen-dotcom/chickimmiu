@@ -7,22 +7,32 @@ import {
   Images,
   LayoutDashboard,
   Sparkles,
+  Store,
   Tags,
 } from 'lucide-react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import React from 'react'
 
 const items = [
   {
     href: '/admin/blog-studio',
-    label: '儀表板',
+    label: '金老佛爺總覽',
     icon: LayoutDashboard,
     match: (pathname: string) => pathname === '/admin/blog-studio',
   },
   {
-    href: '/admin/collections/blog-posts',
-    label: '我的文章',
+    href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true',
+    label: 'Kim 文章',
     icon: FileText,
+    scope: 'kim',
+    match: (pathname: string) =>
+      pathname.startsWith('/admin/collections/blog-posts') && !pathname.endsWith('/create'),
+  },
+  {
+    href: '/admin/collections/blog-posts?where[publishToKimLafayette][not_equals]=true',
+    label: '購物網站文章',
+    icon: Store,
+    scope: 'store',
     match: (pathname: string) =>
       pathname.startsWith('/admin/collections/blog-posts') && !pathname.endsWith('/create'),
   },
@@ -34,7 +44,7 @@ const items = [
   },
   {
     href: '/admin/blog-studio/albums',
-    label: '相簿',
+    label: 'Kim 相簿',
     icon: Images,
     match: (pathname: string) => pathname.startsWith('/admin/blog-studio/albums'),
   },
@@ -61,6 +71,12 @@ const items = [
 
 export default function BlogStudioNav() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const currentScope = searchParams.get('where[publishToKimLafayette][equals]') === 'true'
+    ? 'kim'
+    : searchParams.get('where[publishToKimLafayette][not_equals]') === 'true'
+      ? 'store'
+      : null
 
   return (
     <div
@@ -94,7 +110,9 @@ export default function BlogStudioNav() {
         </strong>
         {items.map((item) => {
           const Icon = item.icon
-          const active = item.match(pathname)
+          const active =
+            item.match(pathname) &&
+            (!item.scope || item.scope === currentScope)
 
           return (
             <a

@@ -24,7 +24,14 @@ export const NewsletterSubscribers: CollectionConfig = {
   labels: { singular: '電子報訂閱', plural: '電子報訂閱' },
   admin: {
     useAsTitle: 'email',
-    defaultColumns: ['email', 'status', 'source', 'user', 'createdAt'],
+    defaultColumns: [
+      'email',
+      'status',
+      'kimBlogSubscribed',
+      'source',
+      'user',
+      'createdAt',
+    ],
     group: '④ 行銷推廣',
     description:
       '電子報訂閱名單（前台「訂閱最新消息」表單寫入）。行銷推播請篩 status=已訂閱；退訂走 email 內連結自動標記。',
@@ -88,8 +95,26 @@ export const NewsletterSubscribers: CollectionConfig = {
         { label: '結帳', value: 'checkout' },
         { label: '彈窗', value: 'popup' },
         { label: '匯入', value: 'import' },
+        { label: '金老佛爺部落格', value: 'kim-blog' },
         { label: '其他', value: 'other' },
       ],
+    },
+    {
+      name: 'kimBlogSubscribed',
+      label: '金老佛爺文章訂閱',
+      type: 'checkbox',
+      defaultValue: false,
+      index: true,
+      admin: {
+        description:
+          '獨立於原始來源；勾選代表可接收金老佛爺部落格文章通知。',
+      },
+    },
+    {
+      name: 'kimBlogSubscribedAt',
+      label: '金老佛爺文章訂閱時間',
+      type: 'date',
+      admin: { readOnly: true },
     },
     {
       name: 'user',

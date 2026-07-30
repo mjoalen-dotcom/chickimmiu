@@ -13,7 +13,7 @@ export default function BlogSyncCell(props: DefaultCellComponentProps) {
         alignItems: 'center',
         gap: 6,
         minHeight: 24,
-        color: syndicated ? '#a25e5e' : 'var(--theme-elevation-500, #777)',
+        color: syndicated ? '#a25e5e' : '#1d4ed8',
         fontSize: 12,
         fontWeight: syndicated ? 700 : 500,
         whiteSpace: 'nowrap',
@@ -25,10 +25,10 @@ export default function BlogSyncCell(props: DefaultCellComponentProps) {
           width: 7,
           height: 7,
           borderRadius: '50%',
-          background: syndicated ? '#a25e5e' : '#b8b8b8',
+          background: syndicated ? '#a25e5e' : '#3b82f6',
         }}
       />
-      {syndicated ? '已同步' : '未同步'}
+      {syndicated ? '金老佛爺' : '購物網站'}
     </span>
   )
 }

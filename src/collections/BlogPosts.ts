@@ -326,21 +326,21 @@ export const BlogPosts: CollectionConfig = {
             },
             {
               type: 'collapsible',
-              label: 'Kim Lafayette 部落格同步',
+              label: '發佈網站（務必確認）',
               admin: {
                 description:
-                  '勾選後，已發佈文章會出現在 blog.kimlafayette.com 的唯讀 feed；若已設定部署 hook，儲存後會自動觸發重建。',
+                  '未勾選＝只發佈在購物網站；勾選＝發佈至金老佛爺部落格 blog.kimlafayette.com。兩站文章分開管理。',
               },
               fields: [
                 {
                   name: 'publishToKimLafayette',
-                  label: '同步到金老佛爺部落格',
+                  label: '發佈到金老佛爺部落格 blog.kimlafayette.com',
                   type: 'checkbox',
                   defaultValue: false,
                   index: true,
                   admin: {
                     description:
-                      '只有「已發佈」狀態會對外提供。取消勾選會在下一次同步或自動部署時移除。',
+                      '勾選後，只有「已發佈」狀態會出現在金老佛爺部落格；不勾選則保留為購物網站文章。',
                     components: {
                       Cell: '@/components/admin/BlogSyncCell',
                     },
