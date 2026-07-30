@@ -15,6 +15,7 @@ const content = {
       {
         type: 'heading',
         tag: 'h2',
+        format: 'center',
         children: [{ type: 'text', text: '穿搭 <重點>', format: 1 }],
       },
       {
@@ -23,7 +24,7 @@ const content = {
           { type: 'text', text: '查看 ' },
           {
             type: 'link',
-            url: 'javascript:alert(1)',
+            fields: { url: 'javascript:alert(1)' },
             children: [{ type: 'text', text: '不安全連結' }],
           },
         ],
@@ -45,7 +46,10 @@ const content = {
 
 test('serializes supported Lexical nodes while escaping text and unsafe URLs', () => {
   const html = serializeLexicalForKimBlog(content, 'https://pre.chickimmiu.com')
-  assert.match(html, /<h2><strong>穿搭 &lt;重點&gt;<\/strong><\/h2>/)
+  assert.match(
+    html,
+    /<h2 style="text-align:center"><strong>穿搭 &lt;重點&gt;<\/strong><\/h2>/,
+  )
   assert.match(html, /查看 不安全連結/)
   assert.doesNotMatch(html, /javascript:/)
   assert.match(

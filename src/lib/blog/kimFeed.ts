@@ -85,6 +85,13 @@ function childrenOf(node: LexicalNode, baseUrl: string): string {
   return (node.children ?? []).map((child) => renderNode(child, baseUrl)).join('')
 }
 
+function alignmentAttribute(node: LexicalNode): string {
+  const alignment = String(node.format ?? '')
+  return /^(left|center|right|justify)$/.test(alignment)
+    ? ` style="text-align:${alignment}"`
+    : ''
+}
+
 function renderText(node: LexicalNode): string {
   let html = escapeHtml(node.text ?? '')
   const format = typeof node.format === 'number' ? node.format : 0
@@ -137,10 +144,10 @@ function renderNode(node: LexicalNode, baseUrl: string): string {
     case 'root':
       return children
     case 'paragraph':
-      return `<p>${children || '&nbsp;'}</p>`
+      return `<p${alignmentAttribute(node)}>${children || '&nbsp;'}</p>`
     case 'heading': {
       const tag = /^h[1-6]$/.test(String(node.tag)) ? String(node.tag) : 'h3'
-      return `<${tag}>${children}</${tag}>`
+      return `<${tag}${alignmentAttribute(node)}>${children}</${tag}>`
     }
     case 'list':
       return node.listType === 'number'
@@ -150,7 +157,7 @@ function renderNode(node: LexicalNode, baseUrl: string): string {
       return `<li>${children}</li>`
     case 'link':
     case 'autolink': {
-      const href = safeLink(node.url)
+      const href = safeLink(node.url ?? node.fields?.url)
       if (!href) return children
       const external = /^https?:\/\//.test(href)
       return `<a href="${escapeHtml(href)}"${external ? ' target="_blank" rel="noopener noreferrer"' : ''}>${children}</a>`
