@@ -65,17 +65,26 @@ function collectAlbumMedia(post: BlogPostAlbumRow) {
   return [...ids]
 }
 
-function imageUrl(media: MediaRow, baseUrl: string) {
-  const thumbnail = media.sizes?.thumbnail?.url
-  const source =
-    thumbnail ||
+function absoluteMediaUrl(source: string, baseUrl: string) {
+  if (!source) return ''
+  if (/^https?:\/\//i.test(source) || !baseUrl) return source
+  return `${baseUrl.replace(/\/$/, '')}/${source.replace(/^\//, '')}`
+}
+
+function imageSources(media: MediaRow, baseUrl: string) {
+  const original =
     media.url ||
     (media.filename
       ? `/api/media/file/${encodeURIComponent(media.filename)}`
       : '')
-  if (!source) return ''
-  if (/^https?:\/\//i.test(source) || !baseUrl) return source
-  return `${baseUrl.replace(/\/$/, '')}/${source.replace(/^\//, '')}`
+  const thumbnail = media.sizes?.thumbnail?.url || ''
+  return {
+    src: absoluteMediaUrl(thumbnail || original, baseUrl),
+    fallbackSrc:
+      thumbnail && original
+        ? absoluteMediaUrl(original, baseUrl)
+        : '',
+  }
 }
 
 const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
@@ -156,9 +165,14 @@ const BlogAlbumsView: React.FC<AdminViewServerProps> = async ({
       previews: ids.slice(0, 4).flatMap((id) => {
         const media = mediaById.get(String(id))
         if (!media) return []
-        const src = imageUrl(media, publicServerUrl)
-        return src
-          ? [{ id: String(media.id), src, alt: media.alt || media.filename || '' }]
+        const sources = imageSources(media, publicServerUrl)
+        return sources.src
+          ? [{
+              id: String(media.id),
+              src: sources.src,
+              fallbackSrc: sources.fallbackSrc,
+              alt: media.alt || media.filename || '',
+            }]
           : []
       }),
     }
