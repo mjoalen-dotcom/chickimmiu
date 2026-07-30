@@ -30,8 +30,6 @@ export const BlogPosts: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: ['title', 'category', 'status', 'publishToKimLafayette', 'publishedAt'],
     group: '⑥ 內容與頁面',
-    description:
-      'PIXNET 式流程：新增文章 → 編輯內文與相簿 → 設定分類/標籤 → 儲存草稿或發佈。勾選「同步到金老佛爺部落格」後才會出現在 Kim Lafayette。',
     listSearchableFields: ['title', 'slug', 'excerpt'],
     pagination: {
       defaultLimit: 25,

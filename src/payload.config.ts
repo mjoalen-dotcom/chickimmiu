@@ -339,6 +339,7 @@ export default buildConfig({
       views: {
         blogStudio: {
           Component: '@/components/admin/BlogStudioView',
+          exact: true,
           path: '/blog-studio',
         },
         blogAlbums: {
