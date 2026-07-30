@@ -50,18 +50,18 @@ export async function GET(request: NextRequest) {
     return errorResponse('Invalid state', 400)
   }
 
+  const issuer =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ||
+    request.nextUrl.origin
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: request.headers })
   if (!user) {
     const continuePath = `${request.nextUrl.pathname}${request.nextUrl.search}`
-    const loginUrl = new URL('/login', request.nextUrl.origin)
+    const loginUrl = new URL('/login', issuer)
     loginUrl.searchParams.set('redirect', continuePath)
     return NextResponse.redirect(loginUrl, 302)
   }
 
-  const issuer =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ||
-    request.nextUrl.origin
   let code: string
   try {
     code = createAuthorizationCode({
