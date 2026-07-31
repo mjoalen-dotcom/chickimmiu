@@ -80,9 +80,7 @@ function absoluteMediaUrl(value: unknown, baseUrl: string): string | null {
   try {
     const parsed = new URL(url, `${baseUrl}/`)
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null
-    if (parsed.pathname.startsWith('/api/media/file/')) {
-      parsed.pathname = `/media/${parsed.pathname.slice('/api/media/file/'.length)}`
-    }
+    // Preserve Payload media URLs; that endpoint abstracts local and R2 storage.
     return parsed.href
   } catch {
     return null
