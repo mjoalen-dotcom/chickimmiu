@@ -1,13 +1,23 @@
 diff --git a/bin.js b/bin.js
-index 288bcc8af8e0efc9969d87abe9bdb434b085d5a4..9443448943e374795b77e74d45f7caa9bda2a786 100644
+index 288bcc8af8e0efc9969d87abe9bdb434b085d5a4..42510cc9718335691a223c1d8e08beac86c0af86 100644
 --- a/bin.js
 +++ b/bin.js
-@@ -18 +18 @@ if (disableTranspile) {
+@@ -4,0 +5,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
++
++async function run(start) {
++  const keepAlive = setInterval(() => {}, 1 << 30)
++  try {
++    await start()
++  } finally {
++    clearInterval(keepAlive)
++  }
++}
+@@ -18 +27 @@ if (disableTranspile) {
 -  void start()
-+  await start()
-@@ -33 +33 @@ if (disableTranspile) {
++  await run(start)
+@@ -33 +42 @@ if (disableTranspile) {
 -    void start()
-+    await start()
-@@ -52 +52 @@ if (disableTranspile) {
++    await run(start)
+@@ -52 +61 @@ if (disableTranspile) {
 -    void start()
-+    await start()
++    await run(start)
