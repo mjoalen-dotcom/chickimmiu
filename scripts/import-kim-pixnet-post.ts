@@ -17,6 +17,7 @@ interface ImportedPost {
   category?: string
   tags?: string[]
   publishedAt: string
+  viewCount?: number
   sourceUrl?: string
   html: string
   images: ImportedImage[]
@@ -301,6 +302,10 @@ async function main() {
         tags: (post.tags || []).map((tag) => ({ tag })),
         status: 'published',
         publishedAt: post.publishedAt,
+        viewCount: Math.max(
+          0,
+          Math.trunc(Number.isFinite(Number(post.viewCount)) ? Number(post.viewCount) : 0),
+        ),
       } as never,
     })
 

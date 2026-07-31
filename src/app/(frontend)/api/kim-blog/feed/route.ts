@@ -67,6 +67,10 @@ export async function GET(request: NextRequest) {
           category: kimBlogCategoryLabel(doc.category),
           tags: kimBlogTags(doc.tags),
           publishedAt: String(doc.publishedAt || doc.createdAt || ''),
+          viewCount: Math.max(
+            0,
+            Math.trunc(Number.isFinite(Number(doc.viewCount)) ? Number(doc.viewCount) : 0),
+          ),
           migratedAt: String(doc.updatedAt || new Date().toISOString()),
           featuredImage,
           imageCount: images.length,

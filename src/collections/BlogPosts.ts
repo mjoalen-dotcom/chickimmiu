@@ -76,7 +76,14 @@ export const BlogPosts: CollectionConfig = {
   labels: { singular: '部落格文章', plural: '部落格文章' },
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['title', 'category', 'status', 'publishToKimLafayette', 'publishedAt'],
+    defaultColumns: [
+      'title',
+      'category',
+      'viewCount',
+      'status',
+      'publishToKimLafayette',
+      'publishedAt',
+    ],
     group: 'Ⓚ 金老佛爺部落格',
     listSearchableFields: ['title', 'slug', 'excerpt'],
     pagination: {
@@ -471,6 +478,18 @@ export const BlogPosts: CollectionConfig = {
                         components: {
                           Cell: '@/components/admin/BlogPublishedAtCell',
                         },
+                      },
+                    },
+                    {
+                      name: 'viewCount',
+                      label: '閱讀次數',
+                      type: 'number',
+                      min: 0,
+                      defaultValue: 0,
+                      index: true,
+                      admin: {
+                        description:
+                          '顯示在金老佛爺部落格文章旁，可手動輸入 PIXNET 原始人氣或校正數字。',
                       },
                     },
                     {

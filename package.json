@@ -29,6 +29,7 @@
     "migrate:media:r2": "cross-env NODE_OPTIONS=--no-deprecation payload run scripts/migrate-media-to-r2.ts",
     "migrate:media:r2:dry": "cross-env MIGRATE_DRY_RUN=1 NODE_OPTIONS=--no-deprecation payload run scripts/migrate-media-to-r2.ts",
     "import:kim-pixnet:directory": "node scripts/import-kim-pixnet-directory.mjs",
+    "sync:kim-pixnet:views": "cross-env NODE_OPTIONS=--no-deprecation payload run scripts/sync-kim-pixnet-view-counts.ts",
     "smoke:storefront": "node --import tsx/esm scripts/smoke-storefront.ts"
   },
   "dependencies": {
