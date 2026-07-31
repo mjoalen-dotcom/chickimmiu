@@ -54,7 +54,7 @@ test('serializes supported Lexical nodes while escaping text and unsafe URLs', (
   assert.doesNotMatch(html, /javascript:/)
   assert.match(
     html,
-    /src="https:\/\/pre\.chickimmiu\.com\/api\/media\/file\/look\.webp"/,
+    /src="https:\/\/pre\.chickimmiu\.com\/media\/look\.webp"/,
   )
 })
 
@@ -124,7 +124,7 @@ test('serializes resizable article images and emoticon blocks', () => {
   assert.equal(images.length, 2)
   assert.equal(
     images[1].src,
-    'https://pre.chickimmiu.com/api/media/file/kim-emoticon-117824267-001.png',
+    'https://pre.chickimmiu.com/media/kim-emoticon-117824267-001.png',
   )
   assert.equal(images[1].bytes, 4321)
 })
@@ -221,7 +221,7 @@ test('uses the forced 800/1000 blog variants and renders a source credit', () =>
     responsiveContent,
     'https://pre.chickimmiu.com',
   )
-  assert.match(html, /src="https:\/\/pre\.chickimmiu\.com\/api\/media\/file\/group-1000\.webp"/)
+  assert.match(html, /src="https:\/\/pre\.chickimmiu\.com\/media\/group-1000\.webp"/)
   assert.match(html, /group-800\.webp 800w/)
   assert.match(html, /group-1000\.webp 1000w/)
   assert.match(html, /Example Photographer/)
@@ -237,11 +237,11 @@ test('uses the forced 800/1000 blog variants and renders a source credit', () =>
   )
   assert.equal(
     images[0].src,
-    'https://pre.chickimmiu.com/api/media/file/group-1000.webp',
+    'https://pre.chickimmiu.com/media/group-1000.webp',
   )
   assert.equal(
     images[0].mobileSrc,
-    'https://pre.chickimmiu.com/api/media/file/group-800.webp',
+    'https://pre.chickimmiu.com/media/group-800.webp',
   )
   assert.match(images[0].srcSet, /800w/)
   assert.match(images[0].srcSet, /1000w/)

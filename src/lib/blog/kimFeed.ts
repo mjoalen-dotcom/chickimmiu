@@ -79,7 +79,11 @@ function absoluteMediaUrl(value: unknown, baseUrl: string): string | null {
   if (!url) return null
   try {
     const parsed = new URL(url, `${baseUrl}/`)
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : null
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null
+    if (parsed.pathname.startsWith('/api/media/file/')) {
+      parsed.pathname = `/media/${parsed.pathname.slice('/api/media/file/'.length)}`
+    }
+    return parsed.href
   } catch {
     return null
   }
