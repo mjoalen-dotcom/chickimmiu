@@ -31,6 +31,7 @@ import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0
 import { default as default_603a2b8138cd47687180f37ca2cfb3ae } from '@/components/admin/BlogPublishedAtCell'
 import { default as default_fce296b7499db768c8bb0fc89b6e5f6b } from '@/components/admin/BlogSyncCell'
 import { default as default_8caf9717c60858cb0f0c579495ac02be } from '@/components/admin/BlogStatusCell'
+import { default as default_86beb4cc80ced898238ea1041dd75114 } from '@/components/admin/BlogSeoGenerator'
 import { default as default_7ac7d8af5819af6361453ab081f6e0e0 } from '@/components/admin/BlogListDashboard'
 import { default as default_ab80819f8b2b0b37f8700bad83cb86aa } from '@/components/admin/OrderProcessingCellButton'
 import { default as default_8ae569cef047456396f977e84e1f356b } from '@/components/admin/OrderBulkShipPanel'
@@ -137,6 +138,7 @@ export const importMap = {
   "@/components/admin/BlogPublishedAtCell#default": default_603a2b8138cd47687180f37ca2cfb3ae,
   "@/components/admin/BlogSyncCell#default": default_fce296b7499db768c8bb0fc89b6e5f6b,
   "@/components/admin/BlogStatusCell#default": default_8caf9717c60858cb0f0c579495ac02be,
+  "@/components/admin/BlogSeoGenerator#default": default_86beb4cc80ced898238ea1041dd75114,
   "@/components/admin/BlogListDashboard#default": default_7ac7d8af5819af6361453ab081f6e0e0,
   "@/components/admin/OrderProcessingCellButton#default": default_ab80819f8b2b0b37f8700bad83cb86aa,
   "@/components/admin/OrderBulkShipPanel#default": default_8ae569cef047456396f977e84e1f356b,

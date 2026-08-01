@@ -808,17 +808,32 @@ export const BlogPosts: CollectionConfig = {
           label: 'SEO',
           description: '搜尋結果標題、摘要與社群分享圖片',
           fields: [
+            {
+              name: 'seoGenerator',
+              type: 'ui',
+              admin: {
+                components: {
+                  Field: '@/components/admin/BlogSeoGenerator',
+                },
+              },
+            },
             // ── SEO ──
             {
               name: 'seo',
               label: 'SEO 設定',
               type: 'group',
               fields: [
-                { name: 'metaTitle', label: 'Meta 標題', type: 'text' },
+                {
+                  name: 'metaTitle',
+                  label: 'Meta 標題',
+                  type: 'text',
+                  maxLength: 60,
+                },
                 {
                   name: 'metaDescription',
                   label: 'Meta 描述',
                   type: 'textarea',
+                  maxLength: 160,
                 },
                 {
                   name: 'metaImage',

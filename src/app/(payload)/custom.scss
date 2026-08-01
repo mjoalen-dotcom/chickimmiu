@@ -1088,6 +1088,118 @@ input.rs__input,
   margin-bottom: 16px;
 }
 
+.kim-blog-seo-generator {
+  margin-bottom: 20px;
+  padding: 18px;
+  border: 1px solid var(--theme-elevation-200);
+  border-left: 3px solid #a25e5e;
+  border-radius: 6px;
+  background: var(--theme-elevation-0);
+}
+
+.kim-blog-seo-generator__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.kim-blog-seo-generator__heading p {
+  margin: 0;
+  color: var(--theme-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.kim-blog-seo-generator__heading span {
+  display: block;
+  margin-top: 4px;
+  color: var(--theme-elevation-600);
+  font-size: 11px;
+}
+
+.kim-blog-seo-generator__heading button {
+  display: inline-flex;
+  min-height: 38px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 13px;
+  border: 1px solid #a25e5e;
+  border-radius: 5px;
+  background: #a25e5e;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.kim-blog-seo-generator__heading button:hover:not(:disabled) {
+  border-color: #7f454b;
+  background: #7f454b;
+}
+
+.kim-blog-seo-generator__heading button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.kim-blog-seo-generator__result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.kim-blog-seo-generator__result strong,
+.kim-blog-seo-generator__result span {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 4px;
+  color: var(--theme-elevation-700);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.kim-blog-seo-generator__result strong {
+  border-color: #a25e5e;
+  color: #8c4f55;
+}
+
+.kim-blog-seo-generator__result .kim-blog-seo-generator__image-note {
+  border-color: #b98942;
+  color: #8a621f;
+}
+
+.kim-blog-seo-generator__message {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 13px 0 0;
+  color: #34725a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.kim-blog-seo-generator__message[data-kind='warning'] {
+  color: #8a621f;
+}
+
+.kim-blog-seo-generator__message[data-kind='error'] {
+  color: #b13f4a;
+}
+
+.kim-blog-seo-generator__message svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
 // Payload's upload card stays intact; only its visual width is controlled.
 .kim-blog-editor-canvas
   .LexicalEditorTheme__upload[data-kim-resizable-upload='true'] {
@@ -1379,6 +1491,15 @@ input.rs__input,
   .kim-blog-editor-canvas .ContentEditable__root {
     min-height: 460px;
     padding-right: 8px !important;
+  }
+
+  .kim-blog-seo-generator__heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .kim-blog-seo-generator__heading button {
+    justify-content: center;
   }
 }
 
