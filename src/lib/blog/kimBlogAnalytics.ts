@@ -68,10 +68,18 @@ export type KimBlogAnalytics = {
     pageviews: number
     visitors: number
   }[]
+  groupBuyClicks: {
+    slug: string
+    title: string
+    targetUrl: string | null
+    clicks: number
+    visitors: number
+  }[]
 }
 
 const TIME_ZONE = 'Asia/Taipei'
 const MAX_EVENTS = 20_000
+const GROUP_BUY_ELEMENT_PREFIX = 'group-buy:'
 
 function dateKey(value: string | Date) {
   const date = typeof value === 'string' ? new Date(value) : value
@@ -146,6 +154,95 @@ function sortedRows(map: Map<string, number>, limit = 8) {
   return [...map.entries()]
     .sort((left, right) => right[1] - left[1])
     .slice(0, limit)
+}
+
+async function getGroupBuyClicks(payload: Payload, days: number) {
+  const start = new Date()
+  start.setUTCDate(start.getUTCDate() - Math.max(1, days - 1))
+  start.setUTCHours(0, 0, 0, 0)
+
+  const rows = new Map<
+    string,
+    {
+      slug: string
+      title: string
+      targetUrl: string | null
+      clicks: number
+      visitors: Set<string>
+    }
+  >()
+  let page = 1
+  let totalPages = 1
+  let loaded = 0
+
+  try {
+    do {
+      const result = await payload.find({
+        collection: 'behavior-events',
+        depth: 0,
+        limit: 500,
+        page,
+        sort: 'createdAt',
+        where: {
+          and: [
+            { createdAt: { greater_than_equal: start.toISOString() } },
+            { pagePath: { contains: KIM_BLOG_PATH_PREFIX } },
+            { eventType: { equals: 'click' } },
+            { elementKey: { contains: GROUP_BUY_ELEMENT_PREFIX } },
+          ],
+        },
+      })
+
+      for (const event of result.docs as EventRow[]) {
+        const elementKey = event.elementKey || ''
+        if (!elementKey.startsWith(GROUP_BUY_ELEMENT_PREFIX)) continue
+        const slug = elementKey.slice(GROUP_BUY_ELEMENT_PREFIX.length).trim()
+        if (!/^[\p{L}\p{N}][\p{L}\p{N}._~-]*$/u.test(slug)) continue
+
+        const title =
+          typeof event.meta?.articleTitle === 'string' &&
+          event.meta.articleTitle.trim()
+            ? event.meta.articleTitle.trim()
+            : slug
+        const targetUrl =
+          typeof event.meta?.targetUrl === 'string' &&
+          /^https?:\/\//i.test(event.meta.targetUrl)
+            ? event.meta.targetUrl
+            : null
+        const current = rows.get(slug) || {
+          slug,
+          title,
+          targetUrl,
+          clicks: 0,
+          visitors: new Set<string>(),
+        }
+        current.clicks += 1
+        if (event.sessionId) current.visitors.add(event.sessionId)
+        if (current.title === slug && title !== slug) current.title = title
+        if (!current.targetUrl && targetUrl) current.targetUrl = targetUrl
+        rows.set(slug, current)
+      }
+
+      loaded += result.docs.length
+      totalPages = result.totalPages
+      page += 1
+    } while (page <= totalPages && loaded < MAX_EVENTS)
+  } catch (error) {
+    payload.logger.warn({
+      err: error,
+      msg: '[kim-blog/analytics] group-buy click report unavailable',
+    })
+  }
+
+  return [...rows.values()]
+    .sort((left, right) => right.clicks - left.clicks)
+    .map((row) => ({
+      slug: row.slug,
+      title: row.title,
+      targetUrl: row.targetUrl,
+      clicks: row.clicks,
+      visitors: row.visitors.size,
+    }))
 }
 
 async function getInternalKimBlogAnalytics(
@@ -358,6 +455,7 @@ async function getInternalKimBlogAnalytics(
     })),
     cities: [],
     popularPages,
+    groupBuyClicks: [],
   }
 }
 
@@ -365,8 +463,11 @@ export async function getKimBlogAnalytics(
   payload: Payload,
   days = 30,
 ): Promise<KimBlogAnalytics> {
-  const ga4 = await getKimGa4Analytics(days)
-  if (ga4.analytics) return ga4.analytics
+  const [ga4, groupBuyClicks] = await Promise.all([
+    getKimGa4Analytics(days),
+    getGroupBuyClicks(payload, days),
+  ])
+  if (ga4.analytics) return { ...ga4.analytics, groupBuyClicks }
 
   if (ga4.error) {
     payload.logger.warn({
@@ -380,5 +481,6 @@ export async function getKimBlogAnalytics(
     ...fallback,
     configured: ga4.configured,
     ga4Error: ga4.error || null,
+    groupBuyClicks,
   }
 }

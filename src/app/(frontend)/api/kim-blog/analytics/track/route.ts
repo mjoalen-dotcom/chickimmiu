@@ -115,6 +115,19 @@ function clipNumber(value: unknown, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
 }
 
+function clipHttpUrl(value: unknown, max: number) {
+  const clipped = clipString(value, max)
+  if (!clipped) return undefined
+  try {
+    const url = new URL(clipped)
+    return url.protocol === 'https:' || url.protocol === 'http:'
+      ? clipped
+      : undefined
+  } catch {
+    return undefined
+  }
+}
+
 async function requestBody(request: NextRequest) {
   const text = await request.text()
   if (!text) return {}
@@ -182,6 +195,8 @@ export async function POST(request: NextRequest) {
         ? (event.deviceType as 'mobile' | 'tablet' | 'desktop' | 'other')
         : undefined
     const title = clipString(event.meta?.title, 240)
+    const articleTitle = clipString(event.meta?.articleTitle, 240)
+    const targetUrl = clipHttpUrl(event.meta?.targetUrl, 500)
 
     try {
       await payload.create({
@@ -203,6 +218,8 @@ export async function POST(request: NextRequest) {
           meta: {
             site: 'kim_lafayette_blog',
             ...(title ? { title } : {}),
+            ...(articleTitle ? { articleTitle } : {}),
+            ...(targetUrl ? { targetUrl } : {}),
           },
         },
         overrideAccess: true,

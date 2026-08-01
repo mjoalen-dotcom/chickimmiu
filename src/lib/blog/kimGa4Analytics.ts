@@ -420,6 +420,7 @@ function buildAnalytics(args: {
     })),
     ga4Error: null,
     generatedAt,
+    groupBuyClicks: [],
     heatmap,
     hostName,
     hourly,

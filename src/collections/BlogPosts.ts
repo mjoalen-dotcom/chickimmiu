@@ -287,7 +287,66 @@ export const BlogPosts: CollectionConfig = {
               name: 'excerpt',
               label: '摘要',
               type: 'textarea',
-              admin: { description: '顯示在文章列表的簡短說明' },
+              admin: {
+                description:
+                  '顯示在文章列表的簡短說明；http / https 網址會自動變成可點擊連結。',
+              },
+            },
+            {
+              type: 'collapsible',
+              label: '摘要團購按鈕',
+              admin: {
+                description:
+                  '可在文章摘要下方顯示購買按鈕；點擊成效會出現在部落格流量儀表板。',
+                initCollapsed: true,
+              },
+              fields: [
+                {
+                  name: 'excerptCtaEnabled',
+                  label: '顯示團購購買按鈕',
+                  type: 'checkbox',
+                  defaultValue: false,
+                },
+                {
+                  name: 'excerptCtaLabel',
+                  label: '按鈕文字',
+                  type: 'text',
+                  defaultValue: '立即購買',
+                  admin: {
+                    condition: (_, siblingData) =>
+                      Boolean(siblingData?.excerptCtaEnabled),
+                    description: '例如：立即選購 ME30',
+                  },
+                },
+                {
+                  name: 'excerptCtaUrl',
+                  label: '購買頁面網址',
+                  type: 'text',
+                  admin: {
+                    condition: (_, siblingData) =>
+                      Boolean(siblingData?.excerptCtaEnabled),
+                    description: '必須是完整的 http 或 https 網址。',
+                  },
+                  validate: (
+                    value: unknown,
+                    { data }: { data?: Record<string, unknown> },
+                  ) => {
+                    if (value == null || value === '') {
+                      return data?.excerptCtaEnabled
+                        ? '啟用團購按鈕時必須填寫購買頁面網址'
+                        : true
+                    }
+                    try {
+                      const url = new URL(String(value))
+                      return url.protocol === 'https:' || url.protocol === 'http:'
+                        ? true
+                        : '網址必須使用 http 或 https'
+                    } catch {
+                      return '請輸入完整網址'
+                    }
+                  },
+                },
+              ],
             },
             {
               type: 'row',

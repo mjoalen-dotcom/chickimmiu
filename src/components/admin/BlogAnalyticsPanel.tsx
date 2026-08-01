@@ -7,6 +7,7 @@ import {
   MessageCircle,
   MousePointerClick,
   ShieldCheck,
+  ShoppingBag,
   ThumbsUp,
   Users,
 } from 'lucide-react'
@@ -427,6 +428,10 @@ export default function BlogAnalyticsPanel({
 }: {
   analytics: KimBlogAnalytics
 }) {
+  const groupBuyClickTotal = analytics.groupBuyClicks.reduce(
+    (sum, row) => sum + row.clicks,
+    0,
+  )
   const metrics = [
     {
       label: '拜訪人數',
@@ -551,6 +556,11 @@ export default function BlogAnalyticsPanel({
           <strong>{number(analytics.totals.engagedSessions)}</strong>
         </span>
         <span>
+          <ShoppingBag aria-hidden size={15} />
+          團購按鈕
+          <strong>{number(groupBuyClickTotal)} 次點擊</strong>
+        </span>
+        <span>
           更新時間
           <strong>{generatedAt(analytics.generatedAt)}</strong>
         </span>
@@ -596,6 +606,67 @@ export default function BlogAnalyticsPanel({
           <HourlyChart rows={analytics.hourly} />
         </section>
       </div>
+
+      <section className="kim-analytics-card kim-analytics-card--wide kim-analytics-card--table">
+        <div className="kim-analytics-section-heading">
+          <div>
+            <p>Group-buy conversion</p>
+            <h3>團購按鈕點擊成效</h3>
+          </div>
+          <ShoppingBag aria-hidden size={18} />
+        </div>
+        <div className="kim-analytics-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>文章</th>
+                <th>購買頁面</th>
+                <th className="is-number">點擊次數</th>
+                <th className="is-number">不重複訪客</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analytics.groupBuyClicks.length > 0 ? (
+                analytics.groupBuyClicks.map((row) => (
+                  <tr key={row.slug}>
+                    <td className="kim-analytics-title-cell">
+                      <a
+                        href={`https://blog.kimlafayette.com/blog/${encodeURIComponent(row.slug)}/`}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        title={row.title}
+                      >
+                        {row.title}
+                      </a>
+                    </td>
+                    <td>
+                      {row.targetUrl ? (
+                        <a
+                          href={row.targetUrl}
+                          rel="noopener noreferrer"
+                          target="_blank"
+                        >
+                          開啟購買頁面
+                        </a>
+                      ) : (
+                        '未記錄'
+                      )}
+                    </td>
+                    <td className="is-number">{number(row.clicks)}</td>
+                    <td className="is-number">{number(row.visitors)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td className="kim-analytics-empty-cell" colSpan={4}>
+                    此期間尚無團購按鈕點擊
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <section className="kim-analytics-card kim-analytics-card--wide">
         <div className="kim-analytics-section-heading">

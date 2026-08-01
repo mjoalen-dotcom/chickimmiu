@@ -8,6 +8,7 @@ import {
   verifyClientSecret,
   verifyPkce,
 } from '@/lib/sso/authorizationCode'
+import { normalizeMediaUrl } from '@/lib/media-url'
 
 interface TokenRequest {
   grant_type?: string
@@ -26,6 +27,25 @@ function json(body: Record<string, unknown>, status: number) {
       Pragma: 'no-cache',
     },
   })
+}
+
+function avatarUrl(value: unknown, issuer: string) {
+  const raw =
+    value && typeof value === 'object' && 'url' in value
+      ? (value as { url?: unknown }).url
+      : undefined
+  if (typeof raw !== 'string') return null
+  const normalized = normalizeMediaUrl(raw)
+  if (!normalized) return null
+
+  try {
+    const url = new URL(normalized, `${issuer}/`)
+    return url.protocol === 'https:' || url.protocol === 'http:'
+      ? url.toString()
+      : null
+  } catch {
+    return null
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -105,6 +125,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         name: user.name,
         role: user.role,
+        avatarUrl: avatarUrl(user.avatar, issuer),
         memberTier: user.memberTier,
         points: user.points || 0,
         shoppingCredit: user.shoppingCredit || 0,

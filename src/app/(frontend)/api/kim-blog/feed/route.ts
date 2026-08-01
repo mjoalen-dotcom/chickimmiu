@@ -56,6 +56,15 @@ export async function GET(request: NextRequest) {
             index,
         )
         const featuredImage = kimBlogMediaUrl(doc.featuredImage, baseUrl)
+        const excerptCtaUrl = String(doc.excerptCtaUrl || '').trim()
+        const excerptCta =
+          doc.excerptCtaEnabled && /^https?:\/\//i.test(excerptCtaUrl)
+            ? {
+                enabled: true,
+                label: String(doc.excerptCtaLabel || '立即購買').trim() || '立即購買',
+                url: excerptCtaUrl,
+              }
+            : null
         return {
           version: 1,
           origin: 'payload',
@@ -64,6 +73,7 @@ export async function GET(request: NextRequest) {
           sourceUrl: kimBlogSourceUrl(doc.sourceUrl, slug),
           title: String(doc.title ?? ''),
           excerpt: String(doc.excerpt ?? ''),
+          excerptCta,
           category: kimBlogCategoryLabel(doc.category),
           tags: kimBlogTags(doc.tags),
           publishedAt: String(doc.publishedAt || doc.createdAt || ''),
