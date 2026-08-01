@@ -43,6 +43,10 @@ const userFieldMappings: FieldMapping[] = [
 export const Users: CollectionConfig = {
   slug: 'users',
   labels: { singular: '會員', plural: '會員' },
+  // 會員已被訂單、分群、點數等稽核資料引用時不可安全 hard delete。
+  // 啟用 Payload trash 後，後台「刪除」會改寫 deletedAt；一般列表、登入與
+  // API 查詢會自動排除已封存會員，同時保留歷史關聯與可還原能力。
+  trash: true,
   admin: {
     useAsTitle: 'email',
     defaultColumns: ['name', 'email', 'role', 'memberTier', 'points', 'totalSpent', 'creditStatus', 'createdAt'],
@@ -162,7 +166,10 @@ export const Users: CollectionConfig = {
     read: isAdminOrSelf,
     create: isAdmin,
     update: isAdminOrSelf,
-    delete: isAdmin,
+    // 只允許可還原的 trash 操作。Payload 在 soft-delete 時會把 deletedAt
+    // 傳入 delete access；永久 DELETE 沒有 data，因此會被拒絕。
+    delete: ({ req: { user }, data }) =>
+      user?.role === 'admin' && Boolean((data as { deletedAt?: unknown } | undefined)?.deletedAt),
   },
   endpoints: [
     createExportEndpoint('users', userFieldMappings),
