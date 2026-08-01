@@ -4,6 +4,7 @@ import test from 'node:test'
 const {
   collectKimBlogGallery,
   collectKimBlogImages,
+  kimBlogSeo,
   kimBlogSourceUrl,
   serializeLexicalForKimBlog,
 } = await import('./kimFeed.ts')
@@ -171,6 +172,26 @@ test('rejects unsafe source URLs and falls back to the canonical blog URL', () =
     kimBlogSourceUrl('javascript:alert(1)', 'article-1'),
     'https://blog.kimlafayette.com/blog/article-1/',
   )
+})
+
+test('serializes blog SEO and resolves the Payload OG image URL', () => {
+  assert.deepEqual(
+    kimBlogSeo(
+      {
+        metaTitle: 'ME30 珍珠選購指南｜金老佛爺',
+        metaDescription: '整理珍珠尺寸、日常穿搭與選購方式。',
+        metaImage: { url: '/api/media/file/me30-cover.webp' },
+      },
+      'https://pre.chickimmiu.com',
+    ),
+    {
+      metaTitle: 'ME30 珍珠選購指南｜金老佛爺',
+      metaDescription: '整理珍珠尺寸、日常穿搭與選購方式。',
+      metaImage:
+        'https://pre.chickimmiu.com/api/media/file/me30-cover.webp',
+    },
+  )
+  assert.equal(kimBlogSeo({}, 'https://pre.chickimmiu.com'), null)
 })
 
 test('uses the forced 800/1000 blog variants and renders a source credit', () => {

@@ -30,6 +30,12 @@ export interface KimBlogFeedImage {
   bytes: number
 }
 
+export interface KimBlogFeedSeo {
+  metaTitle: string | null
+  metaDescription: string | null
+  metaImage: string | null
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   styling: '穿搭教學',
   'new-arrivals': '新品介紹',
@@ -465,6 +471,20 @@ export function kimBlogMediaUrl(value: unknown, baseUrl: string): string | null 
   const media = value as UnknownRecord
   const responsive = responsiveMedia(media, baseUrl)
   return responsive.src1000 || responsive.src800 || responsive.original
+}
+
+export function kimBlogSeo(
+  value: unknown,
+  baseUrl: string,
+): KimBlogFeedSeo | null {
+  if (!value || typeof value !== 'object') return null
+  const seo = value as UnknownRecord
+  const metaTitle = String(seo.metaTitle || '').trim() || null
+  const metaDescription = String(seo.metaDescription || '').trim() || null
+  const metaImage = kimBlogMediaUrl(seo.metaImage, baseUrl)
+  return metaTitle || metaDescription || metaImage
+    ? { metaTitle, metaDescription, metaImage }
+    : null
 }
 
 export function kimBlogSourceUrl(
