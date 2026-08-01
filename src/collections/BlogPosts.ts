@@ -1,4 +1,4 @@
-import type { CollectionConfig, Field } from 'payload'
+import type { CollectionConfig, Field, Where } from 'payload'
 import {
   BlocksFeature,
   EXPERIMENTAL_TableFeature,
@@ -17,6 +17,11 @@ import {
 } from '../lib/blog/articleStudio'
 import { safeRevalidate } from '../lib/revalidate'
 import { triggerKimBlogDeploy } from '../lib/blog/kimSyndication'
+import {
+  hashBlogPostPassword,
+  isBlogPostPasswordHash,
+  isBlogPostVisibility,
+} from '../lib/blog/postAccess'
 
 const EMOTICON_FOLDER_NAME = 'Kim 表情圖案（PIXNET 117824267）'
 
@@ -108,7 +113,12 @@ export const BlogPosts: CollectionConfig = {
   access: {
     read: ({ req: { user } }) => {
       if (user?.role === 'admin') return true
-      return { status: { equals: 'published' } }
+      return {
+        and: [
+          { status: { equals: 'published' } },
+          { visibility: { equals: 'public' } },
+        ],
+      } as Where
     },
     create: isAdmin,
     update: isAdmin,
@@ -116,6 +126,35 @@ export const BlogPosts: CollectionConfig = {
   },
   hooks: {
     beforeChange: [
+      ({ data, originalDoc }) => {
+        const nextData = { ...((data || {}) as Record<string, unknown>) }
+        const original = (originalDoc || {}) as Record<string, unknown>
+        const visibilityCandidate = nextData.visibility ?? original.visibility ?? 'public'
+        const visibility = isBlogPostVisibility(visibilityCandidate)
+          ? visibilityCandidate
+          : 'public'
+        const status = nextData.status ?? original.status ?? 'draft'
+        const password =
+          typeof nextData.accessPassword === 'string' ? nextData.accessPassword : ''
+        let passwordHash = original.accessPasswordHash
+
+        if (visibility === 'password' && password) {
+          passwordHash = hashBlogPostPassword(password)
+          nextData.accessPasswordHash = passwordHash
+        }
+        delete nextData.accessPassword
+
+        if (
+          status === 'published' &&
+          visibility === 'password' &&
+          !isBlogPostPasswordHash(passwordHash)
+        ) {
+          throw new Error('密碼保護文章必須先設定 6 至 128 個字元的文章密碼。')
+        }
+
+        nextData.visibility = visibility
+        return nextData
+      },
       async ({ data, originalDoc, req }) => {
         const next = {
           ...((originalDoc || {}) as Record<string, unknown>),
@@ -607,6 +646,47 @@ export const BlogPosts: CollectionConfig = {
                         components: {
                           Cell: '@/components/admin/BlogStatusCell',
                         },
+                      },
+                    },
+                    {
+                      name: 'visibility',
+                      label: '文章閱讀權限',
+                      type: 'select',
+                      required: true,
+                      defaultValue: 'public',
+                      index: true,
+                      options: [
+                        { label: '公開（出現在文章總覽與搜尋）', value: 'public' },
+                        { label: '隱密連結（只限知道網址的人）', value: 'unlisted' },
+                        { label: '密碼保護', value: 'password' },
+                      ],
+                      admin: {
+                        description:
+                          '草稿仍由上方文章狀態控制。隱密與密碼文章不會出現在首頁、總覽、相簿或搜尋引擎。',
+                      },
+                    },
+                    {
+                      name: 'accessPassword',
+                      label: '文章密碼',
+                      type: 'text',
+                      virtual: true,
+                      maxLength: 128,
+                      admin: {
+                        condition: (_data, siblingData) =>
+                          siblingData?.visibility === 'password',
+                        components: {
+                          Field: '@/components/admin/BlogPasswordField',
+                        },
+                      },
+                    },
+                    {
+                      name: 'accessPasswordHash',
+                      type: 'text',
+                      access: {
+                        read: ({ req: { user } }) => user?.role === 'admin',
+                      },
+                      admin: {
+                        hidden: true,
                       },
                     },
                   ],

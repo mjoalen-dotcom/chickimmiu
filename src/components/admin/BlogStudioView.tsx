@@ -6,6 +6,7 @@ import React from 'react'
 import { getKimBlogAnalytics } from '@/lib/blog/kimBlogAnalytics'
 
 import BlogAnalyticsPanel from './BlogAnalyticsPanel'
+import BlogQuickStatusSelect from './BlogQuickStatusSelect'
 import BlogStudioNav from './BlogStudioNav'
 
 type BlogPostRow = {
@@ -13,6 +14,8 @@ type BlogPostRow = {
   title?: string | null
   category?: string | null
   status?: string | null
+  visibility?: string | null
+  accessPasswordHash?: string | null
   publishToKimLafayette?: boolean | null
   publishedAt?: string | null
   updatedAt?: string | null
@@ -361,17 +364,27 @@ const BlogStudioView: React.FC<AdminViewServerProps> = async ({
               <table
                 style={{
                   width: '100%',
+                  minWidth: 690,
                   borderCollapse: 'collapse',
                   fontSize: 12,
                 }}
               >
                 <thead>
                   <tr style={{ borderBottom: '1px solid #d8d8d8' }}>
-                    {['文章', '狀態', '分類', '更新時間', ''].map((heading) => (
+                    {['編輯', '文章', '狀態', '分類', '更新時間'].map((heading, index) => (
                       <th
                         key={heading}
                         style={{
                           padding: '10px 8px',
+                          ...(index === 0
+                            ? {
+                                position: 'sticky' as const,
+                                left: 0,
+                                zIndex: 2,
+                                width: 54,
+                                background: 'var(--theme-bg, #fff)',
+                              }
+                            : {}),
                           color: 'var(--theme-elevation-550, #6a6a6a)',
                           fontWeight: 650,
                           textAlign: 'left',
@@ -392,6 +405,23 @@ const BlogStudioView: React.FC<AdminViewServerProps> = async ({
                           borderBottom: '1px solid var(--theme-elevation-150, #ececec)',
                         }}
                       >
+                      <td
+                        style={{
+                          position: 'sticky',
+                          left: 0,
+                          zIndex: 1,
+                          width: 54,
+                          padding: '13px 8px',
+                          background: 'var(--theme-bg, #fff)',
+                        }}
+                      >
+                        <a
+                          href={`/admin/collections/blog-posts/${post.id}`}
+                          style={{ color: '#a25e5e', fontWeight: 700 }}
+                        >
+                          編輯
+                        </a>
+                      </td>
                       <td style={{ maxWidth: 360, padding: '13px 8px' }}>
                         <a
                           href={`/admin/collections/blog-posts/${post.id}`}
@@ -409,22 +439,12 @@ const BlogStudioView: React.FC<AdminViewServerProps> = async ({
                         </a>
                       </td>
                       <td style={{ padding: '13px 8px', whiteSpace: 'nowrap' }}>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            padding: '3px 8px',
-                            border: `1px solid ${
-                              post.status === 'published' ? '#a7f3d0' : '#fed7aa'
-                            }`,
-                            borderRadius: 999,
-                            background: post.status === 'published' ? '#ecfdf5' : '#fff1e6',
-                            color: post.status === 'published' ? '#087f5b' : '#9a3412',
-                            fontSize: 11,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {post.status === 'published' ? '公開' : '草稿'}
-                        </span>
+                        <BlogQuickStatusSelect
+                          id={post.id}
+                          status={post.status}
+                          visibility={post.visibility}
+                          hasPassword={Boolean(post.accessPasswordHash)}
+                        />
                       </td>
                       <td style={{ padding: '13px 8px', whiteSpace: 'nowrap' }}>
                         {post.category ? categoryLabels[post.category] || post.category : '未分類'}
@@ -437,14 +457,6 @@ const BlogStudioView: React.FC<AdminViewServerProps> = async ({
                         }}
                       >
                         {formatDate(post.updatedAt || post.publishedAt)}
-                      </td>
-                      <td style={{ padding: '13px 8px', textAlign: 'right' }}>
-                        <a
-                          href={`/admin/collections/blog-posts/${post.id}`}
-                          style={{ color: '#a25e5e', fontWeight: 700 }}
-                        >
-                          編輯
-                        </a>
                       </td>
                       </tr>
                     ))

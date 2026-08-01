@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, timingSafeEqual } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
@@ -15,17 +15,34 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-function responseHeaders(etag?: string) {
+function responseHeaders(etag?: string, internal = false) {
   return {
-    'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+    'Cache-Control': internal
+      ? 'private, no-store'
+      : 'public, max-age=60, stale-while-revalidate=300',
     'Content-Type': 'application/json; charset=utf-8',
     'X-Content-Type-Options': 'nosniff',
     ...(etag ? { ETag: etag } : {}),
   }
 }
 
+function isInternalFeedRequest(request: NextRequest) {
+  const expected = (
+    process.env.KIM_BLOG_FEED_TOKEN || process.env.KIM_BLOG_DEPLOY_HOOK_TOKEN || ''
+  ).trim()
+  const authorization = request.headers.get('authorization') || ''
+  const supplied = authorization.startsWith('Bearer ')
+    ? authorization.slice('Bearer '.length).trim()
+    : ''
+  if (!expected || !supplied) return false
+  const expectedHash = createHash('sha256').update(expected).digest()
+  const suppliedHash = createHash('sha256').update(supplied).digest()
+  return timingSafeEqual(expectedHash, suppliedHash)
+}
+
 export async function GET(request: NextRequest) {
   try {
+    const internal = isInternalFeedRequest(request)
     const payload = await getPayload({ config })
     const baseUrl = (
       process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com'
@@ -36,12 +53,13 @@ export async function GET(request: NextRequest) {
         and: [
           { status: { equals: 'published' } },
           { publishToKimLafayette: { equals: true } },
+          ...(internal ? [] : [{ visibility: { equals: 'public' } }]),
         ],
       },
       sort: '-publishedAt',
       limit: 1000,
       depth: 2,
-      overrideAccess: false,
+      overrideAccess: internal,
     })
 
     const posts = (result.docs as unknown as Array<Record<string, unknown>>)
@@ -66,6 +84,10 @@ export async function GET(request: NextRequest) {
                 url: excerptCtaUrl,
               }
             : null
+        const visibility =
+          doc.visibility === 'unlisted' || doc.visibility === 'password'
+            ? doc.visibility
+            : 'public'
         return {
           version: 1,
           origin: 'payload',
@@ -75,6 +97,10 @@ export async function GET(request: NextRequest) {
           title: String(doc.title ?? ''),
           excerpt: String(doc.excerpt ?? ''),
           excerptCta,
+          visibility,
+          ...(internal && visibility === 'password'
+            ? { accessPasswordHash: String(doc.accessPasswordHash || '') }
+            : {}),
           seo: kimBlogSeo(doc.seo, baseUrl),
           category: kimBlogCategoryLabel(doc.category),
           tags: kimBlogTags(doc.tags),
@@ -99,14 +125,21 @@ export async function GET(request: NextRequest) {
         .at(-1) || '1970-01-01T00:00:00.000Z'
     const body = JSON.stringify({
       version: 1,
+      scope: internal ? 'internal' : 'public',
       generatedAt,
       posts,
     })
     const etag = `"${createHash('sha256').update(body).digest('base64url')}"`
     if (request.headers.get('if-none-match') === etag) {
-      return new NextResponse(null, { status: 304, headers: responseHeaders(etag) })
+      return new NextResponse(null, {
+        status: 304,
+        headers: responseHeaders(etag, internal),
+      })
     }
-    return new NextResponse(body, { status: 200, headers: responseHeaders(etag) })
+    return new NextResponse(body, {
+      status: 200,
+      headers: responseHeaders(etag, internal),
+    })
   } catch (error) {
     console.error(
       '[api/kim-blog/feed] failed:',

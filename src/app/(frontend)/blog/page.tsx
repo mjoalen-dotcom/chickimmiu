@@ -22,6 +22,7 @@ export default async function BlogPage() {
         collection: 'blog-posts',
         where: {
           status: { equals: 'published' },
+          visibility: { equals: 'public' },
           featured: { equals: true },
         },
         sort: '-publishedAt',
@@ -35,6 +36,7 @@ export default async function BlogPage() {
         collection: 'blog-posts',
         where: {
           status: { equals: 'published' },
+          visibility: { equals: 'public' },
           ...(featuredPost ? { id: { not_equals: featuredPost.id } } : {}),
         },
         sort: '-publishedAt',

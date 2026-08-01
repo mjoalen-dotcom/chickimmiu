@@ -18,6 +18,7 @@ type EditorValues = {
   slug?: string
   status?: string
   title?: string
+  visibility?: string
 }
 
 function savedLabel({
@@ -54,6 +55,13 @@ export default function BlogEditorHeader() {
     published && values.publishToKimLafayette && values.slug
       ? `https://blog.kimlafayette.com/blog/${encodeURIComponent(values.slug)}/`
       : null
+  const statusLabel = !published
+    ? '草稿'
+    : values.visibility === 'password'
+      ? '密碼保護'
+      : values.visibility === 'unlisted'
+        ? '隱密連結'
+        : '公開'
 
   function focusArticleSettings() {
     const settings = document.querySelector<HTMLElement>(
@@ -90,7 +98,7 @@ export default function BlogEditorHeader() {
               : '購物網站部落格'}
           </span>
           <span className="kim-blog-editor-header__status">
-            {published ? '已發佈' : '草稿'}
+            {statusLabel}
           </span>
           <span className="kim-blog-editor-header__gallery">
             相簿 {galleryCount} 張

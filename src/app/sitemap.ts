@@ -73,7 +73,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // 部落格
       const posts = await payload.find({
         collection: 'blog-posts',
-        where: { status: { equals: 'published' } },
+        where: {
+          status: { equals: 'published' },
+          visibility: { equals: 'public' },
+        },
         limit: 1000,
         depth: 0,
       })

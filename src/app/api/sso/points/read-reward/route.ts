@@ -103,6 +103,7 @@ export async function POST(request: NextRequest) {
       and: [
         { slug: { equals: slug } },
         { status: { equals: 'published' } },
+        { visibility: { equals: 'public' } },
         { publishToKimLafayette: { equals: true } },
       ],
     },

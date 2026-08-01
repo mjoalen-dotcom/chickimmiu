@@ -53,7 +53,11 @@ async function findPublishedPost(
 
   const exact = await payload.find({
     collection: 'blog-posts',
-    where: { slug: { equals: slug }, status: { equals: 'published' } },
+    where: {
+      slug: { equals: slug },
+      status: { equals: 'published' },
+      visibility: { equals: 'public' },
+    },
     limit: 1,
     depth: 2,
   })
@@ -64,7 +68,11 @@ async function findPublishedPost(
   // Prefix fallback：例如 user 訪問 `foo` 但 DB 是 `foo-mp0tixa9`
   const prefix = await payload.find({
     collection: 'blog-posts',
-    where: { slug: { like: `${slug}-` }, status: { equals: 'published' } },
+    where: {
+      slug: { like: `${slug}-` },
+      status: { equals: 'published' },
+      visibility: { equals: 'public' },
+    },
     limit: 2,
     depth: 2,
   })
@@ -145,6 +153,7 @@ export default async function BlogPostPage({ params }: Props) {
         collection: 'blog-posts',
         where: {
           status: { equals: 'published' },
+          visibility: { equals: 'public' },
           id: { not_equals: post.id },
           category: { equals: post.category },
         },

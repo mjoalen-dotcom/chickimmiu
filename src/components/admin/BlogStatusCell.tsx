@@ -15,11 +15,28 @@ const statusStyles = {
     color: '#087f5b',
     border: '#a7f3d0',
   },
+  unlisted: {
+    label: '隱密連結',
+    background: '#f5f3ff',
+    color: '#6d28d9',
+    border: '#ddd6fe',
+  },
+  password: {
+    label: '密碼保護',
+    background: '#eff6ff',
+    color: '#1d4ed8',
+    border: '#bfdbfe',
+  },
 } as const
 
 export default function BlogStatusCell(props: DefaultCellComponentProps) {
   const rowData = props.rowData as Record<string, unknown> | undefined
-  const status = rowData?.status === 'published' ? 'published' : 'draft'
+  const status =
+    rowData?.status !== 'published'
+      ? 'draft'
+      : rowData?.visibility === 'unlisted' || rowData?.visibility === 'password'
+        ? rowData.visibility
+        : 'published'
   const style = statusStyles[status]
 
   return (

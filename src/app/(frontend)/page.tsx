@@ -98,7 +98,10 @@ async function fetchHomeData() {
       try {
         const blogResult = await payload.find({
           collection: 'blog-posts',
-          where: { status: { equals: 'published' } },
+          where: {
+            status: { equals: 'published' },
+            visibility: { equals: 'public' },
+          },
           sort: '-publishedAt',
           limit: journalLimit,
           depth: 1,
