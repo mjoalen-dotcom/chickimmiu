@@ -3,6 +3,7 @@
 > 交付對象：手機 App 開發團隊（iOS / Android）
 > 版本：2026-08-03 · 對應 commit：見 `git log` · 維護者：CKMU 技術端
 > 相關文件：[API v1 規格](api/v1.md)、[社群登入申請指南](OAUTH_GOOGLE_APPLE_SETUP.md)、[上線稽核工單](LAUNCH_READINESS_2026-07-27.md)
+> **App 程式人員請先讀開發手冊 [APP_DEV_HANDBOOK_KIM_CKMU.md](APP_DEV_HANDBOOK_KIM_CKMU.md)**（金老佛爺+CKMU 雙品牌面、逐模組串接指引）；本文件是伺服器/架構背景參考。
 
 ---
 
