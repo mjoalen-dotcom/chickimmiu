@@ -513,6 +513,36 @@ export const GlobalSettings: GlobalConfig = {
               '系統會自動簽發並定期更新 Apple 要求的 client secret（180 天效期），免手動維護（僅管理員可見）',
           },
         },
+        // ── 手機 App 原生登入（POST /api/v1/auth/social）──
+        // App 用系統 SDK 拿到的 id_token，其 aud 是 iOS/Android 各自的 client id，
+        // 跟上面網頁那組不同；沒填這裡的話 App 登入會被擋在 audience 檢查。
+        {
+          name: 'googleIosClientId',
+          label: 'Google iOS Client ID（App 用）',
+          type: 'text',
+          admin: {
+            description:
+              'Google Cloud Console → 憑證 → OAuth 用戶端 ID，類型選「iOS」。手機 App 走 /api/v1/auth/social 才需要，純網站可留空',
+          },
+        },
+        {
+          name: 'googleAndroidClientId',
+          label: 'Google Android Client ID（App 用）',
+          type: 'text',
+          admin: {
+            description:
+              'Google Cloud Console → 憑證 → OAuth 用戶端 ID，類型選「Android」（需 SHA-1 憑證指紋）。純網站可留空',
+          },
+        },
+        {
+          name: 'appleAppBundleId',
+          label: 'Apple App Bundle ID（App 用）',
+          type: 'text',
+          admin: {
+            description:
+              'iOS App 的 Bundle ID（如 com.chickimmiu.app）。原生 Sign in with Apple 的 id_token audience 是 Bundle ID 不是 Services ID，兩者都要登記',
+          },
+        },
       ],
     },
     // ── Email 註冊/驗證設定 ──

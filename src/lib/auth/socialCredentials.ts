@@ -34,6 +34,14 @@ export type ResolvedSocialAuth = {
   }
   /** creds 齊全 AND 後台開關 —— provider 註冊與按鈕顯示共用 */
   enabled: SocialProviderFlags
+  /**
+   * 原生 App id_token 的合法 audience 清單（POST /api/v1/auth/social 用）。
+   * 網頁的 client id 也含在內，方便 App 內嵌 WebView 情境。
+   */
+  nativeAudiences: {
+    google: string[]
+    apple: string[]
+  }
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '')
@@ -108,6 +116,9 @@ export async function resolveSocialAuth(): Promise<ResolvedSocialAuth> {
     appleTeamId?: string
     appleKeyId?: string
     applePrivateKey?: string
+    googleIosClientId?: string
+    googleAndroidClientId?: string
+    appleAppBundleId?: string
   }
 
   let sl: SocialLoginSettings = {}
@@ -149,8 +160,27 @@ export async function resolveSocialAuth(): Promise<ResolvedSocialAuth> {
     apple = pair(undefined, undefined, process.env.AUTH_APPLE_ID, process.env.AUTH_APPLE_SECRET)
   }
 
+  // 原生 App 的 id_token aud 是 iOS/Android 各自的 client id，跟網頁那組不同 ——
+  // 三組都收進允許清單（去重、去空）。
+  const dedupe = (list: Array<string | undefined>): string[] =>
+    [...new Set(list.map((v) => str(v)).filter(Boolean))]
+
   const value: ResolvedSocialAuth = {
     creds: { google, facebook, line, apple },
+    nativeAudiences: {
+      google: dedupe([
+        google?.clientId,
+        sl.googleIosClientId,
+        sl.googleAndroidClientId,
+        process.env.AUTH_GOOGLE_IOS_ID,
+        process.env.AUTH_GOOGLE_ANDROID_ID,
+      ]),
+      apple: dedupe([
+        apple?.clientId,
+        sl.appleAppBundleId,
+        process.env.AUTH_APPLE_APP_BUNDLE_ID,
+      ]),
+    },
     enabled: {
       google: Boolean(google) && (sl.enableGoogle ?? true),
       facebook: Boolean(facebook) && (sl.enableFacebook ?? true),

@@ -1,4 +1,9 @@
-# Google / Apple / Facebook 登入串接指南（2026-07-29）
+# Google / Apple / Facebook 登入串接指南（2026-07-29；2026-08-03 補 App 原生登入）
+
+> **手機 App 也要用社群登入？** 除了下面網頁那組憑證，Google 要多建 iOS / Android
+> 類型的 OAuth client id、Apple 要多登記 App 的 Bundle ID —— 填在後台同一頁
+> 「社群登入設定」的三個 App 欄位。App 端串接規格見
+> [APP_INTEGRATION_HANDBOOK.md](APP_INTEGRATION_HANDBOOK.md) §5。
 
 ## 現況：程式端 100% 就緒，缺的只有憑證
 
