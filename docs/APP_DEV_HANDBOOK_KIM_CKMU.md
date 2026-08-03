@@ -241,12 +241,32 @@ Cache-Control: public, max-age=60, stale-while-revalidate=300
 | 每人每日 | 3 篇（**台北時區**換日） |
 | 最短停留 | 20 秒（App 端計時，未滿不要送） |
 
-**⚠️ App 端目前「不能」直接呼叫 `/api/sso/points/read-reward`** —— 那是 blog.kimlafayette.com 靜態站 PHP 端的 **server-to-server** 介面，要帶 `client_secret`，而 **secret 絕不可打包進 App**（反編譯就洩漏）。
+**App 專用 endpoint（Bearer 認證）**：
 
-**現況與計畫**：
-- App 版 Bearer 認證的 read-reward endpoint（`POST /api/v1/points/read-reward`，帶 `slug` + `dwell_seconds`）已列開發待辦（§9），後端一天內可加。
-- **在那之前**：App 先把「停留計時 + slug」本地實作好，UI 預留「+5 點」回饋動畫位；endpoint 上線後只補一個 API call。
-- Response 合約會沿用現行 server 端版本：`{ awarded: 5, points: 580, reason: null }`；不給分時 `awarded: 0` + `reason: "already_rewarded" | "daily_limit" | "dwell_too_short"`（HTTP 都是 200，不要當錯誤跳 toast，靜默處理即可）。
+```jsonc
+POST /api/v1/points/read-reward
+Authorization: Bearer <token>
+
+{ "slug": "seoul-fashion-week-2026", "dwell_seconds": 25 }
+// slug = feed API 的 slug 欄位；dwell_seconds = App 端計時的實際停留秒數
+```
+
+**Response 200**（不給分不是錯誤 —— 靜默處理，不要跳 toast）：
+
+```jsonc
+{ "awarded": 5, "points": 585, "reason": null }                    // 領到了 → 播 +5 點動畫
+{ "awarded": 0, "points": 580, "reason": "already_rewarded" }      // 這篇領過
+{ "awarded": 0, "points": 580, "reason": "daily_limit" }           // 今天滿 3 篇
+{ "awarded": 0, "points": null, "reason": "dwell_too_short" }      // 停留不足（正常不該送出）
+```
+
+**Errors**：400 `BAD_REQUEST`（slug 格式錯）· 401 `UNAUTHORIZED` · 404 `NOT_FOUND`（文章不存在或未同步金老佛爺）· 500
+
+**實作要點**：
+- App 端計時滿 **20 秒**才送（未滿不要送，送了也只會拿到 `dwell_too_short`）；計時規則：文章頁可見時間累計，切背景暫停。
+- 領到後畫面上的點數餘額直接用回傳的 `points` 更新（它已含倍率計算後的最新餘額）。
+- 每篇送一次即可，`already_rewarded` 之後就不用再送同一篇。
+- ⚠️ `/api/sso/points/read-reward` 是 blog.kimlafayette.com PHP 端的 server-to-server 介面（要 `client_secret`）——**App 不要碰那條**，secret 不可打包進 App。兩條的發點規則後端共用同一份，點數不會重複發（同一篇在部落格領過、App 再看也是 `already_rewarded`）。
 
 ### 4.3 不要做的事
 
@@ -375,7 +395,7 @@ Universal Links 網域：`www.chickimmiu.com`（上線後）。
 | Email 登入/註冊、me、商品、遊戲、點數商城、寶物箱 | 🟢 可立即串 | — |
 | 金老佛爺 feed + 文章 | 🟢 可立即串 | — |
 | Google/Apple 原生登入 | 🟡 程式就緒，**等憑證申請 + App client id 登記** | 先接 SDK，401 屬預期 |
-| App 版看文章賺點數 endpoint | 🔴 待開發（Bearer 版，合約見 §4.2） | 先做計時 + UI 預留 |
+| App 版看文章賺點數（`/api/v1/points/read-reward`） | 🟢 已上線（2026-08-03） | 照 §4.2 串 |
 | 綠界付款 | 🟡 沙盒可測；正式商店 3018203 尚無真實交易 | WebView 流程照 §5.3 |
 | 超商取貨門市地圖 | 🔴 App 整合待定 | 先宅配 |
 | LINE 原生登入 | 🔴 未支援 | 不做，勿 hack |
@@ -416,6 +436,11 @@ curl -s https://pre.chickimmiu.com/api/v1/me -H "Authorization: Bearer $TOKEN"
 curl -s -X POST https://pre.chickimmiu.com/api/v1/auth/social \
   -H 'Content-Type: application/json' \
   -d '{"provider":"google","idToken":"<SDK id_token>","nonce":"<原文>"}'
+
+# 看文章賺點數（slug 取自 feed）
+curl -s -X POST https://pre.chickimmiu.com/api/v1/points/read-reward \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"slug":"<feed 的 slug>","dwell_seconds":25}'
 ```
 
 ---
