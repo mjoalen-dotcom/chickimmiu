@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getPayload } from 'payload'
-import config from '@payload-config'
+import { resolveBearerUser, UNAUTHORIZED_RESPONSE } from '@/lib/auth/resolveBearerUser'
 import { isValidReadSlug } from '@/lib/sso/readReward'
 import { awardKimBlogReadReward } from '@/lib/loyalty/readRewardAward'
 
@@ -41,17 +40,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const payload = await getPayload({ config })
-    const { user: authUser } = await payload.auth({ headers: req.headers })
-    if (!authUser || authUser.collection !== 'users') {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 },
-      )
+    // Bearer → JWT 前綴轉換交給 resolveBearerUser（payload.auth 原生只認 JWT 前綴）
+    const { payload, user: authUser } = await resolveBearerUser(req)
+    if (!authUser) {
+      return NextResponse.json(UNAUTHORIZED_RESPONSE, { status: 401 })
     }
 
     // 重新以 depth:1 取 user —— memberTier 要 populate 出 slug 給倍率解析用，
-    // payload.auth 回傳的 user 不保證帶到
+    // token 驗證回傳的 user 不保證帶到
     let user: Record<string, unknown>
     try {
       user = (await payload.findByID({
