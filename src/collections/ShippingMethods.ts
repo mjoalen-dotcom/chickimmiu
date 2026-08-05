@@ -1,5 +1,9 @@
 import type { CollectionConfig } from 'payload'
 import { isAdmin } from '../access/isAdmin'
+import { loadEcpayLogisticsConfig } from '../lib/logistics/ecpayLogisticsMap'
+
+/** 結帳時必須開綠界電子地圖選門市的物流商 —— 沒有物流憑證就無法完成 */
+const CVS_CARRIERS = ['711', 'family', 'hilife', 'ok']
 
 /**
  * 物流方式 Collection
@@ -16,7 +20,20 @@ export const ShippingMethods: CollectionConfig = {
     defaultColumns: ['name', 'carrier', 'baseFee', 'isActive'],
   },
   access: {
-    read: () => true,
+    /**
+     * 綠界物流憑證（ECPAY_LOGISTICS_*）未設定時，對前台隱藏超商取貨選項。
+     *
+     * 沒有這道閘門的話：客人在結帳選了超商取貨 → 點「選擇門市」→ 電子地圖
+     * 路由回 503 → 整個結帳流程卡死，而且看不出原因。寧可一開始就不顯示。
+     * 憑證補上後這些選項會自動恢復，不需要改任何設定或重新部署。
+     *
+     * 後台管理員一律看得到全部（否則會誤以為資料被刪了）。
+     */
+    read: ({ req: { user } }) => {
+      if (user?.role === 'admin') return true
+      if (loadEcpayLogisticsConfig().isConfigured) return true
+      return { carrier: { not_in: CVS_CARRIERS } }
+    },
     create: isAdmin,
     update: isAdmin,
     delete: isAdmin,
