@@ -66,7 +66,7 @@ ssh root@5.223.85.14 /var/www/chickimmiu/scripts/setup-social-oauth-prod.sh appl
 2. **API 和服務 → OAuth 同意畫面**（首次必做）：
    - User Type：**外部（External）**
    - 應用程式名稱：`CHIC KIM & MIU`；支援 email、開發人員 email：填自己的
-   - 應用程式首頁：`https://www.chickimmiu.com`；隱私權政策：`https://www.chickimmiu.com/privacy`
+   - 應用程式首頁：`https://www.chickimmiu.com`；隱私權政策：`https://www.chickimmiu.com/privacy-policy`
    - 範圍（Scopes）：加 `email`、`profile`、`openid` 三個非敏感範圍即可
    - 發布狀態按「**發布應用程式**」轉正式（只用非敏感 scope 不需 Google 審查；
      留在「測試中」的話只有測試名單能登入，且 7 天要重新授權）
@@ -88,7 +88,7 @@ ssh root@5.223.85.14 /var/www/chickimmiu/scripts/setup-social-oauth-prod.sh appl
    - 用戶端 OAuth 登入、網頁 OAuth 登入：開；強制 HTTPS：開（預設）
 3. **應用程式設定 → 基本資料**：
    - 應用程式網域：`chickimmiu.com`
-   - 隱私政策網址：`https://www.chickimmiu.com/privacy`
+   - 隱私政策網址：`https://www.chickimmiu.com/privacy-policy`
    - 資料刪除說明：選「資料刪除說明網址」，可先填隱私政策頁
    - 抄下 **應用程式編號（App ID）** 與 **應用程式密鑰（App Secret，按「顯示」）**
 4. 頂部把 App 從「開發中」切成 **上線（Live）**——不切的話只有 app 角色（你自己）能登入。
