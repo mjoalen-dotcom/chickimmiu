@@ -23,8 +23,11 @@ export async function GET(req: NextRequest) {
 
     const payload = await getPayload({ config })
 
+    // Products.status 的合法值是 draft / published / archived（見 collections/Products.ts）。
+    // 這裡曾寫成不存在的 'active'，導致本 API 永遠回 0 筆 —— 網頁前台與
+    // /api/v1/recommendations 都是查 'published'，三邊必須一致。
     const where: Record<string, unknown> = {
-      status: { equals: 'active' },
+      status: { equals: 'published' },
     }
 
     if (category) {
