@@ -8,25 +8,34 @@ import BlogStudioNav from './BlogStudioNav'
 type Counts = {
   kimAll: number
   kimDraft: number
+  kimPassword: number
   kimPublished: number
+  kimPublic: number
+  kimUnlisted: number
   storeAll: number
 }
 
 const emptyCounts: Counts = {
   kimAll: 0,
   kimDraft: 0,
+  kimPassword: 0,
   kimPublished: 0,
+  kimPublic: 0,
+  kimUnlisted: 0,
   storeAll: 0,
 }
 
+const listHref = (filter: string) =>
+  `/admin/collections/blog-posts?${filter}&sort=-updatedAt`
+
 const quickLinks = [
   {
-    href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true',
+    href: listHref('where[publishToKimLafayette][equals]=true'),
     label: 'Kim 文章',
     icon: FileText,
   },
   {
-    href: '/admin/collections/blog-posts?where[publishToKimLafayette][not_equals]=true',
+    href: listHref('where[publishToKimLafayette][not_equals]=true'),
     label: '購物網站文章',
     icon: Store,
   },
@@ -52,7 +61,7 @@ const quickLinks = [
     icon: Sparkles,
   },
   {
-    href: 'https://blog.kimlafayette.com/blog/',
+    href: 'https://blog.kimlafayette.com/',
     label: '查看部落格',
     icon: ExternalLink,
     external: true,
@@ -63,25 +72,47 @@ const statusLinks = [
   {
     key: 'kimAll' as const,
     label: 'Kim 全部文章',
-    href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true',
+    filter: 'where[publishToKimLafayette][equals]=true',
     color: '#1f2937',
   },
   {
     key: 'kimPublished' as const,
     label: 'Kim 已發佈',
-    href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true&where[status][equals]=published',
+    filter:
+      'where[publishToKimLafayette][equals]=true&where[status][equals]=published',
     color: '#087f5b',
   },
   {
     key: 'kimDraft' as const,
     label: 'Kim 草稿',
-    href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true&where[status][equals]=draft',
+    filter: 'where[publishToKimLafayette][equals]=true&where[status][equals]=draft',
     color: '#9a3412',
+  },
+  {
+    key: 'kimPassword' as const,
+    label: 'Kim 密碼文章',
+    filter:
+      'where[publishToKimLafayette][equals]=true&where[status][equals]=published&where[visibility][equals]=password',
+    color: '#1d4ed8',
+  },
+  {
+    key: 'kimUnlisted' as const,
+    label: 'Kim 隱密連結',
+    filter:
+      'where[publishToKimLafayette][equals]=true&where[status][equals]=published&where[visibility][equals]=unlisted',
+    color: '#6d28d9',
+  },
+  {
+    key: 'kimPublic' as const,
+    label: 'Kim 公開文章',
+    filter:
+      'where[publishToKimLafayette][equals]=true&where[status][equals]=published&where[visibility][equals]=public',
+    color: '#0f766e',
   },
   {
     key: 'storeAll' as const,
     label: '購物網站文章',
-    href: '/admin/collections/blog-posts?where[publishToKimLafayette][not_equals]=true',
+    filter: 'where[publishToKimLafayette][not_equals]=true',
     color: '#1d4ed8',
   },
 ]
@@ -104,14 +135,15 @@ export default function BlogListDashboard() {
   useEffect(() => {
     let active = true
 
-    Promise.all([
-      fetchCount('&where[publishToKimLafayette][equals]=true'),
-      fetchCount('&where[publishToKimLafayette][equals]=true&where[status][equals]=draft'),
-      fetchCount('&where[publishToKimLafayette][equals]=true&where[status][equals]=published'),
-      fetchCount('&where[publishToKimLafayette][not_equals]=true'),
-    ])
-      .then(([kimAll, kimDraft, kimPublished, storeAll]) => {
-        if (active) setCounts({ kimAll, kimDraft, kimPublished, storeAll })
+    Promise.all(statusLinks.map((item) => fetchCount(`&${item.filter}`)))
+      .then((values) => {
+        if (!active) return
+
+        const nextCounts = { ...emptyCounts }
+        statusLinks.forEach((item, index) => {
+          nextCounts[item.key] = values[index] ?? 0
+        })
+        setCounts(nextCounts)
       })
       .catch(() => {
         if (active) setCounts(emptyCounts)
@@ -209,7 +241,7 @@ export default function BlogListDashboard() {
           {statusLinks.map((item, index) => (
             <a
               key={item.key}
-              href={item.href}
+              href={listHref(item.filter)}
               style={{
                 display: 'block',
                 minHeight: 88,
