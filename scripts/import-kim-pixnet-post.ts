@@ -7,6 +7,7 @@ import { convertPixnetHtmlToLexical } from '../src/lib/blog/pixnetImport'
 
 interface ImportedImage {
   alt?: string
+  mediaId?: number | string
   src: string
 }
 
@@ -16,11 +17,14 @@ interface ImportedPost {
   excerpt?: string
   category?: string
   tags?: string[]
-  publishedAt: string
+  publishedAt?: string
   viewCount?: number
   sourceUrl?: string
   html: string
   images: ImportedImage[]
+  featured?: boolean
+  status?: 'draft' | 'published'
+  visibility?: 'public' | 'unlisted'
 }
 
 interface Options {
@@ -111,15 +115,32 @@ async function validateSource(options: Options) {
   if (!/^[\p{L}\p{N}][\p{L}\p{N}._~-]*$/u.test(post.slug)) {
     throw new Error(`Unsafe slug: ${post.slug}`)
   }
-  if (!post.title?.trim() || !post.html?.trim()) {
-    throw new Error('The imported post requires title and html')
+  if (!post.title?.trim()) {
+    throw new Error('The imported post requires a title')
   }
-  if (!Array.isArray(post.images) || post.images.length === 0) {
+  if (!Array.isArray(post.images)) {
     throw new Error('The imported post requires an images array')
   }
+  if (post.status && post.status !== 'draft' && post.status !== 'published') {
+    throw new Error(`Unsupported article status: ${post.status}`)
+  }
+  if (post.visibility && post.visibility !== 'public' && post.visibility !== 'unlisted') {
+    throw new Error(`Unsupported article visibility: ${post.visibility}`)
+  }
 
-  const mediaPaths: string[] = []
+  // PIXNET can retain title-only drafts. Payload still needs a valid Lexical root,
+  // so preserve those drafts as an empty paragraph instead of dropping them.
+  if (!post.html?.trim()) post.html = '<p></p>'
+
+  const mediaPaths: Array<string | null> = []
   for (const image of post.images) {
+    if (image.mediaId !== undefined && image.mediaId !== null) {
+      if (!/^\d+$/.test(String(image.mediaId)) || Number(image.mediaId) < 1) {
+        throw new Error(`Invalid reusable media id: ${image.mediaId}`)
+      }
+      mediaPaths.push(null)
+      continue
+    }
     const filename = safeMediaPath(options.mediaDir, image.src)
     const stats = await fs.stat(filename)
     if (!stats.isFile() || stats.size === 0) {
@@ -137,7 +158,10 @@ async function main() {
 
   if (options.validateOnly) {
     const mediaBySource = new Map(
-      post.images.map((image, index) => [image.src, `dry-${index + 1}`]),
+      post.images.map((image, index) => [
+        image.src,
+        image.mediaId || `dry-${index + 1}`,
+      ]),
     )
     const converted = convertPixnetHtmlToLexical(post.html, mediaBySource)
     if (converted.missingImageSources.length > 0) {
@@ -220,6 +244,18 @@ async function main() {
     for (let index = 0; index < post.images.length; index += 1) {
       const image = post.images[index]!
       const filePath = mediaPaths[index]!
+      if (image.mediaId) {
+        const reusable = await payload.findByID({
+          collection: 'media',
+          id: image.mediaId,
+          depth: 0,
+        })
+        mediaBySource.set(image.src, reusable.id)
+        gallery.push(reusable.id)
+        reusedMedia += 1
+        continue
+      }
+      if (!filePath) throw new Error(`Missing media file path for ${image.src}`)
       const { extension, mimetype } = mediaFileMetadata(filePath)
       const filename = uploadFilename(post.slug, index, extension)
       const reused = existingByFilename.get(filename)
@@ -271,6 +307,8 @@ async function main() {
     const summary = {
       slug: post.slug,
       title: post.title,
+      status: post.status || 'published',
+      visibility: post.visibility || 'public',
       images: post.images.length,
       embeddedImages: converted.embeddedMediaIds.length,
       reusedMedia,
@@ -283,6 +321,8 @@ async function main() {
       return
     }
 
+    const status = post.status || 'published'
+    const visibility = post.visibility || 'public'
     const blogPost = await payload.create({
       collection: 'blog-posts',
       data: {
@@ -290,9 +330,9 @@ async function main() {
         slug: post.slug,
         excerpt: post.excerpt || '',
         content: converted.content,
-        featuredImage: gallery[0],
+        ...(gallery[0] ? { featuredImage: gallery[0] } : {}),
         gallery,
-        featured: true,
+        featured: post.featured ?? status === 'published',
         author: author.id,
         category: CATEGORY_VALUES[post.category || ''] || 'lifestyle',
         publishToKimLafayette: true,
@@ -300,8 +340,9 @@ async function main() {
           post.sourceUrl ||
           `https://youwin721.pixnet.net/blog/post/${post.slug}`,
         tags: (post.tags || []).map((tag) => ({ tag })),
-        status: 'published',
-        publishedAt: post.publishedAt,
+        status,
+        visibility,
+        ...(post.publishedAt ? { publishedAt: post.publishedAt } : {}),
         viewCount: Math.max(
           0,
           Math.trunc(Number.isFinite(Number(post.viewCount)) ? Number(post.viewCount) : 0),
