@@ -47,6 +47,15 @@ function safeDestination(mediaRoot, slug, source) {
   return { destination, mediaDir, source: sourceUrl }
 }
 
+function resolveDownloadSource(source) {
+  const url = new URL(source)
+  if (url.hostname === 's.pixfs.net') {
+    url.protocol = 'https:'
+    url.hostname = 'pixfs.1px.tw'
+  }
+  return url.href
+}
+
 async function isCompleteFile(filename) {
   try {
     return (await stat(filename)).size > 0
@@ -61,7 +70,7 @@ async function download(task, retries) {
   const partial = `${task.destination}.part`
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
-      const response = await fetch(task.source, {
+      const response = await fetch(resolveDownloadSource(task.source), {
         headers: { 'user-agent': 'KimLafayetteBlogMigration/1.0' },
         redirect: 'follow',
         signal: AbortSignal.timeout(45_000),
