@@ -2,7 +2,6 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { getPayload } from 'payload'
 
-import config from '@payload-config'
 import { convertPixnetHtmlToLexical } from '../src/lib/blog/pixnetImport'
 
 interface ImportedImage {
@@ -102,6 +101,32 @@ function mediaFileMetadata(filePath: string) {
   return { extension, mimetype }
 }
 
+async function loadLocalEnvironment() {
+  const filename = path.resolve(process.cwd(), '.env')
+  let source = ''
+  try {
+    source = await fs.readFile(filename, 'utf8')
+  } catch (error) {
+    const code = error && typeof error === 'object' && 'code' in error ? error.code : ''
+    if (code === 'ENOENT') return
+    throw error
+  }
+
+  for (const line of source.split(/\r?\n/)) {
+    const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/)
+    if (!match || process.env[match[1]] !== undefined) continue
+    let value = match[2].trim()
+    if (
+      value.length >= 2 &&
+      ((value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'")))
+    ) {
+      value = value.slice(1, -1)
+    }
+    process.env[match[1]] = value
+  }
+}
+
 function uploadFilename(
   slug: string,
   index: number,
@@ -185,8 +210,10 @@ async function main() {
     return
   }
 
+  await loadLocalEnvironment()
   process.env.KIM_BLOG_DEPLOY_HOOK_URL = ''
   console.log('source validated; initializing Payload')
+  const { default: config } = await import('@payload-config')
   const payload = await getPayload({ config })
   console.log('Payload initialized; checking for an existing article')
   const existingPost = await payload.find({
