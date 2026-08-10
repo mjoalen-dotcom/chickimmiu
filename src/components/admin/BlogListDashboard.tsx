@@ -3,6 +3,7 @@
 import { ExternalLink, FilePenLine, FileText, FolderTree, Images, Sparkles, Store } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
+import { BLOG_STATUS_UPDATED_EVENT } from './BlogQuickStatusSelect'
 import BlogStudioNav from './BlogStudioNav'
 
 type Counts = {
@@ -135,25 +136,32 @@ export default function BlogListDashboard() {
   useEffect(() => {
     let active = true
 
-    Promise.all(statusLinks.map((item) => fetchCount(`&${item.filter}`)))
-      .then((values) => {
-        if (!active) return
+    const loadCounts = () => {
+      setLoading(true)
+      void Promise.all(statusLinks.map((item) => fetchCount(`&${item.filter}`)))
+        .then((values) => {
+          if (!active) return
 
-        const nextCounts = { ...emptyCounts }
-        statusLinks.forEach((item, index) => {
-          nextCounts[item.key] = values[index] ?? 0
+          const nextCounts = { ...emptyCounts }
+          statusLinks.forEach((item, index) => {
+            nextCounts[item.key] = values[index] ?? 0
+          })
+          setCounts(nextCounts)
         })
-        setCounts(nextCounts)
-      })
-      .catch(() => {
-        if (active) setCounts(emptyCounts)
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
+        .catch(() => {
+          if (active) setCounts(emptyCounts)
+        })
+        .finally(() => {
+          if (active) setLoading(false)
+        })
+    }
+
+    loadCounts()
+    window.addEventListener(BLOG_STATUS_UPDATED_EVENT, loadCounts)
 
     return () => {
       active = false
+      window.removeEventListener(BLOG_STATUS_UPDATED_EVENT, loadCounts)
     }
   }, [])
 

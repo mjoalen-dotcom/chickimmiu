@@ -5,6 +5,18 @@ import React, { useState, useTransition } from 'react'
 
 type QuickState = 'draft' | 'public' | 'unlisted' | 'password'
 
+export const BLOG_STATUS_UPDATED_EVENT = 'blog-status-updated'
+
+const stateStyles: Record<
+  QuickState,
+  { background: string; border: string; color: string }
+> = {
+  draft: { background: '#fff1e6', border: '#fed7aa', color: '#9a3412' },
+  public: { background: '#ecfdf5', border: '#a7f3d0', color: '#087f5b' },
+  unlisted: { background: '#f5f3ff', border: '#ddd6fe', color: '#6d28d9' },
+  password: { background: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8' },
+}
+
 interface BlogQuickStatusSelectProps {
   hasPassword: boolean
   id: number | string
@@ -30,6 +42,7 @@ export default function BlogQuickStatusSelect({
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [pending, startTransition] = useTransition()
+  const appearance = stateStyles[value]
 
   async function update(next: QuickState) {
     let password: string | undefined
@@ -69,6 +82,11 @@ export default function BlogQuickStatusSelect({
       return
     }
     setSaving(false)
+    window.dispatchEvent(
+      new CustomEvent(BLOG_STATUS_UPDATED_EVENT, {
+        detail: { id, state: next },
+      }),
+    )
     startTransition(() => router.refresh())
   }
 
@@ -83,12 +101,13 @@ export default function BlogQuickStatusSelect({
           width: '100%',
           minHeight: 34,
           padding: '5px 24px 5px 8px',
-          border: '1px solid var(--theme-elevation-250, #d5d5d5)',
+          border: `1px solid ${appearance.border}`,
           borderRadius: 6,
-          background: 'var(--theme-input-bg, #fff)',
-          color: 'var(--theme-text, #202124)',
+          background: appearance.background,
+          color: appearance.color,
           cursor: pending || saving ? 'wait' : 'pointer',
           fontSize: 12,
+          fontWeight: 700,
         }}
       >
         <option value="draft">草稿</option>
