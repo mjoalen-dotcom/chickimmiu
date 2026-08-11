@@ -265,11 +265,44 @@ rm -f "$MIGRATE_LOG"
 #     the current source tree, regardless of what main has committed.
 #     Cheap (~3-5s); safe to re-run; produces no diff if nothing changed.
 log "step 3b/7: pnpm payload generate:importmap"
-# Same CLI, same wedge risk — bounded so a hang here can't block the deploy
-# either. Normal run is ~6s.
-"${PAYLOAD_CLI_ENV[@]}" timeout -s KILL 300 pnpm payload generate:importmap \
-  || fail "generate:importmap failed (exit $?)" 4
-reap_payload_orphans
+# Same CLI, same wedge (observed live 2026-08-11 16:27: bin.js burned its usual
+# 7s of CPU doing the work, then parked in ep_poll and never exited or flushed
+# output). Normal run is ~6s, so 300s is generous; two attempts because the
+# wedge is intermittent, not deterministic.
+IMPORTMAP_FILE='src/app/(payload)/admin/importMap.js'
+IMPORTMAP_BEFORE=$(sha256sum "$IMPORTMAP_FILE" 2>/dev/null | awk '{print $1}' || echo "missing")
+IMPORTMAP_OK=0
+for attempt in 1 2; do
+  set +e
+  "${PAYLOAD_CLI_ENV[@]}" timeout -s KILL 300 pnpm payload generate:importmap
+  IMPORTMAP_RC=$?
+  set -e
+  reap_payload_orphans
+  if [[ "$IMPORTMAP_RC" -eq 0 ]]; then
+    IMPORTMAP_OK=1
+    break
+  fi
+  if [[ "$IMPORTMAP_RC" -ne 137 ]]; then
+    # A genuine error (bad config, syntax error) — retrying won't help.
+    fail "generate:importmap failed (exit $IMPORTMAP_RC)" 4
+  fi
+  log "  attempt $attempt/2: CLI wedged and was killed at 300s"
+done
+
+if [[ "$IMPORTMAP_OK" -eq 0 ]]; then
+  IMPORTMAP_AFTER=$(sha256sum "$IMPORTMAP_FILE" 2>/dev/null | awk '{print $1}' || echo "missing")
+  if [[ "$IMPORTMAP_BEFORE" == "$IMPORTMAP_AFTER" ]] && git diff --quiet -- "$IMPORTMAP_FILE"; then
+    # The wedge left the file untouched and it still matches the commit, so we
+    # ship the committed importMap. This step is a safety net, not the source
+    # of truth — importMap.js is supposed to be committed with the PR that adds
+    # an admin component. Aborting the whole deploy over a wedged safety net is
+    # worse than shipping the committed map.
+    log "  WARN: importmap 兩次都卡死，但 importMap.js 未被改動且與 commit 一致 → 以 repo 版本繼續"
+    log "  WARN: 若本次有新增 admin component 而作者忘了 commit importMap.js，後台該元件會靜默不顯示，請人工確認"
+  else
+    fail "generate:importmap wedged and left importMap.js modified/inconsistent — 需人工檢查" 4
+  fi
+fi
 
 # 4. Build — NO `rm -rf .next` (live chunks). But .next/cache (webpack
 #    incremental) is build-only and CAN be cleared safely. Stale chunk-ID
