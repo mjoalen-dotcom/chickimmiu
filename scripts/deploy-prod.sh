@@ -42,7 +42,8 @@
 #   ssh root@5.223.85.14 /root/deploy-ckmu.sh --update-lockfile
 #
 # Exit codes: 0 ok, 1 health check failed, 2 build failed, 3 migrate failed,
-#             4 generate:importmap failed, 5 nginx snippet apply failed.
+#             4 generate:importmap failed, 5 nginx snippet apply failed,
+#             6 another deploy already holds the lock.
 
 set -euo pipefail
 
@@ -60,6 +61,47 @@ log() { printf "[%(%H:%M:%S)T] %s\n" -1 "$*"; }
 fail() { log "FAIL: $*"; exit "${2:-1}"; }
 
 cd "$APP_DIR"
+
+# Single-writer lock. Two concurrent deploys used to interleave
+# install/migrate/build on the same tree; the 2026-08-03 incident left a
+# `payload migrate` wedged in ep_poll for 37 hours. Non-blocking on purpose:
+# a second deploy should fail loudly, not queue up behind a 6-minute build.
+exec 9>/var/lock/deploy-ckmu.lock
+flock -n 9 || fail "another deploy is already running (/var/lock/deploy-ckmu.lock held)" 6
+
+# Orphaned `payload/bin.js` reaper.
+#
+# ROOT CAUSE (traced 2026-08-11): payload/dist/index.js "Generate types on
+# startup" fires `void this.bin({args:['generate:types'], log:false})` on every
+# Payload init when NODE_ENV !== 'production'. It is fire-and-forget with stdio
+# on /dev/null, so it detaches to PPID 1. Combined with the keep-alive interval
+# our pnpm patch adds to bin.js (which only clears when start() settles), that
+# child never exits — it parks in ep_poll forever and never writes
+# payload-types.ts. One orphan leaked per CLI invocation; 4 had accumulated by
+# 2026-08-11, the oldest 5 days old.
+#
+# The real fix is PAYLOAD_CLI_ENV below (NODE_ENV=production suppresses the
+# spawn entirely — verified: 0 orphans after migrate). This reaper only cleans
+# up strays from older deploys or from anyone running the CLI by hand.
+# Matching on the full bin.js path, never `pkill -f payload`, which would
+# match this script's own command line.
+reap_payload_orphans() {
+  local pids
+  pids=$(ps -eo pid,ppid,cmd --no-headers \
+    | awk '$2 == 1 && $0 ~ /node_modules\/payload\/bin\.js/ {print $1}' || true)
+  if [[ -n "$pids" ]]; then
+    log "  reaping orphaned payload/bin.js pids: $(echo "$pids" | tr '\n' ' ')"
+    # shellcheck disable=SC2086
+    kill $pids 2>/dev/null || true
+  fi
+}
+
+# Every payload CLI call goes through this. NODE_ENV=production is the
+# root-cause fix for the orphan leak above; it also skips the interactive
+# "you ran in dev mode, data loss will occur" prompt entirely.
+PAYLOAD_CLI_ENV=(env NODE_ENV=production)
+
+reap_payload_orphans
 
 log "== deploy start =="
 BEFORE_SHA=$(git rev-parse HEAD)
@@ -170,10 +212,27 @@ for attempt in 1 2 3; do
   # by design the moment pnpm stops reading stdin. `set +e` lets us capture
   # PIPESTATUS before `-e` trips on the 141.
   set +e
-  yes y | pnpm payload migrate > "$MIGRATE_LOG" 2>&1
+  # `timeout` is the hard stop: before NODE_ENV=production was passed here the
+  # CLI could park in ep_poll indefinitely (11 min on 2026-08-11, 37 h on
+  # 2026-08-03) with the deploy blocked behind it and no way out but a manual
+  # kill. 600s is ~30x a normal run (~1s with no pending migrations).
+  yes y | "${PAYLOAD_CLI_ENV[@]}" timeout -s KILL 600 pnpm payload migrate > "$MIGRATE_LOG" 2>&1
   MIGRATE_STATUSES=("${PIPESTATUS[@]}")
   set -e
   sed 's/^/  /' "$MIGRATE_LOG"
+  reap_payload_orphans
+  if [[ "${MIGRATE_STATUSES[1]:-1}" -eq 137 ]]; then
+    # SIGKILL from timeout. The CLI wedged — but wedging says nothing about
+    # whether the schema is current, so let the DB answer instead of failing
+    # blind. Empty pending list = verifiably up to date, carry on.
+    if [[ -z "$(pending_migrations)" ]]; then
+      log "  attempt $attempt/3: CLI wedged and was killed at 600s, but payload_migrations shows nothing pending — treating as up to date"
+      MIGRATE_VERIFIED=1
+      break
+    fi
+    log "  attempt $attempt/3: CLI wedged and was killed at 600s, migrations still pending — retrying"
+    continue
+  fi
   if [[ "${MIGRATE_STATUSES[1]:-1}" -ne 0 ]]; then
     # Real migration failure (SQL error etc.) — retrying won't help.
     fail "payload migrate failed (pnpm exit ${MIGRATE_STATUSES[1]:-?})" 3
@@ -206,7 +265,11 @@ rm -f "$MIGRATE_LOG"
 #     the current source tree, regardless of what main has committed.
 #     Cheap (~3-5s); safe to re-run; produces no diff if nothing changed.
 log "step 3b/7: pnpm payload generate:importmap"
-pnpm payload generate:importmap || fail "generate:importmap failed" 4
+# Same CLI, same wedge risk — bounded so a hang here can't block the deploy
+# either. Normal run is ~6s.
+"${PAYLOAD_CLI_ENV[@]}" timeout -s KILL 300 pnpm payload generate:importmap \
+  || fail "generate:importmap failed (exit $?)" 4
+reap_payload_orphans
 
 # 4. Build — NO `rm -rf .next` (live chunks). But .next/cache (webpack
 #    incremental) is build-only and CAN be cleared safely. Stale chunk-ID
