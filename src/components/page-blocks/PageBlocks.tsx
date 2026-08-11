@@ -732,11 +732,35 @@ async function CelebrityGrid({ section }: { section: PageBlock }) {
                       {c.tagline}
                     </p>
                   )}
+
+                  {/* 觸控裝置的替代呈現 —— 平板 / 智能白板沒有 hover，
+                      下面那層 hover 浮層在它們身上永遠不會出現。這裡把最有力的
+                      一句 brandQuote 直接放進底部漸層，並補一個明確的「還有更多」
+                      指示；完整 bio 本來就在 /celebrity/[slug] 詳情頁，點一下就到。
+                      刻意不整片蓋住照片 —— 這頁的主角是藝人的穿搭照。
+                      只在 md 以上生效：手機卡片只有 50vw 寬，再塞兩行引言會把照片
+                      壓掉一大塊，而詳情頁本來就只差一下點擊。 */}
+                  {showBio && Boolean(c.brandQuote) && (
+                    <p
+                      className={`hidden md:[@media(hover:none)]:block mt-2 font-serif italic leading-snug text-white/90 border-l-2 border-gold-400 pl-2.5 line-clamp-2 ${
+                        isFeatured ? 'text-sm' : 'text-xs'
+                      }`}
+                    >
+                      &ldquo;{c.brandQuote}&rdquo;
+                    </p>
+                  )}
+                  {showBio && (Boolean(c.brandQuote) || Boolean(c.bio)) && href && (
+                    <span className="hidden md:[@media(hover:none)]:inline-flex items-center gap-1 mt-2 text-[10px] tracking-[0.2em] uppercase text-gold-300">
+                      同款穿搭 <ArrowRight size={12} />
+                    </span>
+                  )}
                 </div>
 
-                {/* Hover overlay — brandQuote + bio + CTA */}
+                {/* Hover overlay — brandQuote + bio + CTA
+                    僅在真的有 hover 的裝置上存在。原本沒有這道 media 條件，
+                    iOS 的 sticky hover 會讓它在點擊瞬間閃一下才跳頁。 */}
                 {showBio && (Boolean(c.brandQuote) || Boolean(c.bio)) && (
-                  <div className="absolute inset-0 z-20 bg-gradient-to-br from-black/85 via-black/75 to-black/85 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-center p-5 md:p-7 text-white">
+                  <div className="absolute inset-0 z-20 bg-gradient-to-br from-black/85 via-black/75 to-black/85 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500 hidden [@media(hover:hover)]:flex flex-col justify-center p-5 md:p-7 text-white">
                     <p className="text-[10px] tracking-[0.25em] uppercase text-gold-300 mb-2">
                       {c.program}
                     </p>
