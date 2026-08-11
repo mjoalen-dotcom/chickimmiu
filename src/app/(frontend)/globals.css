@@ -121,3 +121,57 @@ body.admin-tool-page [data-component="floating-menu"] {
   animation: movie-lottery-spin 2.5s ease-in-out;
   transform-style: preserve-3d;
 }
+
+/* ──────────────────────────────────────────────────────────────
+ * 跨裝置修正（2026-08-11 跨裝置稽核）
+ * ────────────────────────────────────────────────────────────── */
+
+/**
+ * 觸控裝置（iPhone / iPad）表單欄位字級 < 16px 時，
+ * Safari 聚焦會自動放大整頁且不會縮回。
+ * 這裡在觸控 + 中小尺寸下強制 16px（優先權高於 .text-sm 等 utility）。
+ */
+@media (pointer: coarse) and (max-width: 1024px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/**
+ * 智能白板 / 大型觸控面板。
+ * 條件刻意綁 pointer: coarse —— 白板是觸控的，超寬桌機螢幕（3440x1440 等）
+ * 不是，桌機版式維持原樣不動。
+ *
+ * 1) .container 上限 1400px 在 3840 面板上只用到 36% 寬度，兩側各空 1213px；
+ *    放寬到 2400 / 3200，讓商品格線與圖片跟著放大。
+ * 2) root font-size 放大：86 吋 4K 面板約 51 ppi，16px 內文只有約 8mm，
+ *    站遠看不清；用 rem 等比拉大字級與間距。
+ * 走 dpr=2、回報 1920 CSS px 的白板不受影響（等同桌機版式）。
+ */
+@media (pointer: coarse) and (min-width: 2000px) {
+  .container {
+    max-width: 2400px;
+  }
+}
+
+@media (pointer: coarse) and (min-width: 2800px) {
+  html {
+    font-size: 18px;
+  }
+
+  .container {
+    max-width: 3000px;
+  }
+}
+
+@media (pointer: coarse) and (min-width: 3600px) {
+  html {
+    font-size: 20px;
+  }
+
+  .container {
+    max-width: 3200px;
+  }
+}

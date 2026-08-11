@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Heart, ShoppingBag, Eye } from 'lucide-react'
@@ -42,6 +42,20 @@ export function ProductCard({
   onQuickView,
 }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false)
+  /**
+   * 觸控裝置（平板 / 智能白板 / 手機）沒有 hover，
+   * ≥768px 的觸控裝置直接常駐顯示動作列；
+   * 手機版面太窄則維持隱藏，但下面會關掉 pointer-events 避免誤觸。
+   */
+  const [isTouchWide, setIsTouchWide] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(hover: none) and (min-width: 768px)')
+    const sync = () => setIsTouchWide(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+  const showActions = isHovered || isTouchWide
   const t = useTranslations('product')
   const tCommon = useTranslations('common')
   const addItem = useCartStore((s) => s.addItem)
@@ -145,7 +159,8 @@ export function ProductCard({
         {/* Hover actions */}
         <motion.div
           initial={false}
-          animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : 8 }}
+          animate={{ opacity: showActions ? 1 : 0, y: showActions ? 0 : 8 }}
+          style={{ pointerEvents: showActions ? 'auto' : 'none' }}
           className="absolute bottom-3 left-3 right-3 flex gap-2"
         >
           <button
@@ -171,7 +186,7 @@ export function ProductCard({
           <div className="absolute bottom-3 left-3 right-3 text-center pointer-events-none">
             <motion.span
               initial={false}
-              animate={{ opacity: isHovered ? 0 : 1 }}
+              animate={{ opacity: showActions ? 0 : 1 }}
               className="inline-block px-3 py-1 bg-black/50 text-white text-[10px] rounded-full backdrop-blur-sm"
             >
               {t('soldCount', { count: soldCount.toLocaleString() })}

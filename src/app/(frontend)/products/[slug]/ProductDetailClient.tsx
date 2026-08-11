@@ -1321,7 +1321,9 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
             initial={{ y: 100 }}
             animate={{ y: 0 }}
             exit={{ y: 100 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-cream-200 shadow-lg px-4 py-3 flex items-center gap-3 md:hidden"
+            // --consent-h 由 CookieConsentBanner 提供：同意條還在時往上讓位，避免購買列被蓋住
+            style={{ bottom: 'var(--consent-h, 0px)' }}
+            className="fixed left-0 right-0 z-50 bg-white border-t border-cream-200 shadow-lg px-4 py-3 flex items-center gap-3 md:hidden"
           >
             <div className="flex-shrink-0">
               <p className="text-xs text-foreground/50 leading-none">價格</p>

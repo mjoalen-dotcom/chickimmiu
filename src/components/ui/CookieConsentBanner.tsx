@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { grantTrackingConsent } from '@/lib/tracking'
 
@@ -20,6 +20,7 @@ export function CookieConsentBanner({
   acceptButtonText,
 }: Props) {
   const [visible, setVisible] = useState(false)
+  const bannerRef = useRef<HTMLDivElement>(null)
 
   const text =
     bannerText ||
@@ -41,6 +42,28 @@ export function CookieConsentBanner({
     }
   }, [enabled])
 
+  /**
+   * 把同意條的實際高度寫進 --consent-h，
+   * 讓 PDP 手機版購買列、客服浮動鈕等固定元件可以往上讓位，
+   * 避免在手機 / 平板上被整條蓋住。
+   */
+  useEffect(() => {
+    const root = document.documentElement
+    if (!visible || !bannerRef.current) {
+      root.style.removeProperty('--consent-h')
+      return
+    }
+    const el = bannerRef.current
+    const sync = () => root.style.setProperty('--consent-h', `${Math.ceil(el.getBoundingClientRect().height)}px`)
+    sync()
+    const ro = new ResizeObserver(sync)
+    ro.observe(el)
+    return () => {
+      ro.disconnect()
+      root.style.removeProperty('--consent-h')
+    }
+  }, [visible])
+
   const handleAccept = () => {
     try {
       localStorage.setItem(COOKIE_CONSENT_KEY, 'accepted')
@@ -54,8 +77,8 @@ export function CookieConsentBanner({
   if (!visible) return null
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-[60] p-4">
-      <div className="container max-w-3xl mx-auto bg-white rounded-2xl shadow-2xl border border-cream-200 px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+    <div ref={bannerRef} className="fixed bottom-0 inset-x-0 z-[60] p-3 sm:p-4">
+      <div className="container max-w-3xl mx-auto bg-white rounded-2xl shadow-2xl border border-cream-200 px-4 py-4 sm:px-6 sm:py-5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
         <p className="text-sm text-foreground/80 flex-1 leading-relaxed">
           {text}{' '}
           <Link

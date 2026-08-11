@@ -21,7 +21,12 @@ export function FloatingChatButton({
   if (!enableLine && !enableMessenger) return null
 
   return (
-    <div data-component="floating-chat" className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+    <div
+      data-component="floating-chat"
+      // --consent-h 由 CookieConsentBanner 提供，避免客服鈕被同意條蓋住
+      style={{ bottom: 'calc(var(--consent-h, 0px) + 1.5rem)' }}
+      className="fixed right-6 z-50 flex flex-col items-end gap-3"
+    >
       {isOpen && (
         <div className="bg-white rounded-2xl shadow-2xl border border-cream-200 p-5 w-64 opacity-100 translate-y-0 scale-100 transition-all duration-200">
           <p className="text-sm font-medium text-foreground mb-1">需要幫助嗎？</p>
