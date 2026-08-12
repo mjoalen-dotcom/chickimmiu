@@ -54,6 +54,8 @@ src/payload-types.ts
 # Claude Code — per-user local settings (tool permission toggles etc.)
 # Keep .claude/launch.json tracked (team-shared preview config)
 .claude/settings.local.json
+# Claude Code session worktrees — 工作副本，不該進版控
+.claude/worktrees/
 
 # OS
 Thumbs.db
