@@ -404,10 +404,12 @@ export async function computeOrderPricing(payload: Payload, input: PricingInput)
       // 預估基準取「最便宜的『需付運費』物流」而非絕對最便宜：
       // 門市自取 / 面交這類 baseFee=0 的選項會讓購物車永遠顯示免運，
       // 但多數顧客實際選超商或宅配 → 低估運費是對顧客的誤導。
+      // 次要排序 freeShippingThreshold：同價物流（7-11 / 全家 / 萊爾富都是 $60）
+      // 取門檻最低者，「再買 X 元免運」的提示才不會高估（門檻 1000 vs 1200 差 200）
       const paid = await payload.find({
         collection: 'shipping-methods',
         where: { and: [{ isActive: { equals: true } }, { baseFee: { greater_than: 0 } }] },
-        sort: 'baseFee',
+        sort: ['baseFee', 'freeShippingThreshold'],
         limit: 1,
         depth: 0,
         overrideAccess: true,
