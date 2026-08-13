@@ -401,15 +401,30 @@ export async function computeOrderPricing(payload: Payload, input: PricingInput)
     }
   } else {
     try {
-      const methods = await payload.find({
+      // 預估基準取「最便宜的『需付運費』物流」而非絕對最便宜：
+      // 門市自取 / 面交這類 baseFee=0 的選項會讓購物車永遠顯示免運，
+      // 但多數顧客實際選超商或宅配 → 低估運費是對顧客的誤導。
+      const paid = await payload.find({
         collection: 'shipping-methods',
-        where: { isActive: { equals: true } },
+        where: { and: [{ isActive: { equals: true } }, { baseFee: { greater_than: 0 } }] },
         sort: 'baseFee',
         limit: 1,
         depth: 0,
         overrideAccess: true,
       })
-      shippingMethodDoc = (methods.docs[0] as unknown as Record<string, unknown>) ?? null
+      shippingMethodDoc = (paid.docs[0] as unknown as Record<string, unknown>) ?? null
+      if (!shippingMethodDoc) {
+        // 全站都免運（或只剩自取）→ 用任一啟用物流，結果就是 0
+        const any = await payload.find({
+          collection: 'shipping-methods',
+          where: { isActive: { equals: true } },
+          sort: 'baseFee',
+          limit: 1,
+          depth: 0,
+          overrideAccess: true,
+        })
+        shippingMethodDoc = (any.docs[0] as unknown as Record<string, unknown>) ?? null
+      }
       shippingEstimated = shippingMethodDoc != null
     } catch {
       shippingMethodDoc = null
