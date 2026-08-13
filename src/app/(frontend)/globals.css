@@ -148,8 +148,31 @@ body.admin-tool-page [data-component="floating-menu"] {
  *    放寬到 2400 / 3200，讓商品格線與圖片跟著放大。
  * 2) root font-size 放大：86 吋 4K 面板約 51 ppi，16px 內文只有約 8mm，
  *    站遠看不清；用 rem 等比拉大字級與間距。
- * 走 dpr=2、回報 1920 CSS px 的白板不受影響（等同桌機版式）。
+ * AG Neovo 4K Android 白板實測會以 dpr=2 回報約 1920 CSS px；因此第一段
+ * 必須從 1600px 啟動，不能只照 3840 實體像素判斷。
  */
+@media (pointer: coarse) and (hover: none) and (min-width: 1600px) {
+  html {
+    font-size: 18px;
+  }
+
+  .container {
+    max-width: 1760px;
+  }
+
+  header nav a,
+  header nav button {
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  header button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 @media (pointer: coarse) and (min-width: 2000px) {
   .container {
     max-width: 2400px;
