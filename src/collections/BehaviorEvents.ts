@@ -44,6 +44,15 @@ const EVENT_TYPES = [
   // 停留行為
   { label: 'Scroll 深度', value: 'scroll' },
   { label: '頁面停留時間', value: 'dwell' },
+  // Campaign Engine（CHIC Commerce OS P0-D）
+  { label: '活動曝光', value: 'campaign_exposed' },
+  { label: '活動點擊', value: 'campaign_clicked' },
+  { label: '活動符合資格', value: 'campaign_eligible' },
+  { label: '活動不符資格', value: 'campaign_ineligible' },
+  { label: '進度瀏覽', value: 'progress_viewed' },
+  { label: '獎勵解鎖', value: 'reward_unlocked' },
+  { label: '促銷套用', value: 'promotion_applied' },
+  { label: '促銷拒絕', value: 'promotion_rejected' },
 ] as const
 
 export const BehaviorEvents: CollectionConfig = {
@@ -187,6 +196,42 @@ export const BehaviorEvents: CollectionConfig = {
       label: '國別碼',
       type: 'text',
       admin: { description: 'ISO 兩碼，從 CDN header 取（cf-ipcountry）' },
+    },
+    // ── Campaign Engine（CHIC Commerce OS P0-D）：活動歸因欄位 ────────────
+    {
+      name: 'campaign',
+      label: '活動',
+      type: 'relationship',
+      relationTo: 'marketing-campaigns',
+      index: true,
+      admin: { description: '活動事件（campaign_* / promotion_*）帶的歸因' },
+    },
+    {
+      name: 'ruleKey',
+      label: 'Rule Key',
+      type: 'text',
+      index: true,
+      admin: { description: 'campaignId:slug:vN' },
+    },
+    {
+      name: 'variantId',
+      label: '實驗 Variant',
+      type: 'text',
+    },
+    {
+      name: 'surface',
+      label: '版位',
+      type: 'select',
+      options: [
+        { label: '首頁', value: 'home' },
+        { label: '商品列表', value: 'plp' },
+        { label: '商品頁', value: 'pdp' },
+        { label: '購物車', value: 'cart' },
+        { label: '結帳', value: 'checkout' },
+        { label: '會員中心', value: 'member' },
+        { label: '完成頁', value: 'complete' },
+        { label: '其他', value: 'other' },
+      ],
     },
     {
       name: 'meta',

@@ -88,6 +88,7 @@ import * as migration_20260801_030000_enable_users_trash from './20260801_030000
 import * as migration_20260801_120000_add_blog_excerpt_cta from './20260801_120000_add_blog_excerpt_cta';
 import * as migration_20260801_170000_add_blog_post_visibility from './20260801_170000_add_blog_post_visibility';
 import * as migration_20260803_100000_add_native_app_oauth_client_ids from './20260803_100000_add_native_app_oauth_client_ids';
+import * as migration_20260813_210000_campaign_engine_v1 from './20260813_210000_campaign_engine_v1';
 
 export const migrations = [
   {
@@ -539,5 +540,10 @@ export const migrations = [
     up: migration_20260803_100000_add_native_app_oauth_client_ids.up,
     down: migration_20260803_100000_add_native_app_oauth_client_ids.down,
     name: '20260803_100000_add_native_app_oauth_client_ids',
+  },
+  {
+    up: migration_20260813_210000_campaign_engine_v1.up,
+    down: migration_20260813_210000_campaign_engine_v1.down,
+    name: '20260813_210000_campaign_engine_v1',
   },
 ];

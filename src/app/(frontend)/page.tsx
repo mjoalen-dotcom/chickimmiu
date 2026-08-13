@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { HeroCarousel } from '@/components/home/HeroCarousel'
 import type { HeroSlide, HeroVariant } from '@/components/home/HeroCarousel'
+import { CampaignBanner } from '@/components/campaign/CampaignBanner'
 import { UGCGallery } from '@/components/ugc/UGCGallery'
 import { Price } from '@/components/common/Price'
 import { NewsletterForm } from '@/components/home/NewsletterForm'
@@ -256,6 +257,8 @@ export default async function HomePage() {
 
   return (
     <main>
+      {/* Campaign Engine：活動主張 + server 倒數（promotion-settings.storefrontEnabled 開才顯示） */}
+      <CampaignBanner surface="home" />
       {/* ── Hero Carousel ── */}
       <HeroCarousel
         banners={heroBanners}

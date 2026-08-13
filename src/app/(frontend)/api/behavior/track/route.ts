@@ -56,6 +56,10 @@ interface TrackEventInput {
   referrer?: string
   landingPath?: string
   deviceType?: string
+  campaignId?: number | string
+  ruleKey?: string
+  variantId?: string
+  surface?: string
   meta?: Record<string, unknown>
 }
 
@@ -77,8 +81,16 @@ const ALLOWED_EVENT_TYPES = new Set([
   'purchase',
   'scroll',
   'dwell',
+  // Campaign Engine（P0-D）；promotion_applied/rejected 只由 server 直寫，不開放客端
+  'campaign_exposed',
+  'campaign_clicked',
+  'campaign_eligible',
+  'campaign_ineligible',
+  'progress_viewed',
+  'reward_unlocked',
 ])
 const ALLOWED_DEVICE_TYPES = new Set(['mobile', 'tablet', 'desktop', 'other'])
+const ALLOWED_SURFACES = new Set(['home', 'plp', 'pdp', 'cart', 'checkout', 'member', 'complete', 'other'])
 
 // In-memory rate limit: ip → array of timestamps in last 60s
 const rateBucket = new Map<string, number[]>()
@@ -192,6 +204,25 @@ export async function POST(request: NextRequest) {
         ? (ev.deviceType as 'mobile' | 'tablet' | 'desktop' | 'other')
         : undefined
 
+    // Campaign 歸因：campaignId 無效就清掉（與 productId 同策略，不擋整筆）
+    let campaignRel: number | undefined
+    if (ev.campaignId != null) {
+      try {
+        const found = await payload.findByID({
+          collection: 'marketing-campaigns',
+          id: ev.campaignId as number,
+          depth: 0,
+        })
+        if (found?.id != null) campaignRel = found.id as number
+      } catch {
+        campaignRel = undefined
+      }
+    }
+    const surface =
+      typeof ev.surface === 'string' && ALLOWED_SURFACES.has(ev.surface)
+        ? (ev.surface as 'home' | 'plp' | 'pdp' | 'cart' | 'checkout' | 'member' | 'complete' | 'other')
+        : undefined
+
     try {
       await payload.create({
         collection: 'behavior-events',
@@ -208,7 +239,13 @@ export async function POST(request: NextRequest) {
             | 'checkout_start'
             | 'purchase'
             | 'scroll'
-            | 'dwell',
+            | 'dwell'
+            | 'campaign_exposed'
+            | 'campaign_clicked'
+            | 'campaign_eligible'
+            | 'campaign_ineligible'
+            | 'progress_viewed'
+            | 'reward_unlocked',
           sessionId,
           user: userId,
           pagePath,
@@ -226,6 +263,10 @@ export async function POST(request: NextRequest) {
           landingPath: clipString(ev.landingPath, 500),
           deviceType,
           countryCode: countryClipped,
+          campaign: campaignRel,
+          ruleKey: clipString(ev.ruleKey, 200),
+          variantId: clipString(ev.variantId, 50),
+          surface,
           meta: ev.meta && typeof ev.meta === 'object' ? ev.meta : undefined,
         },
         overrideAccess: true,

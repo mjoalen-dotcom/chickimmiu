@@ -9,6 +9,7 @@ import { useTranslations } from 'next-intl'
 import { useCartStore } from '@/stores/cartStore'
 import { useWishlistStore } from '@/stores/wishlistStore'
 import { Price } from '@/components/common/Price'
+import { CampaignProductBadge } from '@/components/campaign/CampaignProductBadge'
 
 export interface ProductCardProps {
   id: string
@@ -142,6 +143,8 @@ export function ProductCard({
               -{discountPercent}%
             </span>
           )}
+          {/* Campaign Engine：活動資格 badge（scope 見 /api/campaigns/active） */}
+          <CampaignProductBadge productId={id} />
         </div>
 
         {/* Wishlist */}

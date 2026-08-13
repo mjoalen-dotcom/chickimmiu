@@ -22,6 +22,26 @@ export const MarketingCampaigns: CollectionConfig = {
     update: isAdmin,
     delete: isAdmin,
   },
+  hooks: {
+    beforeChange: [
+      // Campaign Engine（P0-C）：商務活動啟用門檻 — 預算上限與核准缺一不可（fail closed）
+      ({ data, originalDoc }) => {
+        if (!data) return data
+        const next = { ...(originalDoc ?? {}), ...data } as Record<string, any>
+        const commerce = next.commerce as Record<string, any> | undefined
+        const activating = next.status === 'active' || next.status === 'scheduled'
+        if (commerce?.enabled && activating) {
+          if (typeof commerce.budgetCap !== 'number' || commerce.budgetCap <= 0) {
+            throw new Error('商務活動啟用前必須填寫「活動總預算上限」（經濟護欄，不可留空）')
+          }
+          if (!commerce.approval?.approvedBy || !commerce.approval?.approvedAt) {
+            throw new Error('商務活動啟用前必須完成核准（核准人 + 核准時間）')
+          }
+        }
+        return data
+      },
+    ],
+  },
   timestamps: true,
   fields: [
     {
@@ -61,11 +81,15 @@ export const MarketingCampaigns: CollectionConfig = {
       defaultValue: 'draft',
       options: [
         { label: '草稿', value: 'draft' },
+        { label: '送審中', value: 'review' },
+        { label: '已核准', value: 'approved' },
         { label: '已排程', value: 'scheduled' },
         { label: '進行中', value: 'active' },
         { label: '已暫停', value: 'paused' },
+        { label: '已結束', value: 'ended' },
         { label: '已完成', value: 'completed' },
         { label: '已取消', value: 'cancelled' },
+        { label: '已封存', value: 'archived' },
       ],
     },
     {
@@ -257,6 +281,115 @@ export const MarketingCampaigns: CollectionConfig = {
       admin: {
         condition: (data) => data?.campaignType === 'festival',
       },
+    },
+    // ── Campaign Engine（CHIC Commerce OS P0）：商務促銷設定 ──────────────
+    // 活動是 Root；實際折扣規則在 promotion-rules（版本化）。
+    // 啟用門檻（beforeChange 強制）：budgetCap + approval 缺一不可。
+    {
+      name: 'commerce',
+      label: '商務促銷設定',
+      type: 'group',
+      admin: {
+        description: '啟用後此活動可掛促銷規則（任N件折X等）；預算與核准為啟用必要條件',
+      },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            { name: 'enabled', label: '啟用商務促銷', type: 'checkbox', defaultValue: false },
+            {
+              name: 'killSwitch',
+              label: '🚨 暫停此活動促銷',
+              type: 'checkbox',
+              defaultValue: false,
+              admin: { description: '立即停用此活動所有規則（不影響其他活動）' },
+            },
+          ],
+        },
+        {
+          name: 'objective',
+          label: '商業目標',
+          type: 'select',
+          options: [
+            { label: '提升轉換', value: 'conversion' },
+            { label: '提升客單價', value: 'aov' },
+            { label: '清庫存', value: 'clearance' },
+            { label: '回購', value: 'repurchase' },
+            { label: '會員啟用', value: 'activation' },
+            { label: 'KOL 團購', value: 'kol' },
+            { label: '新品探索', value: 'discovery' },
+          ],
+        },
+        {
+          name: 'surfaces',
+          label: '體驗版位',
+          type: 'select',
+          hasMany: true,
+          options: [
+            { label: '首頁', value: 'home' },
+            { label: '商品列表', value: 'plp' },
+            { label: '商品頁', value: 'pdp' },
+            { label: '購物車', value: 'cart' },
+            { label: '結帳', value: 'checkout' },
+            { label: '會員中心', value: 'member' },
+            { label: '完成頁', value: 'complete' },
+          ],
+        },
+        {
+          type: 'row',
+          fields: [
+            { name: 'headline', label: '活動主張', type: 'text' },
+            { name: 'badgeText', label: '商品 Badge 文字', type: 'text' },
+          ],
+        },
+        {
+          type: 'row',
+          fields: [
+            { name: 'ctaText', label: 'CTA 文字', type: 'text' },
+            { name: 'ctaHref', label: 'CTA 連結', type: 'text' },
+          ],
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'budgetCap',
+              label: '活動總預算上限（NT$）',
+              type: 'number',
+              min: 1,
+              admin: { description: '折扣成本上限；啟用必填（缺值不可上線）' },
+            },
+            {
+              name: 'budgetSpent',
+              label: '已用預算（NT$）',
+              type: 'number',
+              defaultValue: 0,
+              min: 0,
+              admin: { readOnly: true, description: '建單時原子累加；取消/退款回沖' },
+            },
+          ],
+        },
+        {
+          name: 'approval',
+          label: '核准',
+          type: 'group',
+          fields: [
+            {
+              type: 'row',
+              fields: [
+                {
+                  name: 'approvedBy',
+                  label: '核准人',
+                  type: 'relationship',
+                  relationTo: 'users',
+                },
+                { name: 'approvedAt', label: '核准時間', type: 'date' },
+              ],
+            },
+            { name: 'approvalNote', label: '核准備註', type: 'text' },
+          ],
+        },
+      ],
     },
     {
       name: 'adminNote',

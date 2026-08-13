@@ -32,6 +32,7 @@ import {
 import { useCartStore } from '@/stores/cartStore'
 import { CheckoutLastChance } from '@/components/recommendation/CheckoutLastChance'
 import { PromoUpsellSection } from '@/components/cart/PromoUpsellSection'
+import { CartCampaignProgress } from '@/components/campaign/CartCampaignProgress'
 import { trackBehaviorCheckoutStart } from '@/lib/behaviorTracking'
 import {
   trackBeginCheckout,
@@ -713,6 +714,67 @@ export default function CheckoutPage() {
     0,
   )
 
+  // ── Campaign Engine：伺服器權威報價 ──
+  // 有活動折抵時（任選2件折X等）client 無法自算 → 以 /api/pricing/quote 的
+  // breakdown 為顯示與送單依據；quote 失敗或引擎關閉時回退既有 client 計算
+  // （此時 server 端也算不出活動折抵，兩邊一致）。送單後 server 仍會重算並比對。
+  const [serverQuote, setServerQuote] = useState<{
+    breakdown: {
+      itemsSubtotal: number
+      promotionDiscount: number
+      couponDiscount: number
+      memberDiscount: number
+      shippingFee: number
+      codFee: number
+      total: number
+    }
+  } | null>(null)
+  const quoteSeqRef = useRef(0)
+  useEffect(() => {
+    if (items.length === 0) {
+      setServerQuote(null)
+      return
+    }
+    const seq = ++quoteSeqRef.current
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/pricing/quote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            items: items.map((i) => ({
+              productId: i.productId,
+              sku: i.variant?.sku ?? null,
+              variantText: i.variant ? `${i.variant.colorName} / ${i.variant.size}` : null,
+              quantity: i.quantity,
+              isGift: i.isGift || undefined,
+              giftRuleRef: i.giftRuleRef || undefined,
+              isAddOn: i.isAddOn || undefined,
+              addOnRuleRef: i.addOnRuleRef || undefined,
+              bundleRef: i.bundleRef || undefined,
+            })),
+            couponCodes: appliedCoupons.map((c) => c.couponCode),
+            shippingMethodId: selectedShipping || null,
+            paymentMethod: selectedPayment || null,
+          }),
+        })
+        if (seq !== quoteSeqRef.current) return
+        if (!res.ok) {
+          setServerQuote(null)
+          return
+        }
+        const json = await res.json()
+        if (seq !== quoteSeqRef.current) return
+        setServerQuote(json?.ok && json.breakdown ? { breakdown: json.breakdown } : null)
+      } catch {
+        if (seq === quoteSeqRef.current) setServerQuote(null)
+      }
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [items, appliedCoupons, selectedShipping, selectedPayment])
+  const promotionDiscount = serverQuote?.breakdown.promotionDiscount ?? 0
+
   // 運費計算：依會員等級、訂閱會員、物流方式
   const calcShippingFee = () => {
     if (!shippingOption) return 0
@@ -731,24 +793,38 @@ export default function CheckoutPage() {
   const hasMemberFreeShipping =
     memberFreeThreshold !== null &&
     (memberFreeThreshold === 0 || subtotal >= memberFreeThreshold)
-  const shippingFee = hasFreeShippingCoupon || hasMemberFreeShipping ? 0 : rawShippingFee
+  const shippingFee = serverQuote
+    ? serverQuote.breakdown.shippingFee
+    : hasFreeShippingCoupon || hasMemberFreeShipping
+      ? 0
+      : rawShippingFee
 
   // COD 手續費：只有選 cash_cod 時才計入 total
-  const codFee = selectedPayment === 'cash_cod' ? paymentSettings.codDefaultFee : 0
+  const codFee = serverQuote
+    ? serverQuote.breakdown.codFee
+    : selectedPayment === 'cash_cod'
+      ? paymentSettings.codDefaultFee
+      : 0
   // 優惠券折扣（百分比 / 固定金額加總；free_shipping 走上方運費歸零路徑）；上限為小計
-  const couponDiscount = Math.min(
-    subtotal,
-    appliedCoupons.reduce((sum, c) => sum + (c.freeShipping ? 0 : c.discountAmount), 0),
-  )
+  const couponDiscount = serverQuote
+    ? serverQuote.breakdown.couponDiscount
+    : Math.min(
+        subtotal,
+        appliedCoupons.reduce((sum, c) => sum + (c.freeShipping ? 0 : c.discountAmount), 0),
+      )
   // 訂閱會員全站折扣（對小計計算，與優惠券併用；兩者合計不超過小計）
   const memberDiscountPercent = membership.active
     ? Number(membership.benefits?.discountPercent) || 0
     : 0
-  const memberDiscount = Math.min(
-    Math.max(0, subtotal - couponDiscount),
-    Math.floor((subtotal * memberDiscountPercent) / 100),
-  )
-  const total = Math.max(0, subtotal + shippingFee + codFee - couponDiscount - memberDiscount)
+  const memberDiscount = serverQuote
+    ? serverQuote.breakdown.memberDiscount
+    : Math.min(
+        Math.max(0, subtotal - couponDiscount),
+        Math.floor((subtotal * memberDiscountPercent) / 100),
+      )
+  const total = serverQuote
+    ? serverQuote.breakdown.total
+    : Math.max(0, subtotal + shippingFee + codFee - couponDiscount - memberDiscount)
 
   // COD 上限檢查（不含 COD 手續費本身，避免 self-reference）
   const baseTotalForCodCheck = subtotal + shippingFee
@@ -947,6 +1023,12 @@ export default function CheckoutPage() {
       quantity: i.quantity,
       unitPrice: i.salePrice ?? i.price,
       subtotal: (i.salePrice ?? i.price) * i.quantity,
+      // Campaign Engine：促銷行標記（server 重驗贈品 / 加價購 / Bundle 定價的依據）
+      isGift: i.isGift || undefined,
+      giftRuleRef: i.giftRuleRef || undefined,
+      isAddOn: i.isAddOn || undefined,
+      addOnRuleRef: i.addOnRuleRef || undefined,
+      bundleRef: i.bundleRef || undefined,
     }))
 
     // orderNumber 由 Orders.ts beforeValidate hook 依 OrderSettings.numbering 產生；
@@ -954,14 +1036,15 @@ export default function CheckoutPage() {
     const orderPayload = {
       customer: user.id,
       items: orderItems,
-      subtotal,
-      subtotalBeforeDiscount: subtotal,
+      subtotal: serverQuote?.breakdown.itemsSubtotal ?? subtotal,
+      subtotalBeforeDiscount: serverQuote?.breakdown.itemsSubtotal ?? subtotal,
       shippingFee,
       codFee,
       total,
-      discountAmount: couponDiscount + memberDiscount,
+      discountAmount: promotionDiscount + couponDiscount + memberDiscount,
       discountReason:
         [
+          promotionDiscount > 0 ? `活動折抵 ${promotionDiscount}` : '',
           appliedCoupons.length > 0
             ? `優惠券 ${appliedCoupons.map((c) => `${c.couponCode}${c.freeShipping ? '（免運）' : ''}`).join('、')}`
             : '',
@@ -1951,6 +2034,8 @@ export default function CheckoutPage() {
 
             {/* ── Right: Order summary ── */}
             <div className="lg:sticky lg:top-28 h-fit space-y-4">
+              {/* Campaign Engine：活動進度（server 評估；刪件自動回退） */}
+              <CartCampaignProgress surface="checkout" className="mb-2" />
               <PromoUpsellSection />
               <div className="bg-white rounded-2xl border border-cream-200 p-6 space-y-5">
                 <h2 className="font-medium">訂單摘要</h2>
@@ -2025,6 +2110,17 @@ export default function CheckoutPage() {
                       <Price twd={codFee} />
                     </div>
                   )}
+                  {promotionDiscount > 0 && (
+                    <div className="flex justify-between text-gold-700">
+                      <span className="flex items-center gap-1">
+                        <Sparkles size={12} />
+                        活動折抵
+                      </span>
+                      <span>
+                        − <Price twd={promotionDiscount} />
+                      </span>
+                    </div>
+                  )}
                   {appliedCoupons.length > 0 && (couponDiscount > 0 || hasFreeShippingCoupon) && (
                     <div className="flex justify-between text-green-700">
                       <span className="flex items-center gap-1">
@@ -2066,7 +2162,10 @@ export default function CheckoutPage() {
                     const rate = taxSettings.defaultTaxRate || 0
                     if (rate <= 0) return null
                     // 稅基：已扣優惠後的 subtotal + (可選) 運費
-                    const discountedSubtotal = Math.max(0, subtotal - couponDiscount - memberDiscount)
+                    const discountedSubtotal = Math.max(
+                      0,
+                      subtotal - promotionDiscount - couponDiscount - memberDiscount,
+                    )
                     const taxableBase =
                       discountedSubtotal + (taxSettings.shippingTaxable ? shippingFee : 0)
                     const tax = taxSettings.defaultTaxIncluded

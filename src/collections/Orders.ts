@@ -15,6 +15,11 @@ import { sendOrderCancelledEmail } from '../lib/email/orderCancelled'
 import { sendOrderRefundedEmail } from '../lib/email/orderRefunded'
 import { sendAdminNewOrderAlert } from '../lib/email/adminNewOrderAlert'
 import { calculateTier, TIER_LEVELS } from '../lib/crm/tierEngine'
+import {
+  beforeChangeServerPricing,
+  afterChangeWritePromotionRecords,
+  afterChangeReversePromotions,
+} from '../lib/promotions/orderPricingHook'
 import { triggerJourney } from '../lib/crm/automationEngine'
 import { generateOrderNumber, type OrderNumberingSettings } from '../lib/commerce/orderNumbering'
 import { calculateOrderTax, type TaxSettingsLike } from '../lib/commerce/calculateTax'
@@ -228,6 +233,76 @@ export const Orders: CollectionConfig = {
         readOnly: true,
         description: '多券疊加快照 [{coupon, couponCode, discountAmount}]；各券 usageCount 由 CouponRedemptions per-coupon 累加',
       },
+    },
+    // ── Campaign Engine（CHIC Commerce OS P0）：伺服器計價快照 ────────────
+    // 建單時由 Orders.beforeChange 的 promotion pricing hook 寫入；不可變。
+    // 財務對帳：本快照 + promotion-applications；behavior-events 只做分析。
+    {
+      name: 'promotion',
+      label: '促銷計價快照',
+      type: 'group',
+      admin: { description: '伺服器重算結果（quote / 套用規則 / 分攤）；client 金額不可信' },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            { name: 'quoteId', label: 'Quote ID', type: 'text', admin: { readOnly: true } },
+            {
+              name: 'pricingVersion',
+              label: '計價引擎版本',
+              type: 'text',
+              admin: { readOnly: true },
+            },
+            {
+              name: 'serverEnforced',
+              label: '伺服器強制計價',
+              type: 'checkbox',
+              defaultValue: false,
+              admin: { readOnly: true, description: '此單金額是否經伺服器重算驗證' },
+            },
+          ],
+        },
+        { name: 'quoteHash', label: 'Quote Hash', type: 'text', admin: { readOnly: true } },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'discountTotal',
+              label: '活動折抵合計',
+              type: 'number',
+              defaultValue: 0,
+              min: 0,
+              admin: { readOnly: true, description: '促銷規則折抵（不含券/會員折扣欄位）' },
+            },
+            {
+              name: 'shippingDiscountTotal',
+              label: '運費折抵合計',
+              type: 'number',
+              defaultValue: 0,
+              min: 0,
+              admin: { readOnly: true },
+            },
+          ],
+        },
+        {
+          name: 'appliedPromotionSnapshots',
+          label: '套用規則快照',
+          type: 'json',
+          admin: {
+            readOnly: true,
+            description: '[{ ruleKey, version, source, effectType, discountAmount, allocations[] }]',
+          },
+        },
+        {
+          name: 'rewardIntents',
+          label: '獎勵意圖快照',
+          type: 'json',
+          admin: {
+            readOnly: true,
+            description: 'XP / Mystery Key / 點數倍率等；實際發放由 Reward Orchestrator（P1）處理',
+          },
+        },
+      ],
     },
     {
       name: 'shippingFee',
@@ -595,6 +670,9 @@ export const Orders: CollectionConfig = {
         }
         return data
       },
+      // ── Campaign Engine：伺服器計價強制（庫存檢查後、稅前）──
+      // 重算全部金額 + 擋不一致訂單 + 活動預算原子預留；詳見 lib/promotions/orderPricingHook.ts
+      beforeChangeServerPricing,
       // ── 稅額自動計算 ──
       // 每次 create/update 都重算（以保證 items 或 shippingFee 被 admin 手動改動後
       // tax 欄位跟上）。失敗時 log 但不 throw，讓訂單還是能存檔（客服場景）。
@@ -1549,6 +1627,10 @@ export const Orders: CollectionConfig = {
           }
         }
       },
+      // ── Campaign Engine：促銷套用紀錄 + 分析事件（create）──
+      afterChangeWritePromotionRecords,
+      // ── Campaign Engine：取消 / 退款 → applications 回沖 + 活動預算歸還 ──
+      afterChangeReversePromotions,
     ],
   },
 }

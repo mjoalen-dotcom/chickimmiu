@@ -75,6 +75,8 @@ async function buildCases(): Promise<Case[]> {
     { name: 'login', path: '/login', expectStatus: 200 },
     { name: 'register', path: '/register', expectStatus: 200 },
     { name: '404 pdp', path: '/products/definitely-does-not-exist-xyz', expectStatus: 404 },
+    // Campaign Engine（P0-C）：活動版位資料源；引擎關閉時也應 200 + storefrontEnabled:false
+    { name: 'campaigns active api', path: '/api/campaigns/active?surface=cart', expectStatus: 200, expectBodyIncludes: 'storefrontEnabled' },
   ]
 
   productSlugs.forEach((slug) =>

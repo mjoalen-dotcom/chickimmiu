@@ -29,6 +29,13 @@ export type BehaviorEventType =
   | 'purchase'
   | 'scroll'
   | 'dwell'
+  // Campaign Engine（CHIC Commerce OS P0-D）
+  | 'campaign_exposed'
+  | 'campaign_clicked'
+  | 'campaign_eligible'
+  | 'campaign_ineligible'
+  | 'progress_viewed'
+  | 'reward_unlocked'
 
 export interface BehaviorEventInput {
   eventType: BehaviorEventType
@@ -40,6 +47,11 @@ export interface BehaviorEventInput {
   durationMs?: number
   scrollPctMax?: number
   searchQuery?: string
+  // Campaign Engine 歸因（campaign_* / progress_* / reward_* 事件用）
+  campaignId?: number | string
+  ruleKey?: string
+  variantId?: string
+  surface?: 'home' | 'plp' | 'pdp' | 'cart' | 'checkout' | 'member' | 'complete' | 'other'
   meta?: Record<string, unknown>
 }
 

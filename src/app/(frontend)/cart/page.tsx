@@ -6,6 +6,7 @@ import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, ArrowLeft } from 'lucide-
 import { useTranslations } from 'next-intl'
 import { useCartStore } from '@/stores/cartStore'
 import { CartCrossSell } from '@/components/recommendation/CartCrossSell'
+import { CartCampaignProgress } from '@/components/campaign/CartCampaignProgress'
 import { Price } from '@/components/common/Price'
 
 export default function CartPage() {
@@ -54,6 +55,8 @@ export default function CartPage() {
         <div className="grid lg:grid-cols-[1fr_380px] gap-8 lg:gap-12">
           {/* ── Items ── */}
           <div className="space-y-4">
+            {/* Campaign Engine：Style Quest 進度（0/2 → 1/2 → UNLOCKED，server 評估） */}
+            <CartCampaignProgress surface="cart" />
             {/* Header row (desktop) */}
             <div className="hidden md:grid grid-cols-[1fr_120px_140px_100px_40px] gap-4 text-xs text-muted-foreground px-4 pb-2 border-b border-cream-200">
               <span>{t('headerProduct')}</span>

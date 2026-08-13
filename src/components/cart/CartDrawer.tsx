@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslations } from 'next-intl'
 import { useCartStore } from '@/stores/cartStore'
 import { Price } from '@/components/common/Price'
+import { CartCampaignProgress } from '@/components/campaign/CartCampaignProgress'
 
 export function CartDrawer() {
   const t = useTranslations('cart')
@@ -62,6 +63,8 @@ export function CartDrawer() {
 
             {/* Items */}
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+              {/* Campaign Engine：加入商品後即時顯示活動進度（server quote 驅動） */}
+              {items.length > 0 ? <CartCampaignProgress surface="cart" /> : null}
               {items.length === 0 ? (
                 <div className="text-center py-16">
                   <ShoppingBag size={48} className="mx-auto text-cream-200 mb-4" />

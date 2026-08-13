@@ -35,6 +35,8 @@ import { ShippingMethods } from './collections/ShippingMethods'
 import { UGCPosts } from './collections/UGCPosts'
 import { PointsRedemptions } from './collections/PointsRedemptions'
 import { MarketingCampaigns } from './collections/MarketingCampaigns'
+import { PromotionRules } from './collections/PromotionRules'
+import { PromotionApplications } from './collections/PromotionApplications'
 import { MessageTemplates } from './collections/MessageTemplates'
 import { EmailTemplates } from './collections/EmailTemplates'
 import { ABTests } from './collections/ABTests'
@@ -70,6 +72,7 @@ import { RecommendationSettings } from './globals/RecommendationSettings'
 import { CRMSettings } from './globals/CRMSettings'
 import { SegmentationSettings } from './globals/SegmentationSettings'
 import { MarketingAutomationSettings } from './globals/MarketingAutomationSettings'
+import { PromotionSettings } from './globals/PromotionSettings'
 import { InvoiceSettings } from './globals/InvoiceSettings'
 import { TaxSettings } from './globals/TaxSettings'
 import { GameSettings } from './globals/GameSettings'
@@ -454,6 +457,8 @@ export default buildConfig({
     GiftRules,
     Bundles,
     MarketingCampaigns,
+    PromotionRules, // Campaign Engine：版本化促銷規則（活動 Root 的子規則）
+    PromotionApplications, // Campaign Engine：促銷套用不可變交易紀錄
     FestivalTemplates,
     BirthdayCampaigns,
     AutomationJourneys,
@@ -515,6 +520,7 @@ export default buildConfig({
     SegmentationSettings,
     CustomerServiceSettings, // 客服中心 v1 Phase 1A
     // ④ 行銷推廣
+    PromotionSettings, // Campaign Engine：kill switch / 前台顯示 / 伺服器計價強制
     MarketingAutomationSettings,
     RecommendationSettings,
     AdsCatalogSettings,
