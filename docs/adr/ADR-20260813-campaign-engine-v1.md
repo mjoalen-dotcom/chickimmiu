@@ -1,8 +1,12 @@
 # ADR-20260813 — Campaign Engine V1（CHIC Commerce OS P0）
 
-狀態：Accepted（本機 P0 實作依據）
+狀態：**Accepted — 2026-08-14 已部署正式環境**（pre.chickimmiu.com）
 來源計畫：Google Doc「網站升級計畫」（CHIC Commerce OS）§6–§11
-分支：`feat/campaign-engine-v1`（worktree，基於 `d81bd76`）
+分支：`feat/campaign-engine-v1` → 已推 `hetzner/main`
+上線狀態：引擎啟用（`serverPricingEnforcement=true`，資安防線生效），
+前台版位關閉（`storefrontEnabled=false`），72H 活動為 draft + killSwitch，
+啟用需先填預算與核准（見 §17 商業參數）。部署前 DB 備份：
+`/var/www/chickimmiu/data/pre-campaign-engine-20260813-172235.db`。
 
 ## 1. 現況盤點結論（P0-A）
 
