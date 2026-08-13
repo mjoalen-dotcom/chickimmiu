@@ -30,6 +30,7 @@ import { ProductCard } from '@/components/product/ProductCard'
 import { AISizeRecommender } from '@/components/product/AISizeRecommender'
 import { AlsoBoughtSection } from '@/components/product/AlsoBoughtSection'
 import { ProductPageUpsell } from '@/components/recommendation/ProductPageUpsell'
+import { CampaignProductBadge } from '@/components/campaign/CampaignProductBadge'
 import { trackViewContent, trackProductView } from '@/lib/tracking'
 import { Price } from '@/components/common/Price'
 import ImageLightbox, { type LightboxImage } from './_components/ImageLightbox'
@@ -348,6 +349,17 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
       ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
       : null
 
+  // Campaign Engine：badge 的 scope 判斷資料（分類 / 標籤；rel 可能是 id 或已 populate 的物件）
+  const relIdOf = (v: unknown): number | string | null =>
+    v == null ? null : typeof v === 'object' ? ((v as Record<string, unknown>).id as number | string) ?? null : (v as number | string)
+  const campaignCategoryIds = [
+    relIdOf(product.category),
+    ...(Array.isArray(product.additionalCategories) ? product.additionalCategories.map(relIdOf) : []),
+  ].filter((x): x is number | string => x != null)
+  const campaignTags = Array.isArray(product.tags)
+    ? (product.tags as Array<Record<string, unknown>>).map((t) => String(t?.tag ?? '')).filter(Boolean)
+    : []
+
   const canAddToCart = variants.length === 0 || (selectedColor && selectedSize)
 
   // 預購：allowPreOrder=true 時，缺貨 (stock=0) 的款式仍可選取並加入購物車（視為預購）。
@@ -572,6 +584,13 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
                       -{discountPercent}%
                     </span>
                   )}
+                  {/* Campaign Engine：活動資格 badge（真正折抵仍以結帳 server 報價為準） */}
+                  <CampaignProductBadge
+                    productId={product.id as string | number}
+                    categoryIds={campaignCategoryIds}
+                    tags={campaignTags}
+                    className="px-3 py-1 text-xs"
+                  />
                   {totalSoldDisplay && (
                     <span
                       className="px-3 py-1 bg-amber-500 text-white text-xs rounded-full tracking-wider shadow-sm"

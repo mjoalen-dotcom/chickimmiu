@@ -7,18 +7,31 @@ import { useTranslations } from 'next-intl'
 import { useCartStore } from '@/stores/cartStore'
 import { CartCrossSell } from '@/components/recommendation/CartCrossSell'
 import { CartCampaignProgress } from '@/components/campaign/CartCampaignProgress'
+import { useCartQuote } from '@/components/campaign/useCartQuote'
 import { Price } from '@/components/common/Price'
 
+// 伺服器報價未回來前的樂觀顯示：僅商品小計；運費/折抵一律等 server
+// （舊版這裡硬編碼「滿 1000 免運、否則 60」，與後台物流設定會不一致）
 export default function CartPage() {
   const t = useTranslations('cart')
   const { items, updateQuantity, removeItem, clearCart } = useCartStore()
+  const quote = useCartQuote(items)
 
-  const subtotal = items.reduce(
+  const clientSubtotal = items.reduce(
     (sum, i) => sum + (i.salePrice ?? i.price) * i.quantity,
     0,
   )
-  const shippingFee = subtotal >= 1000 ? 0 : 60
-  const total = subtotal + shippingFee
+  const b = quote.breakdown
+  const subtotal = b?.itemsSubtotal ?? clientSubtotal
+  const promotionDiscount = b?.promotionDiscount ?? 0
+  const shippingFee = b?.shippingFee ?? 0
+  const shippingEstimated = b?.shippingEstimated ?? false
+  const freeShippingThreshold = b?.freeShippingThreshold ?? null
+  const freeShippingGap =
+    freeShippingThreshold != null && subtotal < freeShippingThreshold
+      ? freeShippingThreshold - subtotal
+      : 0
+  const total = b ? b.total : Math.max(0, subtotal - promotionDiscount)
 
   if (items.length === 0) {
     return (
@@ -208,8 +221,22 @@ export default function CartPage() {
                   <span className="text-muted-foreground">{t('subtotal')}</span>
                   <Price twd={subtotal} />
                 </div>
+                {/* Campaign Engine：活動折抵（伺服器評估結果，非前台自算） */}
+                {promotionDiscount > 0 && (
+                  <div className="flex justify-between text-gold-700">
+                    <span>活動折抵</span>
+                    <span>
+                      − <Price twd={promotionDiscount} />
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t('shipping')}</span>
+                  <span className="text-muted-foreground">
+                    {t('shipping')}
+                    {shippingEstimated ? (
+                      <span className="ml-1 text-[10px]">（預估，結帳選定物流後確認）</span>
+                    ) : null}
+                  </span>
                   <span>
                     {shippingFee === 0 ? (
                       <span className="text-green-600">{t('freeShipping')}</span>
@@ -218,9 +245,9 @@ export default function CartPage() {
                     )}
                   </span>
                 </div>
-                {subtotal < 1000 && (
+                {freeShippingGap > 0 && (
                   <p className="text-[10px] text-gold-600">
-                    {t('freeShippingHintPrefix')}<Price twd={1000 - subtotal} />{t('freeShippingHintSuffix')}
+                    {t('freeShippingHintPrefix')}<Price twd={freeShippingGap} />{t('freeShippingHintSuffix')}
                   </p>
                 )}
               </div>

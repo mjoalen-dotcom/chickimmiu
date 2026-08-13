@@ -80,6 +80,10 @@ export interface PricingBreakdown {
   shippingBaseFee: number
   shippingFee: number
   shippingFreeReason: 'threshold' | 'member' | 'promotion' | 'coupon' | null
+  /** true = 尚未選物流方式，運費以預設物流估算（購物車頁）；結帳選定後為 false */
+  shippingEstimated: boolean
+  /** 預估用的免運門檻（NT$）；null = 該物流無免運門檻 */
+  freeShippingThreshold: number | null
   codFee: number
   total: number
 }
@@ -377,22 +381,45 @@ export async function computeOrderPricing(payload: Payload, input: PricingInput)
   Object.assign(usage.totalApplied, coupons.totalApplied)
 
   // 運費基準（server 重算；門檻免運以「商品小計」為基準，沿用現行語意）
+  // 未指定物流方式（購物車頁）→ 用「最便宜的啟用物流」當預估基準，
+  // 避免前台各自硬編碼門檻（既有 cart page 寫死 1000/60 的來源）。
   let shippingBaseFee = 0
   let thresholdFree: 'threshold' | 'member' | null = null
+  let shippingEstimated = false
+  let freeShippingThreshold: number | null = null
+  let shippingMethodDoc: Record<string, unknown> | null = null
   if (input.shippingMethodId != null) {
     try {
-      const method = (await payload.findByID({
+      shippingMethodDoc = (await payload.findByID({
         collection: 'shipping-methods',
         id: input.shippingMethodId as never,
         depth: 0,
         overrideAccess: true,
       })) as unknown as Record<string, unknown>
-      shippingBaseFee = asNumber(method.baseFee)
-      const freeAt = asNumber(method.freeShippingThreshold)
-      if (freeAt > 0 && itemsSubtotal >= freeAt) thresholdFree = 'threshold'
     } catch {
-      shippingBaseFee = 0
+      shippingMethodDoc = null
     }
+  } else {
+    try {
+      const methods = await payload.find({
+        collection: 'shipping-methods',
+        where: { isActive: { equals: true } },
+        sort: 'baseFee',
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      })
+      shippingMethodDoc = (methods.docs[0] as unknown as Record<string, unknown>) ?? null
+      shippingEstimated = shippingMethodDoc != null
+    } catch {
+      shippingMethodDoc = null
+    }
+  }
+  if (shippingMethodDoc) {
+    shippingBaseFee = asNumber(shippingMethodDoc.baseFee)
+    const freeAt = asNumber(shippingMethodDoc.freeShippingThreshold)
+    if (freeAt > 0) freeShippingThreshold = freeAt
+    if (freeAt > 0 && itemsSubtotal >= freeAt) thresholdFree = 'threshold'
   }
   // 訂閱會員免運門檻（null = 無權益、0 = 永遠免運、>0 = 滿額）
   let memberDiscountPercent = 0
@@ -477,6 +504,8 @@ export async function computeOrderPricing(payload: Payload, input: PricingInput)
     shippingBaseFee,
     shippingFee,
     shippingFreeReason,
+    shippingEstimated,
+    freeShippingThreshold,
     codFee,
     total,
   }

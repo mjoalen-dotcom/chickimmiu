@@ -20,6 +20,10 @@ import {
   afterChangeWritePromotionRecords,
   afterChangeReversePromotions,
 } from '../lib/promotions/orderPricingHook'
+import {
+  afterChangeReverseOrderFinancials,
+  writePurchasePointsLedger,
+} from '../lib/commerce/orderReversal'
 import { triggerJourney } from '../lib/crm/automationEngine'
 import { generateOrderNumber, type OrderNumberingSettings } from '../lib/commerce/orderNumbering'
 import { calculateOrderTax, type TaxSettingsLike } from '../lib/commerce/calculateTax'
@@ -1066,6 +1070,16 @@ export const Orders: CollectionConfig = {
                   lastOrderDate: new Date().toISOString(),
                 },
               })
+              // 補寫 points-transactions 帳本（既有缺口：以往只改 users.points，
+              // 帳本無 purchase row → 無法重建餘額、退款也無從回收）。
+              // local API 呼叫，PointsTransactions 的 sync hooks 不會重複加點。
+              await writePurchasePointsLedger(payload, {
+                userId: customerId,
+                orderId: doc.id as number | string,
+                orderNumber: doc.orderNumber as string | undefined,
+                points: pointsEarned,
+                balanceAfter: currentPoints + pointsEarned,
+              })
               console.log(
                 `[Orders Hook] 付款完成：${doc.orderNumber} 會員 ${customerId} +${pointsEarned} 點，累積消費 +NT$${orderTotal}`,
               )
@@ -1631,6 +1645,8 @@ export const Orders: CollectionConfig = {
       afterChangeWritePromotionRecords,
       // ── Campaign Engine：取消 / 退款 → applications 回沖 + 活動預算歸還 ──
       afterChangeReversePromotions,
+      // ── 取消 / 退款 → 券額度與點數回沖（修既有洩漏；見 lib/commerce/orderReversal.ts）──
+      afterChangeReverseOrderFinancials,
     ],
   },
 }

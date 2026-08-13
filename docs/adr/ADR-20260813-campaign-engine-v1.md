@@ -129,16 +129,38 @@
 - `variants[].priceOverride` 現行購物車本來就不用（整站以商品價為準），維持現狀。
 - 行為事件量若上來，SQLite 壓力照計畫 §16：先索引/保留期，達量再遷，不提前重構。
 
-## 6. 待辦（P0 內不阻塞，交接單列明）
+## 6. 待辦
 
-- reconciliation script：`budgetSpent` vs applications 加總對帳（cron 化在 P0-D）。
-- 券 `usageCount` 取消不回沖（既有）：建議與 applications 回沖一起修，需 Alan 確認政策。
-- 購買點數補 ledger row（既有缺口，動帳本需獨立驗證）。
+- reconciliation script：`budgetSpent` vs applications 加總對帳（cron 化在 P0-D 之後）。
+- `campaignEngine.ts` 與 collection 欄位漂移（既有，本次未動：該檔預期
+  `name`/`abTestVariants`/`scheduledAt` 扁平欄位，collection 是
+  `campaignName`/`abTestConfig.*`/`schedule.*`）。
 
-## 7. 既有問題（非本次引入，已記錄）
+## 7. 缺口修補（2026-08-14 補做，Alan 授權）
 
-券 usageCount 洩漏、購買點數無 ledger、`campaignEngine.ts` 與 collection 欄位漂移、
-cart page 硬編碼免運 1000/60、`CouponRedemptions.afterChange` usageCount 非原子。
+以下三項在 P0 交付時列為「既有問題不擴大處理」，經 Alan 指示一併修好：
+
+1. **券額度取消不回沖** → 新 `lib/commerce/orderReversal.ts` 的
+   `afterChangeReverseOrderFinancials`：訂單進 cancelled/refunded 時刪除該單
+   `coupon-redemptions` 並以條件式原子 SQL 遞減 `coupons.usageCount`（`MAX(0, …-1)`
+   不會變負）。以「redemption 是否還在」為 idempotency 依據，重複進終態不重扣。
+2. **購買點數無 ledger row** → `writePurchasePointsLedger`：付款發點時同步寫
+   `points-transactions`（`source=purchase`、`relatedOrder`、`balance` 快照）；
+   以「同單同來源是否已有 row」防重放。退款時扣回點數並寫一筆
+   `refund_deduct`（負數、`source=order_refund`）；使用者若已花掉部分點數，
+   只扣到餘額為止（不製造負餘額），差額於 description 註明供客服處理。
+   注意：從 Orders hook 走的是 local API，`PointsTransactions` 的 sync hooks
+   對 local API 是 no-op，所以不會重複加點。
+3. **cart page 硬編碼免運 1000/60** → `computeOrderPricing` 在未指定物流時改用
+   「最便宜的啟用物流」估算並回傳 `shippingEstimated` / `freeShippingThreshold`；
+   購物車頁改吃 server breakdown（含活動折抵列），前台不再自算門檻。
+
+順帶：PDP 掛上活動 badge；購物車頁 / 進度條 / 結帳頁改用共用 `useCartQuote`
+（模組層 in-flight 去重 + 3s TTL），同一頁多元件只打一次報價。
+
+驗證：`scripts/verify-order-reversal.ts` 12/12 通過（含 paid 重放、重複終態）。
+
+`coupons_rels` 表在 prod 存在，僅本機 dev DB 缺（已由 `scripts/dev-sync-sqlite-schema.ts` 補齊）。
 
 ## 8. Client-trust 漏洞清單
 

@@ -3,44 +3,24 @@
 /**
  * CartCampaignProgress — 購物車 Style Quest 進度（CHIC Commerce OS P0-C）
  *
- * - 進度由 POST /api/pricing/quote 的 server 評估結果驅動（client 不自己算資格）。
+ * - 進度由 /api/pricing/quote 的 server 評估結果驅動（client 不自己算資格）。
  * - 0/2 → 1/2 → UNLOCKED；刪除 / 改數量 debounce 後重新報價 → 自動回退。
  * - 解鎖狀態不只變色：加圖示 + 文案（色弱可辨）；容器邊線用高明度對比。
  * - aria-live="polite" 播報解鎖；reward_unlocked / progress_viewed 事件接 P0-D。
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
 import { useCartStore } from '@/stores/cartStore'
 import { enqueueBehaviorEvent } from '@/lib/behaviorTracking'
 import { useActiveCampaigns } from './useActiveCampaigns'
-
-interface ProgressHint {
-  ruleKey: string
-  campaignId: number | string | null
-  slug: string
-  kind: 'quantity' | 'subtotal'
-  current: number
-  target: number
-  remaining: number
-  unlocked: boolean
-  effectType: string
-  effectAmount?: number
-  effectPercentOff?: number
-}
-
-interface QuoteApplication {
-  ruleKey: string
-  source: string
-  discountAmount: number
-  shippingDiscountAmount: number
-}
+import { useCartQuote, type QuoteProgressHint } from './useCartQuote'
 
 interface Props {
   surface: 'cart' | 'checkout'
   className?: string
 }
 
-function hintLabel(hint: ProgressHint, badgeText: string | null | undefined): string {
+function hintLabel(hint: QuoteProgressHint, badgeText: string | null | undefined): string {
   if (badgeText) return badgeText
   if (hint.effectType === 'fixed_discount_per_group' && hint.effectAmount) {
     return `任選 ${hint.target} 件現折 NT$${hint.effectAmount.toLocaleString()}`
@@ -57,77 +37,37 @@ function hintLabel(hint: ProgressHint, badgeText: string | null | undefined): st
 export function CartCampaignProgress({ surface, className }: Props) {
   const items = useCartStore((s) => s.items)
   const { enabled, campaigns } = useActiveCampaigns()
-  const [hints, setHints] = useState<ProgressHint[]>([])
-  const [applications, setApplications] = useState<QuoteApplication[]>([])
+  const quote = useCartQuote(items)
   const prevUnlocked = useRef<Record<string, boolean>>({})
   const viewedOnce = useRef(false)
-  const requestSeq = useRef(0)
+
+  // 每頁最多兩條進度，避免版面堆疊（doc §8.3：一頁一個主張）
+  const hints = enabled ? quote.progress.slice(0, 2) : []
+  const applications = quote.applications.filter((a) => a.source === 'campaign_rule')
 
   useEffect(() => {
-    if (!enabled) return
-    if (items.length === 0) {
-      setHints([])
-      setApplications([])
-      return
+    if (hints.length === 0) return
+    if (!viewedOnce.current) {
+      viewedOnce.current = true
+      enqueueBehaviorEvent({
+        eventType: 'progress_viewed',
+        surface,
+        campaignId: hints[0]?.campaignId ?? undefined,
+        ruleKey: hints[0]?.ruleKey,
+      })
     }
-    const seq = ++requestSeq.current
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch('/api/pricing/quote', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            items: items.map((i) => ({
-              productId: i.productId,
-              sku: i.variant?.sku ?? null,
-              quantity: i.quantity,
-              isGift: i.isGift || undefined,
-              giftRuleRef: i.giftRuleRef || undefined,
-              isAddOn: i.isAddOn || undefined,
-              addOnRuleRef: i.addOnRuleRef || undefined,
-              bundleRef: i.bundleRef || undefined,
-            })),
-            couponCodes: [],
-          }),
+    for (const hint of hints) {
+      if (hint.unlocked && !prevUnlocked.current[hint.ruleKey]) {
+        enqueueBehaviorEvent({
+          eventType: 'reward_unlocked',
+          surface,
+          campaignId: hint.campaignId ?? undefined,
+          ruleKey: hint.ruleKey,
         })
-        if (!res.ok || seq !== requestSeq.current) return
-        const json = (await res.json()) as {
-          ok?: boolean
-          progress?: ProgressHint[]
-          applications?: QuoteApplication[]
-        }
-        if (!json.ok || seq !== requestSeq.current) return
-        const nextHints = (json.progress ?? []).slice(0, 2) // 每頁最多兩條進度，避免堆疊
-        setHints(nextHints)
-        setApplications((json.applications ?? []).filter((a) => a.source === 'campaign_rule'))
-        // 事件：progress_viewed（每次掛載一次）+ reward_unlocked（false → true 轉換）
-        if (!viewedOnce.current && nextHints.length > 0) {
-          viewedOnce.current = true
-          enqueueBehaviorEvent({
-            eventType: 'progress_viewed',
-            surface,
-            campaignId: nextHints[0]?.campaignId ?? undefined,
-            ruleKey: nextHints[0]?.ruleKey,
-          })
-        }
-        for (const hint of nextHints) {
-          if (hint.unlocked && !prevUnlocked.current[hint.ruleKey]) {
-            enqueueBehaviorEvent({
-              eventType: 'reward_unlocked',
-              surface,
-              campaignId: hint.campaignId ?? undefined,
-              ruleKey: hint.ruleKey,
-            })
-          }
-          prevUnlocked.current[hint.ruleKey] = hint.unlocked
-        }
-      } catch {
-        /* 報價失敗 → 保持上一狀態（進度是輔助 UI，不阻斷購物） */
       }
-    }, 400)
-    return () => clearTimeout(timer)
-  }, [items, enabled, surface])
+      prevUnlocked.current[hint.ruleKey] = hint.unlocked
+    }
+  }, [hints, surface])
 
   if (!enabled || hints.length === 0) return null
 

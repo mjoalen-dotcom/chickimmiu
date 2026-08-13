@@ -33,6 +33,7 @@ import { useCartStore } from '@/stores/cartStore'
 import { CheckoutLastChance } from '@/components/recommendation/CheckoutLastChance'
 import { PromoUpsellSection } from '@/components/cart/PromoUpsellSection'
 import { CartCampaignProgress } from '@/components/campaign/CartCampaignProgress'
+import { useCartQuote } from '@/components/campaign/useCartQuote'
 import { trackBehaviorCheckoutStart } from '@/lib/behaviorTracking'
 import {
   trackBeginCheckout,
@@ -718,61 +719,12 @@ export default function CheckoutPage() {
   // 有活動折抵時（任選2件折X等）client 無法自算 → 以 /api/pricing/quote 的
   // breakdown 為顯示與送單依據；quote 失敗或引擎關閉時回退既有 client 計算
   // （此時 server 端也算不出活動折抵，兩邊一致）。送單後 server 仍會重算並比對。
-  const [serverQuote, setServerQuote] = useState<{
-    breakdown: {
-      itemsSubtotal: number
-      promotionDiscount: number
-      couponDiscount: number
-      memberDiscount: number
-      shippingFee: number
-      codFee: number
-      total: number
-    }
-  } | null>(null)
-  const quoteSeqRef = useRef(0)
-  useEffect(() => {
-    if (items.length === 0) {
-      setServerQuote(null)
-      return
-    }
-    const seq = ++quoteSeqRef.current
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch('/api/pricing/quote', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            items: items.map((i) => ({
-              productId: i.productId,
-              sku: i.variant?.sku ?? null,
-              variantText: i.variant ? `${i.variant.colorName} / ${i.variant.size}` : null,
-              quantity: i.quantity,
-              isGift: i.isGift || undefined,
-              giftRuleRef: i.giftRuleRef || undefined,
-              isAddOn: i.isAddOn || undefined,
-              addOnRuleRef: i.addOnRuleRef || undefined,
-              bundleRef: i.bundleRef || undefined,
-            })),
-            couponCodes: appliedCoupons.map((c) => c.couponCode),
-            shippingMethodId: selectedShipping || null,
-            paymentMethod: selectedPayment || null,
-          }),
-        })
-        if (seq !== quoteSeqRef.current) return
-        if (!res.ok) {
-          setServerQuote(null)
-          return
-        }
-        const json = await res.json()
-        if (seq !== quoteSeqRef.current) return
-        setServerQuote(json?.ok && json.breakdown ? { breakdown: json.breakdown } : null)
-      } catch {
-        if (seq === quoteSeqRef.current) setServerQuote(null)
-      }
-    }, 400)
-    return () => clearTimeout(timer)
-  }, [items, appliedCoupons, selectedShipping, selectedPayment])
+  const cartQuote = useCartQuote(items, {
+    couponCodes: appliedCoupons.map((c) => c.couponCode),
+    shippingMethodId: selectedShipping || null,
+    paymentMethod: selectedPayment || null,
+  })
+  const serverQuote = cartQuote.ok && cartQuote.breakdown ? { breakdown: cartQuote.breakdown } : null
   const promotionDiscount = serverQuote?.breakdown.promotionDiscount ?? 0
 
   // 運費計算：依會員等級、訂閱會員、物流方式
