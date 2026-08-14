@@ -235,6 +235,19 @@ export default async function FrontendLayout({
             __html: `(function(){var d={ls:0,ss:0,ck:0,idb:0,err:''};try{function mk(){var x={},a={getItem:function(k){return Object.prototype.hasOwnProperty.call(x,k)?x[k]:null},setItem:function(k,v){x[k]=String(v)},removeItem:function(k){delete x[k]},clear:function(){x={}},key:function(i){return Object.keys(x)[i]||null}};try{Object.defineProperty(a,'length',{get:function(){return Object.keys(x).length}})}catch(_){a.length=0}return a}var t='__ckmu_priv_probe__';try{window.localStorage.setItem(t,'1');window.localStorage.removeItem(t)}catch(e){d.ls=1;var s=mk();try{Object.defineProperty(window,'localStorage',{configurable:true,get:function(){return s}})}catch(_){d.ls=2;try{if(typeof Storage!=='undefined'&&Storage.prototype){Storage.prototype.getItem=function(){return null};Storage.prototype.setItem=function(){};Storage.prototype.removeItem=function(){};Storage.prototype.clear=function(){};Storage.prototype.key=function(){return null}}}catch(_){d.ls=3}}}try{window.sessionStorage.setItem(t,'1');window.sessionStorage.removeItem(t)}catch(e){d.ss=1;var s2=mk();try{Object.defineProperty(window,'sessionStorage',{configurable:true,get:function(){return s2}})}catch(_){d.ss=2}}try{var c=document.cookie;void c}catch(e){d.ck=1;try{var mc='';Object.defineProperty(document,'cookie',{configurable:true,get:function(){return mc},set:function(v){mc=String(v).split(';')[0]||''}})}catch(_){d.ck=2}}try{if(window.indexedDB&&window.indexedDB.open){var op=window.indexedDB.open;window.indexedDB.open=function(){try{return op.apply(window.indexedDB,arguments)}catch(e){d.idb=1;var stub={result:null,error:new Error('blocked'),readyState:'done',onsuccess:null,onerror:null,onupgradeneeded:null,onblocked:null,addEventListener:function(){},removeEventListener:function(){},dispatchEvent:function(){return false}};setTimeout(function(){if(typeof stub.onerror==='function'){try{stub.onerror({target:stub})}catch(_){}}},0);return stub}}}}catch(_){}}catch(e){d.err=String(e&&e.message||e)}window.__ckmuPriv=d})();`,
           }}
         />
+        {/* 舊電視瀏覽器：flex 的 gap 偵測。
+            智慧電視內建瀏覽器是凍結版 Chromium（2019 Samsung = Chromium 63），
+            flex 的 gap 要 84 才有，而 CSS 的 @supports 測不出來 —— 舊版對 grid 的
+            row-gap 會回報支援，因此只能實測。量一個兩列 flex 容器的實際高度，
+            等於 1px 才代表 gap 真的生效；否則掛 .no-flexgap，由 globals.css 的
+            相容層走負邊距後備。
+            ⚠ 測試節點不可設 height:0 —— 會把量測結果壓成 0，在支援 gap 的瀏覽器上
+            誤判成不支援，反而讓現代瀏覽器間距加倍（2026-08-14 實測踩過）。 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var d=document.createElement('div');d.style.cssText='display:flex;flex-direction:column;row-gap:1px;position:absolute;visibility:hidden';d.appendChild(document.createElement('div'));d.appendChild(document.createElement('div'));document.documentElement.appendChild(d);var ok=d.offsetHeight===1;document.documentElement.removeChild(d);if(!ok){document.documentElement.className+=' no-flexgap';}}catch(e){}})();`,
+          }}
+        />
         <GTMScript
           gtmId={(tracking.gtmId as string) || process.env.NEXT_PUBLIC_GTM_ID || null}
           metaPixelId={(tracking.metaPixelId as string) || process.env.NEXT_PUBLIC_META_PIXEL_ID || null}

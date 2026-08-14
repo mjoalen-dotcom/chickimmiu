@@ -198,3 +198,172 @@ body.admin-tool-page [data-component="floating-menu"] {
     max-width: 3200px;
   }
 }
+
+/* ══ 舊電視／舊瀏覽器相容層（CHIC KIM & MIU，2026-08-14 自動產生）══
+   智慧電視瀏覽器是凍結版 Chromium：2019 Samsung = Chromium 63。
+   下列 utility 在舊版會整條被丟棄，這裡補等效後備。
+   全部包在 @supports not(...) 或 .no-flexgap 之下 → 現代瀏覽器不受影響。 */
+
+/* inset 簡寫需 Chromium 87 —— 失效時絕對定位的滿版圖層會塌掉 */
+@supports not (inset: 0){
+  .-inset-1{top:-.25rem;right:-.25rem;bottom:-.25rem;left:-.25rem}
+  .inset-0{top:0;right:0;bottom:0;left:0}
+  .inset-3{top:.75rem;right:.75rem;bottom:.75rem;left:.75rem}
+  .inset-4{top:1rem;right:1rem;bottom:1rem;left:1rem}
+  @media(min-width:768px){
+    .md\:inset-6{top:1.5rem;right:1.5rem;bottom:1.5rem;left:1.5rem}
+    .md\:inset-8{top:2rem;right:2rem;bottom:2rem;left:2rem}
+  }
+  @media(min-width:1024px){
+    .lg\:inset-10{top:2.5rem;right:2.5rem;bottom:2.5rem;left:2.5rem}
+  }
+}
+
+/* aspect-ratio 需 Chromium 88 —— 這些容器裡通常是 position:absolute 的圖，
+   失效時容器高度歸零、圖整個不見。用 ::before 撐比例是失效前的標準做法。 */
+@supports not (aspect-ratio: 1/1){
+  .aspect-\[16\/10\]::before{content:"";display:block;padding-top:62.5%}
+  .aspect-\[16\/9\]::before{content:"";display:block;padding-top:56.25%}
+  .aspect-\[3\/2\]::before{content:"";display:block;padding-top:66.6667%}
+  .aspect-\[3\/4\]::before{content:"";display:block;padding-top:133.3333%}
+  .aspect-\[4\/3\]::before{content:"";display:block;padding-top:75.0%}
+  .aspect-\[4\/5\]::before{content:"";display:block;padding-top:125.0%}
+  .aspect-\[9\/19\]::before{content:"";display:block;padding-top:211.1111%}
+  .aspect-square::before{content:"";display:block;padding-top:100.0%}
+  .aspect-video::before{content:"";display:block;padding-top:56.25%}
+  @media(min-width:768px){
+    .md\:aspect-\[3\/4\]::before{content:"";display:block;padding-top:133.3333%}
+  }
+}
+
+/* grid 的 gap 簡寫需 Chromium 66，舊名 grid-gap 從 57 就有 */
+@supports not (gap: 1px){
+  .gap-0{grid-gap:0}
+  .gap-0\.5{grid-gap:.125rem}
+  .gap-1{grid-gap:.25rem}
+  .gap-10{grid-gap:2.5rem}
+  .gap-12{grid-gap:3rem}
+  .gap-1\.5{grid-gap:.375rem}
+  .gap-2{grid-gap:.5rem}
+  .gap-2\.5{grid-gap:.625rem}
+  .gap-3{grid-gap:.75rem}
+  .gap-4{grid-gap:1rem}
+  .gap-5{grid-gap:1.25rem}
+  .gap-6{grid-gap:1.5rem}
+  .gap-8{grid-gap:2rem}
+  .gap-y-2{grid-row-gap:.5rem}
+  .group-hover\:gap-3{grid-gap:.75rem}
+  @media(min-width:640px){
+    .sm\:gap-4{grid-gap:1rem}
+  }
+  @media(min-width:768px){
+    .md\:gap-12{grid-gap:3rem}
+    .md\:gap-2{grid-gap:.5rem}
+    .md\:gap-4{grid-gap:1rem}
+    .md\:gap-5{grid-gap:1.25rem}
+    .md\:gap-6{grid-gap:1.5rem}
+    .md\:gap-8{grid-gap:2rem}
+  }
+  @media(min-width:1024px){
+    .lg\:gap-12{grid-gap:3rem}
+    .lg\:gap-16{grid-gap:4rem}
+  }
+}
+
+/* flex 的 gap 需 Chromium 84，且沒有舊名可用 —— 只能靠負邊距技法。
+   選擇器刻意寫成 .flex.gap-N，只打中 flex 容器；grid 容器走上面的 grid-gap，兩者不重疊。
+   .no-flexgap 由 <head> 內的實測腳本掛上（CSS 測不出 flex gap，見腳本註解）。 */
+.no-flexgap .flex.gap-0\.5{margin:-0.0625rem}
+.no-flexgap .flex.gap-0\.5>*{margin:0.0625rem}
+.no-flexgap .inline-flex.gap-0\.5{margin:-0.0625rem}
+.no-flexgap .inline-flex.gap-0\.5>*{margin:0.0625rem}
+.no-flexgap .flex.gap-1{margin:-0.125rem}
+.no-flexgap .flex.gap-1>*{margin:0.125rem}
+.no-flexgap .inline-flex.gap-1{margin:-0.125rem}
+.no-flexgap .inline-flex.gap-1>*{margin:0.125rem}
+.no-flexgap .flex.gap-10{margin:-1.25rem}
+.no-flexgap .flex.gap-10>*{margin:1.25rem}
+.no-flexgap .inline-flex.gap-10{margin:-1.25rem}
+.no-flexgap .inline-flex.gap-10>*{margin:1.25rem}
+.no-flexgap .flex.gap-12{margin:-1.5rem}
+.no-flexgap .flex.gap-12>*{margin:1.5rem}
+.no-flexgap .inline-flex.gap-12{margin:-1.5rem}
+.no-flexgap .inline-flex.gap-12>*{margin:1.5rem}
+.no-flexgap .flex.gap-1\.5{margin:-0.1875rem}
+.no-flexgap .flex.gap-1\.5>*{margin:0.1875rem}
+.no-flexgap .inline-flex.gap-1\.5{margin:-0.1875rem}
+.no-flexgap .inline-flex.gap-1\.5>*{margin:0.1875rem}
+.no-flexgap .flex.gap-2{margin:-0.25rem}
+.no-flexgap .flex.gap-2>*{margin:0.25rem}
+.no-flexgap .inline-flex.gap-2{margin:-0.25rem}
+.no-flexgap .inline-flex.gap-2>*{margin:0.25rem}
+.no-flexgap .flex.gap-2\.5{margin:-0.3125rem}
+.no-flexgap .flex.gap-2\.5>*{margin:0.3125rem}
+.no-flexgap .inline-flex.gap-2\.5{margin:-0.3125rem}
+.no-flexgap .inline-flex.gap-2\.5>*{margin:0.3125rem}
+.no-flexgap .flex.gap-3{margin:-0.375rem}
+.no-flexgap .flex.gap-3>*{margin:0.375rem}
+.no-flexgap .inline-flex.gap-3{margin:-0.375rem}
+.no-flexgap .inline-flex.gap-3>*{margin:0.375rem}
+.no-flexgap .flex.gap-4{margin:-0.5rem}
+.no-flexgap .flex.gap-4>*{margin:0.5rem}
+.no-flexgap .inline-flex.gap-4{margin:-0.5rem}
+.no-flexgap .inline-flex.gap-4>*{margin:0.5rem}
+.no-flexgap .flex.gap-5{margin:-0.625rem}
+.no-flexgap .flex.gap-5>*{margin:0.625rem}
+.no-flexgap .inline-flex.gap-5{margin:-0.625rem}
+.no-flexgap .inline-flex.gap-5>*{margin:0.625rem}
+.no-flexgap .flex.gap-6{margin:-0.75rem}
+.no-flexgap .flex.gap-6>*{margin:0.75rem}
+.no-flexgap .inline-flex.gap-6{margin:-0.75rem}
+.no-flexgap .inline-flex.gap-6>*{margin:0.75rem}
+.no-flexgap .flex.gap-8{margin:-1.0rem}
+.no-flexgap .flex.gap-8>*{margin:1.0rem}
+.no-flexgap .inline-flex.gap-8{margin:-1.0rem}
+.no-flexgap .inline-flex.gap-8>*{margin:1.0rem}
+.no-flexgap .flex.group-hover\:gap-3{margin:-0.375rem}
+.no-flexgap .flex.group-hover\:gap-3>*{margin:0.375rem}
+.no-flexgap .inline-flex.group-hover\:gap-3{margin:-0.375rem}
+.no-flexgap .inline-flex.group-hover\:gap-3>*{margin:0.375rem}
+@media(min-width:640px){
+  .no-flexgap .flex.sm\:gap-4{margin:-0.5rem}
+.no-flexgap .flex.sm\:gap-4>*{margin:0.5rem}
+.no-flexgap .inline-flex.sm\:gap-4{margin:-0.5rem}
+.no-flexgap .inline-flex.sm\:gap-4>*{margin:0.5rem}
+}
+@media(min-width:768px){
+  .no-flexgap .flex.md\:gap-12{margin:-1.5rem}
+.no-flexgap .flex.md\:gap-12>*{margin:1.5rem}
+.no-flexgap .inline-flex.md\:gap-12{margin:-1.5rem}
+.no-flexgap .inline-flex.md\:gap-12>*{margin:1.5rem}
+  .no-flexgap .flex.md\:gap-2{margin:-0.25rem}
+.no-flexgap .flex.md\:gap-2>*{margin:0.25rem}
+.no-flexgap .inline-flex.md\:gap-2{margin:-0.25rem}
+.no-flexgap .inline-flex.md\:gap-2>*{margin:0.25rem}
+  .no-flexgap .flex.md\:gap-4{margin:-0.5rem}
+.no-flexgap .flex.md\:gap-4>*{margin:0.5rem}
+.no-flexgap .inline-flex.md\:gap-4{margin:-0.5rem}
+.no-flexgap .inline-flex.md\:gap-4>*{margin:0.5rem}
+  .no-flexgap .flex.md\:gap-5{margin:-0.625rem}
+.no-flexgap .flex.md\:gap-5>*{margin:0.625rem}
+.no-flexgap .inline-flex.md\:gap-5{margin:-0.625rem}
+.no-flexgap .inline-flex.md\:gap-5>*{margin:0.625rem}
+  .no-flexgap .flex.md\:gap-6{margin:-0.75rem}
+.no-flexgap .flex.md\:gap-6>*{margin:0.75rem}
+.no-flexgap .inline-flex.md\:gap-6{margin:-0.75rem}
+.no-flexgap .inline-flex.md\:gap-6>*{margin:0.75rem}
+  .no-flexgap .flex.md\:gap-8{margin:-1.0rem}
+.no-flexgap .flex.md\:gap-8>*{margin:1.0rem}
+.no-flexgap .inline-flex.md\:gap-8{margin:-1.0rem}
+.no-flexgap .inline-flex.md\:gap-8>*{margin:1.0rem}
+}
+@media(min-width:1024px){
+  .no-flexgap .flex.lg\:gap-12{margin:-1.5rem}
+.no-flexgap .flex.lg\:gap-12>*{margin:1.5rem}
+.no-flexgap .inline-flex.lg\:gap-12{margin:-1.5rem}
+.no-flexgap .inline-flex.lg\:gap-12>*{margin:1.5rem}
+  .no-flexgap .flex.lg\:gap-16{margin:-2.0rem}
+.no-flexgap .flex.lg\:gap-16>*{margin:2.0rem}
+.no-flexgap .inline-flex.lg\:gap-16{margin:-2.0rem}
+.no-flexgap .inline-flex.lg\:gap-16>*{margin:2.0rem}
+}
