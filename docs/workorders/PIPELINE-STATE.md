@@ -1,12 +1,12 @@
 # PIPELINE-STATE.md｜切換管線狀態機（唯一真相源）
 
 > /next 每次執行後更新本檔並 commit。狀態：⚪未開始 🔵進行中 ✅完成 🔴失敗 ⏸暫停 ⏳等待外部
-> 最後更新：2026-08-14（初始化）｜目前步驟：01｜停滯天數：0
+> 最後更新：2026-08-15｜目前步驟：01｜停滯天數：0
 
 | # | 步驟 | 依據 | 閘型 | 機器驗證項 | 狀態 | 完成日 | 產出 |
 |---|---|---|---|---|---|---|---|
-| 00 | 管線初始化（工作單入版控、CLAUDE.md、本檔） | AUTOPILOT §7 | 手動一次 | git log 含 init commit | ⚪ | | |
-| 01 | Phase S：cost 欄位權限修補＋部署 | ADMIN-UI Prompt S | AUTO | `curl -s ".../api/products?limit=1" \| grep -c '"cost"'` = 0 | ⚪ | | |
+| 00 | 管線初始化（工作單入版控、CLAUDE.md、本檔） | AUTOPILOT §7 | 手動一次 | git log 含 init commit | ✅ | 2026-08-15 | commit 93616be |
+| 01 | Phase S：cost 欄位權限修補＋部署 | ADMIN-UI Prompt S | AUTO | `curl -s ".../api/products?limit=1" \| grep -c '"cost"'` = 0 | 🔵 | | |
 | 02 | 全站審計（read-only） | ADMIN-UI Prompt A | AUTO | AUDIT-20260814.md 與 API-STRUCTURE.md 產出；⚠️旗標（users共用／admin未轉向）寫入回報 | ⚪ | | |
 | 03 | 後台結構層（分組／欄位／中文化／tabs） | Prompt B | AUTO | 側邊欄分組≤6 截圖；products tabs 生效 | ⚪ | | |
 | 04 | 營運 Dashboard | Prompt C | AUTO | 4 指標卡渲染截圖 | ⚪ | | |
@@ -40,4 +40,4 @@
 ## 停滯與異常（站會讀取區）
 
 - 目前紅燈：無
-- 等待 Alan 事項：步驟 00 初始化
+- 等待 Alan 事項：無（步驟 01 進行中）
