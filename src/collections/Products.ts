@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 import { APIError } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
+import { isLoggedInFieldLevel } from '../access/isLoggedIn'
 import { createExportEndpoint, createImportEndpoint, type FieldMapping } from '../endpoints/importExport'
 import { revalidateAllEndpoint } from '../endpoints/revalidateAll'
 import { shoplineXlsxImportEndpoint } from '../endpoints/shoplineXlsxImport'
@@ -538,6 +539,7 @@ export const Products: CollectionConfig = {
       label: '低庫存警示',
       type: 'checkbox',
       defaultValue: false,
+      access: { read: isLoggedInFieldLevel },
       admin: {
         position: 'sidebar',
         readOnly: true,
@@ -556,16 +558,18 @@ export const Products: CollectionConfig = {
       type: 'number',
       min: 0,
       defaultValue: 0,
+      access: { read: isLoggedInFieldLevel },
       admin: {
         position: 'sidebar',
         description:
-          '前台 PDP 顯示「累計售出 X+ 件」徽章（≥ 50 件才會顯示）。可手動填入或未來由訂單統計自動更新。',
+          '前台 PDP 顯示「累計售出 X+ 件」徽章（≥ 50 件才會顯示）。可手動填入或未來由訂單統計自動更新。前台透過 Local API (overrideAccess) 渲染，不受此欄位限制影響；此限制僅擋公開 REST API 的未登入爬取。',
       },
     },
     {
       name: 'sourcing',
       label: '採購來源資訊',
       type: 'group',
+      access: { read: isLoggedInFieldLevel },
       admin: {
         description: '⚠️ 內部採購資訊，僅後台人員可見，前台完全隱藏',
         position: 'sidebar',
@@ -643,6 +647,7 @@ export const Products: CollectionConfig = {
       name: 'imageMigration',
       label: '圖片遷移狀態',
       type: 'group',
+      access: { read: isLoggedInFieldLevel },
       admin: {
         description:
           '⚠️ 內部欄位 — 記錄此商品圖片從 Shopline / Sinsang 等外部來源搬到 R2 的進度。' +
@@ -841,6 +846,7 @@ export const Products: CollectionConfig = {
               name: 'autoPricing',
               label: '🧮 自動計價（採購成本 → 建議售價）',
               type: 'group',
+              access: { read: isLoggedInFieldLevel },
               admin: {
                 description:
                   '填採購金額（韓元 / 日圓 / 美元 / 人民幣）+ 商品重量，系統自動算建議售價。' +
@@ -935,6 +941,7 @@ export const Products: CollectionConfig = {
                   label: '商品成本（新台幣）',
                   type: 'number',
                   min: 0,
+                  access: { read: isLoggedInFieldLevel },
                   admin: {
                     width: '34%',
                     description:
@@ -1352,6 +1359,7 @@ export const Products: CollectionConfig = {
                   type: 'number',
                   min: 0,
                   defaultValue: 5,
+                  access: { read: isLoggedInFieldLevel },
                   admin: {
                     width: '50%',
                     description: '庫存低於此數量時在後台顯示警示',
