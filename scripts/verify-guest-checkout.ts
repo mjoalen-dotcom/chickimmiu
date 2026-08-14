@@ -240,10 +240,15 @@ async function main() {
   )
 
   // ── 3. 必填 / 庫存 ────────────────────────────────────────────────
-  const noEmail = await post({ ...validBody, email: '' })
-  check('缺 email → 400', noEmail.res.status === 400 && noEmail.json?.code === 'VALIDATION_FAILED', noEmail.json)
-  const badEmail = await post({ ...validBody, email: 'nope' })
-  check('email 格式錯 → 400', badEmail.res.status === 400, badEmail.json)
+  // SMOKE_ONLY（prod）刻意跳過這兩個純驗證案例：限流是 5 次 / 10 分鐘，而腳本從
+  // 伺服器本機打公開網址 → 每次請求都是同一個來源 IP，多打兩次會把額度用掉，
+  // 讓後面真正重要的「超賣防線」驗不到（本機模式與單元測試已涵蓋這兩個案例）。
+  if (!SMOKE_ONLY) {
+    const noEmail = await post({ ...validBody, email: '' })
+    check('缺 email → 400', noEmail.res.status === 400 && noEmail.json?.code === 'VALIDATION_FAILED', noEmail.json)
+    const badEmail = await post({ ...validBody, email: 'nope' })
+    check('email 格式錯 → 400', badEmail.res.status === 400, badEmail.json)
+  }
   // 注意：quantity 99999 會先撞到 maxItemsPerOrder，驗不到庫存防線 —— 要用
   // 「剛好超過庫存、但沒超過單筆件數上限」的數量才驗得到超賣防線。
   const tooMany = await post({ ...validBody, items: [{ productId: product.id, quantity: 99999 }] })
