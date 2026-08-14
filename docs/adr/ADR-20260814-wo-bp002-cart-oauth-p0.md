@@ -1,7 +1,7 @@
 # ADR-20260814 — WO-BP002 購物車／OAuth P0 稽核與修復
 
-- **狀態**：已實作、本機驗證完畢，**尚未部署**（等 Alan 授權：本次動到登入鏈）
-- **基準**：`hetzner/main` a06556e（= 當時 prod）
+- **狀態**：全部已部署 prod（Alan 2026-08-14 授權 A+B，並拍板 C「可以訪客結帳，但要設定開關」）
+- **基準**：`hetzner/main` a06556e →（A/B）`e27c790` →（C）`d8192d7` / 測試腳本 `10d2f2f`
 - **工作分支**：`fix/wo-bp002-cart-oauth-p0`（worktree `chickimmiu-wt-campaign`）
 
 ---
