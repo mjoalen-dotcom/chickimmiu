@@ -37,9 +37,10 @@
 |---|---|---|---|
 | 2026-08-14 | — | PG 遷移排於 www 切換前；管線採 AUTOPILOT-001 全自動模式 | Alan |
 | 2026-08-15 | 01 | 部署基準修正：本地 `line-bc-migration` 已領先 `hetzner/main` 33 個未推送 commit（App API v1／Google-Apple 原生登入／部落格 AI 工作室等），若整支部署會遠超 Phase S 範圍。改為從 `hetzner/main`（實際部署基準）另開 branch 只帶入本次 2 檔修補，部署後 fast-forward `hetzner/main` 到該 commit（`9156ab4`）。`line-bc-migration` 33 個未推送 commit 本次未動，維持原樣待後續處理。 | Claude（AUTO 執行內） |
-| 2026-08-15 | — | 系統性稽核發現：CRMSettings／InvoiceSettings／MarketingAutomationSettings／AdsCatalogSettings 4 個 globals 的 access.read=()=>true 對內部憑證欄位（LINE token/secret、ECPay HashKey/HashIV、行銷管道 API Key）無 field-level 保護，與本次修補的 Products.cost 同類。已查證 DB 現況全數未填值（無即時外洩），但屬同類結構性缺口。GlobalSettings 的 OAuth 憑證已有 isAdminFieldLevel 保護，無需動。待 Alan 確認是否併入本次 hotfix 一併修補。 | 待 Alan 確認 |
+| 2026-08-15 | — | 系統性稽核發現：CRMSettings／InvoiceSettings／MarketingAutomationSettings／AdsCatalogSettings 4 個 globals 的 access.read=()=>true 對內部憑證欄位（LINE token/secret、ECPay HashKey/HashIV、行銷管道 API Key）無 field-level 保護，與本次修補的 Products.cost 同類。已查證 DB 現況全數未填值（無即時外洩），但屬同類結構性缺口。GlobalSettings 的 OAuth 憑證已有 isAdminFieldLevel 保護，無需動。 | Alan：授權修補 |
+| 2026-08-15 | — | 上述 4 個 globals 已修補（commit `52205f1`，比照 GlobalSettings 既有 isAdminFieldLevel 模式）並部署 pre，curl 驗證 8 個憑證欄位皆已從公開回應消失、端點仍正常回應非敏感欄位。同時修正先前誤判：line-bc-migration 並非「領先 hetzner/main 33 commit」，而是本地checkout落後 hetzner/main 33 commit（皆為已部署內容）；已用 rebase 同步（不含任何內容變更），管線工作單同步 push 至 hetzner。 | 已完成 |
 
 ## 停滯與異常（站會讀取區）
 
 - 目前紅燈：無
-- 等待 Alan 事項：是否授權追加修補 4 個 globals 的憑證欄位權限（見上方決策紀錄，非本次步驟 01 授權範圍，暫緩）
+- 等待 Alan 事項：無（步驟 01 + 4-globals 追加修補皆已完成部署，可說「下一步」進入步驟 02）
