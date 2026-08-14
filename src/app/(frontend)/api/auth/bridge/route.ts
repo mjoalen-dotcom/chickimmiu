@@ -4,6 +4,7 @@ import { addSessionToUser } from 'payload/shared'
 import config from '@payload-config'
 import { auth as nextAuth } from '@/auth'
 import { PROVIDER_SOCIAL_FIELD } from '@/lib/auth/social'
+import { safeInternalRedirect } from '@/lib/auth/safeRedirect'
 
 // Setting `payload-token` from inside the NextAuth `signIn` callback doesn't
 // work — Auth.js v5 builds its own redirect Response and `cookies().set()`
@@ -57,8 +58,11 @@ function clearStaleAuthCookies(response: NextResponse, cookieHeader: string): Ne
 export async function GET(request: Request) {
   const base = resolveBaseUrl(request)
   const url = new URL(request.url)
-  const rawNext = url.searchParams.get('next') || '/account'
-  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/account'
+  // `next` 一律走 safeInternalRedirect：只擋 `//` 是不夠的 —— WHATWG URL parser 對
+  // special scheme 會把反斜線當斜線，`/\evil.com` 經 `new URL(next, base)` 會解析成
+  // `https://evil.com/`（實測），變成掛在自家 OAuth 流程尾端的開放轉址（釣魚跳板）。
+  // safeInternalRedirect 同時擋 `//`、`\`、CR/LF。
+  const next = safeInternalRedirect(url.searchParams.get('next'), '/account')
 
   // Loop guard：用 short-lived cookie 計次。bridge 設好 Payload session cookie 後，
   // 如果 layout 又把使用者推回 bridge（代表 Payload 仍拒絕該 cookie），第二次踏進來
@@ -86,7 +90,13 @@ export async function GET(request: Request) {
   // （含 chunk 變體 `.0` `.1`），導去 /login?error=session_invalid 並把原 redirect 帶回，
   // 使用者重新點 OAuth 即可拿到全新乾淨的 session。
   type BridgeSession = {
-    user?: { email?: string | null; provider?: string; providerAccountId?: string }
+    user?: {
+      email?: string | null
+      provider?: string
+      providerAccountId?: string
+      /** provider 是否驗證過該 email（auth.ts jwt callback 寫入） */
+      providerEmailVerified?: boolean
+    }
   } | null
   let session: BridgeSession = null
   try {
@@ -101,7 +111,11 @@ export async function GET(request: Request) {
   // 統一 lowercase 找 user：OAuth provider 偶爾回 mixed-case email，Payload 內部存 lowercase。
   // 無 email 的社群帳號（LINE 常見）改用 session 上的 provider + providerAccountId
   // 對 socialLogins.{field} 找人（auth.ts jwt/session callback 帶過來的）。
-  const sessionEmail = session?.user?.email?.toLowerCase() || null
+  // 未經 provider 驗證的 email 不得用來找 Payload user —— 否則攻擊者在 provider 端
+  // 掛一個受害者 email 的帳號，即使 signIn callback 已拒絕綁定，bridge 這關仍會
+  // 用同一個 email 找到受害者會員並簽出 session（帳號接管）。
+  const emailTrusted = session?.user?.providerEmailVerified === true
+  const sessionEmail = emailTrusted ? session?.user?.email?.toLowerCase() || null : null
   const provider = session?.user?.provider
   const providerAccountId = session?.user?.providerAccountId
   const socialField = provider ? PROVIDER_SOCIAL_FIELD[provider] : undefined

@@ -388,16 +388,27 @@ export async function computeOrderPricing(payload: Payload, input: PricingInput)
   let shippingEstimated = false
   let freeShippingThreshold: number | null = null
   let shippingMethodDoc: Record<string, unknown> | null = null
-  if (input.shippingMethodId != null) {
+  // 空字串視同「未指定」（舊 client / 尚未選物流的結帳頁），走下面的預估分支
+  const shippingMethodId =
+    input.shippingMethodId === '' || input.shippingMethodId == null ? null : input.shippingMethodId
+  if (shippingMethodId != null) {
     try {
       shippingMethodDoc = (await payload.findByID({
         collection: 'shipping-methods',
-        id: input.shippingMethodId as never,
+        id: shippingMethodId as never,
         depth: 0,
         overrideAccess: true,
       })) as unknown as Record<string, unknown>
     } catch {
       shippingMethodDoc = null
+    }
+    // 指定了物流卻查不到（已刪除 / 停用後移除 / client 亂送 id）→ fail closed。
+    // 舊行為是靜默當成 baseFee=0：報價頁顯示免運，建單時同一個壞 id 也算 0，
+    // 兩邊「一致」所以過得了總額比對 → 等於免費送貨的洩漏口；顧客端也可能因為
+    // 報價/建單走不同分支（建單少帶 method）而永遠 409。改成明確錯誤，
+    // 前台會收到「請回到購物車重新確認」並重選物流。
+    if (!shippingMethodDoc) {
+      errors.push('shipping_method_not_found')
     }
   } else {
     try {

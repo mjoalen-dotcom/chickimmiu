@@ -5,6 +5,7 @@ import Line from 'next-auth/providers/line'
 import Apple from 'next-auth/providers/apple'
 import { resolveSocialAuth } from '@/lib/auth/socialCredentials'
 import { linkOrCreateSocialUser } from '@/lib/auth/socialIdentity'
+import { isProviderEmailVerified, trustedEmailFrom } from '@/lib/auth/emailTrust'
 
 /**
  * NextAuth v5 — Google / Facebook / LINE / Apple
@@ -28,15 +29,23 @@ const sharedConfig = {
     error: '/login',
   },
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       if (!account) return false
       try {
+        // 未驗證的 provider email 不可拿來匹配既有會員 —— 否則在該 provider 註冊
+        // 一個掛受害者 email 的帳號就能接管 CKMU 會員（判定規則見 emailTrust.ts，
+        // 與 App 端 /api/v1/auth/social 的 trustedEmail 同一套語意）。
+        const trustedEmail = trustedEmailFrom(
+          account.provider,
+          profile as Record<string, unknown> | null | undefined,
+          user.email,
+        )
         // 匹配/建檔邏輯與 APP 端 /api/v1/auth/social 共用同一份（socialIdentity.ts），
         // 同一個人不論從網頁或 App 登入都會對到同一個會員。
         const linked = await linkOrCreateSocialUser({
           provider: account.provider,
           providerAccountId: account.providerAccountId,
-          email: user.email,
+          email: trustedEmail,
           name: user.name,
         })
         // null = 不認得的 provider 又沒 email，無從建檔
@@ -46,12 +55,18 @@ const sharedConfig = {
         return true // OAuth 已成功，Payload upsert 失敗不擋 NextAuth session
       }
     },
-    async jwt({ token, account }) {
+    async jwt({ token, account, profile }) {
       // account 只在 OAuth 首次簽入那一輪有值 → 把 provider 資訊持久化進 JWT。
       // /api/auth/bridge 靠它在無 email 帳號時用 socialLogins.{field} 找回 Payload user。
       if (account) {
         token.provider = account.provider
         token.providerAccountId = account.providerAccountId
+        // email 是否經 provider 驗證，一併帶進 JWT —— bridge 用 email 找 Payload user
+        // 時必須套同一道門檻，否則未驗證 email 仍能在 bridge 這關接管既有會員。
+        token.providerEmailVerified = isProviderEmailVerified(
+          account.provider,
+          profile as Record<string, unknown> | null | undefined,
+        )
       }
       return token
     },
@@ -62,6 +77,7 @@ const sharedConfig = {
       const u = session.user as unknown as Record<string, unknown>
       if (typeof token?.provider === 'string') u.provider = token.provider
       if (typeof token?.providerAccountId === 'string') u.providerAccountId = token.providerAccountId
+      u.providerEmailVerified = token?.providerEmailVerified === true
       return session
     },
   },
