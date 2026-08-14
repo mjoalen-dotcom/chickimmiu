@@ -62,7 +62,7 @@ async function main() {
     depth: 0,
     overrideAccess: true,
   })
-  const product = (products.docs as Array<Record<string, unknown>>).find(
+  const product = (products.docs as unknown as Array<Record<string, unknown>>).find(
     (p) => !Array.isArray(p.variants) || (p.variants as unknown[]).length === 0,
   )
   if (!product) {

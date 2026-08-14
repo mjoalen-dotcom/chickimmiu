@@ -125,6 +125,12 @@ export async function getCustomerEmailFromOrder(
   payload: Payload,
   order: Record<string, unknown>,
 ): Promise<{ email?: string; name?: string }> {
+  // 訪客訂單：customer 指向合成信箱的臨時帳號（不可投遞），真實信箱在 guestEmail
+  const guestEmail = typeof order.guestEmail === 'string' ? order.guestEmail.trim() : ''
+  if (guestEmail) {
+    const addr = order.shippingAddress as { recipientName?: string } | undefined
+    return { email: guestEmail, name: addr?.recipientName }
+  }
   const customer = order.customer as
     | string
     | number

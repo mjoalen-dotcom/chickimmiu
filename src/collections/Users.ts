@@ -292,6 +292,24 @@ export const Users: CollectionConfig = {
                   },
                 },
                 {
+                  // 訪客結帳（WO-BP002 C）自動建立的臨時帳號。每筆訪客單一個，
+                  // email 是合成的（@guest.invalid，不可投遞），真實聯絡信箱存在
+                  // 該筆訂單的 guestEmail。用來把訪客排除在會員名單 / 行銷名單之外。
+                  name: 'isGuest',
+                  label: '訪客結帳臨時帳號',
+                  type: 'checkbox',
+                  defaultValue: false,
+                  access: {
+                    create: isAdminFieldLevel,
+                    update: isAdminFieldLevel,
+                  },
+                  admin: {
+                    width: '50%',
+                    readOnly: true,
+                    description: '由訪客結帳流程自動建立；非真實註冊會員',
+                  },
+                },
+                {
                   name: 'birthday',
                   label: '生日',
                   type: 'date',

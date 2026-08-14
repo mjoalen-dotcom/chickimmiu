@@ -48,7 +48,13 @@ export async function sendAdminNewOrderAlert(
     | number
     | { id?: string | number; email?: string; name?: string }
     | undefined
-  if (typeof customer === 'object' && customer) {
+  // 訪客訂單：customer 是合成信箱的臨時帳號 → 對後台顯示真實聯絡信箱
+  const guestEmail = typeof order.guestEmail === 'string' ? order.guestEmail.trim() : ''
+  if (guestEmail) {
+    customerEmail = guestEmail
+    customerName =
+      `${(order.shippingAddress as { recipientName?: string } | undefined)?.recipientName || '訪客'}（訪客）`
+  } else if (typeof customer === 'object' && customer) {
     customerEmail = customer.email || ''
     customerName = customer.name || ''
   } else if (customer != null) {

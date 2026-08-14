@@ -119,11 +119,93 @@ new URL('/\\evil.com', 'https://pre.chickimmiu.com')  →  https://evil.com/
 
 無 DB migration、無 schema 變更、無設定變更。
 
+### D. 【P0 · 超賣】庫存防線在 product id 是「數字」時整個被跳過
+
+做訪客結帳的本機驗證時撞到的**既有 bug**（不是這次改壞的）：
+
+```ts
+// Orders.beforeChange（舊）
+const productId = typeof item.product === 'string' ? item.product : item.product?.id
+if (!productId || qty <= 0) continue   // ← 數字 id 走到這裡就 continue 了
+```
+
+`item.product` 有三種可能：字串（前台購物車的 id 是 `String(product.id)`）、
+**數字**（App / server 端建單、SQLite 原生 id）、或 populated object。舊寫法只認
+字串與物件 —— 數字 id 會讓 `productId` 變 `undefined`，整個「拒絕超賣」檢查被
+`continue` 跳過。
+
+**實測**（本機）：庫存 5 的商品，連下 8 筆單全部成立，庫存被 `Math.max(0, …)` 夾在 0，
+等於賣掉 3 件不存在的貨。前台網頁因為送字串 id 沒中招，但 App 端與任何以數字 id 建單的
+路徑（包含本次新增的訪客結帳）都會中。
+
+**修法**：id 正規化 —— 物件取 `.id`，其餘直接用（字串或數字皆可），並改用
+`productId == null` 判斷（`0` 不該被當成沒填）。驗證腳本也補了「庫存 +1 → 400
+OUT_OF_STOCK 且庫存不變」的斷言（原本的 quantity 99999 其實是先撞到單筆件數上限，
+驗不到庫存防線）。
+
+---
+
+## 3.5 追加：訪客結帳（Alan 2026-08-14 拍板「可以訪客結帳，但要設定開關」）
+
+**開關**：沿用既有的後台欄位 結帳設定 → **允許訪客（非會員）結帳**
+（`checkout-settings.checkoutAsGuest`，預設開）。前後端同一份判斷；前台設定拉不到時
+fallback 取保守值（不允許），伺服器端再擋一次。
+
+### 資料模型的取捨（重要）
+
+`orders.customer` 是 **NOT NULL**，而且全站有大量「訂單一定有 customer」的假設
+（訂單信、會員中心、金流擁有權檢查、點數／推薦／發票 hooks）。兩條路：
+
+| 方案 | 代價 |
+|---|---|
+| 把 `orders.customer_id` 改成 nullable | SQLite 要**整表重建 orders**（全站最重要的表）+ 上述所有路徑都要改 → 迴歸面積極大 |
+| **每筆訪客單開一個 `isGuest` 臨時帳號**（採用） | 多出臨時會員列；但既有路徑一行都不用改 |
+
+採用後者。臨時帳號的 email 是**合成的**（`guest_<uuid>@guest.invalid`，RFC 2606
+保留網域、不可投遞），顧客真正填的信箱寫進新欄位 `orders.guestEmail`，
+所有訂單信件優先讀它。
+
+> **為什麼不用顧客的真 email 當臨時帳號的 email**：那樣就得「同 email 重複使用同一個
+> 訪客帳號」，而我們建單後會簽 session cookie（金流那關需要登入）——等於只要知道
+> 某人的 email 就能拿到他過往訪客訂單的 session。合成信箱讓每筆訪客單各自獨立，
+> 沒有這條側路。
+>
+> 也**刻意不查**「這個 email 是不是既有會員」：查了等於提供帳號列舉介面。代價是
+> 忘記登入的會員會拿到一筆不在會員中心的訂單，前台用「登入後可累積點數與查詢紀錄」提示。
+
+### 送單路徑
+
+新增 `POST /api/checkout/guest-order`（不是放寬 `Orders.access.create`——那等於開放
+任何人對 `/api/orders` 灌任意欄位）。這支只收：商品 id／數量／券碼／物流／收件資訊／email，
+**完全不收金額欄位**。
+
+⚠️ 關鍵陷阱：本路由用 local API 建單，而 `beforeChangeServerPricing` 對 local API 是
+**跳過**的 → 這支自己就是計價權威，訂單金額全部取自 `computeOrderPricing`。庫存檢查
+hook 沒有 local-API 豁免，仍會跑。券快照（`appliedCoupons`）也必須跟著寫，否則
+訪客用券不計額度 = 無限次使用。
+
+其他：IP 限流 5 次／10 分鐘；`maxItemsPerOrder` / `minOrderAmount` 伺服器端再驗一次；
+建單失敗會把剛建的臨時帳號刪掉（否則每次失敗留一筆垃圾會員）；UTM 歸因以白名單搬運
+（不送就會讓訪客單在廣告報表上全部變成無來源）。
+
+### DB
+
+`20260814_120000_add_guest_checkout`：兩個純增欄，不動既有資料、不動 NOT NULL。
+
+```
+orders.guest_email  TEXT
+users.is_guest      INTEGER DEFAULT false
+```
+
 ## 4. 未做（刻意）
 
-- **沒有在 prod 建測試訂單**跑端到端結帳。Campaign Engine 上線後「真人下單成功」這一哩
-  目前只有偽造單被擋的證據，沒有正常單成立的證據；要補這個驗證會在 prod 產生真訂單
-  （扣庫存、寄信、之後要取消），屬於有副作用的動作 → 留給 Alan 決定。
+- ~~沒有在 prod 建測試訂單~~ ✅ Alan 已授權，2026-08-14 已在 prod 跑完
+  `scripts/verify-checkout-http-e2e.ts`：8/8 PASS（測試單 CKMU20260814001 建立 → 驗證 → 取消、
+  庫存回補）。這補上了「伺服器計價強制不會誤殺正常訂單」的證據。
+- **訪客訂單沒有訂單查詢頁**。訪客拿得到訂單編號與確認信，但沒有「用訂單編號 + email
+  查詢」的頁面（session cookie 過期後就查不到了）。要不要做是下一個決策點。
+- **臨時帳號會累積**：每筆訪客單一列 `isGuest` 會員。已用 `isGuest` 標記可在後台過濾，
+  但會員總數統計要記得排除。
 - **Facebook email 不採信**的副作用：未來 FB 上線後，既有 email 會員第一次用 FB 登入會建立
   新帳號而不是併進舊帳號。安全優先；若要改成可併，正確做法是「登入後在會員中心做綁定驗證」，
   不是回頭信任未驗證 email。

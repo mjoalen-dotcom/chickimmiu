@@ -146,6 +146,19 @@ export const Orders: CollectionConfig = {
       relationTo: 'users',
       required: true,
     },
+    {
+      // 訪客結帳（WO-BP002 C）：customer 指向自動建立的 is_guest 臨時帳號
+      // （合成信箱不可投遞），這裡放顧客真正填的聯絡信箱 —— 所有訂單信件
+      // 都優先讀這欄。會員單留空。
+      name: 'guestEmail',
+      label: '訪客聯絡信箱',
+      type: 'email',
+      admin: {
+        readOnly: true,
+        description: '訪客結帳時顧客填寫的信箱；會員訂單留空（以會員信箱寄送）',
+        condition: (data) => Boolean(data?.guestEmail),
+      },
+    },
     // ── 訂單項目 ──
     {
       name: 'items',
@@ -641,17 +654,23 @@ export const Orders: CollectionConfig = {
         const items =
           ((data as Record<string, unknown>).items as
             | {
-                product?: string | { id: string }
+                product?: string | number | { id: string | number }
                 sku?: string
                 quantity?: number
                 productName?: string
               }[]
             | undefined) || []
         for (const item of items) {
+          // ⚠️ product 可能是 string（前台購物車的 id 是字串）、number（App / server 端
+          // 建單、SQLite 原生 id）或 populated object。舊版只認 string + object，數字 id
+          // 會讓 productId 變 undefined → 整個超賣防線被跳過（實測：庫存 5 可以下 8 單）。
+          const rawProduct = item.product
           const productId =
-            typeof item.product === 'string' ? item.product : item.product?.id
+            rawProduct != null && typeof rawProduct === 'object'
+              ? (rawProduct as { id?: string | number }).id
+              : rawProduct
           const qty = Number(item.quantity) || 0
-          if (!productId || qty <= 0) continue
+          if (productId == null || productId === '' || qty <= 0) continue
           const product = (await req.payload
             .findByID({ collection: 'products', id: productId, depth: 0, req })
             .catch(() => null)) as Record<string, unknown> | null

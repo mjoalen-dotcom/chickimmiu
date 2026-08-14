@@ -99,7 +99,12 @@ export async function sendOrderConfirmationEmail(
   const customer = order.customer as string | { id?: string; email?: string; name?: string } | undefined
   let email: string | undefined
   let name: string | undefined
-  if (typeof customer === 'object' && customer?.email) {
+  // 訪客訂單優先：customer 是合成信箱的臨時帳號，真實信箱在 guestEmail
+  const guestEmail = typeof order.guestEmail === 'string' ? order.guestEmail.trim() : ''
+  if (guestEmail) {
+    email = guestEmail
+    name = (order.shippingAddress as { recipientName?: string } | undefined)?.recipientName
+  } else if (typeof customer === 'object' && customer?.email) {
     email = customer.email
     name = customer.name
   } else if (customer) {

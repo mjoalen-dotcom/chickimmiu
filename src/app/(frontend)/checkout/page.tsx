@@ -397,6 +397,8 @@ export default function CheckoutPage() {
     marketingConsentText: string
     minOrderAmount: number
     maxItemsPerOrder: number
+    /** 後台開關：關閉時未登入者不能送單（前後端同一份判斷） */
+    checkoutAsGuest: boolean
     notes: { allowOrderNote: boolean; orderNoteLabel: string; orderNoteMaxLength: number }
   }
   const [checkoutCfg, setCheckoutCfg] = useState<CheckoutCfg>({
@@ -406,9 +408,13 @@ export default function CheckoutPage() {
     marketingConsentText: '我願意收到 CHIC KIM & MIU 最新活動與優惠資訊',
     minOrderAmount: 0,
     maxItemsPerOrder: 99,
+    // fallback 取保守值：設定拉不到時不讓未登入者送單（伺服器端仍會再擋一次）
+    checkoutAsGuest: false,
     notes: { allowOrderNote: true, orderNoteLabel: '給賣家的備註', orderNoteMaxLength: 200 },
   })
 
+  /** 訪客結帳的聯絡信箱（訂單確認信寄送目標；登入者不使用） */
+  const [guestEmail, setGuestEmail] = useState('')
   const [tosAccepted, setTosAccepted] = useState(false)
   const [marketingAccepted, setMarketingAccepted] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -924,12 +930,23 @@ export default function CheckoutPage() {
       return
     }
 
-    // Orders.customer 是必填 relationship → 必須登入。
-    // （useCurrentUser 以 Payload cookie 為準，POST /api/orders 會驗同一 cookie。）
-    if (!isAuthenticated || !user) {
-      setSubmitError('請先登入後再結帳')
-      router.push('/login?redirect=/checkout')
-      return
+    // 未登入：後台允許訪客結帳 → 走 /api/checkout/guest-order（需填聯絡信箱）；
+    // 關閉訪客結帳 → 維持原本導去登入頁的行為。
+    const asGuest = !isAuthenticated || !user
+    if (asGuest) {
+      if (!checkoutCfg.checkoutAsGuest) {
+        setSubmitError('請先登入後再結帳')
+        router.push('/login?redirect=/checkout')
+        return
+      }
+      if (!guestEmail.trim()) {
+        setSubmitError('請填寫聯絡信箱，訂單確認信會寄到這個信箱')
+        return
+      }
+      if (!/^[^\s@]+@[^\s@.]+\.[^\s@]{2,}$/.test(guestEmail.trim())) {
+        setSubmitError('聯絡信箱格式不正確')
+        return
+      }
     }
 
     // 最低消費 / 最大件數 / TOS / 行銷同意（讀 CheckoutSettings）
@@ -986,7 +1003,7 @@ export default function CheckoutPage() {
     // orderNumber 由 Orders.ts beforeValidate hook 依 OrderSettings.numbering 產生；
     // client 不再自行產生（避免跟 admin 後台設定不一致）。
     const orderPayload = {
-      customer: user.id,
+      customer: user?.id,
       items: orderItems,
       subtotal: serverQuote?.breakdown.itemsSubtotal ?? subtotal,
       subtotalBeforeDiscount: serverQuote?.breakdown.itemsSubtotal ?? subtotal,
@@ -1080,15 +1097,51 @@ export default function CheckoutPage() {
     }
 
     let createdOrderNumber = ''
+    // 訪客送單走專屬入口：只送商品 / 券碼 / 物流 / 收件資訊 / email，
+    // 金額由伺服器重算（該路由自己就是計價權威，不吃 client 金額）。
+    const guestPayload = {
+      email: guestEmail.trim(),
+      items: items.map((i) => ({
+        productId: i.productId,
+        sku: i.variant?.sku ?? null,
+        variantText: i.variant ? `${i.variant.colorName} / ${i.variant.size}` : null,
+        quantity: i.quantity,
+        isGift: i.isGift || undefined,
+        giftRuleRef: i.giftRuleRef || undefined,
+        isAddOn: i.isAddOn || undefined,
+        addOnRuleRef: i.addOnRuleRef || undefined,
+        bundleRef: i.bundleRef || undefined,
+      })),
+      couponCodes: appliedCoupons.map((c) => c.couponCode),
+      shippingMethodId: shippingOption?.docId ?? null,
+      paymentMethod: selectedPayment,
+      shippingAddress: orderPayload.shippingAddress,
+      customerNote: form.customerNote || undefined,
+      // UTM 歸因照送（伺服器端只收白名單欄位）；沒有這段，訪客單在廣告報表上會全部變成無來源
+      attribution: orderPayload.attribution,
+    }
+
     try {
-      const res = await fetch('/api/orders', {
+      const res = await fetch(asGuest ? '/api/checkout/guest-order' : '/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(orderPayload),
+        body: JSON.stringify(asGuest ? guestPayload : orderPayload),
       })
 
-      if (!res.ok) {
+      if (asGuest) {
+        const guestBody = (await res.json().catch(() => null)) as
+          | { success?: boolean; data?: { orderNumber?: string }; error?: string }
+          | null
+        if (!res.ok || !guestBody?.success || !guestBody.data?.orderNumber) {
+          const msg = guestBody?.error || `HTTP ${res.status}`
+          console.error('[Checkout] Guest order failed:', msg, guestBody)
+          setSubmitError(`訂單建立失敗：${msg}`)
+          setIsProcessing(false)
+          return
+        }
+        createdOrderNumber = guestBody.data.orderNumber
+      } else if (!res.ok) {
         const errBody = (await res.json().catch(() => null)) as
           | { errors?: { message: string }[]; message?: string }
           | null
@@ -1100,13 +1153,16 @@ export default function CheckoutPage() {
         return
       }
 
-      const result = (await res.json()) as { doc?: { orderNumber?: string } }
-      createdOrderNumber = result.doc?.orderNumber || ''
-      if (!createdOrderNumber) {
-        console.error('[Checkout] Order created but no orderNumber in response', result)
-        setSubmitError('訂單建立成功但編號遺失，請聯繫客服')
-        setIsProcessing(false)
-        return
+      if (!asGuest) {
+        // 訪客那條的 response body 已經在上面讀掉了（body 只能讀一次）
+        const result = (await res.json()) as { doc?: { orderNumber?: string } }
+        createdOrderNumber = result.doc?.orderNumber || ''
+        if (!createdOrderNumber) {
+          console.error('[Checkout] Order created but no orderNumber in response', result)
+          setSubmitError('訂單建立成功但編號遺失，請聯繫客服')
+          setIsProcessing(false)
+          return
+        }
       }
     } catch (err) {
       console.error('[Checkout] Order creation error:', err)
@@ -1293,6 +1349,30 @@ export default function CheckoutPage() {
             {/* ── Left: Forms ── */}
             <div className="space-y-8">
               {/* Social login prompt — hide once auth is confirmed (either way) */}
+              {/* 訪客結帳：後台開關開啟時，未登入也能送單，但要留聯絡信箱收訂單確認信 */}
+              {!authLoading && !isAuthenticated && checkoutCfg.checkoutAsGuest && (
+                <div className="bg-white border border-cream-200 rounded-2xl p-5">
+                  <label htmlFor="guest-email" className="block text-sm font-medium mb-1">
+                    聯絡信箱 <span className="text-red-500">*</span>
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    以訪客身分結帳。訂單確認信與出貨通知會寄到這個信箱；
+                    登入或註冊後下單才能累積點數與查詢訂單紀錄。
+                  </p>
+                  <input
+                    id="guest-email"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    required
+                    value={guestEmail}
+                    onChange={(e) => setGuestEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full px-4 py-3 border border-cream-200 rounded-lg text-base focus:outline-none focus:border-gold-500"
+                  />
+                </div>
+              )}
+
               {!authLoading && !isAuthenticated && (
                 <div className="bg-gold-500/5 border border-gold-500/20 rounded-2xl p-5">
                   <p className="text-sm font-medium mb-2">
