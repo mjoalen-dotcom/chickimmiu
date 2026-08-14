@@ -1,5 +1,5 @@
 import type { GlobalConfig } from 'payload'
-import { isAdmin } from '../access/isAdmin'
+import { isAdmin, isAdminFieldLevel } from '../access/isAdmin'
 
 /**
  * 綠界電子發票設定 Global
@@ -31,8 +31,9 @@ export const InvoiceSettings: GlobalConfig = {
           label: 'MerchantID',
           type: 'text',
           required: false,
+          access: { read: isAdminFieldLevel },
           admin: {
-            description: '綠界特店代號（僅供紀錄；實際連線讀 .env ECPAY_INVOICE_MERCHANT_ID）',
+            description: '綠界特店代號（僅供紀錄；實際連線讀 .env ECPAY_INVOICE_MERCHANT_ID；僅管理員可見）',
           },
         },
         {
@@ -40,8 +41,9 @@ export const InvoiceSettings: GlobalConfig = {
           label: 'HashKey',
           type: 'text',
           required: false,
+          access: { read: isAdminFieldLevel },
           admin: {
-            description: '綠界 HashKey（僅供紀錄；實際連線讀 .env ECPAY_INVOICE_HASH_KEY）',
+            description: '綠界 HashKey（僅供紀錄；實際連線讀 .env ECPAY_INVOICE_HASH_KEY；僅管理員可見）',
           },
         },
         {
@@ -49,8 +51,9 @@ export const InvoiceSettings: GlobalConfig = {
           label: 'HashIV',
           type: 'text',
           required: false,
+          access: { read: isAdminFieldLevel },
           admin: {
-            description: '綠界 HashIV（僅供紀錄；實際連線讀 .env ECPAY_INVOICE_HASH_IV）',
+            description: '綠界 HashIV（僅供紀錄；實際連線讀 .env ECPAY_INVOICE_HASH_IV；僅管理員可見）',
           },
         },
         {

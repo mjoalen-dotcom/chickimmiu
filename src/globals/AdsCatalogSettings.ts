@@ -1,6 +1,6 @@
 import type { GlobalConfig } from 'payload'
 
-import { isAdmin } from '../access/isAdmin'
+import { isAdmin, isAdminFieldLevel } from '../access/isAdmin'
 import { revalidatePath } from 'next/cache'
 
 /**
@@ -58,11 +58,12 @@ export const AdsCatalogSettings: GlobalConfig = {
           name: 'feedSecretToken',
           label: 'Feed 存取 Token（選填）',
           type: 'text',
+          access: { read: isAdminFieldLevel },
           admin: {
             description:
               '若填入，feed URL 須加 `?token=<value>` 才能存取（防爬蟲）。' +
               'Meta/Google 後台的 feed URL 也要加上 token 參數。' +
-              '留空 = 公開存取。',
+              '留空 = 公開存取。僅管理員可見（此值若公開可讀等於防爬機制失效）。',
           },
         },
         {
@@ -250,10 +251,11 @@ export const AdsCatalogSettings: GlobalConfig = {
           name: 'systemUserToken',
           label: 'System User Token（選填，PR-F 才用）',
           type: 'text',
+          access: { read: isAdminFieldLevel },
           admin: {
             description:
               'Catalog Batch API 推送商品需要 catalog_management + business_management 權限。' +
-              '純 feed 模式不需要這個 token。',
+              '純 feed 模式不需要這個 token（僅管理員可見）。',
           },
         },
       ],

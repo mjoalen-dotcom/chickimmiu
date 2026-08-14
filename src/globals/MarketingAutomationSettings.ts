@@ -1,5 +1,5 @@
 import type { GlobalConfig } from 'payload'
-import { isAdmin } from '../access/isAdmin'
+import { isAdmin, isAdminFieldLevel } from '../access/isAdmin'
 
 /**
  * 行銷自動化設定 Global
@@ -53,8 +53,8 @@ export const MarketingAutomationSettings: GlobalConfig = {
           type: 'group',
           fields: [
             { name: 'enabled', label: '啟用', type: 'checkbox', defaultValue: true },
-            { name: 'channelAccessToken', label: 'Channel Access Token', type: 'text' },
-            { name: 'channelSecret', label: 'Channel Secret', type: 'text' },
+            { name: 'channelAccessToken', label: 'Channel Access Token', type: 'text', access: { read: isAdminFieldLevel } },
+            { name: 'channelSecret', label: 'Channel Secret', type: 'text', access: { read: isAdminFieldLevel } },
             { name: 'richMenuId', label: 'Rich Menu ID', type: 'text' },
           ],
         },
@@ -75,7 +75,7 @@ export const MarketingAutomationSettings: GlobalConfig = {
                 { label: 'SendGrid', value: 'sendgrid' },
               ],
             },
-            { name: 'apiKey', label: 'API Key', type: 'text' },
+            { name: 'apiKey', label: 'API Key', type: 'text', access: { read: isAdminFieldLevel } },
             { name: 'dailyLimit', label: '每日發送上限', type: 'number', defaultValue: 10000 },
           ],
         },
@@ -95,7 +95,7 @@ export const MarketingAutomationSettings: GlobalConfig = {
                 { label: '三竹簡訊', value: 'mitake' },
               ],
             },
-            { name: 'apiKey', label: 'API Key', type: 'text' },
+            { name: 'apiKey', label: 'API Key', type: 'text', access: { read: isAdminFieldLevel } },
             { name: 'dailyLimit', label: '每日發送上限', type: 'number', defaultValue: 1000 },
           ],
         },
@@ -105,7 +105,7 @@ export const MarketingAutomationSettings: GlobalConfig = {
           type: 'group',
           fields: [
             { name: 'enabled', label: '啟用', type: 'checkbox', defaultValue: false },
-            { name: 'fcmServerKey', label: 'FCM Server Key', type: 'text' },
+            { name: 'fcmServerKey', label: 'FCM Server Key', type: 'text', access: { read: isAdminFieldLevel } },
           ],
         },
         {
@@ -124,7 +124,7 @@ export const MarketingAutomationSettings: GlobalConfig = {
                 { label: 'SendGrid', value: 'sendgrid' },
               ],
             },
-            { name: 'apiKey', label: 'API Key', type: 'text' },
+            { name: 'apiKey', label: 'API Key', type: 'text', access: { read: isAdminFieldLevel } },
           ],
         },
       ],

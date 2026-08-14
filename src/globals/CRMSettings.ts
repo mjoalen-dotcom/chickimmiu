@@ -1,5 +1,5 @@
 import type { GlobalConfig } from 'payload'
-import { isAdmin } from '../access/isAdmin'
+import { isAdmin, isAdminFieldLevel } from '../access/isAdmin'
 
 /**
  * CRM 系統設定 Global
@@ -169,8 +169,8 @@ export const CRMSettings: GlobalConfig = {
             components: { Field: '@/components/admin/LineMessagingEnableField' },
           },
         },
-        { name: 'lineChannelAccessToken', label: 'LINE Channel Access Token', type: 'text', admin: { description: 'LINE Messaging API Token（env LINE_CHANNEL_ACCESS_TOKEN 優先）' } },
-        { name: 'lineChannelSecret', label: 'LINE Channel Secret', type: 'text', admin: { description: 'Webhook 驗章用（env LINE_CHANNEL_SECRET 優先）' } },
+        { name: 'lineChannelAccessToken', label: 'LINE Channel Access Token', type: 'text', access: { read: isAdminFieldLevel }, admin: { description: 'LINE Messaging API Token（env LINE_CHANNEL_ACCESS_TOKEN 優先，僅管理員可見）' } },
+        { name: 'lineChannelSecret', label: 'LINE Channel Secret', type: 'text', access: { read: isAdminFieldLevel }, admin: { description: 'Webhook 驗章用（env LINE_CHANNEL_SECRET 優先，僅管理員可見）' } },
         { name: 'emailEnabled', label: '啟用 Email 通知', type: 'checkbox', defaultValue: true },
         { name: 'emailFromName', label: '寄件人名稱', type: 'text', defaultValue: 'CHIC KIM & MIU' },
         { name: 'emailFromAddress', label: '寄件人 Email', type: 'email', defaultValue: 'hello@chickimmiu.com' },
