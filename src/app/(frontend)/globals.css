@@ -140,6 +140,23 @@ body.admin-tool-page [data-component="floating-menu"] {
 }
 
 /**
+ * 觸控導覽與頁尾操作區至少 44px。只擴大可點擊範圍，不放大字級，
+ * 避免手機、平板與電子白板以手指操作時誤觸；滑鼠桌機不受影響。
+ */
+@media (pointer: coarse) {
+  header a,
+  header button,
+  footer a,
+  footer button,
+  [data-component='floating-menu'] button {
+    display: inline-flex;
+    align-items: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/**
  * 智能白板 / 大型觸控面板。
  * 條件刻意綁 pointer: coarse —— 白板是觸控的，超寬桌機螢幕（3440x1440 等）
  * 不是，桌機版式維持原樣不動。
