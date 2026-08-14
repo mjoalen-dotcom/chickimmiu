@@ -35,6 +35,8 @@ import {
 
 const RATE_LIMIT_MAX = 5
 const RATE_LIMIT_WINDOW_MS = 10 * 60_000
+/** 訪客 session 有效期（秒）：夠走完付款與成功頁即可 */
+const GUEST_SESSION_MAX_AGE = 2 * 60 * 60
 
 function fail(status: number, error: string, code: string, extra?: Record<string, unknown>) {
   return NextResponse.json({ success: false, error, code, ...extra }, { status })
@@ -270,7 +272,10 @@ export async function POST(req: Request) {
         secure: Boolean(authConfig?.cookies?.secure) || sameSite === 'none',
         sameSite,
         domain: authConfig?.cookies?.domain || undefined,
-        maxAge: expiresIn,
+        // 訪客 session 只要撐到「付完款 + 看完成功頁」就夠 —— 用會員的 7 天期限會讓
+        // 顧客在往後一週都以合成信箱的臨時帳號「登入中」（頁首顯示已登入、會員中心
+        // 只有一張訂單），誤以為自己有帳號。壓到 2 小時。
+        maxAge: Math.min(expiresIn, GUEST_SESSION_MAX_AGE),
       })
     } catch (err) {
       // 簽 session 失敗不擋單 —— 訂單已成立，只是綠界線上付款那條會要求登入。
