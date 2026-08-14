@@ -18,6 +18,11 @@ import config from '../src/payload.config'
 import { computeOrderPricing } from '../src/lib/promotions/pricing'
 
 const BASE = process.env.VERIFY_BASE_URL || 'http://localhost:3006'
+/**
+ * SMOKE_ONLY=1（給 prod 用）：只跑「一筆正常訪客單 + 一筆偽造欄位單 → 驗證 → 取消」。
+ * 跳過限流連打（會在正式站塞一堆測試單）與後台開關切換（切換期間真顧客會撞到 403）。
+ */
+const SMOKE_ONLY = process.env.SMOKE_ONLY === '1'
 const log = (...args: unknown[]) => console.error('[guest-checkout]', ...args)
 const keepAlive = setInterval(() => {}, 60_000)
 let failures = 0
@@ -281,6 +286,7 @@ async function main() {
   })
 
   // ── 3.5 限流：同一個 IP 連打會被擋 ────────────────────────────────
+  if (!SMOKE_ONLY) {
   const burstIp = '10.9.9.9'
   let sawRateLimit = false
   for (let i = 0; i < 7; i++) {
@@ -302,8 +308,10 @@ async function main() {
     body: JSON.stringify(validBody),
   })
   check('偽造 X-Forwarded-For 不能繞過限流', spoofed.status === 429, { status: spoofed.status })
+  }
 
   // ── 4. 後台開關關閉 → 403 ─────────────────────────────────────────
+  if (!SMOKE_ONLY) {
   await payload.updateGlobal({ slug: 'checkout-settings', data: { checkoutAsGuest: false } as never })
   const disabled = await post(validBody)
   check('後台關閉訪客結帳 → 403', disabled.res.status === 403 && disabled.json?.code === 'GUEST_CHECKOUT_DISABLED', {
@@ -313,6 +321,7 @@ async function main() {
   await payload.updateGlobal({ slug: 'checkout-settings', data: { checkoutAsGuest: true } as never })
   const reEnabled = await post(validBody)
   check('開關打開後恢復可用（200）', reEnabled.res.status === 200, reEnabled.json)
+  }
 
   // ── 5. 收尾：把測試單全取消（庫存回補）─────────────────────────────
   const testOrders = await payload.find({
