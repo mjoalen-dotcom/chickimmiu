@@ -429,6 +429,12 @@ export async function runDailySegmentation(): Promise<{
       })
 
       for (const user of usersResult.docs) {
+        // 訪客結帳建的臨時帳號不是真會員（合成信箱不可投遞）→ 不進分群，
+        // 否則 CRM 名單與行銷分佈會被灌水，而且 member-segments 的 FK 會把
+        // 這些帳號釘住無法清理。在迴圈裡跳過而不是加 where 條件：欄位是後來
+        // 才加的，舊資料 is_guest 為 NULL，SQL 的 `!= 1` 對 NULL 不成立會
+        // 反過來把所有既有會員排除掉。
+        if ((user as unknown as { isGuest?: boolean }).isGuest === true) continue
         // SQLite 的 user.id 是 number；relationship 寫入與 update id 必須保留原型別，
         // String(id) 會被 Payload validation 打回「The following field is invalid: 會員」
         const rawUserId = user.id

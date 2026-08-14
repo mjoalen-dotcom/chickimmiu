@@ -4,7 +4,7 @@ import {
   escapeHtml,
   getCustomerEmailFromOrder,
   ntd,
-  orderAccountUrl,
+  orderViewUrl,
   paymentLabelMap,
 } from './_shared'
 import { renderEmailFromTemplate } from './renderFromTemplate'
@@ -38,7 +38,7 @@ export async function sendPaymentReceivedEmail(
   const paymentLine = paymentLabel
     ? `<div style="font-size:13px;color:#666;margin:8px 0">付款方式：${escapeHtml(paymentLabel)}</div>`
     : ''
-  const orderButton = `<div style="text-align:center;margin:24px 0 8px"><a href="${escapeHtml(orderAccountUrl(orderId))}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">查看訂單</a></div>`
+  const orderButton = `<div style="text-align:center;margin:24px 0 8px"><a href="${escapeHtml(orderViewUrl(order))}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">查看訂單</a></div>`
 
   const content = `    <p style="margin:0 0 16px;font-size:14px;line-height:1.6">${escapeHtml(name || '會員')} 您好，</p>
     <p style="margin:0 0 16px;font-size:14px;line-height:1.6">

@@ -315,6 +315,34 @@ async function main() {
   check('偽造 X-Forwarded-For 不能繞過限流', spoofed.status === 429, { status: spoofed.status })
   }
 
+  // ── 3.7 訂單查詢（訪客唯一的查單管道）────────────────────────────
+  const lookup = async (payloadBody: unknown) => {
+    const res = await fetch(`${BASE}/api/orders/lookup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payloadBody),
+    })
+    const json = (await res.json().catch(() => null)) as Record<string, unknown> | null
+    return { res, json }
+  }
+  const okLookup = await lookup({ orderNumber: data.orderNumber, email: validBody.email })
+  check('查詢：正確編號 + 正確信箱 → 200', okLookup.res.status === 200 && okLookup.json?.success === true, okLookup.json)
+  const lookupData = (okLookup.json?.data ?? {}) as Record<string, unknown>
+  check('查詢結果金額與訂單一致', Number(lookupData.total) === Number(created.total), {
+    lookup: lookupData.total,
+    order: created.total,
+  })
+  check('查詢結果電話已遮罩', /\*\*\*/.test(String((lookupData.recipient as Record<string, unknown>)?.phone ?? '')), lookupData.recipient)
+  const wrongEmail = await lookup({ orderNumber: data.orderNumber, email: 'someone-else@example.com' })
+  const unknownOrder = await lookup({ orderNumber: 'CKMU00000000999', email: validBody.email })
+  check('查詢：信箱不符 → 404', wrongEmail.res.status === 404, wrongEmail.json)
+  check('查詢：訂單不存在 → 404', unknownOrder.res.status === 404, unknownOrder.json)
+  check(
+    '查詢：兩種失敗回同一訊息（不透露訂單是否存在）',
+    JSON.stringify(wrongEmail.json) === JSON.stringify(unknownOrder.json),
+    { wrongEmail: wrongEmail.json, unknownOrder: unknownOrder.json },
+  )
+
   // ── 4. 後台開關關閉 → 403 ─────────────────────────────────────────
   if (!SMOKE_ONLY) {
   await payload.updateGlobal({ slug: 'checkout-settings', data: { checkoutAsGuest: false } as never })

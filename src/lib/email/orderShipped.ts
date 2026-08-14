@@ -4,7 +4,7 @@ import {
   escapeHtml,
   getCustomerEmailFromOrder,
   ntd,
-  orderAccountUrl,
+  orderViewUrl,
   renderAddress,
   renderTracking,
   type OrderItem,
@@ -54,7 +54,7 @@ export async function sendOrderShippedEmail(
     </div>
 
     <div style="text-align:center;margin:24px 0 8px">
-      <a href="${escapeHtml(orderAccountUrl(orderId))}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">查看訂單</a>
+      <a href="${escapeHtml(orderViewUrl(order))}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">查看訂單</a>
     </div>
 
     <p style="font-size:12px;color:#999;line-height:1.6;margin:16px 0 0;padding-top:16px;border-top:1px solid #eee">
@@ -62,7 +62,7 @@ export async function sendOrderShippedEmail(
     </p>`
 
   // 後台模板優先；無 / 停用 / 出錯 → fallback 上面的 hardcoded content
-  const orderButton = `<div style="text-align:center;margin:24px 0 8px"><a href="${escapeHtml(orderAccountUrl(orderId))}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">查看訂單</a></div>`
+  const orderButton = `<div style="text-align:center;margin:24px 0 8px"><a href="${escapeHtml(orderViewUrl(order))}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">查看訂單</a></div>`
   const tpl = await renderEmailFromTemplate(payload, 'order_shipped', {
     customerName: escapeHtml(name || '會員'),
     orderNumber: escapeHtml(orderNumber),

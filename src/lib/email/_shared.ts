@@ -188,6 +188,21 @@ ${content}
 </body></html>`
 }
 
+/**
+ * 「查看訂單」連結 —— 訪客訂單要走查詢頁，不能給會員中心。
+ * 訪客訂單的 customer 是合成信箱的臨時帳號，session 只有 2 小時，
+ * `/account/orders/:id` 對顧客等於死連結；改導到 `/order-lookup?order=編號`
+ * （查詢頁用「訂單編號 + 聯絡信箱」驗身分）。
+ */
+export function orderViewUrl(order: Record<string, unknown>): string {
+  const base = (process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com').replace(/\/$/, '')
+  const guestEmail = typeof order.guestEmail === 'string' ? order.guestEmail.trim() : ''
+  if (guestEmail) {
+    return `${base}/order-lookup?order=${encodeURIComponent(String(order.orderNumber ?? ''))}`
+  }
+  return orderAccountUrl(order.id as string | number | undefined)
+}
+
 export function orderAccountUrl(orderId?: string | number): string {
   const base = (process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com').replace(
     /\/$/,

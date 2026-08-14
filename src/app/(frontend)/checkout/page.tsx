@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { signIn } from 'next-auth/react'
+import SocialLoginButtons from '@/components/auth/SocialLoginButtons'
+import type { SocialProviderFlags } from '@/lib/auth/socialProviders'
 import { useCurrentUser } from '@/lib/auth/useCurrentUser'
 import {
   CreditCard,
@@ -415,6 +416,22 @@ export default function CheckoutPage() {
 
   /** 訪客結帳的聯絡信箱（訂單確認信寄送目標；登入者不使用） */
   const [guestEmail, setGuestEmail] = useState('')
+
+  // 可用的社群登入 provider（後台開關 AND 憑證齊全，與登入頁同一份判斷）
+  const [socialProviders, setSocialProviders] = useState<SocialProviderFlags>({
+    google: false,
+    facebook: false,
+    line: false,
+    apple: false,
+  })
+  useEffect(() => {
+    fetch('/api/auth/social-providers')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((p) => { if (p) setSocialProviders(p) })
+      .catch(() => { /* 全關 = 不顯示按鈕 */ })
+  }, [])
+  const hasAnySocialProvider =
+    socialProviders.google || socialProviders.facebook || socialProviders.line || socialProviders.apple
   const [tosAccepted, setTosAccepted] = useState(false)
   const [marketingAccepted, setMarketingAccepted] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -1373,34 +1390,18 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {!authLoading && !isAuthenticated && (
+              {/* 只顯示「後台已啟用且憑證齊全」的 provider —— 原本三顆是硬編碼，
+                  點到還沒申請憑證的（Google / Facebook）會直接進 NextAuth 錯誤頁 */}
+              {!authLoading && !isAuthenticated && hasAnySocialProvider && (
                 <div className="bg-gold-500/5 border border-gold-500/20 rounded-2xl p-5">
-                  <p className="text-sm font-medium mb-2">
-                    登入後可快速填入收件資訊
+                  <p className="text-sm font-medium mb-3">
+                    登入後可快速填入收件資訊，並累積點數
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => signIn('google', { callbackUrl: '/checkout' })}
-                      className="px-4 py-2 bg-white border border-cream-200 rounded-lg text-xs hover:bg-cream-50 transition-colors"
-                    >
-                      Google 登入
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => signIn('facebook', { callbackUrl: '/checkout' })}
-                      className="px-4 py-2 bg-white border border-cream-200 rounded-lg text-xs hover:bg-cream-50 transition-colors"
-                    >
-                      Facebook 登入
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => signIn('line', { callbackUrl: '/checkout' })}
-                      className="px-4 py-2 bg-white border border-cream-200 rounded-lg text-xs hover:bg-cream-50 transition-colors"
-                    >
-                      LINE 登入
-                    </button>
-                  </div>
+                  <SocialLoginButtons
+                    providers={socialProviders}
+                    mode="login"
+                    redirectTo="/checkout"
+                  />
                 </div>
               )}
 

@@ -40,6 +40,8 @@ export default async function CheckoutSuccessPage({
   let paymentStatus = 'unpaid'
   let paymentMethod = ''
   let found = false
+  // 訪客訂單沒有可用的會員中心（臨時帳號 + 2 小時 session）→ 導到訂單查詢頁
+  let isGuestOrder = false
 
   if (process.env.DATABASE_URI) {
     try {
@@ -56,6 +58,7 @@ export default async function CheckoutSuccessPage({
         orderStatus = (order.status as string) ?? 'pending'
         paymentStatus = (order.paymentStatus as string) ?? 'unpaid'
         paymentMethod = (order.paymentMethod as string) ?? ''
+        isGuestOrder = Boolean(order.guestEmail)
       }
     } catch {
       // fallback to pending/unpaid defaults
@@ -105,15 +108,17 @@ export default async function CheckoutSuccessPage({
           )}
 
           <p className="text-xs text-muted-foreground border-t border-cream-200 pt-2">
-            {found
-              ? '訂單確認信已寄至您的信箱，您也可以在「我的帳戶」中查看訂單進度。'
-              : '請至「我的帳戶 → 我的訂單」查看訂單進度。'}
+            {isGuestOrder
+              ? '訂單確認信已寄至您填寫的信箱。您可以用「訂單編號 + 聯絡信箱」隨時查詢訂單進度。'
+              : found
+                ? '訂單確認信已寄至您的信箱，您也可以在「我的帳戶」中查看訂單進度。'
+                : '請至「我的帳戶 → 我的訂單」查看訂單進度。'}
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
-            href="/account/orders"
+            href={isGuestOrder ? `/order-lookup?order=${encodeURIComponent(orderId)}` : '/account/orders'}
             className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-foreground text-cream-50 rounded-full text-sm tracking-wide hover:bg-foreground/90 transition-colors"
           >
             查看訂單

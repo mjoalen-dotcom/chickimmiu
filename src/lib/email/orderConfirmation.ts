@@ -158,9 +158,11 @@ export async function sendOrderConfirmationEmail(
   })()
 
   const subject = `【CHIC KIM & MIU】訂單確認 ${orderNumber}`
-  const accountUrl =
-    (process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com').replace(/\/$/, '') +
-    '/account/orders'
+  // 訪客訂單導到查詢頁（會員中心對訪客是死連結，臨時帳號 session 只有 2 小時）
+  const accountUrl = guestEmail
+    ? `${(process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com').replace(/\/$/, '')}/order-lookup?order=${encodeURIComponent(orderNumber)}`
+    : (process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com').replace(/\/$/, '') +
+      '/account/orders'
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"/></head>
