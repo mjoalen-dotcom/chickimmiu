@@ -52,7 +52,7 @@ export default async function CheckoutSuccessPage({
         collection: 'orders',
         where: { orderNumber: { equals: orderId } },
         limit: 1,
-        depth: 0,
+        depth: 1, // 帶出 customer 以判斷是否已升級為會員
       })
       const order = ((result.docs[0] as unknown as LooseRecord) ?? null) as LooseRecord | null
       if (order) {
@@ -60,7 +60,11 @@ export default async function CheckoutSuccessPage({
         orderStatus = (order.status as string) ?? 'pending'
         paymentStatus = (order.paymentStatus as string) ?? 'unpaid'
         paymentMethod = (order.paymentMethod as string) ?? ''
-        isGuestOrder = Boolean(order.guestEmail)
+        // 已經按過「加入會員」的訂單不再顯示邀請卡（否則回訪這個網址會看到
+        // 一張按下去只會回 409 的表單）
+        const customer = order.customer as { isGuest?: boolean } | string | number | undefined
+        const stillGuest = typeof customer === 'object' && customer ? customer.isGuest === true : true
+        isGuestOrder = Boolean(order.guestEmail) && stillGuest
         guestEmail = (order.guestEmail as string | undefined) ?? undefined
       }
     } catch {
