@@ -3,6 +3,7 @@ import { CheckCircle, Package, ArrowRight, Home } from 'lucide-react'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { ThankYouRecommendations } from '@/components/recommendation/ThankYouRecommendations'
+import GuestJoinForm from '@/components/checkout/GuestJoinForm'
 
 type LooseRecord = Record<string, unknown>
 
@@ -42,6 +43,7 @@ export default async function CheckoutSuccessPage({
   let found = false
   // 訪客訂單沒有可用的會員中心（臨時帳號 + 2 小時 session）→ 導到訂單查詢頁
   let isGuestOrder = false
+  let guestEmail: string | undefined
 
   if (process.env.DATABASE_URI) {
     try {
@@ -59,6 +61,7 @@ export default async function CheckoutSuccessPage({
         paymentStatus = (order.paymentStatus as string) ?? 'unpaid'
         paymentMethod = (order.paymentMethod as string) ?? ''
         isGuestOrder = Boolean(order.guestEmail)
+        guestEmail = (order.guestEmail as string | undefined) ?? undefined
       }
     } catch {
       // fallback to pending/unpaid defaults
@@ -132,6 +135,13 @@ export default async function CheckoutSuccessPage({
             回首頁
           </Link>
         </div>
+
+        {/* 訪客：邀請一鍵成為會員（用剛結完帳的訪客 session，不必再填一次資料） */}
+        {isGuestOrder && (
+          <div className="max-w-md mx-auto mt-10">
+            <GuestJoinForm email={guestEmail} compact />
+          </div>
+        )}
 
         <ThankYouRecommendations />
       </div>

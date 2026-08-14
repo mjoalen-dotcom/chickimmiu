@@ -4,12 +4,15 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 import { checkRateLimit } from '@/lib/rateLimit'
+import { parseLookupIdentifier, phoneMatches } from '@/lib/commerce/orderLookup'
 
 /**
- * POST /api/orders/lookup —— 訂單編號 + 聯絡信箱 查訂單（WO-BP002 追加）
+ * POST /api/orders/lookup —— 訂單編號 + 手機（或信箱）查訂單（WO-BP002 追加）
  * ─────────────────────────────────────────────────────────────────
  * 訪客沒有帳號可以查單（臨時帳號用合成信箱、session 只有 2 小時），
- * 這支是訪客的查詢入口；會員用自己的註冊信箱一樣查得到。
+ * 這支是訪客的查詢入口。識別碼吃**手機或信箱**：台灣顧客記得自己的手機，
+ * 卻常忘記結帳時填的是哪個信箱 —— 手機比對的是訂單上的收件人電話
+ * （寄貨三原則之一，一定有值）。會員用註冊信箱或手機一樣查得到。
  *
  * 防濫用：
  * - 每個 IP 10 次 / 10 分鐘（訂單編號是流水號，可被枚舉）
@@ -47,12 +50,12 @@ function maskPhone(phone?: string): string | undefined {
 
 const NOT_FOUND = {
   success: false,
-  error: '查無此訂單，請確認訂單編號與聯絡信箱是否正確',
+  error: '查無此訂單，請確認訂單編號與手機號碼（或聯絡信箱）是否正確',
   code: 'NOT_FOUND',
 } as const
 
 export async function POST(req: Request) {
-  let body: { orderNumber?: unknown; email?: unknown }
+  let body: { orderNumber?: unknown; identifier?: unknown; email?: unknown }
   try {
     body = (await req.json()) as typeof body
   } catch {
@@ -60,10 +63,17 @@ export async function POST(req: Request) {
   }
 
   const orderNumber = typeof body.orderNumber === 'string' ? body.orderNumber.trim() : ''
-  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
-  if (!orderNumber || !email) {
+  // `identifier` 是新欄位（手機或信箱擇一）；`email` 保留相容舊呼叫端
+  const rawIdentifier =
+    typeof body.identifier === 'string' && body.identifier.trim()
+      ? body.identifier
+      : typeof body.email === 'string'
+        ? body.email
+        : ''
+  const identifier = parseLookupIdentifier(rawIdentifier)
+  if (!orderNumber || !identifier) {
     return NextResponse.json(
-      { success: false, error: '請填寫訂單編號與聯絡信箱', code: 'VALIDATION_FAILED' },
+      { success: false, error: '請填寫訂單編號與手機號碼（或聯絡信箱）', code: 'VALIDATION_FAILED' },
       { status: 400 },
     )
   }
@@ -89,10 +99,21 @@ export async function POST(req: Request) {
     if (!order) return NextResponse.json(NOT_FOUND, { status: 404 })
 
     const guestEmail = typeof order.guestEmail === 'string' ? order.guestEmail : ''
-    const customer = order.customer as { email?: string } | string | number | undefined
+    const customer = order.customer as { email?: string; phone?: string } | string | number | undefined
     const memberEmail =
       customer && typeof customer === 'object' && typeof customer.email === 'string' ? customer.email : ''
-    const ok = (guestEmail && emailMatches(guestEmail, email)) || (memberEmail && emailMatches(memberEmail, email))
+    const memberPhone =
+      customer && typeof customer === 'object' && typeof customer.phone === 'string' ? customer.phone : ''
+    const orderPhone = ((order.shippingAddress ?? {}) as Record<string, unknown>).phone as string | undefined
+
+    const ok =
+      identifier.kind === 'email'
+        ? Boolean(
+            (guestEmail && emailMatches(guestEmail, identifier.value)) ||
+              (memberEmail && emailMatches(memberEmail, identifier.value)),
+          )
+        : // 手機：比訂單上的收件人電話，其次比會員資料上的手機
+          phoneMatches(orderPhone, identifier.value) || phoneMatches(memberPhone, identifier.value)
     if (!ok) return NextResponse.json(NOT_FOUND, { status: 404 })
 
     const items = (Array.isArray(order.items) ? order.items : []) as Array<Record<string, unknown>>

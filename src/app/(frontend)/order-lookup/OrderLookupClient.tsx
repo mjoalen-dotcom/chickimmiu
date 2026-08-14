@@ -73,7 +73,7 @@ const ntd = (n?: number) => `NT$ ${(n ?? 0).toLocaleString('zh-TW')}`
 export default function OrderLookupClient() {
   const search = useSearchParams()
   const [orderNumber, setOrderNumber] = useState(search.get('order') ?? '')
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<LookupResult | null>(null)
@@ -82,8 +82,8 @@ export default function OrderLookupClient() {
     e.preventDefault()
     setError(null)
     setResult(null)
-    if (!orderNumber.trim() || !email.trim()) {
-      setError('請填寫訂單編號與聯絡信箱')
+    if (!orderNumber.trim() || !identifier.trim()) {
+      setError('請填寫訂單編號與手機號碼（或聯絡信箱）')
       return
     }
     setLoading(true)
@@ -91,7 +91,7 @@ export default function OrderLookupClient() {
       const res = await fetch('/api/orders/lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderNumber: orderNumber.trim(), email: email.trim() }),
+        body: JSON.stringify({ orderNumber: orderNumber.trim(), identifier: identifier.trim() }),
       })
       const body = (await res.json().catch(() => null)) as
         | { success?: boolean; data?: LookupResult; error?: string }
@@ -115,7 +115,7 @@ export default function OrderLookupClient() {
     <div className="container py-10 md:py-16 max-w-2xl">
       <h1 className="text-2xl font-light tracking-wide mb-2">訂單查詢</h1>
       <p className="text-sm text-muted-foreground mb-8">
-        輸入訂單編號與下單時填寫的聯絡信箱即可查詢。已註冊會員也可以直接
+        輸入訂單編號與下單時填寫的收件人手機即可查詢（也可以用聯絡信箱）。已註冊會員也可以直接
         <Link href="/login?redirect=/account/orders" className="text-gold-600 underline underline-offset-2 mx-1">
           登入會員中心
         </Link>
@@ -138,19 +138,22 @@ export default function OrderLookupClient() {
           />
         </div>
         <div>
-          <label htmlFor="lookup-email" className="block text-sm font-medium mb-1">
-            聯絡信箱 <span className="text-red-500">*</span>
+          <label htmlFor="lookup-identifier" className="block text-sm font-medium mb-1">
+            手機號碼 <span className="text-red-500">*</span>
           </label>
           <input
-            id="lookup-email"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
+            id="lookup-identifier"
+            type="text"
+            inputMode="tel"
+            autoComplete="tel"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            placeholder="09xx-xxx-xxx"
             className={inputClass}
           />
+          <p className="text-xs text-muted-foreground mt-1.5">
+            填下單時的收件人手機即可；也可以改填當時的聯絡信箱。
+          </p>
         </div>
         <button
           type="submit"

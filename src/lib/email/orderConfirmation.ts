@@ -1,5 +1,6 @@
 import type { Payload } from 'payload'
 import { renderEmailFromTemplate } from './renderFromTemplate'
+import { createGuestClaimToken, GUEST_CLAIM_TTL_MS } from '@/lib/commerce/guestClaimToken'
 
 /**
  * 寄送訂單確認信給顧客（LB-05：訂單 create 當下觸發）
@@ -164,6 +165,30 @@ export async function sendOrderConfirmationEmail(
     : (process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com').replace(/\/$/, '') +
       '/account/orders'
 
+  const siteBase = (process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com').replace(/\/$/, '')
+  const orderId = order.id as string | number | undefined
+  // 訪客：邀請一鍵成為會員。連結帶 HMAC 簽章 token（14 天）—— 能收到這封信
+  // 就等於證明擁有這個信箱，所以不需要再驗證一次身分就能設定密碼。
+  const joinBlock = guestEmail && orderId != null ? (() => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const secret = (payload as any).secret as string
+      const token = createGuestClaimToken(secret, {
+        orderId,
+        email: guestEmail,
+        expiresAt: Date.now() + GUEST_CLAIM_TTL_MS,
+      })
+      const joinUrl = `${siteBase}/join-member?t=${encodeURIComponent(token)}`
+      return `<div style="background:#fff8e7;border:1px solid #f0e2c0;border-radius:10px;padding:16px;margin:20px 0;text-align:center">
+        <div style="font-size:14px;margin-bottom:6px">只要設定一組密碼，就能成為會員</div>
+        <div style="font-size:12px;color:#777;margin-bottom:12px">這筆訂單會直接進到您的會員中心，收件資訊自動存進地址簿，之後購物開始累積點數。</div>
+        <a href="${escapeHtml(joinUrl)}" style="display:inline-block;background:#333;color:#fff;text-decoration:none;padding:10px 24px;border-radius:8px;font-size:13px">設定密碼，成為會員</a>
+      </div>`
+    } catch {
+      return ''
+    }
+  })() : ''
+
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"/></head>
 <body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,'Helvetica Neue',Arial,'Microsoft JhengHei',sans-serif;color:#333">
@@ -203,6 +228,7 @@ export async function sendOrderConfirmationEmail(
     <div style="text-align:center;margin:24px 0 8px">
       <a href="${escapeHtml(accountUrl)}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">查看訂單</a>
     </div>
+    ${joinBlock}
   </div>
 
   <p style="text-align:center;color:#999;font-size:12px;margin:24px 0 8px;line-height:1.6">
@@ -231,7 +257,7 @@ export async function sendOrderConfirmationEmail(
   const noteBlock = customerNote
     ? `<div style="background:#fff8e7;padding:12px;border-radius:8px;font-size:13px;color:#666;margin:16px 0"><strong>顧客備註：</strong> ${escapeHtml(customerNote)}</div>`
     : ''
-  const orderButton = `<div style="text-align:center;margin:24px 0 8px"><a href="${escapeHtml(accountUrl)}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">查看訂單</a></div>`
+  const orderButton = `<div style="text-align:center;margin:24px 0 8px"><a href="${escapeHtml(accountUrl)}" style="display:inline-block;background:#c9a961;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px">查看訂單</a></div>` + joinBlock
   const tpl = await renderEmailFromTemplate(payload, 'order_confirmation', {
     customerName: escapeHtml(name || '會員'),
     orderNumber: escapeHtml(orderNumber),
@@ -246,6 +272,7 @@ export async function sendOrderConfirmationEmail(
     ),
     noteBlock,
     orderButton,
+    joinBlock,
   })
 
   await payload.sendEmail({

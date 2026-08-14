@@ -130,8 +130,9 @@ async function main() {
   const stockBefore = Number(product.stock)
   log('商品 =', product.id, product.name, 'stock =', stockBefore, '| 物流 =', shippingMethod.name)
 
+  const stamp = String(Date.now()).slice(-8)
   const validBody = {
-    email: 'guest.verify@example.com',
+    email: `guest.verify+${stamp}@example.com`,
     items: [{ productId: product.id, quantity: 1 }],
     couponCodes: [],
     shippingMethodId: shippingMethod.id,
@@ -333,7 +334,13 @@ async function main() {
     order: created.total,
   })
   check('查詢結果電話已遮罩', /\*\*\*/.test(String((lookupData.recipient as Record<string, unknown>)?.phone ?? '')), lookupData.recipient)
-  const wrongEmail = await lookup({ orderNumber: data.orderNumber, email: 'someone-else@example.com' })
+  // 手機查單（主要入口：顧客記得自己的手機，不一定記得填了哪個信箱）
+  const byPhone = await lookup({ orderNumber: data.orderNumber, identifier: '+886 912 345 678' })
+  check('查詢：用手機（+886 寫法）也查得到', byPhone.res.status === 200 && byPhone.json?.success === true, byPhone.json)
+  const byWrongPhone = await lookup({ orderNumber: data.orderNumber, identifier: '0987654321' })
+  check('查詢：手機不符 → 404', byWrongPhone.res.status === 404, byWrongPhone.json)
+
+  const wrongEmail = await lookup({ orderNumber: data.orderNumber, email: validBody.email.replace('guest.verify', 'someone.else') })
   const unknownOrder = await lookup({ orderNumber: 'CKMU00000000999', email: validBody.email })
   check('查詢：信箱不符 → 404', wrongEmail.res.status === 404, wrongEmail.json)
   check('查詢：訂單不存在 → 404', unknownOrder.res.status === 404, unknownOrder.json)
@@ -342,6 +349,63 @@ async function main() {
     JSON.stringify(wrongEmail.json) === JSON.stringify(unknownOrder.json),
     { wrongEmail: wrongEmail.json, unknownOrder: unknownOrder.json },
   )
+
+  // ── 3.8 訪客一鍵轉會員（成功頁那張卡片走的路徑）────────────────────
+  const guestCookie = (okRun.res.headers.get('set-cookie') || '').split(';')[0]
+  const claim = async (payloadBody: unknown, cookie?: string) => {
+    const res = await fetch(`${BASE}/api/checkout/guest-claim`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(cookie ? { cookie } : {}) },
+      body: JSON.stringify(payloadBody),
+    })
+    const json = (await res.json().catch(() => null)) as Record<string, unknown> | null
+    return { res, json }
+  }
+  const weak = await claim({ password: 'short', acceptTerms: true }, guestCookie)
+  check('轉會員：密碼太短 → 400', weak.res.status === 400 && weak.json?.code === 'WEAK_PASSWORD', weak.json)
+  const noTerms = await claim({ password: 'verify-pass-1234', acceptTerms: false }, guestCookie)
+  check('轉會員：未同意條款 → 400', noTerms.res.status === 400 && noTerms.json?.code === 'TERMS_REQUIRED', noTerms.json)
+  const noAuth = await claim({ password: 'verify-pass-1234', acceptTerms: true })
+  check('轉會員：沒有 session 也沒有 token → 401', noAuth.res.status === 401, noAuth.json)
+  const badToken = await claim({ password: 'verify-pass-1234', acceptTerms: true, token: 'forged.token' })
+  check('轉會員：偽造 token → 400', badToken.res.status === 400 && badToken.json?.code === 'INVALID_TOKEN', badToken.json)
+
+  const claimed = await claim({ password: 'verify-pass-1234', acceptTerms: true }, guestCookie)
+  check('轉會員：成功（200）', claimed.res.status === 200 && claimed.json?.success === true, claimed.json)
+  const upgraded = (await payload.findByID({
+    collection: 'users',
+    id: created.customer as never,
+    depth: 0,
+    overrideAccess: true,
+  })) as unknown as Record<string, unknown>
+  check('轉會員後 isGuest = false', upgraded.isGuest !== true, upgraded.isGuest)
+  check('轉會員後信箱換成顧客真信箱', String(upgraded.email).toLowerCase() === validBody.email.toLowerCase(), upgraded.email)
+  check('轉會員後手機帶入會員資料', String(upgraded.phone ?? '') === validBody.shippingAddress.phone, upgraded.phone)
+  check(
+    '轉會員後地址簿有這次的收件資訊',
+    Array.isArray(upgraded.addresses) && (upgraded.addresses as unknown[]).length > 0,
+    upgraded.addresses,
+  )
+  const orderAfterClaim = (await payload.findByID({
+    collection: 'orders',
+    id: created.id as never,
+    depth: 0,
+    overrideAccess: true,
+  })) as unknown as Record<string, unknown>
+  check('原訂單仍掛在同一個帳號（自動進會員中心）', String(orderAfterClaim.customer) === String(created.customer), {
+    before: created.customer,
+    after: orderAfterClaim.customer,
+  })
+  // 真正的證明：用新密碼登入得進去（密碼有正確 hash、帳號沒卡在未驗證）
+  const loginRes = await fetch(`${BASE}/api/users/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: validBody.email, password: 'verify-pass-1234' }),
+  })
+  check('轉會員後可用新密碼登入（200）', loginRes.status === 200, { status: loginRes.status })
+
+  const claimAgain = await claim({ password: 'verify-pass-5678', acceptTerms: true }, guestCookie)
+  check('轉會員：重複執行被擋（409）', claimAgain.res.status === 409, claimAgain.json)
 
   // ── 4. 後台開關關閉 → 403 ─────────────────────────────────────────
   if (!SMOKE_ONLY) {

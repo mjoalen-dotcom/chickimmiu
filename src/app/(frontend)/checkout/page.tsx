@@ -935,9 +935,27 @@ export default function CheckoutPage() {
     e.preventDefault()
     setSubmitError(null)
 
+    // 寄貨三原則：收件人姓名 / 電話 / 地址缺一不可（三種取貨方式都適用）。
+    // 宅配欄位靠 input required 擋；超商與面交的「地址」來自門市或取貨地點，
+    // 表單 required 管不到 → 在這裡補驗，否則會被伺服器擋成看不懂的欄位錯誤。
+    if (!form.recipientName.trim()) {
+      setSubmitError('請填寫收件人姓名')
+      return
+    }
+    if (!form.phone.trim()) {
+      setSubmitError('請填寫聯絡電話')
+      return
+    }
+
     // 超商取貨驗證
-    if (isConvenienceStore && !storeInfo.storeName) {
-      setSubmitError('請選擇取貨門市')
+    if (isConvenienceStore && (!storeInfo.storeName || !storeInfo.storeAddress)) {
+      setSubmitError(
+        storeInfo.storeName ? '取貨門市地址缺漏，請重新選擇門市' : '請選擇取貨門市',
+      )
+      return
+    }
+    if (!isConvenienceStore && !isMeetup && !form.address.trim()) {
+      setSubmitError('請填寫詳細地址')
       return
     }
 
