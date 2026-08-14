@@ -248,6 +248,18 @@ export default async function FrontendLayout({
             __html: `(function(){try{var d=document.createElement('div');d.style.cssText='display:flex;flex-direction:column;row-gap:1px;position:absolute;visibility:hidden';d.appendChild(document.createElement('div'));d.appendChild(document.createElement('div'));document.documentElement.appendChild(d);var ok=d.offsetHeight===1;document.documentElement.removeChild(d);if(!ok){document.documentElement.className+=' no-flexgap';}}catch(e){}})();`,
           }}
         />
+        {/* 舊瀏覽器的現代語法探測。
+            本站的 JS bundle 用了 ?. 與 ??（需 Chromium 80）。2019 年的智慧電視是
+            Chromium 63，解析期就會 SyntaxError → 整個 React 不會 hydrate。
+            好消息是本站有伺服器端渲染，商品與內容照樣看得到，壞掉的是互動
+            （選單、購物車、輪播）。所以這裡不整頁接管，只掛一條提示帶使用者去手機或電腦。
+            用 new Function 讓語法錯誤發生在「編譯字串」而不是解析本檔，
+            因此這段本身必須是 ES5。 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var ok=false;try{new Function("var f=a=>a?.b??1;return f");ok=true}catch(e){ok=false}if(!ok){document.documentElement.className+=' legacy-js';}})();`,
+          }}
+        />
         <GTMScript
           gtmId={(tracking.gtmId as string) || process.env.NEXT_PUBLIC_GTM_ID || null}
           metaPixelId={(tracking.metaPixelId as string) || process.env.NEXT_PUBLIC_META_PIXEL_ID || null}
@@ -335,6 +347,15 @@ export default async function FrontendLayout({
         )}
       </head>
       <body className="font-sans antialiased bg-background text-foreground">
+        {/* 舊瀏覽器提示。伺服器端就渲染進 DOM，預設由 CSS 隱藏，
+            只有 <head> 的探測掛上 .legacy-js 時才顯示 —— 因為那些瀏覽器
+            跑不動 React，提示不能交給 React 來掛。
+            刻意做成一條窄橫幅而不是整頁接管：內容在舊電視上是看得到的，
+            擋掉反而更糟，只是購物流程需要換裝置。 */}
+        <div id="legacy-notice">
+          此裝置的瀏覽器版本較舊，商品瀏覽正常，但購物車與結帳等功能可能無法使用。
+          建議改用<strong>手機或電腦</strong>完成購買。
+        </div>
         <NextIntlClientProvider locale={locale} messages={messages}>
         <Providers>
           <BootBeaconCleanup />

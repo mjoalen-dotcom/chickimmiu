@@ -367,3 +367,31 @@ body.admin-tool-page [data-component="floating-menu"] {
 .no-flexgap .inline-flex.lg\:gap-16{margin:-2.0rem}
 .no-flexgap .inline-flex.lg\:gap-16>*{margin:2.0rem}
 }
+
+/* 舊瀏覽器提示橫幅。
+   預設隱藏；<head> 的探測若判定不支援現代語法，會在 <html> 掛上 .legacy-js。
+   ⚠ 這裡用 #id 選擇器，所以隱藏規則的特異度必須壓得住 —— 直接用 #id 寫 display:none，
+   顯示規則再用 .legacy-js #id 提高特異度。若把隱藏寫成 [hidden] 之類的低特異度選擇器，
+   會被 #id 的其他宣告蓋掉、對所有瀏覽器都顯示（同類 bug 在 jinhow 實測踩過）。
+   配色與字級刻意走高明度對比、不靠色相區分。 */
+#legacy-notice {
+  display: none;
+}
+
+.legacy-js #legacy-notice {
+  display: block;
+  position: relative;
+  z-index: 90;
+  background: #2C2C2C;
+  color: #F8F1E9;
+  padding: 12px 16px;
+  font-size: 15px;
+  line-height: 1.7;
+  text-align: center;
+  border-bottom: 2px solid #C19A5B;
+}
+
+.legacy-js #legacy-notice strong {
+  color: #E2C89A;
+  font-weight: 600;
+}
