@@ -15,6 +15,10 @@ import {
   validateArticleImageVariant,
   type ImageRightsMetadata,
 } from '../lib/blog/articleStudio'
+import {
+  BLOG_CATEGORY_OPTIONS,
+  blogSiteFromPost,
+} from '../lib/blog/categoryTaxonomy'
 import { safeRevalidate } from '../lib/revalidate'
 import { triggerKimBlogDeploy } from '../lib/blog/kimSyndication'
 import {
@@ -83,13 +87,13 @@ export const BlogPosts: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: [
       'title',
+      'publishToKimLafayette',
       'category',
       'viewCount',
       'status',
-      'publishToKimLafayette',
       'publishedAt',
     ],
-    group: 'Ⓚ 金老佛爺部落格',
+    group: 'Ⓚ 兩站部落格',
     listSearchableFields: ['title', 'slug', 'excerpt'],
     pagination: {
       defaultLimit: 25,
@@ -125,6 +129,38 @@ export const BlogPosts: CollectionConfig = {
     delete: isAdmin,
   },
   hooks: {
+    beforeValidate: [
+      async ({ data, originalDoc, req }) => {
+        const next = {
+          ...((originalDoc || {}) as Record<string, unknown>),
+          ...((data || {}) as Record<string, unknown>),
+        }
+        const category = typeof next.category === 'string' ? next.category : ''
+        if (!category) return data
+
+        const site = blogSiteFromPost({
+          publishToKimLafayette: next.publishToKimLafayette === true,
+        })
+        const managed = await req.payload.find({
+          collection: 'blog-categories',
+          where: {
+            and: [
+              { site: { equals: site } },
+              { value: { equals: category } },
+            ],
+          },
+          depth: 0,
+          limit: 1,
+          overrideAccess: true,
+        })
+        if (managed.totalDocs === 0) {
+          throw new Error(
+            `${site === 'kim' ? '金老佛爺部落格' : '購物網站部落格'}沒有這個文章分類，請改選同網站的分類。`,
+          )
+        }
+        return data
+      },
+    ],
     beforeChange: [
       ({ data, originalDoc }) => {
         const nextData = { ...((data || {}) as Record<string, unknown>) }
@@ -598,37 +634,29 @@ export const BlogPosts: CollectionConfig = {
                       required: true,
                     },
                     {
-                      name: 'category',
-                      label: '文章分類',
-                      type: 'select',
-                      options: [
-                        { label: '穿搭教學', value: 'styling' },
-                        { label: '新品介紹', value: 'new-arrivals' },
-                        { label: '品牌故事', value: 'brand-story' },
-                        { label: '優惠活動', value: 'promotions' },
-                        { label: '時尚趨勢', value: 'trends' },
-                        { label: '時尚流行', value: 'fashion' },
-                        { label: '美容彩妝', value: 'beauty' },
-                        { label: '購物情報', value: 'shopping' },
-                        { label: '美食料理', value: 'food' },
-                        { label: '生活綜合', value: 'lifestyle' },
-                        { label: '親子育兒', value: 'parenting' },
-                        { label: '旅遊紀錄', value: 'travel' },
-                        { label: 'KPOP 男團介紹', value: 'kpop-boy-groups' },
-                        { label: 'KPOP 女團介紹', value: 'kpop-girl-groups' },
-                      ],
-                    },
-                    {
                       name: 'publishToKimLafayette',
-                      label: '發佈到金老佛爺部落格',
+                      label: '文章網站：金老佛爺部落格',
                       type: 'checkbox',
                       defaultValue: false,
                       index: true,
                       admin: {
                         description:
-                          '勾選＝blog.kimlafayette.com；不勾選＝購物網站部落格。兩站文章分開管理。',
+                          '勾選＝blog.kimlafayette.com；不勾選＝pre.chickimmiu.com 購物網站部落格。請先選網站，再選下方分類。',
                         components: {
                           Cell: '@/components/admin/BlogSyncCell',
+                        },
+                      },
+                    },
+                    {
+                      name: 'category',
+                      label: '文章分類（依網站）',
+                      type: 'select',
+                      options: BLOG_CATEGORY_OPTIONS.map(({ label, value }) => ({ label, value })),
+                      admin: {
+                        description:
+                          '分類資料仍保存原本的字串值；後台依文章網站只顯示對應分類。',
+                        components: {
+                          Field: '@/components/admin/BlogCategorySelectField',
                         },
                       },
                     },

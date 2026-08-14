@@ -30,10 +30,13 @@ import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { default as default_603a2b8138cd47687180f37ca2cfb3ae } from '@/components/admin/BlogPublishedAtCell'
 import { default as default_fce296b7499db768c8bb0fc89b6e5f6b } from '@/components/admin/BlogSyncCell'
+import { default as default_2fa5f3d4c7066b5cb5255515310db64f } from '@/components/admin/BlogCategorySelectField'
 import { default as default_8caf9717c60858cb0f0c579495ac02be } from '@/components/admin/BlogStatusCell'
 import { default as default_7bda58fc18ddffbdaca47c6f37f00c98 } from '@/components/admin/BlogPasswordField'
 import { default as default_86beb4cc80ced898238ea1041dd75114 } from '@/components/admin/BlogSeoGenerator'
 import { default as default_7ac7d8af5819af6361453ab081f6e0e0 } from '@/components/admin/BlogListDashboard'
+import { default as default_3bce37eff545a1277954450a48cc1201 } from '@/components/admin/BlogCategoryValueField'
+import { default as default_69f81ed4e06492e2f2aff76f139c359e } from '@/components/admin/BlogCategoryListHeader'
 import { default as default_ab80819f8b2b0b37f8700bad83cb86aa } from '@/components/admin/OrderProcessingCellButton'
 import { default as default_8ae569cef047456396f977e84e1f356b } from '@/components/admin/OrderBulkShipPanel'
 import { default as default_be333bc994f41cc3f44396316cdf4a5e } from '@/components/admin/OrderToolsPanel'
@@ -138,10 +141,13 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@/components/admin/BlogPublishedAtCell#default": default_603a2b8138cd47687180f37ca2cfb3ae,
   "@/components/admin/BlogSyncCell#default": default_fce296b7499db768c8bb0fc89b6e5f6b,
+  "@/components/admin/BlogCategorySelectField#default": default_2fa5f3d4c7066b5cb5255515310db64f,
   "@/components/admin/BlogStatusCell#default": default_8caf9717c60858cb0f0c579495ac02be,
   "@/components/admin/BlogPasswordField#default": default_7bda58fc18ddffbdaca47c6f37f00c98,
   "@/components/admin/BlogSeoGenerator#default": default_86beb4cc80ced898238ea1041dd75114,
   "@/components/admin/BlogListDashboard#default": default_7ac7d8af5819af6361453ab081f6e0e0,
+  "@/components/admin/BlogCategoryValueField#default": default_3bce37eff545a1277954450a48cc1201,
+  "@/components/admin/BlogCategoryListHeader#default": default_69f81ed4e06492e2f2aff76f139c359e,
   "@/components/admin/OrderProcessingCellButton#default": default_ab80819f8b2b0b37f8700bad83cb86aa,
   "@/components/admin/OrderBulkShipPanel#default": default_8ae569cef047456396f977e84e1f356b,
   "@/components/admin/OrderToolsPanel#default": default_be333bc994f41cc3f44396316cdf4a5e,

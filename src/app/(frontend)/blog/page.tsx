@@ -23,6 +23,7 @@ export default async function BlogPage() {
         where: {
           status: { equals: 'published' },
           visibility: { equals: 'public' },
+          publishToKimLafayette: { not_equals: true },
           featured: { equals: true },
         },
         sort: '-publishedAt',
@@ -37,6 +38,7 @@ export default async function BlogPage() {
         where: {
           status: { equals: 'published' },
           visibility: { equals: 'public' },
+          publishToKimLafayette: { not_equals: true },
           ...(featuredPost ? { id: { not_equals: featuredPost.id } } : {}),
         },
         sort: '-publishedAt',
@@ -49,6 +51,7 @@ export default async function BlogPage() {
       try {
         const catRes = await payload.find({
           collection: 'blog-categories',
+          where: { site: { equals: 'store' } },
           sort: 'displayOrder',
           limit: 50,
           depth: 0,

@@ -12,6 +12,7 @@ import { Price } from '@/components/common/Price'
 import { NewsletterForm } from '@/components/home/NewsletterForm'
 import { getPayload } from 'payload'
 import { getMediaUrl, normalizeMediaUrl } from '@/lib/media-url'
+import { blogCategoryLabel } from '@/lib/blog/categoryTaxonomy'
 import config from '@payload-config'
 
 /* ── Icon Map ── */
@@ -40,6 +41,7 @@ async function fetchHomeData() {
     hotProducts: [] as Record<string, unknown>[],
     heroBanners: [] as string[],
     blogPosts: [] as Record<string, unknown>[],
+    blogCategoryLabels: {} as Record<string, string>,
     ugcDocs: [] as Record<string, unknown>[],
   }
 
@@ -102,6 +104,7 @@ async function fetchHomeData() {
           where: {
             status: { equals: 'published' },
             visibility: { equals: 'public' },
+            publishToKimLafayette: { not_equals: true },
           },
           sort: '-publishedAt',
           limit: journalLimit,
@@ -110,6 +113,20 @@ async function fetchHomeData() {
         blogPosts = blogResult.docs as unknown as Record<string, unknown>[]
       } catch { /* blog collection may be empty */ }
     }
+
+    let blogCategoryLabels: Record<string, string> = {}
+    try {
+      const categoryResult = await payload.find({
+        collection: 'blog-categories',
+        where: { site: { equals: 'store' } },
+        sort: 'displayOrder',
+        limit: 50,
+        depth: 0,
+      })
+      blogCategoryLabels = Object.fromEntries(
+        categoryResult.docs.map((category) => [String(category.value), String(category.name)]),
+      )
+    } catch { /* taxonomy migration may still be pending */ }
 
     // Fetch approved UGC posts for homepage gallery
     let ugcDocs: Record<string, unknown>[] = []
@@ -126,14 +143,32 @@ async function fetchHomeData() {
       ugcDocs = ugcResult.docs as unknown as Record<string, unknown>[]
     } catch { /* collection may be empty */ }
 
-    return { homepage, activeTheme, newProducts, hotProducts, heroBanners, blogPosts, ugcDocs }
+    return {
+      homepage,
+      activeTheme,
+      newProducts,
+      hotProducts,
+      heroBanners,
+      blogPosts,
+      blogCategoryLabels,
+      ugcDocs,
+    }
   } catch {
     return defaults
   }
 }
 
 export default async function HomePage() {
-  const { homepage, activeTheme, newProducts, hotProducts, heroBanners, blogPosts, ugcDocs } = await fetchHomeData()
+  const {
+    homepage,
+    activeTheme,
+    newProducts,
+    hotProducts,
+    heroBanners,
+    blogPosts,
+    blogCategoryLabels,
+    ugcDocs,
+  } = await fetchHomeData()
 
   // ── CMS Hero Slides ──
   const cmsBanners = homepage?.heroBanners as Array<Record<string, unknown>> | undefined
@@ -469,7 +504,15 @@ export default async function HomePage() {
                   const slug = post.slug as string
                   const title = post.title as string
                   const publishedAt = post.publishedAt as string
-                  const category = post.category as Record<string, unknown> | undefined
+                  const rawCategory = post.category
+                  const categoryValue =
+                    typeof rawCategory === 'string'
+                      ? rawCategory
+                      : rawCategory && typeof rawCategory === 'object'
+                        ? String((rawCategory as Record<string, unknown>).value || '')
+                        : ''
+                  const categoryName =
+                    blogCategoryLabels[categoryValue] || blogCategoryLabel(categoryValue)
                   const featuredImage = getMediaUrl(post.featuredImage)
                   const date = publishedAt ? new Date(publishedAt).toLocaleDateString('zh-TW') : ''
                   return (
@@ -487,9 +530,9 @@ export default async function HomePage() {
                         )}
                       </div>
                       <div className="p-5">
-                        {category && (
+                        {categoryValue && (
                           <p className="text-[10px] tracking-widest text-gold-500 mb-2">
-                            {(category.name as string) || '穿搭教學'}
+                            {categoryName}
                           </p>
                         )}
                         <h3 className="text-sm font-medium mb-2 group-hover:text-gold-600 transition-colors">

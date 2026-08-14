@@ -4,13 +4,13 @@ import React, { useEffect } from 'react'
 
 /**
  * KimBlogNavGroup — 把金老佛爺部落格的自訂 view 連結注入 Payload 原生
- * 「Ⓚ 金老佛爺部落格」group（該 group 由 BlogPosts / BlogCategories 的
+ * 「Ⓚ 兩站部落格」group（該 group 由 BlogPosts / BlogCategories 的
  * admin.group 自動聚合產生，位置由 payload.config.ts collections[] 陣列
  * 排最前決定 = 緊接 ⓪ 數據儀表之後）。
  *
  * 注入後群組內最終順序：
- *   部落格工作台（prepend）→ 部落格文章 → 部落格分類（原生連結）→
- *   相簿 → 📝 自動文章工具 → 查看部落格 ↗（append）
+ *   部落格工作台（prepend）→ 部落格文章 → 兩站分類（原生連結）→
+ *   購物網站分類 / Kim 分類 → 相簿 → 自動文章工具 → 兩站前台（append）
  *
  * 為什麼 DOM 注入：同 CKMUSystemToolsNavGroup — Payload v3 group 由
  * collections/globals 的 admin.group 自動聚合，沒有公開 API 讓自訂 view
@@ -28,7 +28,7 @@ interface Item {
   external?: boolean
 }
 
-const TARGET_GROUP_LABEL = 'Ⓚ 金老佛爺部落格'
+const TARGET_GROUP_LABEL = 'Ⓚ 兩站部落格'
 const INJECTED_ATTR = 'data-ckmu-kimblog-injected'
 
 // prepend：群組第一項 — 工作台是部落格營運入口
@@ -43,6 +43,16 @@ const prependItems: Item[] = [
 // append：排在原生 collection 連結（文章 / 分類）之後
 const appendItems: Item[] = [
   {
+    href: '/admin/collections/blog-categories?where[site][equals]=store&sort=displayOrder',
+    label: '購物網站文章分類',
+    id: 'nav-blog-categories-store',
+  },
+  {
+    href: '/admin/collections/blog-categories?where[site][equals]=kim&sort=displayOrder',
+    label: '金老佛爺文章分類',
+    id: 'nav-blog-categories-kim',
+  },
+  {
     href: '/admin/blog-studio/albums',
     label: '相簿',
     id: 'nav-kimblog-albums',
@@ -54,8 +64,14 @@ const appendItems: Item[] = [
   },
   {
     href: 'https://blog.kimlafayette.com/blog/',
-    label: '查看部落格 ↗',
+    label: '查看 Kim 部落格 ↗',
     id: 'nav-kimblog-view-site',
+    external: true,
+  },
+  {
+    href: 'https://pre.chickimmiu.com/blog',
+    label: '查看購物網站部落格 ↗',
+    id: 'nav-storeblog-view-site',
     external: true,
   },
 ]

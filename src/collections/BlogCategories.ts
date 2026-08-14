@@ -1,25 +1,39 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, PayloadRequest, Where } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
+import {
+  BLOG_CATEGORY_OPTIONS,
+  BLOG_SITE_OPTIONS,
+  isBlogCategoryForSite,
+  isBlogSite,
+  type BlogSite,
+} from '../lib/blog/categoryTaxonomy'
 import { safeRevalidate } from '../lib/revalidate'
 
 /**
  * 部落格分類（獨立 collection，可後台管理顯示名稱 / 排序 / SEO）。
  *
  * 設計取捨：BlogPosts.category 維持 select（值不動，避免文章資料遷移風險）；
- * 本 collection 的 `value` 與 BlogPosts.category 的 select 值一一對應，
- * 前台依此 collection 渲染分類頁籤（標籤 + 排序），post 仍以 category 值過濾。
+ * 本 collection 以 `site + value` 與文章的 `publishToKimLafayette + category`
+ * 一一對應，讓購物網站與金老佛爺部落格可各自維護名稱、排序與 SEO。
  *
  * 對應 migration：20260608_170000_add_blog_categories（CREATE TABLE + seed 5 筆）。
  */
 export const BlogCategories: CollectionConfig = {
   slug: 'blog-categories',
-  labels: { singular: '部落格分類', plural: '部落格分類' },
+  labels: {
+    singular: '部落格文章分類',
+    plural: '兩個網站的部落格文章分類',
+  },
   admin: {
-    group: 'Ⓚ 金老佛爺部落格',
+    group: 'Ⓚ 兩站部落格',
     useAsTitle: 'name',
-    defaultColumns: ['name', 'value', 'slug', 'displayOrder'],
-    description: '穿搭誌文章分類：顯示名稱、排序、SEO。value 須對應 BlogPosts 的分類值。',
+    defaultColumns: ['site', 'name', 'value', 'slug', 'displayOrder'],
+    description:
+      '兩個網站各自的文章分類。系統以「所屬網站＋分類值」對應文章，既有文章分類值不會被改寫。',
+    components: {
+      beforeListTable: ['@/components/admin/BlogCategoryListHeader'],
+    },
   },
   access: {
     read: () => true,
@@ -29,10 +43,112 @@ export const BlogCategories: CollectionConfig = {
   },
   timestamps: true,
   hooks: {
+    beforeChange: [
+      async ({ data, operation, originalDoc, req }) => {
+        const previous = (originalDoc || {}) as Record<string, unknown>
+        const next = {
+          ...previous,
+          ...((data || {}) as Record<string, unknown>),
+        }
+        const site = next.site
+        const value = typeof next.value === 'string' ? next.value : ''
+
+        if (!isBlogSite(site)) {
+          throw new Error('請選擇分類所屬網站。')
+        }
+        if (!value || !isBlogCategoryForSite(site, value)) {
+          throw new Error(
+            `${site === 'kim' ? '金老佛爺部落格' : '購物網站部落格'}不支援此分類值，請重新選擇。`,
+          )
+        }
+
+        const currentID = previous.id
+        const duplicateConditions: Where[] = [
+          { site: { equals: site } },
+          { value: { equals: value } },
+        ]
+        if (currentID != null) duplicateConditions.push({ id: { not_equals: currentID } })
+        const duplicate = await req.payload.find({
+          collection: 'blog-categories',
+          where: { and: duplicateConditions },
+          depth: 0,
+          limit: 1,
+          overrideAccess: true,
+        })
+        if (duplicate.totalDocs > 0) {
+          throw new Error('這個網站已經有相同的分類值。')
+        }
+
+        const slug = typeof next.slug === 'string' ? next.slug.trim() : ''
+        if (slug) {
+          const slugConditions: Where[] = [
+            { site: { equals: site } },
+            { slug: { equals: slug } },
+          ]
+          if (currentID != null) slugConditions.push({ id: { not_equals: currentID } })
+          const duplicateSlug = await req.payload.find({
+            collection: 'blog-categories',
+            where: { and: slugConditions },
+            depth: 0,
+            limit: 1,
+            overrideAccess: true,
+          })
+          if (duplicateSlug.totalDocs > 0) {
+            throw new Error('這個網站已經有相同的分類網址代碼。')
+          }
+        }
+
+        if (
+          operation === 'update' &&
+          isBlogSite(previous.site) &&
+          typeof previous.value === 'string' &&
+          (previous.site !== site || previous.value !== value)
+        ) {
+          const linked = await countLinkedPosts(req, previous.site, previous.value)
+          if (linked > 0) {
+            throw new Error(
+              `此分類仍有 ${linked} 篇文章使用。為避免文章失去分類，只能修改名稱、網址、排序與 SEO。`,
+            )
+          }
+        }
+
+        return { ...((data || {}) as Record<string, unknown>), site, slug: slug || null }
+      },
+    ],
+    beforeDelete: [
+      async ({ id, req }) => {
+        const category = (await req.payload.findByID({
+          collection: 'blog-categories',
+          id,
+          depth: 0,
+          overrideAccess: true,
+        })) as unknown as Record<string, unknown>
+        if (!isBlogSite(category.site) || typeof category.value !== 'string') return
+
+        const linked = await countLinkedPosts(req, category.site, category.value)
+        if (linked > 0) {
+          throw new Error(
+            `此分類仍有 ${linked} 篇文章使用，不能刪除。請先替這些文章改選同網站的其他分類。`,
+          )
+        }
+      },
+    ],
     afterChange: [() => safeRevalidate(['/blog'], ['blog-categories'])],
     afterDelete: [() => safeRevalidate(['/blog'], ['blog-categories'])],
   },
   fields: [
+    {
+      name: 'site',
+      label: '所屬網站',
+      type: 'select',
+      required: true,
+      defaultValue: 'store',
+      index: true,
+      options: [...BLOG_SITE_OPTIONS],
+      admin: {
+        description: '購物網站與金老佛爺部落格的分類分開管理。',
+      },
+    },
     {
       name: 'name',
       label: '分類名稱',
@@ -45,31 +161,19 @@ export const BlogCategories: CollectionConfig = {
       label: '對應文章分類值',
       type: 'select',
       required: true,
-      unique: true,
-      options: [
-        { label: '穿搭教學', value: 'styling' },
-        { label: '新品介紹', value: 'new-arrivals' },
-        { label: '品牌故事', value: 'brand-story' },
-        { label: '優惠活動', value: 'promotions' },
-        { label: '時尚趨勢', value: 'trends' },
-        { label: '時尚流行', value: 'fashion' },
-        { label: '美容彩妝', value: 'beauty' },
-        { label: '購物情報', value: 'shopping' },
-        { label: '美食料理', value: 'food' },
-        { label: '生活綜合', value: 'lifestyle' },
-        { label: '親子育兒', value: 'parenting' },
-        { label: '旅遊紀錄', value: 'travel' },
-        { label: 'KPOP 男團介紹', value: 'kpop-boy-groups' },
-        { label: 'KPOP 女團介紹', value: 'kpop-girl-groups' },
-      ],
-      admin: { description: '必須對應 BlogPosts.category 的 select 值，前台才能正確過濾' },
+      options: BLOG_CATEGORY_OPTIONS.map(({ label, value }) => ({ label, value })),
+      admin: {
+        description: '必須對應文章的 category 值；同一值可由兩個網站分別管理。',
+        components: {
+          Field: '@/components/admin/BlogCategoryValueField',
+        },
+      },
     },
     {
       name: 'slug',
       label: '網址代碼',
       type: 'text',
-      unique: true,
-      admin: { description: '供未來分類落地頁 /blog/category/<slug> 用' },
+      admin: { description: '供該網站的分類落地頁 /blog/category/<slug> 使用' },
     },
     {
       name: 'description',
@@ -93,4 +197,26 @@ export const BlogCategories: CollectionConfig = {
       ],
     },
   ],
+}
+
+async function countLinkedPosts(
+  req: PayloadRequest,
+  site: BlogSite,
+  value: string,
+): Promise<number> {
+  const linked = await req.payload.find({
+    collection: 'blog-posts',
+    where: {
+      and: [
+        { category: { equals: value } },
+        site === 'kim'
+          ? { publishToKimLafayette: { equals: true } }
+          : { publishToKimLafayette: { not_equals: true } },
+      ],
+    },
+    depth: 0,
+    limit: 0,
+    overrideAccess: true,
+  })
+  return linked.totalDocs
 }

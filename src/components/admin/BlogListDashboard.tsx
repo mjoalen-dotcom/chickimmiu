@@ -52,8 +52,13 @@ const quickLinks = [
     icon: Images,
   },
   {
-    href: '/admin/collections/blog-categories',
-    label: '分類',
+    href: '/admin/collections/blog-categories?where[site][equals]=kim&sort=displayOrder',
+    label: 'Kim 分類',
+    icon: FolderTree,
+  },
+  {
+    href: '/admin/collections/blog-categories?where[site][equals]=store&sort=displayOrder',
+    label: '購物網站分類',
     icon: FolderTree,
   },
   {
@@ -63,7 +68,13 @@ const quickLinks = [
   },
   {
     href: 'https://blog.kimlafayette.com/',
-    label: '查看部落格',
+    label: 'Kim 前台',
+    icon: ExternalLink,
+    external: true,
+  },
+  {
+    href: 'https://pre.chickimmiu.com/blog',
+    label: '購物站前台',
     icon: ExternalLink,
     external: true,
   },
@@ -198,10 +209,10 @@ export default function BlogListDashboard() {
                 textTransform: 'uppercase',
               }}
             >
-              Lafayette Kim
+              CHIC KIM &amp; MIU × Lafayette Kim
             </p>
             <h2 id="blog-workspace-title" style={{ margin: 0, fontSize: 22, fontWeight: 650 }}>
-              文章工作台：兩個網站分開管理
+              文章工作台：兩個網站的文章與分類分開管理
             </h2>
           </div>
 

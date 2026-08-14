@@ -57,6 +57,7 @@ async function findPublishedPost(
       slug: { equals: slug },
       status: { equals: 'published' },
       visibility: { equals: 'public' },
+      publishToKimLafayette: { not_equals: true },
     },
     limit: 1,
     depth: 2,
@@ -72,6 +73,7 @@ async function findPublishedPost(
       slug: { like: `${slug}-` },
       status: { equals: 'published' },
       visibility: { equals: 'public' },
+      publishToKimLafayette: { not_equals: true },
     },
     limit: 2,
     depth: 2,
@@ -154,6 +156,7 @@ export default async function BlogPostPage({ params }: Props) {
         where: {
           status: { equals: 'published' },
           visibility: { equals: 'public' },
+          publishToKimLafayette: { not_equals: true },
           id: { not_equals: post.id },
           category: { equals: post.category },
         },

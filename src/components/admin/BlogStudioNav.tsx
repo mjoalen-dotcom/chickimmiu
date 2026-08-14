@@ -24,7 +24,7 @@ const items = [
     href: '/admin/collections/blog-posts?where[publishToKimLafayette][equals]=true',
     label: 'Kim 文章',
     icon: FileText,
-    scope: 'kim',
+    articleScope: 'kim',
     match: (pathname: string) =>
       pathname.startsWith('/admin/collections/blog-posts') && !pathname.endsWith('/create'),
   },
@@ -32,7 +32,7 @@ const items = [
     href: '/admin/collections/blog-posts?where[publishToKimLafayette][not_equals]=true',
     label: '購物網站文章',
     icon: Store,
-    scope: 'store',
+    articleScope: 'store',
     match: (pathname: string) =>
       pathname.startsWith('/admin/collections/blog-posts') && !pathname.endsWith('/create'),
   },
@@ -49,9 +49,17 @@ const items = [
     match: (pathname: string) => pathname.startsWith('/admin/blog-studio/albums'),
   },
   {
-    href: '/admin/collections/blog-categories',
-    label: '分類',
+    href: '/admin/collections/blog-categories?where[site][equals]=kim&sort=displayOrder',
+    label: 'Kim 分類',
     icon: Tags,
+    categoryScope: 'kim',
+    match: (pathname: string) => pathname.startsWith('/admin/collections/blog-categories'),
+  },
+  {
+    href: '/admin/collections/blog-categories?where[site][equals]=store&sort=displayOrder',
+    label: '購物網站分類',
+    icon: Tags,
+    categoryScope: 'store',
     match: (pathname: string) => pathname.startsWith('/admin/collections/blog-categories'),
   },
   {
@@ -62,7 +70,14 @@ const items = [
   },
   {
     href: 'https://blog.kimlafayette.com/blog/',
-    label: '查看部落格',
+    label: 'Kim 前台',
+    icon: ExternalLink,
+    external: true,
+    match: () => false,
+  },
+  {
+    href: 'https://pre.chickimmiu.com/blog',
+    label: '購物站前台',
     icon: ExternalLink,
     external: true,
     match: () => false,
@@ -72,11 +87,12 @@ const items = [
 export default function BlogStudioNav() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const currentScope = searchParams.get('where[publishToKimLafayette][equals]') === 'true'
+  const currentArticleScope = searchParams.get('where[publishToKimLafayette][equals]') === 'true'
     ? 'kim'
     : searchParams.get('where[publishToKimLafayette][not_equals]') === 'true'
       ? 'store'
       : null
+  const currentCategoryScope = searchParams.get('where[site][equals]')
 
   return (
     <div
@@ -107,13 +123,14 @@ export default function BlogStudioNav() {
             whiteSpace: 'nowrap',
           }}
         >
-          Lafayette Kim
+          兩站部落格
         </strong>
         {items.map((item) => {
           const Icon = item.icon
           const active =
             item.match(pathname) &&
-            (!item.scope || item.scope === currentScope)
+            (!item.articleScope || item.articleScope === currentArticleScope) &&
+            (!item.categoryScope || item.categoryScope === currentCategoryScope)
 
           return (
             <a

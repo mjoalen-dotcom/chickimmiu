@@ -152,6 +152,7 @@ const BlogStudioView: React.FC<AdminViewServerProps> = async ({
         collection: 'blog-categories',
         depth: 0,
         limit: 1,
+        where: { site: { equals: 'kim' } },
       }),
       getKimBlogAnalytics(req.payload, analyticsDays),
     ])

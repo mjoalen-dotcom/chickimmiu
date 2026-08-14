@@ -47,20 +47,38 @@ export async function GET(request: NextRequest) {
     const baseUrl = (
       process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com'
     ).replace(/\/$/, '')
-    const result = await payload.find({
-      collection: 'blog-posts',
-      where: {
-        and: [
-          { status: { equals: 'published' } },
-          { publishToKimLafayette: { equals: true } },
-          ...(internal ? [] : [{ visibility: { equals: 'public' } }]),
-        ],
-      },
-      sort: '-publishedAt',
-      limit: 1000,
-      depth: 2,
-      overrideAccess: internal,
-    })
+    const [result, categoryResult] = await Promise.all([
+      payload.find({
+        collection: 'blog-posts',
+        where: {
+          and: [
+            { status: { equals: 'published' } },
+            { publishToKimLafayette: { equals: true } },
+            ...(internal ? [] : [{ visibility: { equals: 'public' } }]),
+          ],
+        },
+        sort: '-publishedAt',
+        limit: 1000,
+        depth: 2,
+        overrideAccess: internal,
+      }),
+      payload.find({
+        collection: 'blog-categories',
+        where: { site: { equals: 'kim' } },
+        sort: 'displayOrder',
+        limit: 100,
+        depth: 0,
+        overrideAccess: internal,
+      }),
+    ])
+    const categories = categoryResult.docs.map((category) => ({
+      label: String(category.name),
+      slug: String(category.slug || category.value),
+      value: String(category.value),
+    }))
+    const categoryLabelByValue = new Map(
+      categories.map((category) => [category.value, category.label]),
+    )
 
     const posts = (result.docs as unknown as Array<Record<string, unknown>>)
       .filter((doc) => typeof doc.slug === 'string' && doc.slug.trim() !== '')
@@ -102,7 +120,9 @@ export async function GET(request: NextRequest) {
             ? { accessPasswordHash: String(doc.accessPasswordHash || '') }
             : {}),
           seo: kimBlogSeo(doc.seo, baseUrl),
-          category: kimBlogCategoryLabel(doc.category),
+          category:
+            categoryLabelByValue.get(String(doc.category || '')) ||
+            kimBlogCategoryLabel(doc.category),
           tags: kimBlogTags(doc.tags),
           publishedAt: String(doc.publishedAt || doc.createdAt || ''),
           viewCount: Math.max(
@@ -127,6 +147,7 @@ export async function GET(request: NextRequest) {
       version: 1,
       scope: internal ? 'internal' : 'public',
       generatedAt,
+      categories,
       posts,
     })
     const etag = `"${createHash('sha256').update(body).digest('base64url')}"`

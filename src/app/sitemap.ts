@@ -76,6 +76,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         where: {
           status: { equals: 'published' },
           visibility: { equals: 'public' },
+          publishToKimLafayette: { not_equals: true },
         },
         limit: 1000,
         depth: 0,
