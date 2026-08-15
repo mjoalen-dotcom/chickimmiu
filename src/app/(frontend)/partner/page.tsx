@@ -1,37 +1,51 @@
-'use client'
-
-import { DollarSign, Users, ShoppingBag, TrendingUp, Link2, ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
+import { headers as nextHeaders } from 'next/headers'
+import { getPayload } from 'payload'
+import config from '@payload-config'
+import { DollarSign, TrendingUp, Wallet, ShoppingBag, Link2, ArrowUpRight } from 'lucide-react'
+import { getOwnAffiliate } from '@/lib/affiliate/getOwnAffiliate'
+import type { Order } from '@/payload-types'
 
-// Demo data — in production, fetch from Payload Affiliates + Orders
-const STATS = {
-  totalEarnings: 12580,
-  pendingAmount: 3200,
-  withdrawableAmount: 9380,
-  totalWithdrawn: 5000,
-  totalReferrals: 45,
-  totalOrders: 23,
-  conversionRate: 51.1,
-  referralCode: 'PARTNER-ALICE',
-}
+export default async function PartnerDashboard() {
+  const payload = await getPayload({ config })
+  const headersList = await nextHeaders()
+  const { user } = await payload.auth({ headers: headersList })
+  // layout.tsx 已擋過一次，這裡 user 必為登入狀態；型別上仍需防禦
+  if (!user) return null
 
-const RECENT_ORDERS = [
-  { orderNumber: 'CKM-20241220-A1B2', date: '2024-12-20', total: 2580, commission: 258 },
-  { orderNumber: 'CKM-20241218-C3D4', date: '2024-12-18', total: 980, commission: 98 },
-  { orderNumber: 'CKM-20241215-E5F6', date: '2024-12-15', total: 3680, commission: 368 },
-]
+  const affiliate = await getOwnAffiliate(payload, user.id)
 
-export default function PartnerDashboard() {
+  if (!affiliate) {
+    return (
+      <div className="bg-white rounded-2xl border border-cream-200 p-8 text-center">
+        <p className="text-sm text-muted-foreground">
+          您的帳號尚未建立合作夥伴分潤資料，請聯繫客服協助設定推薦碼與佣金比例。
+        </p>
+      </div>
+    )
+  }
+
+  const ordersResult = await payload.find({
+    collection: 'orders',
+    where: { 'affiliateInfo.affiliateUser': { equals: user.id } },
+    sort: '-createdAt',
+    limit: 5,
+    depth: 0,
+  })
+  const recentOrders = ordersResult.docs as unknown as Order[]
+
+  const stats = [
+    { icon: DollarSign, label: '累計收益', value: `NT$ ${(affiliate.totalEarnings || 0).toLocaleString()}`, color: 'text-green-600' },
+    { icon: TrendingUp, label: '待確認', value: `NT$ ${(affiliate.pendingAmount || 0).toLocaleString()}`, color: 'text-amber-500' },
+    { icon: Wallet, label: '已提領', value: `NT$ ${(affiliate.totalWithdrawn || 0).toLocaleString()}`, color: 'text-blue-600' },
+    { icon: ShoppingBag, label: '成交訂單', value: String(ordersResult.totalDocs), color: 'text-purple-600' },
+  ]
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Stats cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { icon: DollarSign, label: '累計收益', value: `NT$ ${STATS.totalEarnings.toLocaleString()}`, color: 'text-green-600' },
-          { icon: TrendingUp, label: '待確認', value: `NT$ ${STATS.pendingAmount.toLocaleString()}`, color: 'text-amber-500' },
-          { icon: Users, label: '推薦人數', value: STATS.totalReferrals.toString(), color: 'text-blue-600' },
-          { icon: ShoppingBag, label: '成交訂單', value: STATS.totalOrders.toString(), color: 'text-purple-600' },
-        ].map((stat) => (
+        {stats.map((stat) => (
           <div key={stat.label} className="bg-white rounded-xl p-4 border border-cream-200">
             <stat.icon size={18} className={`${stat.color} mb-3`} />
             <p className="text-xs text-muted-foreground">{stat.label}</p>
@@ -45,7 +59,7 @@ export default function PartnerDashboard() {
         <div className="bg-gradient-to-br from-gold-500/10 to-cream-100 rounded-2xl border border-gold-500/20 p-5">
           <h3 className="font-medium text-sm mb-2">可提領金額</h3>
           <p className="text-2xl font-medium text-gold-600 mb-3">
-            NT$ {STATS.withdrawableAmount.toLocaleString()}
+            NT$ {(affiliate.withdrawableAmount || 0).toLocaleString()}
           </p>
           <Link
             href="/partner/withdraw"
@@ -57,7 +71,7 @@ export default function PartnerDashboard() {
         <div className="bg-gradient-to-br from-blue-500/10 to-cream-100 rounded-2xl border border-blue-500/20 p-5">
           <h3 className="font-medium text-sm mb-2">推廣連結</h3>
           <p className="text-sm font-mono text-blue-600 mb-3 break-all">
-            ?ref={STATS.referralCode}
+            ?ref={affiliate.referralCode}
           </p>
           <Link
             href="/partner/referrals"
@@ -76,20 +90,28 @@ export default function PartnerDashboard() {
             查看全部 →
           </Link>
         </div>
-        <div className="space-y-3">
-          {RECENT_ORDERS.map((order) => (
-            <div key={order.orderNumber} className="flex items-center justify-between py-3 border-b border-cream-100 last:border-0">
-              <div>
-                <p className="text-sm font-mono">{order.orderNumber}</p>
-                <p className="text-[10px] text-muted-foreground">{order.date}</p>
+        {recentOrders.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">尚無推薦訂單</p>
+        ) : (
+          <div className="space-y-3">
+            {recentOrders.map((order) => (
+              <div key={order.id} className="flex items-center justify-between py-3 border-b border-cream-100 last:border-0">
+                <div>
+                  <p className="text-sm font-mono">{order.orderNumber}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {new Date(order.createdAt).toLocaleDateString('zh-TW')}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm">NT$ {(order.total || 0).toLocaleString()}</p>
+                  <p className="text-[10px] text-green-600">
+                    佣金 NT$ {(order.affiliateInfo?.commissionAmount || 0).toLocaleString()}
+                  </p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm">NT$ {order.total.toLocaleString()}</p>
-                <p className="text-[10px] text-green-600">佣金 NT$ {order.commission.toLocaleString()}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

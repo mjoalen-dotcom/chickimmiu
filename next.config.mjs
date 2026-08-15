@@ -31,6 +31,15 @@ const nextConfig = {
   experimental: {
     reactCompiler: false,
   },
+  // Next 15 預設對「非白名單機器人 UA」（含 curl、真實 Googlebot 主爬蟲——白名單只涵蓋
+  // -Google 後綴的子爬蟲如 Google-InspectionTool，不含主爬蟲本身）用 streaming metadata：
+  // generateMetadata() 的 Promise 被包進獨立 Suspense，200 殼會在 metadata resolve 之前
+  // 就先 flush。這讓 products/[slug]/page.tsx 內特意搬進 generateMetadata 的 notFound()
+  // （為了閃避 loading.tsx 造成的另一種 soft-404）失效——商品查無 slug 時，內容正確顯示
+  // 404，但 HTTP 狀態碼仍是 200，真實 Googlebot 主爬蟲會誤判為有效頁面收錄。
+  // 設為比對全部 UA 的 pattern，強制全站都用 blocking metadata（犧牲一點點 TTFB 換
+  // 正確的狀態碼），才能讓 notFound() 在任何 response 送出前就決定好狀態碼。
+  htmlLimitedBots: '.*',
   async headers() {
     // R2 圖床公開 URL（custom domain 或 pub-*.r2.dev）— 沒設就跳過。
     //   - 若設了會額外 allow 這個 origin 進 img-src + connect-src

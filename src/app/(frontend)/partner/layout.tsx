@@ -1,5 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { headers as nextHeaders } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { getPayload } from 'payload'
+import config from '@payload-config'
 import { BarChart3, Link2, DollarSign, Wallet, Settings } from 'lucide-react'
 
 export const metadata: Metadata = {
@@ -15,7 +19,13 @@ const partnerLinks = [
   { href: '/partner/withdraw', label: '申請提款', icon: Wallet },
 ]
 
-export default function PartnerLayout({ children }: { children: React.ReactNode }) {
+export default async function PartnerLayout({ children }: { children: React.ReactNode }) {
+  const payload = await getPayload({ config })
+  const headersList = await nextHeaders()
+  const { user } = await payload.auth({ headers: headersList })
+  if (!user) redirect('/login?redirect=/partner')
+  if (user.role !== 'partner' && user.role !== 'admin') redirect('/account')
+
   return (
     <div className="bg-cream-50 min-h-screen">
       <div className="container py-8 md:py-12">
