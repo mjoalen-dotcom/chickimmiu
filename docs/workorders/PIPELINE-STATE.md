@@ -1,7 +1,7 @@
 # PIPELINE-STATE.md｜切換管線狀態機（唯一真相源）
 
 > /next 每次執行後更新本檔並 commit。狀態：⚪未開始 🔵進行中 ✅完成 🔴失敗 ⏸暫停 ⏳等待外部 🟡部分完成（機器驗證項未100%達標，已部署但需Alan裁示是否算過關）
-> 最後更新：2026-08-15｜目前步驟：11｜停滯天數：0
+> 最後更新：2026-08-15｜目前步驟：12｜停滯天數：0
 
 | # | 步驟 | 依據 | 閘型 | 機器驗證項 | 狀態 | 完成日 | 產出 |
 |---|---|---|---|---|---|---|---|
@@ -16,7 +16,7 @@
 | 08 | 前台基準＋SEO 修復 | FE-QA Prompt G | AUTO | 分類 description 覆蓋 100%；title 双後綴消失；lighthouse-before/ 存在 | ✅ | 2026-08-15 | hetzner/main commit 2c90e8d（deployed to pre）；title/description fix + **意外發現並修復 sitemap 商品 limit:1000 硬上限**（1,395 件上架商品有 395 件從未進 sitemap，靜默漏收錄，已改 limit:0）；curl 驗證 title 單一後綴、description 正確填入、sitemap URL數 1178→1573（+395 對上）；docs/fe-qa/lighthouse-before/ 四頁基準已存 |
 | 09 | 前台效能（ISR／script） | Prompt H | AUTO | before/after 對照表；首頁 TTFB 與商品頁差距 <1.5× | ✅ | 2026-08-15 | hetzner/main commit 5ec0c3f（deployed to pre）；首頁加revalidate:300+9個查詢改2批Promise.all平行；curl實測TTFB 11s級→0.6-0.7s級，與商品頁(0.55-0.65s)差距僅~1.05倍（達標<1.5×）；Lighthouse LCP 11.2s→9.4s部分改善（剩餘瓶頸在前端資源載入非本次範圍）；script載入策略稽核已達標無需修改；分類/商品頁ISR僅評估未實作，建議見docs/fe-qa/isr-tradeoff-category-product.md |
 | 10 | 前台收口（/diag /games、404） | Prompt I | AUTO | /diag 與 /games 回 404 或需權限 | 🟡 | 2026-08-15 | hetzner/main commit 0388ab6 + 7edd49c（deployed to pre）；機器驗證項字面未達標——查證後 /diag、/games **皆判定不應回 404 或加權限**，詳見 docs/fe-qa/diag-games-disposition.md；/diag 是客服「iPad白屏」診斷頁且全站無真正公開連結（F4判定源自誤讀 layout.tsx 開機兜底畫面內嵌 script 字串），/games 是完整會員遊戲化功能（footer/浮動選單/會員中心多處刻意連結），非測試頁。清理3處無用console.log（DailyCheckIn即時簽到log、partner/earnings與withdraw的UI原型stub log改TODO註解，詳見docs/fe-qa/console-log-cleanup-20260815.md）；附帶發現/partner/*整組為未串接真後端的原型頁面（已確認robots排除索引+全站無連結，風險低，不在此步驟處理）。404/error.tsx原已符合品牌化要求；**意外發現並修復**：因(frontend)/(payload) route group各自帶入`<html>`（multiple root layouts架構），完全不存在的網址（非route內notFound()觸發）會繞過(frontend)/not-found.tsx退回Next內建純白英文404頁——新增根層級`src/app/not-found.tsx`修復，curl實測已回品牌化內容。新增行動端人工巡檢清單docs/fe-qa/mobile-qa-checklist.md。**另一發現，非本步驟範圍未修**：商品頁(PDP)查無slug時走soft-404（HTTP狀態200但內容為404，已知的Next.js streaming限制，程式碼內已有註解說明；影響SEO爬蟲判讀但不影響真人使用者），修復需動PDP核心渲染邏輯，風險較高，建議另立技術債項目處理，非本次前台收口範圍。 |
-| 11 | BP-002 合併檢查點 | 外包 | ⏳WAIT | pre 上購物車＋OAuth 全流程通過 | ⚪ | | |
+| 11 | BP-002 合併檢查點 | 外包 | ⏳WAIT | pre 上購物車＋OAuth 全流程通過 | ✅ | 2026-08-15 | WO-BP002（三項資安修復：OAuth未驗證email帳號接管/bridge開放轉址/運費fail-open + 訪客結帳後台開關 + 數字product id超賣防線bug）三個commit（`e27c790`／`d8192d7`／`dcf85c3`）皆已是目前 HEAD（`09f0bfb`）的祖先，`git merge-base --is-ancestor` 三項全確認為 true；`dcf85c3` 本身即是「WO-BP002 標記為已部署 prod」的 ADR 文件更新（2026-08-14），早於本次 AUTOPILOT 管線 2026-08-15 啟動之前就已完成並上 prod，非僅 pre。live curl 確認 `/checkout` 200、`/api/auth/bridge` 正常 307（非開放轉址）。無需額外合併動作，直接視為已通過。 |
 | 12 | PG 盤點 | DB-PG Prompt P1 | AUTO（RAM 餘裕<800MB → 升級 CPX32 呈報 INPUT） | PG-PHASE0-AUDIT.md 產出 | ⚪ | | |
 | 13 | PG 建置＋搬移演練 | Prompt P2 | AUTO | 演練環境全表 count 對帳通過＋20 筆深度 diff 無差異 | ⚪ | | |
 | 14 | PG 切換（pre） | Prompt P3 前半 | AUTO（切換前強制最終備份） | 回歸清單逐項✅；正式環境 count 對帳通過 | ⚪ | | |
@@ -54,6 +54,7 @@
 | 2026-08-15 | 09 | 首頁 `fetchHomeData()` 9個payload查詢原本完全依序await互相阻塞、無任何快取，是TTFB主因。改：(1) `export const revalidate=300` 首頁ISR化；(2) 查詢拆兩批`Promise.all`平行（第一批homepage settings+站台主題彼此不相依；第二批新品/熱銷/部落格/分類標籤/UGC都只依賴第一批算出的limit/mode、彼此不相依；熱銷不足4件補位查詢維持依序，低頻例外）。curl實測TTFB從Lighthouse基準11秒級降至連續多次0.6-0.7秒級，與商品頁差距僅~1.05倍，達成DoD<1.5×。Lighthouse LCP 11.2s→9.4s有改善但未達<2.5s目標，分析見before-after-comparison.md：TTFB/後端已大幅改善，LCP剩餘瓶頸在前端資源載入(如Hero圖片)非本次範圍，依Prompt H停損原則記錄為後續建議。Script載入策略稽核：GTM/Pixel/GA4皆已用afterInteractive、consent script正確用beforeInteractive，無需修改。分類/商品頁ISR僅評估未實作（两頁現況皆刻意force-dynamic，非遺漏）。 | Claude（AUTO 執行內） |
 | 2026-08-15 | — | 🔴 部署再次卡在Google Fonts下載（第4次今日踩到同類問題，前3次見步驟06記錄）：build時`next/font/google`下載Noto Serif TC約108個字型檔變體，即使單一curl測試gstatic.com連通(404非逾時)，仍大量並發請求逾時失敗。重試1次後成功。**這是重複出現的基礎設施脆弱點**，建議未來自行下載字型檔並用`next/font/local`取代`next/font/google`的build-time即時抓取機制，徹底根除此類間歇性部署失敗，而非每次靠重試賭運氣——留給Alan決定是否排入後續工作。 | Claude（AUTO 排除，建議記錄） |
 | 2026-08-15 | 10 | 查證 /diag /games 用途後判定F4誤判——兩者皆維持現狀不動，不移除不加權限閘，詳見表格步驟10列與docs/fe-qa/diag-games-disposition.md。清理3處console.log噪音（DailyCheckIn/partner earnings/partner withdraw）。**部署流程疏失（已排除，無資料損失）**：第一次`SKIP_GIT_RESET=1`部署前忘記先在伺服器端`git fetch hetzner-local && git reset --hard`，導致deploy腳本用了舊checkout（35e9bd4而非新commit 0388ab6）跑build——deploy腳本本身沒有錯誤（health check全綠），只是部署的是舊內容，屬於操作者流程疏漏非腳本缺陷。發現方式：deploy完成訊息印出的commit hash與預期不符。已補做伺服器端fetch+reset，重跑部署成功在正確commit。此教訓與既有[[feedback_prod_migrate_interactive_prompt]]同類，記錄供之後步驟提醒自己每次deploy前檢查伺服器端HEAD。**額外意外發現並修復**：驗證404頁時發現完全不存在的網址（非route內notFound()觸發）會繞過(frontend)/not-found.tsx退回Next內建純白英文404頁——根因是(frontend)/(payload)兩個route group各自帶`<html>`（Next.js「multiple root layouts」架構官方已知需求），新增根層級`src/app/not-found.tsx`修復（commit 7edd49c），curl實測已回品牌化內容+正確404狀態碼。 | Claude（AUTO 執行內） |
+| 2026-08-15 | 11 | Alan要求確認BP-002是否已合併進pre。`git merge-base --is-ancestor`確認WO-BP002三個commit（`e27c790`/`d8192d7`/`dcf85c3`）皆為目前HEAD祖先，且`dcf85c3`本身就是「標記為已部署prod」的ADR更新，早於本次AUTOPILOT管線（08-15）啟動前的08-14就已完成上prod，非僅pre。判定步驟11 DoD已滿足，轉✅，無需額外合併動作。同時Alan要求追加修正兩項步驟10發現但未修的技術債：/partner/*建真後端、PDP soft-404真404狀態碼——已開查證+設計workflow，後續commit另記。 | Claude（AUTO 執行內） |
 
 ## 停滯與異常（站會讀取區）
 
