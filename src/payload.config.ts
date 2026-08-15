@@ -120,6 +120,11 @@ import { WalletWithdrawals } from './collections/WalletWithdrawals'
 import { InventoryTransactions } from './collections/InventoryTransactions'
 import { PurchaseOrders } from './collections/PurchaseOrders'
 import { StockTakes } from './collections/StockTakes'
+import {
+  adminOnlyGlobal,
+  withOperatorGlobalUpdate,
+  withOperatorManage,
+} from './access/operatorAccess'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -444,24 +449,24 @@ export default buildConfig({
     // Ⓚ 金老佛爺部落格 — 旗艦內容專區，緊接 ⓪ 數據儀表之後。
     // BlogStudio 自訂 view 連結（工作台 / 相簿 / AI 草稿 / 查看部落格）由
     // KimBlogNavGroup DOM 注入同一 group，視覺上合為一站式專區。
-    BlogPosts,
-    BlogCategories,
+    withOperatorManage(BlogPosts),
+    withOperatorManage(BlogCategories),
     // ① 訂單與物流 — 每日營運最高頻：訂單 / 發票在前；退貨 → 換貨 → 退款
     // 照客服處理流程排列；物流方式設定極少動放最後。
-    Orders,
-    Invoices,
-    Returns,
-    Exchanges,
-    Refunds,
+    withOperatorManage(Orders),
+    withOperatorManage(Invoices),
+    withOperatorManage(Returns),
+    withOperatorManage(Exchanges),
+    withOperatorManage(Refunds),
     ShippingMethods,
     // ② 商品管理 — Products 最常用放最前；進銷存三件套殿後。
-    Products,
-    Categories,
-    SizeCharts,
-    ProductReviews,
-    InventoryTransactions, // 進銷存：庫存異動流水
-    PurchaseOrders, // 進銷存：進貨單
-    StockTakes, // 進銷存：盤點
+    withOperatorManage(Products),
+    withOperatorManage(Categories),
+    withOperatorManage(SizeCharts),
+    withOperatorManage(ProductReviews),
+    withOperatorManage(InventoryTransactions), // 進銷存：庫存異動流水
+    withOperatorManage(PurchaseOrders), // 進銷存：進貨單
+    withOperatorManage(StockTakes), // 進銷存：盤點
     // ③ 會員與 CRM — 會員核心 → 訂閱 → 點數回饋 → 錢包 → 收藏 →
     // 客服對話 → 行為事件（同類相鄰，高頻在前）。
     Users,
@@ -529,11 +534,11 @@ export default buildConfig({
     // 順序原則：核心內容（最常編輯）→ 樣式（少動）→ 資源池（最少動）。
     // 部落格已移至 Ⓚ 金老佛爺部落格專區；Media 放最後因為 admin 通常透過
     // Products / BlogPosts 上傳介面間接用 Media，少直接點；媒體資料夾已隱藏。
-    Pages,
-    CelebrityFeatures,
-    Podcasts,
-    SiteThemes,
-    Media,
+    withOperatorManage(Pages),
+    withOperatorManage(CelebrityFeatures),
+    withOperatorManage(Podcasts),
+    withOperatorManage(SiteThemes),
+    withOperatorManage(Media),
     // 2026-08-15 步驟03分組整併：原「⑦ 系統與安全」已拆散——LoginAttempts
     // 併入 ③ 會員與CRM、Currencies 併入 ① 訂單與物流（admin.group 已改，
     // 陣列位置維持不動，故在各自新群組內排序偏後，符合兩者「低頻使用」性質）。
@@ -544,43 +549,43 @@ export default buildConfig({
   // group section in the sidebar. Grouped & sequenced to match collections above.
   globals: [
     // ① 訂單與物流
-    CheckoutSettings,
-    OrderSettings,
-    InvoiceSettings,
-    TaxSettings,
+    adminOnlyGlobal(CheckoutSettings),
+    adminOnlyGlobal(OrderSettings),
+    adminOnlyGlobal(InvoiceSettings),
+    adminOnlyGlobal(TaxSettings),
     // ③ 會員與 CRM
-    LoyaltySettings,
-    ReferralSettings,
-    PointRedemptionSettings,
-    CRMSettings,
-    SegmentationSettings,
-    CustomerServiceSettings, // 客服中心 v1 Phase 1A
+    adminOnlyGlobal(LoyaltySettings),
+    adminOnlyGlobal(ReferralSettings),
+    adminOnlyGlobal(PointRedemptionSettings),
+    adminOnlyGlobal(CRMSettings),
+    adminOnlyGlobal(SegmentationSettings),
+    adminOnlyGlobal(CustomerServiceSettings), // 客服中心 v1 Phase 1A
     // ④ 行銷推廣
-    PromotionSettings, // Campaign Engine：kill switch / 前台顯示 / 伺服器計價強制
-    MarketingAutomationSettings,
-    RecommendationSettings,
-    AdsCatalogSettings,
+    adminOnlyGlobal(PromotionSettings), // Campaign Engine：kill switch / 前台顯示 / 伺服器計價強制
+    adminOnlyGlobal(MarketingAutomationSettings),
+    adminOnlyGlobal(RecommendationSettings),
+    adminOnlyGlobal(AdsCatalogSettings),
     // ⑤ 互動體驗
-    GameSettings,
+    adminOnlyGlobal(GameSettings),
     // ⑥ 內容與頁面
     // 順序原則：全站最常動 → 各頁面設定 → 規範類靜態頁。NavigationSettings
     // 涵蓋公告 bar / 主選單 / 頁尾，幾乎每週要動，放最上面；首頁 / 合集頁
     // / 商品列表是次常動的版面設定；About / FAQ / Policy 屬內容頁面，多半
     // 設一次就少改。
-    NavigationSettings,
-    HomepageSettings,
-    CollectionsPageSettings,
-    ProductListSettings,
-    AboutPageSettings,
-    FAQPageSettings,
-    PolicyPagesSettings,
-    PackagingPageSettings,
+    withOperatorGlobalUpdate(NavigationSettings),
+    withOperatorGlobalUpdate(HomepageSettings),
+    withOperatorGlobalUpdate(CollectionsPageSettings),
+    withOperatorGlobalUpdate(ProductListSettings),
+    withOperatorGlobalUpdate(AboutPageSettings),
+    withOperatorGlobalUpdate(FAQPageSettings),
+    withOperatorGlobalUpdate(PolicyPagesSettings),
+    withOperatorGlobalUpdate(PackagingPageSettings),
     // 2026-08-15 步驟03分組整併：原「⑦ 系統與安全」已拆散——GlobalSettings
     // 併入 ⑥ 內容與頁面（陣列位置維持在此，故排在其他 ⑥ globals 之後）、
     // PricingFormulaSettings 併入 ② 商品管理（會排在該群組 collections 之後，
     // 陣列位置不變）。
-    GlobalSettings,
-    PricingFormulaSettings,
+    adminOnlyGlobal(GlobalSettings),
+    adminOnlyGlobal(PricingFormulaSettings),
   ],
   editor: lexicalEditor({
     features: ({ defaultFeatures }) => [

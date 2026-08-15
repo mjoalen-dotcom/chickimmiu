@@ -48,6 +48,7 @@ export const Users: CollectionConfig = {
   // API 查詢會自動排除已封存會員，同時保留歷史關聯與可還原能力。
   trash: true,
   admin: {
+    hidden: ({ user }) => user?.role !== 'admin',
     useAsTitle: 'email',
     defaultColumns: ['name', 'email', 'role', 'memberTier', 'points', 'totalSpent', 'creditStatus', 'createdAt'],
     group: '③ 會員與 CRM',
@@ -161,7 +162,7 @@ export const Users: CollectionConfig = {
   access: {
     admin: ({ req: { user } }) => {
       if (!user) return false
-      return user.role === 'admin' || user.role === 'partner'
+      return user.role === 'admin' || user.role === 'operator' || user.role === 'partner'
     },
     read: isAdminOrSelf,
     create: isAdmin,
@@ -279,6 +280,7 @@ export const Users: CollectionConfig = {
                   defaultValue: 'customer',
                   options: [
                     { label: '管理員 Admin', value: 'admin' },
+                    { label: '營運人員 Operator', value: 'operator' },
                     { label: '合作夥伴 Partner', value: 'partner' },
                     { label: '一般會員 Customer', value: 'customer' },
                   ],
