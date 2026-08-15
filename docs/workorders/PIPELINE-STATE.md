@@ -1,13 +1,13 @@
 # PIPELINE-STATE.md｜切換管線狀態機（唯一真相源）
 
 > /next 每次執行後更新本檔並 commit。狀態：⚪未開始 🔵進行中 ✅完成 🔴失敗 ⏸暫停 ⏳等待外部
-> 最後更新：2026-08-15｜目前步驟：02｜停滯天數：0
+> 最後更新：2026-08-15｜目前步驟：03｜停滯天數：0
 
 | # | 步驟 | 依據 | 閘型 | 機器驗證項 | 狀態 | 完成日 | 產出 |
 |---|---|---|---|---|---|---|---|
 | 00 | 管線初始化（工作單入版控、CLAUDE.md、本檔） | AUTOPILOT §7 | 手動一次 | git log 含 init commit | ✅ | 2026-08-15 | commit 93616be |
 | 01 | Phase S：cost 欄位權限修補＋部署 | ADMIN-UI Prompt S | AUTO | `curl -s ".../api/products?limit=1" \| grep -c '"cost"'` = 0 | ✅ | 2026-08-15 | hetzner/main commit 9156ab4 + 52205f1（deployed to pre） |
-| 02 | 全站審計（read-only） | ADMIN-UI Prompt A | AUTO | AUDIT-20260814.md 與 API-STRUCTURE.md 產出；⚠️旗標（users共用／admin未轉向）寫入回報 | 🔵 | | |
+| 02 | 全站審計（read-only） | ADMIN-UI Prompt A | AUTO | AUDIT-20260814.md 與 API-STRUCTURE.md 產出；⚠️旗標（users共用／admin未轉向）寫入回報 | ✅ | 2026-08-15 | docs/admin-ui/AUDIT-20260814.md、docs/api/API-STRUCTURE.md |
 | 03 | 後台結構層（分組／欄位／中文化／tabs） | Prompt B | AUTO | 側邊欄分組≤6 截圖；products tabs 生效 | ⚪ | | |
 | 04 | 營運 Dashboard | Prompt C | AUTO | 4 指標卡渲染截圖 | ⚪ | | |
 | 05 | Branding＋i18n | Prompt D | INPUT（logo SVG＋色票 hex；預設＝文字 logo、不動色系） | favicon ≠ payload 預設 | ⚪ | | |
@@ -39,8 +39,9 @@
 | 2026-08-15 | 01 | 部署基準修正：本地 `line-bc-migration` 已領先 `hetzner/main` 33 個未推送 commit（App API v1／Google-Apple 原生登入／部落格 AI 工作室等），若整支部署會遠超 Phase S 範圍。改為從 `hetzner/main`（實際部署基準）另開 branch 只帶入本次 2 檔修補，部署後 fast-forward `hetzner/main` 到該 commit（`9156ab4`）。`line-bc-migration` 33 個未推送 commit 本次未動，維持原樣待後續處理。 | Claude（AUTO 執行內） |
 | 2026-08-15 | — | 系統性稽核發現：CRMSettings／InvoiceSettings／MarketingAutomationSettings／AdsCatalogSettings 4 個 globals 的 access.read=()=>true 對內部憑證欄位（LINE token/secret、ECPay HashKey/HashIV、行銷管道 API Key）無 field-level 保護，與本次修補的 Products.cost 同類。已查證 DB 現況全數未填值（無即時外洩），但屬同類結構性缺口。GlobalSettings 的 OAuth 憑證已有 isAdminFieldLevel 保護，無需動。 | Alan：授權修補 |
 | 2026-08-15 | — | 上述 4 個 globals 已修補（commit `52205f1`，比照 GlobalSettings 既有 isAdminFieldLevel 模式）並部署 pre，curl 驗證 8 個憑證欄位皆已從公開回應消失、端點仍正常回應非敏感欄位。同時修正先前誤判：line-bc-migration 並非「領先 hetzner/main 33 commit」，而是本地checkout落後 hetzner/main 33 commit（皆為已部署內容）；已用 rebase 同步（不含任何內容變更），管線工作單同步 push 至 hetzner。 | 已完成 |
+| 2026-08-15 | 02 | 全站唯讀審計完成（78 collections + 25 globals 逐檔實讀，Workflow 平行11個agent執行）。⚠️旗標回報：(1) `/admin` 200-not-redirect 已實測確認**非資安問題**——Payload 3 在該路由直接 SSR 登入表單（非傳統redirect），未登入無任何後台資料外洩；(2) customers/admin **確認共用** users collection（僅 role 欄位區分），role 欄位寫入已鎖 admin-only 故無立即可利用的提權路徑，架構隔離維持原排程步驟16處理；(3) **新發現**：`global-settings` 內 `tracking.metaCapiToken`、`sinsangMarket.accessToken` 2 欄位與步驟01同類缺口（無field-level保護），DB現況皆空值無即時外洩，**待 Alan 授權是否併入修補**；(4) `products.variants.costOverride` 與頂層cost同類但Prompt S未列入範圍，記錄於API-STRUCTURE.md供APP契約層(步驟16-17)設計DTO時注意；(5) collections分組現況8組，超過DoD「≤6組」目標，待步驟03處理或放寬目標。全程唯讀，未修改任何程式檔案。 | Claude（AUTO 執行內） |
 
 ## 停滯與異常（站會讀取區）
 
 - 目前紅燈：無
-- 等待 Alan 事項：無（步驟 01 + 4-globals 追加修補皆已完成部署，可說「下一步」進入步驟 02）
+- 等待 Alan 事項：(A) 是否授權修補 global-settings 2 個漏網憑證欄位（metaCapiToken/sinsangMarket.accessToken，同步驟01手法）；(B) Collections 8 組分組是否要收斂至 ≤6 組，還是放寬 DoD 目標；步驟03（後台結構層）可用「下一步」啟動，上述兩項不阻塞開工但會影響 Phase 1 執行細節
