@@ -1,7 +1,7 @@
 # PIPELINE-STATE.md｜切換管線狀態機（唯一真相源）
 
 > /next 每次執行後更新本檔並 commit。狀態：⚪未開始 🔵進行中 ✅完成 🔴失敗 ⏸暫停 ⏳等待外部 🟡部分完成（機器驗證項未100%達標，已部署但需Alan裁示是否算過關）
-> 最後更新：2026-08-15｜目前步驟：06（進行中）｜停滯天數：0
+> 最後更新：2026-08-15｜目前步驟：06（部署受阻，待重試）｜停滯天數：0
 
 | # | 步驟 | 依據 | 閘型 | 機器驗證項 | 狀態 | 完成日 | 產出 |
 |---|---|---|---|---|---|---|---|
@@ -11,7 +11,7 @@
 | 03 | 後台結構層（分組／欄位／中文化／tabs） | Prompt B | AUTO | Alan 已拍板：7組可接受（核心標準＝清楚直覺，非硬性≤6）；部落格群組內部規劃已核實務實合理 | ✅ | 2026-08-15 | hetzner/main commit b739f4b（deployed to pre）；分組8→7＋10個collection欄位補齊＋global-settings 2個漏網憑證欄位修補；products tabs維持既有4-tab（未依規格改6-tab，Alan未要求，留待未來評估） |
 | 04 | 營運 Dashboard | Prompt C | AUTO | 4 指標卡渲染截圖 | 🟡 部分完成 | 2026-08-15 | hetzner/main commit 87092ab（deployed to pre）；既有Dashboard已遠超4卡要求(8張KPI卡+3個分析tab)，僅補快速入口「待出貨清單」「媒體庫」2項；**無法截圖**——無admin登入憑證，不代填密碼，改以程式碼審閱+build/deploy成功+API層驗證確認 |
 | 05 | Branding＋i18n | Prompt D | INPUT（logo SVG＋色票 hex；預設＝文字 logo、不動色系） | favicon ≠ payload 預設 | ✅ | 2026-08-15 | hetzner/main commit `5e52f2d`（deployed to pre）；沿用文字 Logo、不動色系；zh-TW 預設＋en 保留；favicon／OG／日期格式完成 |
-| 06 | 角色權限 admin／operator | Prompt E | AUTO | 權限矩陣入 ADMIN-STRUCTURE.md；帳號清單回報 | 🔵 | | |
+| 06 | 角色權限 admin／operator | Prompt E | AUTO | 權限矩陣入 ADMIN-STRUCTURE.md；帳號清單回報 | 🔴 | | commit `6a91445` 已推送；tsc＋RBAC 8/8 通過，但 pre build 連續兩次因 Google Fonts 下載失敗，未 restart／未部署 |
 | 07 | Staging 防護（noindex header） | Prompt F | AUTO | 首頁 header 含 X-Robots-Tag: noindex | ⚪ | | |
 | 08 | 前台基準＋SEO 修復 | FE-QA Prompt G | AUTO | 分類 description 覆蓋 100%；title 双後綴消失；lighthouse-before/ 存在 | ⚪ | | |
 | 09 | 前台效能（ISR／script） | Prompt H | AUTO | before/after 對照表；首頁 TTFB 與商品頁差距 <1.5× | ⚪ | | |
@@ -46,8 +46,9 @@
 | 2026-08-15 | — | global-settings 2個漏網憑證欄位已修補（commit `b739f4b`，比照既有isAdminFieldLevel模式）並部署pre，curl驗證2欄位皆已從公開回應消失、gtmId等非敏感欄位仍正常回應。sinsangMarket.accessToken 原「加密儲存」誤導性描述已一併修正為「僅管理員可見」。 | 已完成 |
 | 2026-08-15 | 04 | 現況盤點：`src/components/admin/Dashboard.tsx`（802行）已存在且遠超工單原始「4張KPI卡」假設——現有8張卡（今日營收/訂單/待處理/新會員/客服訊息/退換貨/客單價/低庫存）+ 月度總覽/日曆查詢/業績比較 3個分頁，屬工單寫定後另一session已建置完成，本次只補齊快速操作區缺的「待出貨清單」（`?where[status][equals]=processing`）與「媒體庫」入口。「本週新增會員」（Prompt C字面用詞）判斷已由既有「今日新會員」+「本月新會員 vs 上月」雙粒度比較涵蓋，週粒度非必要新增，未做。**機器驗證項「4指標卡渲染截圖」無法達成**——無admin登入憑證且不代填密碼（同步驟02遇到的限制），改以：程式碼審閱確認card/連結存在、本地build通過、deploy health check通過、public API層驗證(currencies/global-settings等)佐證。 | Claude（AUTO 執行內，截圖項待Alan協助或接受替代驗證） |
 | 2026-08-15 | 05 | Alan 以「下一步」採 Prompt D 預設：沿用既有文字 Logo 與 CKMU 品牌圖檔，不提供新 SVG、不更動色系。已設定 Payload 後台預設語言 zh-TW（保留 en）、日期格式 `yyyy-MM-dd HH:mm`、自訂 favicon/apple icon 與 OG 圖。乾淨 worktree 產生 types 後 `tsc --noEmit` 通過；pre production build、migration、PM2 restart、四頁 health check 全綠；`/admin` HTML 實測含 zh-TW、中文登入文字、favicon 與 og-image，favicon 回應 200。 | Codex（AUTO 執行內，已完成） |
+| 2026-08-15 | 06 | 依共用 users 架構調整 Prompt E：保留 customer 安全預設、新增 operator；不可把一般顧客批次升為 admin。operator 可管理商品／訂單／內容但中央拒絕 delete，Users 與系統 Globals 隱藏。pre 帳號盤點為 admin 3、operator 0、partner 1、customer 10；既有 staff admin 無需 migration。`tsc --noEmit` 與 RBAC assertions 8/8 通過。部署兩次均在 `next/font` 下載 Google Fonts 時失敗，已達單步重試上限；兩次都未到 PM2 restart，pre 持續由步驟05版本服務。 | Codex（AUTO 停在紅燈，待外部連線恢復後重試步驟06） |
 
 ## 停滯與異常（站會讀取區）
 
-- 目前紅燈：無
-- 等待 Alan 事項：步驟04 登入後視覺截圖仍屬非阻塞補驗；步驟05 已完成。下一次「下一步」將進入步驟06（admin／operator 角色權限）。
+- 目前紅燈：步驟06程式與測試完成，但 pre build 連續兩次無法從 `fonts.gstatic.com` 下載 Noto TC 字型；未 restart、未部署。
+- 等待 Alan 事項：無需決策；外部連線恢復後再次「下一步」會重跑步驟06部署，不進入步驟07。
