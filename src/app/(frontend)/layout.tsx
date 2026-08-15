@@ -65,6 +65,9 @@ async function getNavigationSettings() {
 
 export async function generateMetadata(): Promise<Metadata> {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://chickimmiu.com'
+  // Staging（pre.chickimmiu.com）務必 noindex，避免正式切換前被收錄；
+  // 判斷沿用既有 NEXT_PUBLIC_SITE_URL（已在建置時注入，不必新增環境變數）。
+  const isStaging = new URL(siteUrl).hostname.startsWith('pre.')
   const settings = await getGlobalSettings()
 
   const site = (settings?.site || {}) as Record<string, unknown>
@@ -99,11 +102,11 @@ export async function generateMetadata(): Promise<Metadata> {
     generator: 'Next.js',
     referrer: 'strict-origin-when-cross-origin',
     robots: {
-      index: true,
-      follow: true,
+      index: !isStaging,
+      follow: !isStaging,
       googleBot: {
-        index: true,
-        follow: true,
+        index: !isStaging,
+        follow: !isStaging,
         'max-video-preview': -1,
         'max-image-preview': 'large' as const,
         'max-snippet': -1,
