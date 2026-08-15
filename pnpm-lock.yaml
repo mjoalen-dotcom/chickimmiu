@@ -46,6 +46,9 @@ importers:
       '@payloadcms/storage-s3':
         specifier: 3.83.0
         version: 3.83.0(@types/react@19.2.14)(monaco-editor@0.55.1)(next@15.5.15(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.77.4))(payload@3.83.0(patch_hash=94bc81749e9aa4e1831189b4bbacc0ab8845594a5fa8ba9eb3a4ddc83a30f351)(graphql@16.13.2)(typescript@5.9.3))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)
+      '@payloadcms/translations':
+        specifier: 3.83.0
+        version: 3.83.0
       '@payloadcms/ui':
         specifier: ^3.83.0
         version: 3.83.0(@types/react@19.2.14)(monaco-editor@0.55.1)(next@15.5.15(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.77.4))(payload@3.83.0(patch_hash=94bc81749e9aa4e1831189b4bbacc0ab8845594a5fa8ba9eb3a4ddc83a30f351)(graphql@16.13.2)(typescript@5.9.3))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)

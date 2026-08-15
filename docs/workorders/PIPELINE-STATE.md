@@ -10,7 +10,7 @@
 | 02 | 全站審計（read-only） | ADMIN-UI Prompt A | AUTO | AUDIT-20260814.md 與 API-STRUCTURE.md 產出；⚠️旗標（users共用／admin未轉向）寫入回報 | ✅ | 2026-08-15 | docs/admin-ui/AUDIT-20260814.md、docs/api/API-STRUCTURE.md |
 | 03 | 後台結構層（分組／欄位／中文化／tabs） | Prompt B | AUTO | Alan 已拍板：7組可接受（核心標準＝清楚直覺，非硬性≤6）；部落格群組內部規劃已核實務實合理 | ✅ | 2026-08-15 | hetzner/main commit b739f4b（deployed to pre）；分組8→7＋10個collection欄位補齊＋global-settings 2個漏網憑證欄位修補；products tabs維持既有4-tab（未依規格改6-tab，Alan未要求，留待未來評估） |
 | 04 | 營運 Dashboard | Prompt C | AUTO | 4 指標卡渲染截圖 | 🟡 部分完成 | 2026-08-15 | hetzner/main commit 87092ab（deployed to pre）；既有Dashboard已遠超4卡要求(8張KPI卡+3個分析tab)，僅補快速入口「待出貨清單」「媒體庫」2項；**無法截圖**——無admin登入憑證，不代填密碼，改以程式碼審閱+build/deploy成功+API層驗證確認 |
-| 05 | Branding＋i18n | Prompt D | INPUT（logo SVG＋色票 hex；預設＝文字 logo、不動色系） | favicon ≠ payload 預設 | 🔵 | | |
+| 05 | Branding＋i18n | Prompt D | INPUT（logo SVG＋色票 hex；預設＝文字 logo、不動色系） | favicon ≠ payload 預設 | 🟡 | | 本機 tsc 通過，待 pre 驗收 |
 | 06 | 角色權限 admin／operator | Prompt E | AUTO | 權限矩陣入 ADMIN-STRUCTURE.md；帳號清單回報 | ⚪ | | |
 | 07 | Staging 防護（noindex header） | Prompt F | AUTO | 首頁 header 含 X-Robots-Tag: noindex | ⚪ | | |
 | 08 | 前台基準＋SEO 修復 | FE-QA Prompt G | AUTO | 分類 description 覆蓋 100%；title 双後綴消失；lighthouse-before/ 存在 | ⚪ | | |

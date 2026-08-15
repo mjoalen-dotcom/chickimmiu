@@ -2,6 +2,8 @@ import { sqliteAdapter } from '@payloadcms/db-sqlite'
 import { resendAdapter } from '@payloadcms/email-resend'
 import { lexicalEditor, UploadFeature } from '@payloadcms/richtext-lexical'
 import { s3Storage } from '@payloadcms/storage-s3'
+import { en } from '@payloadcms/translations/languages/en'
+import { zhTw } from '@payloadcms/translations/languages/zhTw'
 import path from 'path'
 import { buildConfig, type EmailAdapter, type Plugin } from 'payload'
 import { fileURLToPath } from 'url'
@@ -258,6 +260,13 @@ if (
 }
 
 export default buildConfig({
+  i18n: {
+    fallbackLanguage: 'zh-TW',
+    supportedLanguages: {
+      'zh-TW': zhTw,
+      en,
+    },
+  },
   // 啟用 Payload 內建資料夾系統（v3 native folders，experimental but stable enough）
   //   - 自動建立 `payload-folders` collection（樹狀，自我參照 folder 欄位）
   //   - 已開 folders 的 collection（目前只有 Media）會多一個 `folder` relationship +
@@ -306,12 +315,29 @@ export default buildConfig({
   },
   admin: {
     user: Users.slug,
+    dateFormat: 'yyyy-MM-dd HH:mm',
     importMap: {
       baseDir: path.resolve(dirname),
     },
     meta: {
       titleSuffix: '｜CHIC KIM & MIU 後台',
       description: 'CHIC KIM & MIU 靚秀國際｜品牌管理後台',
+      defaultOGImageType: 'off',
+      icons: {
+        icon: '/favicon.ico',
+        shortcut: '/favicon.ico',
+        apple: '/apple-touch-icon.png',
+      },
+      openGraph: {
+        images: [
+          {
+            url: '/og-image.png',
+            width: 1200,
+            height: 630,
+            alt: 'CHIC KIM & MIU｜韓系質感女裝',
+          },
+        ],
+      },
     },
     components: {
       graphics: {
