@@ -687,12 +687,14 @@ export default function Dashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[
               { href: '/admin/collections/products/create', icon: '+', label: '新增商品', sub: '建立商品' },
+              { href: '/admin/collections/orders?where[status][equals]=processing', icon: '#', label: '待出貨清單', sub: '已確認待出貨訂單' },
               { href: '/admin/collections/orders', icon: '#', label: '訂單管理', sub: '查看所有訂單' },
               { href: '/admin/collections/users', icon: 'U', label: '會員管理', sub: '管理會員資料' },
               { href: '/admin/collections/marketing-campaigns', icon: 'M', label: '行銷活動', sub: '行銷管理' },
               { href: '/admin/collections/customer-service-tickets', icon: '?', label: '客服中心', sub: '處理客服訊息' },
               { href: '/admin/collections/products?where[isLowStock][equals]=true', icon: '!', label: '低庫存', sub: '補貨提醒' },
               { href: '/admin/collections/returns', icon: 'R', label: '退換貨', sub: '處理退換貨' },
+              { href: '/admin/collections/media', icon: 'M', label: '媒體庫', sub: '圖片/影片管理' },
             ].map((a, i) => (
               <a
                 key={i}
