@@ -226,7 +226,7 @@ export const GlobalSettings: GlobalConfig = {
       fields: [
         { name: 'gtmId', label: 'Google Tag Manager ID', type: 'text', admin: { description: '例如 GTM-XXXXXXX' } },
         { name: 'metaPixelId', label: 'Meta Pixel ID', type: 'text' },
-        { name: 'metaCapiToken', label: 'Meta CAPI Token', type: 'text', admin: { description: 'Conversions API 存取權杖' } },
+        { name: 'metaCapiToken', label: 'Meta CAPI Token', type: 'text', access: { read: isAdminFieldLevel }, admin: { description: 'Conversions API 存取權杖（僅管理員可見）' } },
         { name: 'ga4Id', label: 'GA4 Measurement ID', type: 'text', admin: { description: '例如 G-XXXXXXXXXX' } },
         { name: 'googleAdsId', label: 'Google Ads ID', type: 'text', admin: { description: '例如 AW-XXXXXXXXX' } },
         { name: 'googleAdsConversionLabel', label: 'Google Ads 轉換標籤', type: 'text', admin: { description: '例如 AbCdEfGhIjK' } },
@@ -306,7 +306,8 @@ export const GlobalSettings: GlobalConfig = {
           name: 'accessToken',
           label: 'Access Token',
           type: 'text',
-          admin: { description: '登入 Sinsang Market 後取得的 API Token（加密儲存）' },
+          access: { read: isAdminFieldLevel },
+          admin: { description: '登入 Sinsang Market 後取得的 API Token（僅管理員可見）' },
         },
         {
           name: 'krwToTwdRate',
