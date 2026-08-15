@@ -15,6 +15,11 @@ import { getMediaUrl, normalizeMediaUrl } from '@/lib/media-url'
 import { blogCategoryLabel } from '@/lib/blog/categoryTaxonomy'
 import config from '@payload-config'
 
+// 步驟09（FE-QA Prompt H）：首頁屬行銷內容不需即時，改用 ISR 而非每次
+// request 都重新查 9 個 collection。300 秒＝後台改商品/活動後最多 5
+// 分鐘內在首頁反映，換來絕大多數請求直接吃快取、不再等資料庫。
+export const revalidate = 300
+
 /* ── Icon Map ── */
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   Sparkles, Truck, RefreshCw, Shield, Crown, Gamepad2, Gift, Users,
@@ -32,7 +37,16 @@ function getProductImage(product: Record<string, unknown>): string | undefined {
 
 /* getMediaUrl imported from @/lib/media-url */
 
-/* ── Fetch homepage settings + products ── */
+/* ── Fetch homepage settings + products ──
+ * 步驟09效能優化（FE-QA Prompt H）：原本 9 個 payload 查詢完全依序
+ * await，互相阻塞，是首頁 TTFB 11 秒+的主因（見 lighthouse-before/）。
+ * 改為兩批平行：第一批（homepage settings + 站台主題）彼此不相依；
+ * 第二批（新品/熱銷/部落格/分類標籤/UGC）都只依賴第一批算出的
+ * limit/mode，彼此也不相依。熱銷不足4件時的補位查詢仍保持依序（需要
+ * 先看到 hotResult 結果才知道要不要補），屬低頻例外情況不影響主線。
+ * 每個查詢各自保留原本的 try/catch fallback，行為與修改前完全一致，
+ * 只是不再互相排隊等待。
+ */
 async function fetchHomeData() {
   const defaults = {
     homepage: null as Record<string, unknown> | null,
@@ -50,98 +64,74 @@ async function fetchHomeData() {
   try {
     const payload = await getPayload({ config })
 
-    // Fetch homepage settings
-    let homepage: Record<string, unknown> | null = null
-    try {
-      homepage = await payload.findGlobal({ slug: 'homepage-settings', depth: 2 }) as unknown as Record<string, unknown>
-    } catch {
-      // Global may not exist yet (first run before migration)
-    }
-
-    // Fetch active site theme (for hero variant + layout heights)
-    let activeTheme: Record<string, unknown> | null = null
-    try {
-      const themeResult = await payload.find({
-        collection: 'site-themes',
-        where: { isActive: { equals: true } },
-        limit: 1,
-        depth: 0,
-      })
-      activeTheme = (themeResult.docs[0] as unknown as Record<string, unknown>) || null
-    } catch {
-      // Collection may not exist yet (first run before migration) — fall back to defaults
-    }
+    // ── 第一批：彼此不相依，平行查 ──
+    const [homepage, activeTheme] = await Promise.all([
+      payload
+        .findGlobal({ slug: 'homepage-settings', depth: 2 })
+        .then((r) => r as unknown as Record<string, unknown>)
+        .catch(() => null as Record<string, unknown> | null),
+      payload
+        .find({ collection: 'site-themes', where: { isActive: { equals: true } }, limit: 1, depth: 0 })
+        .then((r) => (r.docs[0] as unknown as Record<string, unknown>) || null)
+        .catch(() => null as Record<string, unknown> | null),
+    ])
 
     const newLimit = (homepage?.newProductsSection as Record<string, unknown>)?.limit as number || 8
     const hotLimit = (homepage?.hotProductsSection as Record<string, unknown>)?.limit as number || 8
+    const journalSection = homepage?.styleJournalSection as Record<string, unknown> | undefined
+    const journalMode = journalSection?.mode as string || 'auto'
+    const journalLimit = journalSection?.limit as number || 3
+    const ugcSection = homepage?.ugcSection as Record<string, unknown> | undefined
+    const ugcLimit = (ugcSection?.maxItems as number) || 6
 
-    // Fetch products
-    const newResult = await payload.find({ collection: 'products', sort: '-createdAt', limit: newLimit, depth: 1 })
-    const hotResult = await payload.find({ collection: 'products', where: { isHot: { equals: true } }, sort: '-createdAt', limit: hotLimit, depth: 1 })
+    // ── 第二批：都只依賴上面算出的 limit/mode，彼此不相依，平行查 ──
+    const [newProducts, hotResultDocs, blogPosts, blogCategoryLabels, ugcDocs] = await Promise.all([
+      payload
+        .find({ collection: 'products', sort: '-createdAt', limit: newLimit, depth: 1 })
+        .then((r) => r.docs as unknown as Record<string, unknown>[])
+        .catch(() => [] as Record<string, unknown>[]),
+      payload
+        .find({ collection: 'products', where: { isHot: { equals: true } }, sort: '-createdAt', limit: hotLimit, depth: 1 })
+        .then((r) => r.docs as unknown as Record<string, unknown>[])
+        .catch(() => [] as Record<string, unknown>[]),
+      journalMode === 'auto'
+        ? payload
+            .find({
+              collection: 'blog-posts',
+              where: {
+                status: { equals: 'published' },
+                visibility: { equals: 'public' },
+                publishToKimLafayette: { not_equals: true },
+              },
+              sort: '-publishedAt',
+              limit: journalLimit,
+              depth: 1,
+            })
+            .then((r) => r.docs as unknown as Record<string, unknown>[])
+            .catch(() => [] as Record<string, unknown>[])
+        : Promise.resolve([] as Record<string, unknown>[]),
+      payload
+        .find({ collection: 'blog-categories', where: { site: { equals: 'store' } }, sort: 'displayOrder', limit: 50, depth: 0 })
+        .then((r) => Object.fromEntries(r.docs.map((category) => [String(category.value), String(category.name)])))
+        .catch(() => ({}) as Record<string, string>),
+      payload
+        .find({ collection: 'ugc-posts', where: { status: { equals: 'approved' } }, sort: '-isPinned,-createdAt', limit: ugcLimit, depth: 2 })
+        .then((r) => r.docs as unknown as Record<string, unknown>[])
+        .catch(() => [] as Record<string, unknown>[]),
+    ])
 
-    let hotProducts = hotResult.docs as unknown as Record<string, unknown>[]
+    // 熱銷不足 4 件才補位查詢——需要先看到上面的結果，維持依序（低頻例外）
+    let hotProducts = hotResultDocs
     if (hotProducts.length < 4) {
-      const fallback = await payload.find({ collection: 'products', sort: '-createdAt', limit: hotLimit, page: 2, depth: 1 })
-      hotProducts = fallback.docs as unknown as Record<string, unknown>[]
+      try {
+        const fallback = await payload.find({ collection: 'products', sort: '-createdAt', limit: hotLimit, page: 2, depth: 1 })
+        hotProducts = fallback.docs as unknown as Record<string, unknown>[]
+      } catch { /* 保留原本 hotResultDocs（可能是空陣列）*/ }
     }
-
-    const newProducts = newResult.docs as unknown as Record<string, unknown>[]
 
     // Build hero banners from products as fallback
     const allProducts = [...newProducts, ...hotProducts]
     const heroBanners = allProducts.map(getProductImage).filter(Boolean).slice(0, 3) as string[]
-
-    // Fetch blog posts for style journal
-    let blogPosts: Record<string, unknown>[] = []
-    const journalSection = homepage?.styleJournalSection as Record<string, unknown> | undefined
-    const journalMode = journalSection?.mode as string || 'auto'
-    const journalLimit = journalSection?.limit as number || 3
-
-    if (journalMode === 'auto') {
-      try {
-        const blogResult = await payload.find({
-          collection: 'blog-posts',
-          where: {
-            status: { equals: 'published' },
-            visibility: { equals: 'public' },
-            publishToKimLafayette: { not_equals: true },
-          },
-          sort: '-publishedAt',
-          limit: journalLimit,
-          depth: 1,
-        })
-        blogPosts = blogResult.docs as unknown as Record<string, unknown>[]
-      } catch { /* blog collection may be empty */ }
-    }
-
-    let blogCategoryLabels: Record<string, string> = {}
-    try {
-      const categoryResult = await payload.find({
-        collection: 'blog-categories',
-        where: { site: { equals: 'store' } },
-        sort: 'displayOrder',
-        limit: 50,
-        depth: 0,
-      })
-      blogCategoryLabels = Object.fromEntries(
-        categoryResult.docs.map((category) => [String(category.value), String(category.name)]),
-      )
-    } catch { /* taxonomy migration may still be pending */ }
-
-    // Fetch approved UGC posts for homepage gallery
-    let ugcDocs: Record<string, unknown>[] = []
-    const ugcSection = homepage?.ugcSection as Record<string, unknown> | undefined
-    const ugcLimit = (ugcSection?.maxItems as number) || 6
-    try {
-      const ugcResult = await payload.find({
-        collection: 'ugc-posts',
-        where: { status: { equals: 'approved' } },
-        sort: '-isPinned,-createdAt',
-        limit: ugcLimit,
-        depth: 2,
-      })
-      ugcDocs = ugcResult.docs as unknown as Record<string, unknown>[]
-    } catch { /* collection may be empty */ }
 
     return {
       homepage,
