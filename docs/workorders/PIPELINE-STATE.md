@@ -1,7 +1,7 @@
 # PIPELINE-STATE.md｜切換管線狀態機（唯一真相源）
 
 > /next 每次執行後更新本檔並 commit。狀態：⚪未開始 🔵進行中 ✅完成 🔴失敗 ⏸暫停 ⏳等待外部 🟡部分完成（機器驗證項未100%達標，已部署但需Alan裁示是否算過關）
-> 最後更新：2026-08-15｜目前步驟：09｜停滯天數：0
+> 最後更新：2026-08-15｜目前步驟：10｜停滯天數：0
 
 | # | 步驟 | 依據 | 閘型 | 機器驗證項 | 狀態 | 完成日 | 產出 |
 |---|---|---|---|---|---|---|---|
@@ -14,7 +14,7 @@
 | 06 | 角色權限 admin／operator | Prompt E | AUTO | 權限矩陣入 ADMIN-STRUCTURE.md；帳號清單回報 | ✅ | 2026-08-15 | hetzner/main commit 97cfb22（deployed to pre）；Claude 重試部署第三次成功——`fonts.gstatic.com`/`fonts.googleapis.com` 連線已恢復（curl 實測連通，非逾時），build+migrate+PM2 restart+四頁 health check 全綠 |
 | 07 | Staging 防護（noindex header） | Prompt F | AUTO | 首頁 header 含 X-Robots-Tag: noindex | ✅ | 2026-08-15 | hetzner/main commit 0c90d4f（deployed to pre）；curl 實測首頁/商品頁/admin 皆回 `X-Robots-Tag: noindex, nofollow`，meta robots 亦已由 index,follow 改 noindex,nofollow；robots.txt 稽核確認已是 Disallow: /；basic auth（Prompt F第3項）依工單本意留待 Alan 決策未執行 |
 | 08 | 前台基準＋SEO 修復 | FE-QA Prompt G | AUTO | 分類 description 覆蓋 100%；title 双後綴消失；lighthouse-before/ 存在 | ✅ | 2026-08-15 | hetzner/main commit 2c90e8d（deployed to pre）；title/description fix + **意外發現並修復 sitemap 商品 limit:1000 硬上限**（1,395 件上架商品有 395 件從未進 sitemap，靜默漏收錄，已改 limit:0）；curl 驗證 title 單一後綴、description 正確填入、sitemap URL數 1178→1573（+395 對上）；docs/fe-qa/lighthouse-before/ 四頁基準已存 |
-| 09 | 前台效能（ISR／script） | Prompt H | AUTO | before/after 對照表；首頁 TTFB 與商品頁差距 <1.5× | ⚪ | | |
+| 09 | 前台效能（ISR／script） | Prompt H | AUTO | before/after 對照表；首頁 TTFB 與商品頁差距 <1.5× | ✅ | 2026-08-15 | hetzner/main commit 5ec0c3f（deployed to pre）；首頁加revalidate:300+9個查詢改2批Promise.all平行；curl實測TTFB 11s級→0.6-0.7s級，與商品頁(0.55-0.65s)差距僅~1.05倍（達標<1.5×）；Lighthouse LCP 11.2s→9.4s部分改善（剩餘瓶頸在前端資源載入非本次範圍）；script載入策略稽核已達標無需修改；分類/商品頁ISR僅評估未實作，建議見docs/fe-qa/isr-tradeoff-category-product.md |
 | 10 | 前台收口（/diag /games、404） | Prompt I | AUTO | /diag 與 /games 回 404 或需權限 | ⚪ | | |
 | 11 | BP-002 合併檢查點 | 外包 | ⏳WAIT | pre 上購物車＋OAuth 全流程通過 | ⚪ | | |
 | 12 | PG 盤點 | DB-PG Prompt P1 | AUTO（RAM 餘裕<800MB → 升級 CPX32 呈報 INPUT） | PG-PHASE0-AUDIT.md 產出 | ⚪ | | |
@@ -51,8 +51,10 @@
 | 2026-08-15 | — | 順帶發現（與管線無關，未處理）：repo 根目錄有一個未追蹤的 `outputs/01a003f6-0998-7052-a92c-3e3fd3a22371/` 目錄，內含完整 node_modules（來源不明，非 ops-copilot WIP 的一部分）。已隨其他未追蹤WIP一起 stash+pop 保留原狀，未刪除、未提交，僅記錄供 Alan 知悉，必要時自行清理。 | Claude（僅記錄） |
 | 2026-08-15 | 07 | Prompt F 執行前先 `git fetch` 確認無並行 session（吸取步驟06教訓），確認乾淨後執行。nginx：`pre.chickimmiu.com` server block 加 `add_header X-Robots-Tag "noindex, nofollow" always;`（透過站點專屬 include snippet，不放 conf.d 避免波及其他站點），手動套用+`nginx -t`+reload，repo 留 `ops/nginx/pre-staging-noindex.conf` 存查並註明切換www當天須移除。Next.js：`generateMetadata` 的 robots 從寫死 `index:true` 改依 `NEXT_PUBLIC_SITE_URL` hostname 是否以 `pre.` 開頭判斷（沿用既有env var，不需新增 NEXT_PUBLIC_ENV）。curl 實測首頁/商品頁/admin 均已回應正確 header 與 meta。robots.txt 已於步驟02確認 Disallow:/。basic auth（第3項）依工單原意留待 Alan 決策，未執行。 | Claude（AUTO 執行內） |
 | 2026-08-15 | 08 | Phase 0（Lighthouse基準）+ Phase 1（title/description/sitemap修復）皆完成。分類頁title bug根因：手動拼接品牌後綴疊加根layout的title.template造成雙重（商品頁本無此問題，已對齊其寫法）。description 135個分類中125個空值，補fallback模板，完整清單見docs/fe-qa/category-description-coverage.md。**意外發現**：sitemap.ts商品查詢`limit:1000`但上架商品已達1,395件，靜默漏收錄約395件（28%）從未被Google發現——不在Prompt G原始檢查項的字面範圍內（原文只問「是否含已下架商品」，這次抓到的是相反方向：該收錄的漏收錄），屬抽驗sitemap時額外揪出，已修正為limit:0。Lighthouse基準：4頁型Performance均55-57（LCP全數>8秒，步驟09主戰場）；分類頁SEO分數(54)明顯低於其他頁(69)，正是此次修復對象於部署前的基準寫照；全數SEO<90是步驟07 noindex的預期副作用非新問題。 | Claude（AUTO 執行內） |
+| 2026-08-15 | 09 | 首頁 `fetchHomeData()` 9個payload查詢原本完全依序await互相阻塞、無任何快取，是TTFB主因。改：(1) `export const revalidate=300` 首頁ISR化；(2) 查詢拆兩批`Promise.all`平行（第一批homepage settings+站台主題彼此不相依；第二批新品/熱銷/部落格/分類標籤/UGC都只依賴第一批算出的limit/mode、彼此不相依；熱銷不足4件補位查詢維持依序，低頻例外）。curl實測TTFB從Lighthouse基準11秒級降至連續多次0.6-0.7秒級，與商品頁差距僅~1.05倍，達成DoD<1.5×。Lighthouse LCP 11.2s→9.4s有改善但未達<2.5s目標，分析見before-after-comparison.md：TTFB/後端已大幅改善，LCP剩餘瓶頸在前端資源載入(如Hero圖片)非本次範圍，依Prompt H停損原則記錄為後續建議。Script載入策略稽核：GTM/Pixel/GA4皆已用afterInteractive、consent script正確用beforeInteractive，無需修改。分類/商品頁ISR僅評估未實作（两頁現況皆刻意force-dynamic，非遺漏）。 | Claude（AUTO 執行內） |
+| 2026-08-15 | — | 🔴 部署再次卡在Google Fonts下載（第4次今日踩到同類問題，前3次見步驟06記錄）：build時`next/font/google`下載Noto Serif TC約108個字型檔變體，即使單一curl測試gstatic.com連通(404非逾時)，仍大量並發請求逾時失敗。重試1次後成功。**這是重複出現的基礎設施脆弱點**，建議未來自行下載字型檔並用`next/font/local`取代`next/font/google`的build-time即時抓取機制，徹底根除此類間歇性部署失敗，而非每次靠重試賭運氣——留給Alan決定是否排入後續工作。 | Claude（AUTO 排除，建議記錄） |
 
 ## 停滯與異常（站會讀取區）
 
 - 目前紅燈：無
-- 等待 Alan 事項：**多 session 並行風險已提醒**——若同時有兩個 AI 在跑 AUTOPILOT-001，`/next` 的「讀STATE避免撞車」機制只在先後接力時有效，真正同時執行仍可能各自推進不同步驟直到 push 才發現分歧（這次無損排除，但值得注意）。是否要調整為「同時間只讓一個 AI 主跑 AUTOPILOT，其餘待命」由 Alan決定。步驟09（前台效能）可用「下一步」啟動。
+- 等待 Alan 事項：(A) **多 session 並行風險**——`/next` 的「讀STATE避免撞車」機制只在先後接力時有效，是否要調整為「同時間只讓一個 AI 主跑 AUTOPILOT」由 Alan決定；(B) **Google Fonts 部署脆弱點已第4次出現**（今日累計），建議改用 `next/font/local` 自行託管字型檔根除間歇性部署失敗，是否排入後續工作待 Alan 決定。步驟10（前台收口 /diag /games）可用「下一步」啟動，上述兩項不阻塞。
