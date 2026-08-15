@@ -1,7 +1,7 @@
 # PIPELINE-STATE.md｜切換管線狀態機（唯一真相源）
 
 > /next 每次執行後更新本檔並 commit。狀態：⚪未開始 🔵進行中 ✅完成 🔴失敗 ⏸暫停 ⏳等待外部 🟡部分完成（機器驗證項未100%達標，已部署但需Alan裁示是否算過關）
-> 最後更新：2026-08-15｜目前步驟：04｜停滯天數：0
+> 最後更新：2026-08-15｜目前步驟：05｜停滯天數：0
 
 | # | 步驟 | 依據 | 閘型 | 機器驗證項 | 狀態 | 完成日 | 產出 |
 |---|---|---|---|---|---|---|---|
@@ -9,7 +9,7 @@
 | 01 | Phase S：cost 欄位權限修補＋部署 | ADMIN-UI Prompt S | AUTO | `curl -s ".../api/products?limit=1" \| grep -c '"cost"'` = 0 | ✅ | 2026-08-15 | hetzner/main commit 9156ab4 + 52205f1（deployed to pre） |
 | 02 | 全站審計（read-only） | ADMIN-UI Prompt A | AUTO | AUDIT-20260814.md 與 API-STRUCTURE.md 產出；⚠️旗標（users共用／admin未轉向）寫入回報 | ✅ | 2026-08-15 | docs/admin-ui/AUDIT-20260814.md、docs/api/API-STRUCTURE.md |
 | 03 | 後台結構層（分組／欄位／中文化／tabs） | Prompt B | AUTO | Alan 已拍板：7組可接受（核心標準＝清楚直覺，非硬性≤6）；部落格群組內部規劃已核實務實合理 | ✅ | 2026-08-15 | hetzner/main commit b739f4b（deployed to pre）；分組8→7＋10個collection欄位補齊＋global-settings 2個漏網憑證欄位修補；products tabs維持既有4-tab（未依規格改6-tab，Alan未要求，留待未來評估） |
-| 04 | 營運 Dashboard | Prompt C | AUTO | 4 指標卡渲染截圖 | ⚪ | | |
+| 04 | 營運 Dashboard | Prompt C | AUTO | 4 指標卡渲染截圖 | 🟡 部分完成 | 2026-08-15 | hetzner/main commit 87092ab（deployed to pre）；既有Dashboard已遠超4卡要求(8張KPI卡+3個分析tab)，僅補快速入口「待出貨清單」「媒體庫」2項；**無法截圖**——無admin登入憑證，不代填密碼，改以程式碼審閱+build/deploy成功+API層驗證確認 |
 | 05 | Branding＋i18n | Prompt D | INPUT（logo SVG＋色票 hex；預設＝文字 logo、不動色系） | favicon ≠ payload 預設 | ⚪ | | |
 | 06 | 角色權限 admin／operator | Prompt E | AUTO | 權限矩陣入 ADMIN-STRUCTURE.md；帳號清單回報 | ⚪ | | |
 | 07 | Staging 防護（noindex header） | Prompt F | AUTO | 首頁 header 含 X-Robots-Tag: noindex | ⚪ | | |
@@ -44,8 +44,9 @@
 | 2026-08-15 | 03 | 🔴 部署事故（已排除，正式站無感）：`git add src/payload.config.ts`（整檔暫存）誤把本機另一份未提交的 ops-copilot WIP 殘留（OpsActions collection import+註冊、opsCopilot admin view 註冊）一併帶入 commit 372e777，該WIP實際檔案從未commit，導致 prod migrate 直接 `ERR_MODULE_NOT_FOUND` 炸掉（deploy exit 3）。**失敗發生在 migrate 步驟（step 3/7），未到 pm2 restart（step 5/7），正式站全程由前一版本繼續服務，無使用者可見中斷**。已用 `git diff` 逐行核對揪出殘留、新commit `4ce11ab` 移除、重新 build+push+deploy，第二次部署 exit 0 全綠。教訓：往後對「同時被自己改動+被其他未提交WIP改動」的檔案，`git add <file>` 前必須先 `git diff <file>` 核對整份 diff，不能假設「我只改了我想改的部分」。 | Claude（AUTO 執行內，已排除） |
 | 2026-08-15 | 03 | Alan 拍板：(A) Ⓚ兩站部落格獨立群組維持不動（已請Claude確認KimBlogNavGroup.tsx內部規劃務實合理——分類篩選連結的site值('store'/'kim')與collection定義一致、defaultColumns已含site欄位供快速辨識，非冗餘設計）；(B) 7組可接受，核心標準是「清楚明確直覺容易使用」不是硬性數字；(C) global-settings 2個漏網憑證欄位（metaCapiToken/sinsangMarket.accessToken）授權修補。步驟03正式轉✅。Products.ts tabs 規格重做未被要求，維持現狀。 | Alan |
 | 2026-08-15 | — | global-settings 2個漏網憑證欄位已修補（commit `b739f4b`，比照既有isAdminFieldLevel模式）並部署pre，curl驗證2欄位皆已從公開回應消失、gtmId等非敏感欄位仍正常回應。sinsangMarket.accessToken 原「加密儲存」誤導性描述已一併修正為「僅管理員可見」。 | 已完成 |
+| 2026-08-15 | 04 | 現況盤點：`src/components/admin/Dashboard.tsx`（802行）已存在且遠超工單原始「4張KPI卡」假設——現有8張卡（今日營收/訂單/待處理/新會員/客服訊息/退換貨/客單價/低庫存）+ 月度總覽/日曆查詢/業績比較 3個分頁，屬工單寫定後另一session已建置完成，本次只補齊快速操作區缺的「待出貨清單」（`?where[status][equals]=processing`）與「媒體庫」入口。「本週新增會員」（Prompt C字面用詞）判斷已由既有「今日新會員」+「本月新會員 vs 上月」雙粒度比較涵蓋，週粒度非必要新增，未做。**機器驗證項「4指標卡渲染截圖」無法達成**——無admin登入憑證且不代填密碼（同步驟02遇到的限制），改以：程式碼審閱確認card/連結存在、本地build通過、deploy health check通過、public API層驗證(currencies/global-settings等)佐證。 | Claude（AUTO 執行內，截圖項待Alan協助或接受替代驗證） |
 
 ## 停滯與異常（站會讀取區）
 
 - 目前紅燈：無
-- 等待 Alan 事項：無，可說「下一步」進入步驟04（營運Dashboard）
+- 等待 Alan 事項：步驟04「截圖」驗證項因無登入憑證無法達成，若要真正的視覺確認需 Alan 自行登入 pre.chickimmiu.com/admin 看一眼（不急，不阻塞下一步）；否則可直接說「下一步」進入步驟05（Branding＋i18n，需提供 logo SVG＋色票 hex，或說「下一步」採用預設＝文字 logo、不動色系）
