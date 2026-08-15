@@ -26,7 +26,7 @@ export default function WithdrawPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('[Partner] Withdraw request:', { amount, bankInfo })
+    // TODO: wire to a real withdrawal-request endpoint — this page is UI-only mock data for now.
     setAmount('')
   }
 

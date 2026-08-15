@@ -97,14 +97,6 @@ export function DailyCheckIn({ open, onClose }: DailyCheckInProps) {
     } catch {
       // Storage may be blocked (privacy mode / lockdown) — ignore.
     }
-
-    const reward = REWARDS[newDays.length - 1]
-    console.log(
-      '[DailyCheckIn] Day', newDays.length,
-      'reward:', reward,
-      'tpeDate:', todayTpe,
-      'streakReset:', wasReset,
-    )
   }
 
   if (!open) return null

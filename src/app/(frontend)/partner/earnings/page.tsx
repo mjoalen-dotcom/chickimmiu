@@ -20,8 +20,7 @@ const DETAILED_RECORDS = [
 
 export default function EarningsPage() {
   const handleExportCSV = () => {
-    console.log('[Partner] Exporting earnings CSV...')
-    // In production: generate and download CSV
+    // TODO: wire to a real export endpoint — this page is UI-only mock data for now.
   }
 
   return (
