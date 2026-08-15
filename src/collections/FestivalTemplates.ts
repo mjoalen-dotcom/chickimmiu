@@ -14,6 +14,8 @@ export const FestivalTemplates: CollectionConfig = {
   admin: {
     group: '④ 行銷推廣',
     useAsTitle: 'festivalName',
+    defaultColumns: ['festivalName', 'festivalType', 'isActive', 'isRecurring', 'updatedAt'],
+    listSearchableFields: ['festivalName', 'festivalSlug'],
     description: '節慶／假日行銷模板管理',
   },
   access: {

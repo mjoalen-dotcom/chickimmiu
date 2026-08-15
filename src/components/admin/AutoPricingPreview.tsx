@@ -163,7 +163,7 @@ const AutoPricingPreview: React.FC<Props> = () => {
     return (
       <div style={containerStyle}>
         <div style={{ fontSize: 13, color: '#dc2626' }}>
-          載入失敗：{loadError}（請先到「⑦ 系統與安全 → 商品計價公式」初始化設定）
+          載入失敗：{loadError}（請先到「② 商品管理 → 商品計價公式」初始化設定）
         </div>
       </div>
     )
@@ -243,7 +243,7 @@ const AutoPricingPreview: React.FC<Props> = () => {
           {!costAmount
             ? '尚未填採購金額（自動計價跳過）'
             : !rate
-            ? '找不到該幣別的匯率（請先到「⑦ 系統與安全 → 幣別與匯率」確認 KRW/USD/JPY/CNY 已啟用）'
+            ? '找不到該幣別的匯率（請先到「① 訂單與物流 → 幣別與匯率」確認 KRW/USD/JPY/CNY 已啟用）'
             : '請完成上方欄位'}
         </div>
       )}

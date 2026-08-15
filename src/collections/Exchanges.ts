@@ -13,7 +13,9 @@ export const Exchanges: CollectionConfig = {
   admin: {
     group: '① 訂單與物流',
     description: '換貨申請管理',
+    useAsTitle: 'exchangeNumber',
     defaultColumns: ['exchangeNumber', 'order', 'quickApproval', 'createdAt'],
+    listSearchableFields: ['exchangeNumber'],
   },
   access: {
     read: ({ req: { user } }) => {

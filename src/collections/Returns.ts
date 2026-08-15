@@ -16,7 +16,9 @@ export const Returns: CollectionConfig = {
   admin: {
     group: '① 訂單與物流',
     description: '退貨申請管理與審核',
+    useAsTitle: 'returnNumber',
     defaultColumns: ['returnNumber', 'order', 'quickApproval', 'createdAt'],
+    listSearchableFields: ['returnNumber'],
   },
   access: {
     read: ({ req: { user } }) => {

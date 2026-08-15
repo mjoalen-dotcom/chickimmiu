@@ -19,6 +19,12 @@ import React, { useEffect } from 'react'
  * （有 attribute 標記防重複）。
  *
  * 對應 src/payload.config.ts admin.components.afterNavLinks。
+ *
+ * 2026-08-15 步驟03分組整併評估：曾考慮併入「⑥ 內容與頁面」以達 DoD
+ * ≤6組目標，但 appendItems（分類篩選/相簿/AI工具/前台連結）用
+ * `content.appendChild` 會被推到合併後大群組的最底部，跟上方的部落格
+ * 文章/分類原生連結視覺斷開，對每天用這些工具的部落格編輯團隊是實質
+ * 動線劣化，故維持獨立群組不合併。詳見 docs/admin-ui/AUDIT-20260814.md。
  */
 
 interface Item {

@@ -14,7 +14,9 @@ export const UGCPosts: CollectionConfig = {
   admin: {
     group: '⑤ 互動體驗',
     description: 'UGC 社群內容聚合（Instagram / Facebook / 手動匯入）',
+    useAsTitle: 'authorName',
     defaultColumns: ['authorName', 'platform', 'status', 'isPinned', 'likes', 'createdAt'],
+    listSearchableFields: ['authorName', 'authorHandle'],
   },
   access: {
     read: ({ req: { user } }) => {

@@ -13,6 +13,8 @@ export const ABTests: CollectionConfig = {
   admin: {
     group: '④ 行銷推廣',
     useAsTitle: 'testName',
+    defaultColumns: ['testName', 'campaign', 'status', 'winnerMetric', 'updatedAt'],
+    listSearchableFields: ['testName'],
     description: 'A/B 測試實驗管理',
   },
   access: {

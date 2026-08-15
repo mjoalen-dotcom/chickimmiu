@@ -14,6 +14,8 @@ export const MarketingCampaigns: CollectionConfig = {
   admin: {
     group: '④ 行銷推廣',
     useAsTitle: 'campaignName',
+    defaultColumns: ['campaignName', 'campaignType', 'status', 'updatedAt'],
+    listSearchableFields: ['campaignName', 'campaignSlug'],
     description: '管理所有行銷活動與排程',
   },
   access: {

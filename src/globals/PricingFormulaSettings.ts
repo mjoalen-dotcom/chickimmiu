@@ -30,7 +30,7 @@ export const PricingFormulaSettings: GlobalConfig = {
   slug: 'pricing-formula-settings',
   label: '商品計價公式',
   admin: {
-    group: '⑦ 系統與安全',
+    group: '② 商品管理',
     description:
       '採購韓幣 → 自動算建議售價的公式設定（後台商品「自動計價」會引用）',
   },

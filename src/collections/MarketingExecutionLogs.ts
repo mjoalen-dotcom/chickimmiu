@@ -14,6 +14,7 @@ export const MarketingExecutionLogs: CollectionConfig = {
   admin: {
     group: '④ 行銷推廣',
     description: '行銷訊息發送與互動紀錄',
+    useAsTitle: 'id',
     defaultColumns: ['campaign', 'user', 'channel', 'status', 'sentAt'],
   },
   access: {

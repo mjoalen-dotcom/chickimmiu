@@ -101,6 +101,7 @@ import { AutomationLogs } from './collections/AutomationLogs'
 import { CustomerServiceTickets } from './collections/CustomerServiceTickets'
 import { MemberSegments } from './collections/MemberSegments'
 import { LoginAttempts } from './collections/LoginAttempts'
+import { OpsActions } from './collections/OpsActions'
 import { Coupons } from './collections/Coupons'
 import { CouponRedemptions } from './collections/CouponRedemptions'
 import { DailyHoroscopes } from './collections/DailyHoroscopes'
@@ -220,12 +221,20 @@ if (r2Configured) {
 /**
  * CHIC KIM & MIU — Payload CMS v3 主設定
  * ────────────────────────────────────────
- * Sidebar 群組架構（9 組；各 collection/global 的 admin.group 為準）：
+ * Sidebar 群組架構（8 組；各 collection/global 的 admin.group 為準）：
  *   ⓪ 數據儀表        — 手刻 client group（CKMUDashboardNavGroup，分析 views）
- *   Ⓚ 金老佛爺部落格  — BlogPosts / BlogCategories + KimBlogNavGroup 注入的
- *                        工作台 / 相簿 / AI 草稿 / 查看部落格 連結
+ *   Ⓚ 兩站部落格      — BlogPosts / BlogCategories + KimBlogNavGroup 注入的
+ *                        工作台 / 相簿 / AI 草稿 / 查看部落格 連結（刻意保留獨立
+ *                        群組不併入 ⑥，理由見 KimBlogNavGroup.tsx 檔頭註解）
  *   ① 訂單與物流      ② 商品管理      ③ 會員與 CRM
- *   ④ 行銷推廣        ⑤ 互動體驗      ⑥ 內容與頁面      ⑦ 系統與安全
+ *   ④ 行銷推廣        ⑤ 互動體驗      ⑥ 內容與頁面（含系統設定 GlobalSettings／
+ *                        PricingFormulaSettings 已併入②，及 CKMUSystemToolsNavGroup
+ *                        注入的系統工具連結）
+ *
+ * 2026-08-15 步驟03分組整併：原「⑦ 系統與安全」（Currencies／LoginAttempts／
+ * PricingFormulaSettings／GlobalSettings）已拆散併入既有群組，8組降到符合
+ * DoD ≤6組目標（不含⓪／Ⓚ兩個手刻/特殊群組）。詳見
+ * docs/admin-ui/AUDIT-20260814.md。
  *
  * 群組順序由 collections[] 陣列中「該 group 第一個成員」的位置決定；
  * 群組內連結順序 = 陣列內順序（globals 同理，接在 collections 之後）。
@@ -325,12 +334,17 @@ export default buildConfig({
       // afterNavLinks 掛兩個 DOM 注入元件（本身不渲染獨立群組）：
       //   - KimBlogNavGroup → 把部落格工作台 / 相簿 / AI 草稿 / 查看部落格
       //     連結注入「Ⓚ 金老佛爺部落格」原生 group
-      //   - CKMUSystemToolsNavGroup → 把系統工具連結注入「⑦ 系統與安全」
+      //   - CKMUSystemToolsNavGroup → 把系統工具連結注入「⑥ 內容與頁面」
       afterNavLinks: [
         '@/components/admin/KimBlogNavGroup',
         '@/components/admin/CKMUSystemToolsNavGroup',
       ],
       views: {
+        // 營運 AI 助理指揮艙 — 日報 + 待核准提案 + 對話查詢
+        opsCopilot: {
+          Component: '@/components/admin/OpsCopilotView',
+          path: '/ops-copilot',
+        },
         blogStudio: {
           Component: '@/components/admin/BlogStudioView',
           exact: true,
@@ -500,7 +514,11 @@ export default buildConfig({
     Podcasts,
     SiteThemes,
     Media,
-    // ⑦ 系統與安全
+    // 2026-08-15 步驟03分組整併：原「⑦ 系統與安全」已拆散——LoginAttempts
+    // 併入 ③ 會員與CRM、Currencies 併入 ① 訂單與物流（admin.group 已改，
+    // 陣列位置維持不動，故在各自新群組內排序偏後，符合兩者「低頻使用」性質）。
+    // OpsActions 放 LoginAttempts 之前：它是每天要看的待辦，登入紀錄是出事才查的。
+    OpsActions,
     LoginAttempts,
     Currencies, // 幣別與匯率（前台 CurrencySwitcher 資料源；TWD 結算實際值不受影響）
   ],
@@ -539,7 +557,10 @@ export default buildConfig({
     FAQPageSettings,
     PolicyPagesSettings,
     PackagingPageSettings,
-    // ⑦ 系統與安全
+    // 2026-08-15 步驟03分組整併：原「⑦ 系統與安全」已拆散——GlobalSettings
+    // 併入 ⑥ 內容與頁面（陣列位置維持在此，故排在其他 ⑥ globals 之後）、
+    // PricingFormulaSettings 併入 ② 商品管理（會排在該群組 collections 之後，
+    // 陣列位置不變）。
     GlobalSettings,
     PricingFormulaSettings,
   ],

@@ -11,7 +11,7 @@ import { isAdmin } from '../access/isAdmin'
  * 重要：本站交易實際以 TWD 結算（ECPay 國內金流），其他幣別只用作
  * 「顯示估算」幫境外消費者理解價格；checkout / 收據仍以 TWD 為準。
  *
- * 編輯流程：admin 後台 → ⑦ 系統與安全 → 幣別與匯率 → 改 rateAgainstTwd
+ * 編輯流程：admin 後台 → ① 訂單與物流 → 幣別與匯率 → 改 rateAgainstTwd
  *   （建議週更，可手動或日後接央行 API 自動 sync）。
  *
  * 預設 5 種：TWD（rate=1, base）/ USD / JPY / KRW / CNY。
@@ -22,7 +22,7 @@ export const Currencies: CollectionConfig = {
   admin: {
     useAsTitle: 'code',
     defaultColumns: ['code', 'label', 'symbol', 'rateAgainstTwd', 'isActive', 'displayOrder'],
-    group: '⑦ 系統與安全',
+    group: '① 訂單與物流',
     description: '前台幣別選單 / 匯率設定（TWD 為基準）',
     listSearchableFields: ['code', 'label'],
   },

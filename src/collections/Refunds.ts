@@ -13,7 +13,9 @@ export const Refunds: CollectionConfig = {
   admin: {
     group: '① 訂單與物流',
     description: '退款與折讓管理',
+    useAsTitle: 'refundNumber',
     defaultColumns: ['refundNumber', 'order', 'type', 'amount', 'status', 'createdAt'],
+    listSearchableFields: ['refundNumber'],
   },
   access: {
     read: ({ req: { user } }) => {

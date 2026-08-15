@@ -3,16 +3,23 @@
 import React, { useEffect } from 'react'
 
 /**
- * CKMUSystemToolsNavGroup — 把「AI 部落格草稿產生器」「REST API 文件」
- * 兩個自訂 view 注入 Payload 原生「⑦ 系統與安全」group 的 nav 列表。
+ * CKMUSystemToolsNavGroup — 把系統工具自訂 view 注入 Payload 原生
+ * 「⑥ 內容與頁面」group 的 nav 列表。
+ *
+ * 2026-08-15 步驟03分組整併：原「⑦ 系統與安全」獨立群組（僅 Currencies／
+ * LoginAttempts 兩個 collection + GlobalSettings／PricingFormulaSettings 兩個
+ * global）已拆散合併：Currencies→①訂單與物流、LoginAttempts→③會員與CRM、
+ * PricingFormulaSettings→②商品管理、GlobalSettings→⑥內容與頁面，達成
+ * DoD ≤6組目標（詳見 docs/admin-ui/AUDIT-20260814.md）。本工具列表原本就是
+ * DOM 注入、不依附特定 collection，遂一併把注入目標改到 ⑥（GlobalSettings
+ * 落腳處，語意上最接近「全站設定與工具」）。這批連結是偶爾用的管理工具、
+ * 非每日固定動線，落在較大群組底部的動線成本可接受（對照：部落格工具連結
+ * 因故意保留獨立群組不合併，見 KimBlogNavGroup.tsx 說明）。
  *
  * 為什麼用 DOM 注入而不再開一個獨立 group：
- *   - 使用者體驗：「系統與安全」「系統工具」分兩個一前一後的群組視覺很碎；
- *     工具 / 系統設定 / 安全 collections 都屬於同一個營運面向，合併成單一群組
- *     更符合心智模型。
  *   - Payload v3 sidebar group 由 collections/globals 的 `admin.group` 自動聚合，
  *     沒有公開 API 讓自訂 view 直接掛進現有 group。所以走 DOM 注入：找到
- *     `⑦ 系統與安全` 的 `.nav-group__content` 然後把工具連結 append 進去。
+ *     目標 group 的 `.nav-group__content` 然後把工具連結 append 進去。
  *   - 用 collection stub 假冒群組成員會在 DB 多一張無意義的表 + migration
  *     成本太高；DOM 注入是最低破壞性的方案。
  *
@@ -20,7 +27,7 @@ import React, { useEffect } from 'react'
  * 監看 DOM 變動，每次都重做（會檢查是否已注入避免重複）。
  *
  * 目前條目（GraphQL Playground 已下架 2026-05-11；AI 部落格草稿產生器
- * 已移到「Ⓚ 金老佛爺部落格」group，見 KimBlogNavGroup.tsx）：
+ * 已移到「Ⓚ 兩站部落格」group，見 KimBlogNavGroup.tsx）：
  *   - 一鍵刪除未上架商品 (/admin/tools/bulk-delete-products)
  *   - 白帽自動化行銷中台 (/admin/tools/whitehat-marketing)
  *   - Email 模板預覽 / 測試寄送 (/admin/tools/email-templates)
@@ -35,7 +42,7 @@ interface Item {
   id: string
 }
 
-const TARGET_GROUP_LABEL = '⑦ 系統與安全'
+const TARGET_GROUP_LABEL = '⑥ 內容與頁面'
 const INJECTED_ATTR = 'data-ckmu-systools-injected'
 
 const items: Item[] = [

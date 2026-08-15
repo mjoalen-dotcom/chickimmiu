@@ -20,7 +20,7 @@ export const LoginAttempts: CollectionConfig = {
   admin: {
     useAsTitle: 'email',
     defaultColumns: ['email', 'ip', 'userAgent', 'createdAt'],
-    group: '⑦ 系統與安全',
+    group: '③ 會員與 CRM',
     description: '成功登入記錄（失敗由 Payload 內建 maxLoginAttempts 處理）',
   },
   access: {

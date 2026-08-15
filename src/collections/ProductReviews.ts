@@ -13,7 +13,8 @@ export const ProductReviews: CollectionConfig = {
   admin: {
     group: '② 商品管理',
     description: '管理商品評價與審核',
-    defaultColumns: ['product', 'rating', 'status', 'createdAt'],
+    useAsTitle: 'title',
+    defaultColumns: ['product', 'rating', 'title', 'status', 'createdAt'],
   },
   access: {
     read: ({ req: { user } }) => {

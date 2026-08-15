@@ -14,6 +14,8 @@ export const MessageTemplates: CollectionConfig = {
   admin: {
     group: '④ 行銷推廣',
     useAsTitle: 'templateName',
+    defaultColumns: ['templateName', 'channel', 'category', 'updatedAt'],
+    listSearchableFields: ['templateName', 'templateSlug'],
     description: '多管道訊息模板管理',
   },
   access: {
