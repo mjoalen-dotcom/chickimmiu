@@ -635,13 +635,18 @@ export const BlogPosts: CollectionConfig = {
                     },
                     {
                       name: 'publishToKimLafayette',
-                      label: '文章網站：金老佛爺部落格',
+                      label: '額外同步到金老佛爺部落格',
                       type: 'checkbox',
                       defaultValue: false,
                       index: true,
                       admin: {
+                        // 2026-08-15 依 Alan 決策改回原始語意（07-30 當天最早版本）：
+                        // 勾選＝已發佈文章「額外」同步進 blog.kimlafayette.com 的 feed，
+                        // 文章本身仍會留在 pre.chickimmiu.com 購物網站部落格——不是二選一。
+                        // 下方分類仍依此勾選決定要用哪個網站的分類表（純粹是編輯時的
+                        // 分類選單切換，不影響文章實際會出現在哪些網站）。
                         description:
-                          '勾選＝blog.kimlafayette.com；不勾選＝pre.chickimmiu.com 購物網站部落格。請先選網站，再選下方分類。',
+                          '勾選後，已發佈文章會「額外」出現在金老佛爺部落格；不論是否勾選，文章都會留在購物網站部落格（兩站可同時顯示）。下方分類選單仍依勾選狀態切換對應網站的分類表。',
                         components: {
                           Cell: '@/components/admin/BlogSyncCell',
                         },

@@ -57,7 +57,10 @@ async function findPublishedPost(
       slug: { equals: slug },
       status: { equals: 'published' },
       visibility: { equals: 'public' },
-      publishToKimLafayette: { not_equals: true },
+      // publishToKimLafayette 不再排除購物網站顯示——2026-08-15 依 Alan 決策
+      // 恢復成「勾選＝額外同步到金老佛爺部落格」的原始語意（該欄位只控制是否
+      // 同步進 blog.kimlafayette.com 的 feed，見 kim-blog/feed/route.ts；
+      // 不代表文章要從購物網站部落格移除）。
     },
     limit: 1,
     depth: 2,
@@ -73,7 +76,6 @@ async function findPublishedPost(
       slug: { like: `${slug}-` },
       status: { equals: 'published' },
       visibility: { equals: 'public' },
-      publishToKimLafayette: { not_equals: true },
     },
     limit: 2,
     depth: 2,
@@ -156,7 +158,6 @@ export default async function BlogPostPage({ params }: Props) {
         where: {
           status: { equals: 'published' },
           visibility: { equals: 'public' },
-          publishToKimLafayette: { not_equals: true },
           id: { not_equals: post.id },
           category: { equals: post.category },
         },

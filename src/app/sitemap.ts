@@ -75,12 +75,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }))
 
       // 部落格
+      // publishToKimLafayette 不再排除購物網站顯示（2026-08-15 Alan 決策：
+      // 文章可同時出現在兩站，該欄位只控制是否額外同步進
+      // blog.kimlafayette.com 的 feed，見 kim-blog/feed/route.ts）。
       const posts = await payload.find({
         collection: 'blog-posts',
         where: {
           status: { equals: 'published' },
           visibility: { equals: 'public' },
-          publishToKimLafayette: { not_equals: true },
         },
         limit: 1000,
         depth: 0,

@@ -28,7 +28,7 @@ export default function BlogSyncCell(props: DefaultCellComponentProps) {
           background: syndicated ? '#a25e5e' : '#3b82f6',
         }}
       />
-      {syndicated ? '金老佛爺' : '購物網站'}
+      {syndicated ? '購物網站＋金老佛爺' : '購物網站'}
     </span>
   )
 }

@@ -18,12 +18,13 @@ export default async function BlogPage() {
       const payload = await getPayload({ config })
 
       // 釘選文章 featured=true → hero card 顯示在頂部
+      // publishToKimLafayette 不再排除購物網站顯示，見下方 findPublishedPost
+      // 同款註解（2026-08-15 Alan 決策：文章可同時出現在兩站）。
       const featResult = await payload.find({
         collection: 'blog-posts',
         where: {
           status: { equals: 'published' },
           visibility: { equals: 'public' },
-          publishToKimLafayette: { not_equals: true },
           featured: { equals: true },
         },
         sort: '-publishedAt',
@@ -38,7 +39,6 @@ export default async function BlogPage() {
         where: {
           status: { equals: 'published' },
           visibility: { equals: 'public' },
-          publishToKimLafayette: { not_equals: true },
           ...(featuredPost ? { id: { not_equals: featuredPost.id } } : {}),
         },
         sort: '-publishedAt',
@@ -47,13 +47,15 @@ export default async function BlogPage() {
       })
       posts = result.docs as unknown as Record<string, unknown>[]
 
-      // 分類獨立 collection（為空 / 表未建時，client 退回後備靜態分類）
+      // 分類獨立 collection（為空 / 表未建時，client 退回後備靜態分類）。
+      // 不再只抓 site:'store'——文章清單現在也會混入 publishToKimLafayette
+      // 文章（2026-08-15 起兩站文章互相可見），該類文章的 category 值屬於
+      // Kim 站分類表，只抓 store 分類會讓這些文章的分類標籤找不到對應值。
       try {
         const catRes = await payload.find({
           collection: 'blog-categories',
-          where: { site: { equals: 'store' } },
           sort: 'displayOrder',
-          limit: 50,
+          limit: 100,
           depth: 0,
         })
         categories = (catRes.docs as unknown as Array<Record<string, unknown>>).map((c) => ({

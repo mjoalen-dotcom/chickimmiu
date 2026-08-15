@@ -98,10 +98,12 @@ async function fetchHomeData() {
         ? payload
             .find({
               collection: 'blog-posts',
+              // publishToKimLafayette 不再排除購物網站顯示（2026-08-15 Alan
+              // 決策：文章可同時出現在兩站，該欄位只控制是否額外同步進
+              // blog.kimlafayette.com 的 feed）。
               where: {
                 status: { equals: 'published' },
                 visibility: { equals: 'public' },
-                publishToKimLafayette: { not_equals: true },
               },
               sort: '-publishedAt',
               limit: journalLimit,
@@ -110,8 +112,11 @@ async function fetchHomeData() {
             .then((r) => r.docs as unknown as Record<string, unknown>[])
             .catch(() => [] as Record<string, unknown>[])
         : Promise.resolve([] as Record<string, unknown>[]),
+      // 不再只抓 site:'store' 分類——首頁「穿搭誌」現在也可能混入
+      // publishToKimLafayette 文章（見上方註解），只抓 store 分類會讓那些
+      // 文章的分類標籤找不到對應值。
       payload
-        .find({ collection: 'blog-categories', where: { site: { equals: 'store' } }, sort: 'displayOrder', limit: 50, depth: 0 })
+        .find({ collection: 'blog-categories', sort: 'displayOrder', limit: 100, depth: 0 })
         .then((r) => Object.fromEntries(r.docs.map((category) => [String(category.value), String(category.name)])))
         .catch(() => ({}) as Record<string, string>),
       payload
