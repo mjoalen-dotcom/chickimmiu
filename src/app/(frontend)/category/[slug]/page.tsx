@@ -38,10 +38,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // 查無分類：metadata 階段 notFound()（soft-404 緩解；狀態碼受 loading.tsx flush 限制）
   if (!cat) notFound()
   const seo = cat.seo as Record<string, unknown> | undefined
+  const name = (cat as { name?: string }).name || slug
+  const productCount = (cat as { productCount?: number }).productCount ?? 0
   return {
-    title: (seo?.metaTitle as string) || `${(cat as { name?: string }).name} | CHIC KIM & MIU`,
+    // 品牌後綴由根 layout 的 title.template（'%s｜CHIC KIM & MIU'）統一加，
+    // 這裡只回傳分類名本身，否則會跟 product 頁一樣的規則衝突變成重複後綴
+    // （曾經的 bug：手動再拼一次「| CHIC KIM & MIU」導致「A | CHIC KIM & MIU｜CHIC KIM & MIU」）。
+    title: (seo?.metaTitle as string) || name,
     description:
-      (seo?.metaDescription as string) || (cat as { description?: string }).description,
+      (seo?.metaDescription as string) ||
+      (cat as { description?: string }).description ||
+      `精選${name}，CHIC KIM & MIU 韓系質感女裝，${productCount} 款嚴選單品`,
   }
 }
 

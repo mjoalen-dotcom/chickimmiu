@@ -43,10 +43,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const payload = await getPayload({ config })
 
       // 商品
+      // limit:0 = 不分頁回傳全部（Payload 語意）。曾經 limit:1000 在商品數
+      // 突破 1000（現況 1,395 件已上架）後靜默漏掉約 400 件未入 sitemap，
+      // 完全沒有錯誤訊息，只有 sitemap 條目數對不上才看得出來——步驟08
+      // FE-QA Prompt G 抽驗時發現，已修正。
       const products = await payload.find({
         collection: 'products',
         where: { status: { equals: 'published' } },
-        limit: 1000,
+        limit: 0,
         depth: 0,
       })
       productPages = products.docs.map((p) => ({
