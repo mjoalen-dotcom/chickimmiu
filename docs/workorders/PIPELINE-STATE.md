@@ -1,7 +1,7 @@
 # PIPELINE-STATE.md｜切換管線狀態機（唯一真相源）
 
 > /next 每次執行後更新本檔並 commit。狀態：⚪未開始 🔵進行中 ✅完成 🔴失敗 ⏸暫停 ⏳等待外部 🟡部分完成（機器驗證項未100%達標，已部署但需Alan裁示是否算過關）
-> 最後更新：2026-08-15｜目前步驟：08｜停滯天數：0
+> 最後更新：2026-08-15｜目前步驟：09｜停滯天數：0
 
 | # | 步驟 | 依據 | 閘型 | 機器驗證項 | 狀態 | 完成日 | 產出 |
 |---|---|---|---|---|---|---|---|
@@ -13,7 +13,7 @@
 | 05 | Branding＋i18n | Prompt D | INPUT（logo SVG＋色票 hex；預設＝文字 logo、不動色系） | favicon ≠ payload 預設 | ✅ | 2026-08-15 | hetzner/main commit `5e52f2d`（deployed to pre）；沿用文字 Logo、不動色系；zh-TW 預設＋en 保留；favicon／OG／日期格式完成 |
 | 06 | 角色權限 admin／operator | Prompt E | AUTO | 權限矩陣入 ADMIN-STRUCTURE.md；帳號清單回報 | ✅ | 2026-08-15 | hetzner/main commit 97cfb22（deployed to pre）；Claude 重試部署第三次成功——`fonts.gstatic.com`/`fonts.googleapis.com` 連線已恢復（curl 實測連通，非逾時），build+migrate+PM2 restart+四頁 health check 全綠 |
 | 07 | Staging 防護（noindex header） | Prompt F | AUTO | 首頁 header 含 X-Robots-Tag: noindex | ✅ | 2026-08-15 | hetzner/main commit 0c90d4f（deployed to pre）；curl 實測首頁/商品頁/admin 皆回 `X-Robots-Tag: noindex, nofollow`，meta robots 亦已由 index,follow 改 noindex,nofollow；robots.txt 稽核確認已是 Disallow: /；basic auth（Prompt F第3項）依工單本意留待 Alan 決策未執行 |
-| 08 | 前台基準＋SEO 修復 | FE-QA Prompt G | AUTO | 分類 description 覆蓋 100%；title 双後綴消失；lighthouse-before/ 存在 | ⚪ | | |
+| 08 | 前台基準＋SEO 修復 | FE-QA Prompt G | AUTO | 分類 description 覆蓋 100%；title 双後綴消失；lighthouse-before/ 存在 | ✅ | 2026-08-15 | hetzner/main commit 2c90e8d（deployed to pre）；title/description fix + **意外發現並修復 sitemap 商品 limit:1000 硬上限**（1,395 件上架商品有 395 件從未進 sitemap，靜默漏收錄，已改 limit:0）；curl 驗證 title 單一後綴、description 正確填入、sitemap URL數 1178→1573（+395 對上）；docs/fe-qa/lighthouse-before/ 四頁基準已存 |
 | 09 | 前台效能（ISR／script） | Prompt H | AUTO | before/after 對照表；首頁 TTFB 與商品頁差距 <1.5× | ⚪ | | |
 | 10 | 前台收口（/diag /games、404） | Prompt I | AUTO | /diag 與 /games 回 404 或需權限 | ⚪ | | |
 | 11 | BP-002 合併檢查點 | 外包 | ⏳WAIT | pre 上購物車＋OAuth 全流程通過 | ⚪ | | |
@@ -50,8 +50,9 @@
 | 2026-08-15 | — | 🔴⚠️ **多 session 撞車已發現並排除，無資料損失**：Claude 與 Codex 兩個 AI session 同時在跑本管線——Claude 從步驟04完成後獨立推進到步驟05（本地commit）；Codex 則從 hetzner/main 已包含 Claude 步驟05佔用commit(`7f9f478`)的狀態另開 branch `codex/admin-branding-step05`，實際完成步驟05（i18n+dateFormat+favicon/OG，比 Claude 本地未推送版本更完整）並推進到步驟06。Claude push 步驟05 commit 時遭 hetzner 拒絕（non-fast-forward）才發現。核對後 Claude 本地步驟05 commit 與 Codex 完成版**完全重複無獨有內容**，已捨棄（`git reset --hard hetzner/main`，未遺失任何工作）。Google Fonts 連線經 curl 實測已恢復，Claude 接手重跑步驟06部署第三次成功（見上方步驟06列）。**根因**：`/next` 協定設計假設「每次執行前讀取 STATE 檔避免撞車」，但兩個 session 是在對方尚未推送最新進度前各自從本地記憶繼續，直到 push 才發現分歧——純讀 STATE 檔無法完全避免真正同時在跑的 session 撞車，只能避免「先後接力」的撞車。 | Claude（AUTO 發現+排除） |
 | 2026-08-15 | — | 順帶發現（與管線無關，未處理）：repo 根目錄有一個未追蹤的 `outputs/01a003f6-0998-7052-a92c-3e3fd3a22371/` 目錄，內含完整 node_modules（來源不明，非 ops-copilot WIP 的一部分）。已隨其他未追蹤WIP一起 stash+pop 保留原狀，未刪除、未提交，僅記錄供 Alan 知悉，必要時自行清理。 | Claude（僅記錄） |
 | 2026-08-15 | 07 | Prompt F 執行前先 `git fetch` 確認無並行 session（吸取步驟06教訓），確認乾淨後執行。nginx：`pre.chickimmiu.com` server block 加 `add_header X-Robots-Tag "noindex, nofollow" always;`（透過站點專屬 include snippet，不放 conf.d 避免波及其他站點），手動套用+`nginx -t`+reload，repo 留 `ops/nginx/pre-staging-noindex.conf` 存查並註明切換www當天須移除。Next.js：`generateMetadata` 的 robots 從寫死 `index:true` 改依 `NEXT_PUBLIC_SITE_URL` hostname 是否以 `pre.` 開頭判斷（沿用既有env var，不需新增 NEXT_PUBLIC_ENV）。curl 實測首頁/商品頁/admin 均已回應正確 header 與 meta。robots.txt 已於步驟02確認 Disallow:/。basic auth（第3項）依工單原意留待 Alan 決策，未執行。 | Claude（AUTO 執行內） |
+| 2026-08-15 | 08 | Phase 0（Lighthouse基準）+ Phase 1（title/description/sitemap修復）皆完成。分類頁title bug根因：手動拼接品牌後綴疊加根layout的title.template造成雙重（商品頁本無此問題，已對齊其寫法）。description 135個分類中125個空值，補fallback模板，完整清單見docs/fe-qa/category-description-coverage.md。**意外發現**：sitemap.ts商品查詢`limit:1000`但上架商品已達1,395件，靜默漏收錄約395件（28%）從未被Google發現——不在Prompt G原始檢查項的字面範圍內（原文只問「是否含已下架商品」，這次抓到的是相反方向：該收錄的漏收錄），屬抽驗sitemap時額外揪出，已修正為limit:0。Lighthouse基準：4頁型Performance均55-57（LCP全數>8秒，步驟09主戰場）；分類頁SEO分數(54)明顯低於其他頁(69)，正是此次修復對象於部署前的基準寫照；全數SEO<90是步驟07 noindex的預期副作用非新問題。 | Claude（AUTO 執行內） |
 
 ## 停滯與異常（站會讀取區）
 
 - 目前紅燈：無
-- 等待 Alan 事項：**多 session 並行風險已提醒**——若同時有兩個 AI 在跑 AUTOPILOT-001，`/next` 的「讀STATE避免撞車」機制只在先後接力時有效，真正同時執行仍可能各自推進不同步驟直到 push 才發現分歧（這次無損排除，但值得注意）。是否要調整為「同時間只讓一個 AI 主跑 AUTOPILOT，其餘待命」由 Alan決定。步驟08（前台基準＋SEO修復）可用「下一步」啟動。
+- 等待 Alan 事項：**多 session 並行風險已提醒**——若同時有兩個 AI 在跑 AUTOPILOT-001，`/next` 的「讀STATE避免撞車」機制只在先後接力時有效，真正同時執行仍可能各自推進不同步驟直到 push 才發現分歧（這次無損排除，但值得注意）。是否要調整為「同時間只讓一個 AI 主跑 AUTOPILOT，其餘待命」由 Alan決定。步驟09（前台效能）可用「下一步」啟動。
