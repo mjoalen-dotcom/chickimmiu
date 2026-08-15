@@ -6,8 +6,8 @@
 | # | 步驟 | 依據 | 閘型 | 機器驗證項 | 狀態 | 完成日 | 產出 |
 |---|---|---|---|---|---|---|---|
 | 00 | 管線初始化（工作單入版控、CLAUDE.md、本檔） | AUTOPILOT §7 | 手動一次 | git log 含 init commit | ✅ | 2026-08-15 | commit 93616be |
-| 01 | Phase S：cost 欄位權限修補＋部署 | ADMIN-UI Prompt S | AUTO | `curl -s ".../api/products?limit=1" \| grep -c '"cost"'` = 0 | ✅ | 2026-08-15 | hetzner/main commit 9156ab4（deployed to pre） |
-| 02 | 全站審計（read-only） | ADMIN-UI Prompt A | AUTO | AUDIT-20260814.md 與 API-STRUCTURE.md 產出；⚠️旗標（users共用／admin未轉向）寫入回報 | ⚪ | | |
+| 01 | Phase S：cost 欄位權限修補＋部署 | ADMIN-UI Prompt S | AUTO | `curl -s ".../api/products?limit=1" \| grep -c '"cost"'` = 0 | ✅ | 2026-08-15 | hetzner/main commit 9156ab4 + 52205f1（deployed to pre） |
+| 02 | 全站審計（read-only） | ADMIN-UI Prompt A | AUTO | AUDIT-20260814.md 與 API-STRUCTURE.md 產出；⚠️旗標（users共用／admin未轉向）寫入回報 | 🔵 | | |
 | 03 | 後台結構層（分組／欄位／中文化／tabs） | Prompt B | AUTO | 側邊欄分組≤6 截圖；products tabs 生效 | ⚪ | | |
 | 04 | 營運 Dashboard | Prompt C | AUTO | 4 指標卡渲染截圖 | ⚪ | | |
 | 05 | Branding＋i18n | Prompt D | INPUT（logo SVG＋色票 hex；預設＝文字 logo、不動色系） | favicon ≠ payload 預設 | ⚪ | | |
