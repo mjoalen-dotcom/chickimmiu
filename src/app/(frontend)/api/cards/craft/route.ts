@@ -184,7 +184,7 @@ export async function POST(request: Request): Promise<Response> {
 
   // ── 3. Mint 新 limited 卡 ──
   const me = (await payload.findByID({
-    collection: 'users',
+    collection: 'customers',
     id: myId,
     depth: 0,
     overrideAccess: true,

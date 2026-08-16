@@ -65,7 +65,7 @@ export default async function ReferralsPage() {
   if (!sessionUser) redirect('/login?redirect=/account/referrals')
 
   const user = (await payload.findByID({
-    collection: 'users',
+    collection: 'customers',
     id: sessionUser.id,
     depth: 1,
   })) as unknown as LooseRecord
@@ -77,7 +77,7 @@ export default async function ReferralsPage() {
     try {
       const newCode = await generateUniqueReferralCode(payload)
       await payload.update({
-        collection: 'users',
+        collection: 'customers',
         id: sessionUser.id,
         data: { referralCode: newCode },
         overrideAccess: true,
@@ -102,14 +102,14 @@ export default async function ReferralsPage() {
       depth: 0,
     }),
     payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { referredBy: { equals: sessionUser.id } },
       sort: '-createdAt',
       limit: 50,
       depth: 0,
     }),
     payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: {
         and: [
           { referredBy: { equals: sessionUser.id } },

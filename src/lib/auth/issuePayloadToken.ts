@@ -21,11 +21,12 @@ export async function issuePayloadToken(
   payload: Payload,
   user: { id: string | number; email?: string } & Record<string, unknown>,
 ): Promise<{ token: string; expiresIn: number }> {
+  // 只服務社群登入的顧客（APP native OAuth），帳號都在 customers collection。
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const usersConfig = (payload as any).collections?.users?.config
+  const usersConfig = (payload as any).collections?.customers?.config
   const authConfig = usersConfig?.auth
   if (!usersConfig || !authConfig) {
-    throw new Error('users collection auth config 不存在')
+    throw new Error('customers collection auth config 不存在')
   }
 
   const { sid } = await addSessionToUser({

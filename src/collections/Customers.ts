@@ -5,6 +5,8 @@ import { escapeHtml } from '../lib/email/_shared'
 import { renderEmailFromTemplate } from '../lib/email/renderFromTemplate'
 import { isAdminOrSelf } from '../access/isAdminOrSelf'
 import { createExportEndpoint, createImportEndpoint, type FieldMapping } from '../endpoints/importExport'
+import { customerRegisterEndpoint } from '../endpoints/customerRegister'
+import { bindEmailEndpoint } from '../endpoints/bindEmail'
 
 const customerFieldMappings: FieldMapping[] = [
   { key: 'name', label: '姓名' },
@@ -163,6 +165,8 @@ export const Customers: CollectionConfig = {
   endpoints: [
     createExportEndpoint('customers', customerFieldMappings),
     createImportEndpoint('customers', customerFieldMappings),
+    customerRegisterEndpoint,
+    bindEmailEndpoint,
   ],
   hooks: {
     beforeChange: [

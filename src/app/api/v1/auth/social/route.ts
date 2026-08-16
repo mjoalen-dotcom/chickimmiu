@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     const payload = await getPayload({ config })
     // isNewUser 給 App 判斷要不要跑新手引導 —— 在 link 之前先問一次「這個社群 ID 見過嗎」
     const before = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { [`socialLogins.${provider}Id`]: { equals: identity.sub } },
       limit: 1,
     })
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
 
     // 回傳最新的完整 user（linkOrCreateSocialUser 可能剛更新過欄位）
     const fresh = (await payload.findByID({
-      collection: 'users',
+      collection: 'customers',
       id: user.id,
       depth: 1,
     })) as unknown as Record<string, unknown>

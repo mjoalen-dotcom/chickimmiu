@@ -91,7 +91,7 @@ export const ProductReviews: CollectionConfig = {
 
               const reviewerId = typeof doc.reviewer === 'string' ? doc.reviewer : (doc.reviewer as unknown as Record<string, unknown>)?.id as unknown as string
               if (reviewerId) {
-                const reviewer = await req.payload.findByID({ collection: 'users', id: reviewerId })
+                const reviewer = await req.payload.findByID({ collection: 'customers', id: reviewerId })
                 const currentPoints = (reviewer.points as number) ?? 0
 
                 // 首次評價額外加碼
@@ -105,7 +105,7 @@ export const ProductReviews: CollectionConfig = {
                 const totalPoints = points + firstBonus
 
                 await req.payload.update({
-                  collection: 'users',
+                  collection: 'customers',
                   id: reviewerId,
                   data: { points: currentPoints + totalPoints },
                 })

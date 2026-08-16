@@ -83,7 +83,7 @@ export async function mintCardsForPaidOrder(
 
   let userSnapshot: UserSnapshot | null = null
   try {
-    const u = await payload.findByID({ collection: 'users', id: customerId as string })
+    const u = await payload.findByID({ collection: 'customers', id: customerId as string })
     userSnapshot = {
       id: (u as { id: string | number }).id,
       name: (u as { name?: string }).name,

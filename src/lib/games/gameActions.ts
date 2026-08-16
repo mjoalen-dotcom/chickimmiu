@@ -55,7 +55,7 @@ export async function awardGamePoints(
   const actualPoints = Math.min(points, dailyLimit - todayTotal)
 
   // users.points 是 canonical 餘額，先讀再算 — 早期版本漏 update 導致一直 0
-  const user = await payload.findByID({ collection: 'users', id: userId }) as unknown as Record<string, unknown>
+  const user = await payload.findByID({ collection: 'customers', id: userId }) as unknown as Record<string, unknown>
   const prevBalance = (user.points as number) || 0
   const newBalance = prevBalance + actualPoints
 
@@ -72,7 +72,7 @@ export async function awardGamePoints(
   })
 
   await (payload.update as Function)({
-    collection: 'users',
+    collection: 'customers',
     id: userId,
     data: { points: newBalance } as unknown as Record<string, unknown>,
   })
@@ -624,7 +624,7 @@ export async function playMBTIQuiz(
 
   // 3. 終身限制（最重要）：除非 allowRetake，否則 user.mbtiProfile.mbtiType
   //    一旦寫入就拒絕重測（個性是穩定特質，重複測無意義）
-  const user = await payload.findByID({ collection: 'users', id: userId }) as unknown as Record<string, unknown>
+  const user = await payload.findByID({ collection: 'customers', id: userId }) as unknown as Record<string, unknown>
   const allowRetake = Boolean(mbtiSettings.allowRetake)
   const existingProfile = user.mbtiProfile as Record<string, unknown> | null | undefined
   const existingType = existingProfile?.mbtiType as string | null | undefined
@@ -691,9 +691,9 @@ export async function playMBTIQuiz(
   const subResult = (compute as { subResult: { subTagline: string; outfitTips: string[]; keyItems: string[]; paletteHint: string; collectionTags: string[] } | null }).subResult
   const resultDef = getResult(type)
 
-  // 8. 更新 users（扣點數 + 寫 mbtiProfile + occasion）
+  // 8. 更新 customers（扣點數 + 寫 mbtiProfile + occasion）
   await (payload.update as Function)({
-    collection: 'users',
+    collection: 'customers',
     id: userId,
     data: {
       points: newBalance,

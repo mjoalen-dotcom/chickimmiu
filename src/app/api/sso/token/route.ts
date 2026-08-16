@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
   let user
   try {
     user = await payload.findByID({
-      collection: 'users',
+      collection: 'customers',
       id: grant.sub,
       depth: 1,
       overrideAccess: true,
@@ -124,7 +124,10 @@ export async function POST(request: NextRequest) {
         id: user.id,
         email: user.email,
         name: user.name,
-        role: user.role,
+        // customers collection沒有role欄位——這個SSO端點只服務一般會員
+        // （kim部落格read-reward），過去能查到的帳號本來就永遠是'customer'，
+        // 固定值維持PHP端既有contract不變。
+        role: 'customer',
         avatarUrl: avatarUrl(user.avatar, issuer),
         memberTier: user.memberTier,
         points: user.points || 0,

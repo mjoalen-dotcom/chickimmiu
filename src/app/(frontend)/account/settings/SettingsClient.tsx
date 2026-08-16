@@ -74,7 +74,7 @@ export default function SettingsClient({ initial }: { initial: SettingsInitial }
     }
     setBindBusy(true)
     try {
-      const res = await fetch('/api/users/bind-email', {
+      const res = await fetch('/api/customers/bind-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

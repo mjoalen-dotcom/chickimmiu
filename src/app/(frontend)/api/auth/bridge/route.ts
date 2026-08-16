@@ -129,7 +129,7 @@ export async function GET(request: Request) {
   let docs: Array<{ id: string | number }> = []
   if (socialField && providerAccountId) {
     const bySocial = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { [`socialLogins.${socialField}`]: { equals: providerAccountId } },
       limit: 1,
     })
@@ -137,7 +137,7 @@ export async function GET(request: Request) {
   }
   if (docs.length === 0 && sessionEmail) {
     const byEmail = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { email: { equals: sessionEmail } },
       limit: 1,
     })
@@ -155,7 +155,7 @@ export async function GET(request: Request) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (payload.update as any)({
-        collection: 'users',
+        collection: 'customers',
         id: user.id,
         data: { _verified: true },
       })
@@ -165,8 +165,10 @@ export async function GET(request: Request) {
     }
   }
 
+  // 顧客 OAuth bridge 只服務 customers collection——staff/admin 走 /admin 原生
+  // 登入表單，從不經過這條路徑，所以不用兼顧 users collection。
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const usersConfig = (payload as any).collections?.users?.config
+  const usersConfig = (payload as any).collections?.customers?.config
   const authConfig = usersConfig?.auth
   if (!usersConfig || !authConfig) {
     return NextResponse.redirect(new URL('/login?error=auth_config_missing', base))

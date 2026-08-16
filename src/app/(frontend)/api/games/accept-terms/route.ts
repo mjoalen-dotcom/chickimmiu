@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       'unknown'
 
     await (payload.update as Function)({
-      collection: 'users',
+      collection: 'customers',
       id: user.id,
       data: {
         gameTermsAcceptance: {

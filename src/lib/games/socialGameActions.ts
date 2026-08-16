@@ -174,7 +174,7 @@ export async function submitStyleWork(
   let playerTierSnapshot: string | undefined
   try {
     const user = (await payload.findByID({
-      collection: 'users',
+      collection: 'customers',
       id: userId,
     })) as unknown as Record<string, unknown>
     const memberTier = user.memberTier
@@ -536,7 +536,7 @@ export async function createStyleWish(
   if (bountyPoints > 0) {
     try {
       const user = (await payload.findByID({
-        collection: 'users',
+        collection: 'customers',
         id: userId,
       })) as unknown as Record<string, unknown>
       const currentPoints = (user.points as number) || 0
@@ -549,11 +549,11 @@ export async function createStyleWish(
       }
       // 扣除會員點數 + 開流水帳
       await (payload.update as (args: {
-        collection: 'users'
+        collection: 'customers'
         id: number | string
         data: unknown
       }) => Promise<Record<string, unknown>>)({
-        collection: 'users',
+        collection: 'customers',
         id: userId,
         data: { points: currentPoints - bountyPoints } as never,
       })
@@ -1119,7 +1119,7 @@ export async function expireOpenWishes(): Promise<{
 
       if (bounty > 0 && seekerId !== undefined) {
         const user = (await payload.findByID({
-          collection: 'users',
+          collection: 'customers',
           id: seekerId,
           depth: 0,
         })) as unknown as Record<string, unknown>
@@ -1138,7 +1138,7 @@ export async function expireOpenWishes(): Promise<{
           } as never,
         })
         await (payload.update as Function)({
-          collection: 'users',
+          collection: 'customers',
           id: seekerId,
           data: { points: newBalance } as never,
         })

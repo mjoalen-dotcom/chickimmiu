@@ -3,8 +3,9 @@ import type { Endpoint, PayloadRequest, RequiredDataFromCollectionSlug } from 'p
 import { isPlaceholderEmail } from '../lib/auth/social'
 
 /**
- * POST /api/users/bind-email
- * --------------------------
+ * POST /api/customers/bind-email
+ * -------------------------------
+ * APP-API-001步驟16：從Users.ts移到Customers.ts。
  * 無 email 社群帳號（LINE 常見）建檔時 email 是 placeholder（@noemail.invalid），
  * 收不到訂單通知信。這條讓已登入的 placeholder 帳號補綁真 email。
  *
@@ -40,7 +41,7 @@ export const bindEmailEndpoint: Endpoint = {
       }
 
       const existing = await req.payload.find({
-        collection: 'users',
+        collection: 'customers',
         where: { email: { equals: email } },
         limit: 1,
         pagination: false,
@@ -57,9 +58,9 @@ export const bindEmailEndpoint: Endpoint = {
       }
 
       await req.payload.update({
-        collection: 'users',
+        collection: 'customers',
         id: user.id,
-        data: { email } as unknown as RequiredDataFromCollectionSlug<'users'>,
+        data: { email } as unknown as RequiredDataFromCollectionSlug<'customers'>,
         overrideAccess: true,
       })
 

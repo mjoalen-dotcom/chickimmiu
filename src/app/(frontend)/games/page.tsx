@@ -115,9 +115,9 @@ async function getLeaderboardData(
       })
     }
 
-    // Fallback：以 users.points 排序（會員積分排行）
+    // Fallback：以 customers.points 排序（會員積分排行）
     const usersRes = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       sort: '-points',
       limit: 10,
       depth: 1,

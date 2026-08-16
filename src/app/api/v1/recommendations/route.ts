@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
         // 身形相似度推薦：讀取 User bodyProfile
         if (userId) {
           try {
-            const user = await payload.findByID({ collection: 'users', id: userId })
+            const user = await payload.findByID({ collection: 'customers', id: userId })
             const profile = user.bodyProfile as unknown as Record<string, unknown> | undefined
             if (profile?.preferredSizes) {
               const sizes = profile.preferredSizes as string[]

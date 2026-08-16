@@ -80,7 +80,7 @@ export async function POST(
 
   // ── 找目標會員 ──
   const userFind = await payload.find({
-    collection: 'users',
+    collection: 'customers',
     where: { email: { equals: toEmail } },
     limit: 1,
     depth: 0,

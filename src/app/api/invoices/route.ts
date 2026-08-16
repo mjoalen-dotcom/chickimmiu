@@ -232,9 +232,15 @@ export async function POST(req: NextRequest) {
       typeof order.customer === 'object'
         ? (order.customer as unknown as Record<string, unknown>).id
         : order.customer || order.user
-    const customerDoc = customerId
-      ? await payload.findByID({ collection: 'users', id: String(customerId) }).catch(() => null)
-      : null
+    if (!customerId) {
+      return NextResponse.json(
+        { success: false, error: '訂單缺少會員資訊，無法開立發票' },
+        { status: 400 },
+      )
+    }
+    const customerDoc = await payload
+      .findByID({ collection: 'customers', id: String(customerId) })
+      .catch(() => null)
     const customerData = customerDoc as unknown as Record<string, unknown> | null
 
     const buyerEmail =
@@ -251,7 +257,7 @@ export async function POST(req: NextRequest) {
       collection: 'invoices',
       data: {
         order: orderId as unknown as number,
-        customer: (customerId || user.id) as unknown as number,
+        customer: customerId as unknown as number,
         invoiceType: invoiceType as 'b2c_personal' | 'b2c_carrier' | 'b2b' | 'donation',
         status: 'pending' as const,
         totalAmount,

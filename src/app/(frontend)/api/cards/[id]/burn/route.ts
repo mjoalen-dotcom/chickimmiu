@@ -102,14 +102,14 @@ export async function POST(
 
   // user points 累加
   const fresh = (await payload.findByID({
-    collection: 'users',
+    collection: 'customers',
     id: myIdNum,
     depth: 0,
     overrideAccess: true,
   })) as unknown as { points?: number }
   const newPoints = Number(fresh?.points ?? 0) + pointsAwarded
   await payload.update({
-    collection: 'users',
+    collection: 'customers',
     id: myIdNum,
     data: { points: newPoints },
     overrideAccess: true,

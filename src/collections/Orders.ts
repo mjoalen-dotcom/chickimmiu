@@ -1027,7 +1027,7 @@ export const Orders: CollectionConfig = {
 
           if (customerId) {
             try {
-              const customer = await payload.findByID({ collection: 'users', id: customerId })
+              const customer = await payload.findByID({ collection: 'customers', id: customerId })
               const customerData = customer as unknown as Record<string, unknown>
 
               // ── 點數發放（依 LoyaltySettings + 會員倍率） ──
@@ -1082,7 +1082,7 @@ export const Orders: CollectionConfig = {
               const currentOrderCount = (customerData.orderCount as number) ?? 0
 
               await (payload.update as Function)({
-                collection: 'users',
+                collection: 'customers',
                 id: customerId,
                 data: {
                   points: currentPoints + pointsEarned,
@@ -1179,7 +1179,7 @@ export const Orders: CollectionConfig = {
                     const frontName = (newTierDoc.frontName as string) ?? newTierSlug
 
                     await (payload.update as Function)({
-                      collection: 'users',
+                      collection: 'customers',
                       id: customerId,
                       data: {
                         memberTier: newTierId,
@@ -1510,7 +1510,7 @@ export const Orders: CollectionConfig = {
         if (!addressStr || !addr.city || !addr.recipientName) return
 
         try {
-          const customer = (await payload.findByID({ collection: 'users', id: customerId })) as unknown as Record<string, unknown>
+          const customer = (await payload.findByID({ collection: 'customers', id: customerId })) as unknown as Record<string, unknown>
           const currentAddresses =
             (customer.addresses as Record<string, unknown>[] | null | undefined) ?? []
 
@@ -1533,7 +1533,7 @@ export const Orders: CollectionConfig = {
           }
 
           await (payload.update as Function)({
-            collection: 'users',
+            collection: 'customers',
             id: customerId,
             data: { addresses: [...currentAddresses, newEntry] },
           })

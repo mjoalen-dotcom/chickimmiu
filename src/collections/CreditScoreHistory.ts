@@ -67,7 +67,7 @@ export const CreditScoreHistory: CollectionConfig = {
         // 如果沒填 previousScore → 從 Users.creditScore 讀
         if (data.previousScore === undefined || data.previousScore === null) {
           const user = (await req.payload.findByID({
-            collection: 'users',
+            collection: 'customers',
             id: userId,
             depth: 0,
           })) as unknown as LooseRecord
@@ -96,11 +96,11 @@ export const CreditScoreHistory: CollectionConfig = {
           const next = typeof doc.newScore === 'number' ? clampScore(doc.newScore) : null
           if (next === null) return doc
           await (req.payload.update as (args: {
-            collection: 'users'
+            collection: 'customers'
             id: string | number
             data: Record<string, unknown>
           }) => Promise<unknown>)({
-            collection: 'users',
+            collection: 'customers',
             id: userId,
             data: { creditScore: next },
           })
@@ -111,18 +111,18 @@ export const CreditScoreHistory: CollectionConfig = {
           const delta = currChange - prevChange
           if (delta === 0) return doc
           const user = (await req.payload.findByID({
-            collection: 'users',
+            collection: 'customers',
             id: userId,
             depth: 0,
           })) as unknown as LooseRecord
           const current = (user?.creditScore as number) ?? DEFAULT_INITIAL_SCORE
           const next = clampScore(current + delta)
           await (req.payload.update as (args: {
-            collection: 'users'
+            collection: 'customers'
             id: string | number
             data: Record<string, unknown>
           }) => Promise<unknown>)({
-            collection: 'users',
+            collection: 'customers',
             id: userId,
             data: { creditScore: next },
           })
@@ -142,7 +142,7 @@ export const CreditScoreHistory: CollectionConfig = {
         if (change === 0) return
 
         const user = (await req.payload.findByID({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           depth: 0,
         })) as unknown as LooseRecord
@@ -150,11 +150,11 @@ export const CreditScoreHistory: CollectionConfig = {
         const next = clampScore(current - change)
 
         await (req.payload.update as (args: {
-          collection: 'users'
+          collection: 'customers'
           id: string | number
           data: Record<string, unknown>
         }) => Promise<unknown>)({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           data: { creditScore: next },
         })

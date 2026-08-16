@@ -109,7 +109,7 @@ export async function POST(req: Request) {
     if (guestUserId == null || !orderDoc) return fail(400, '找不到對應的訂單', 'ORDER_NOT_FOUND')
 
     const guestUser = (await payload
-      .findByID({ collection: 'users', id: guestUserId as never, depth: 0, overrideAccess: true })
+      .findByID({ collection: 'customers', id: guestUserId as never, depth: 0, overrideAccess: true })
       .catch(() => null)) as Record<string, unknown> | null
     if (!guestUser) return fail(400, '找不到對應的帳號', 'USER_NOT_FOUND')
     if (guestUser.isGuest !== true) return fail(409, '此訂單已經綁定會員帳號', 'ALREADY_MEMBER')
@@ -119,7 +119,7 @@ export async function POST(req: Request) {
 
     // 信箱已被其他會員使用 → 不搶，請他登入（不透露更多細節）
     const taken = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { email: { equals: email } },
       limit: 1,
       depth: 0,
@@ -136,7 +136,7 @@ export async function POST(req: Request) {
     // ── 就地升級（訂單的 customer 不變 → 訂單自動進會員中心）──────────
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (payload.update as any)({
-      collection: 'users',
+      collection: 'customers',
       id: guestUserId,
       data: {
         email,
@@ -172,14 +172,14 @@ export async function POST(req: Request) {
     })
     try {
       const fresh = (await payload.findByID({
-        collection: 'users',
+        collection: 'customers',
         id: guestUserId as never,
         depth: 0,
         overrideAccess: true,
       })) as unknown as { id: string | number; email?: string } & Record<string, unknown>
       const { token: sessionToken, expiresIn } = await issuePayloadToken(payload, fresh)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const authConfig = (payload as any).collections?.users?.config?.auth
+      const authConfig = (payload as any).collections?.customers?.config?.auth
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cookiePrefix = ((payload as any).config?.cookiePrefix as string | undefined) || 'payload'
       const rawSameSite = authConfig?.cookies?.sameSite

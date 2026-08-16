@@ -4,14 +4,15 @@ import { grantRegistrationReferralReward } from '../lib/referral/registrationRew
 import { sendWelcomeEmail } from '../lib/email/welcome'
 
 /**
- * POST /api/users/register
- * ------------------------
- * 客戶自助註冊端點（對外公開）。
+ * POST /api/customers/register
+ * -----------------------------
+ * 客戶自助註冊端點（對外公開）。APP-API-001步驟16：從Users.ts移到Customers.ts，
+ * 建的是customers collection的紀錄（不再是users）。
  *
- * 為什麼不用 POST /api/users？
- *   Users collection 的 access.create = isAdmin，公開註冊會 403。
+ * 為什麼不用 POST /api/customers？
+ *   Customers collection 的 access.create = isAdmin，公開註冊會 403。
  *   客製一條 endpoint 走 overrideAccess 比放寬整個 collection 的 create
- *   access 安全（後者會讓任何人都能建 role='admin'）。
+ *   access 安全。
  *
  * 行為：
  *   1. 驗證 email / password / name；密碼最少 8 字
@@ -113,7 +114,7 @@ export const customerRegisterEndpoint: Endpoint = {
 
       // 檢查 email 是否已被註冊
       const existing = await req.payload.find({
-        collection: 'users',
+        collection: 'customers',
         where: { email: { equals: email } },
         limit: 1,
         pagination: false,
@@ -130,7 +131,7 @@ export const customerRegisterEndpoint: Endpoint = {
       let referredById: string | number | undefined
       if (referralCodeInput) {
         const refRes = await req.payload.find({
-          collection: 'users',
+          collection: 'customers',
           where: { referralCode: { equals: referralCodeInput } },
           limit: 1,
           pagination: false,
@@ -173,8 +174,8 @@ export const customerRegisterEndpoint: Endpoint = {
         : { ...baseData, _verified: true }
 
       const newUser = await req.payload.create({
-        collection: 'users',
-        data: createData as unknown as RequiredDataFromCollectionSlug<'users'>,
+        collection: 'customers',
+        data: createData as unknown as RequiredDataFromCollectionSlug<'customers'>,
         overrideAccess: true,
         ...(requireVerification ? {} : { disableVerificationEmail: true }),
       })
@@ -201,12 +202,12 @@ export const customerRegisterEndpoint: Endpoint = {
           const desc = (reward?.description || '新會員註冊禮').trim()
           if (rewardPoints > 0 || rewardCredit > 0) {
             await req.payload.update({
-              collection: 'users',
+              collection: 'customers',
               id: newUser.id,
               data: {
                 ...(rewardPoints > 0 ? { points: rewardPoints } : {}),
                 ...(rewardCredit > 0 ? { shoppingCredit: rewardCredit } : {}),
-              } as unknown as RequiredDataFromCollectionSlug<'users'>,
+              } as unknown as RequiredDataFromCollectionSlug<'customers'>,
               overrideAccess: true,
             })
           }
@@ -277,7 +278,7 @@ export const customerRegisterEndpoint: Endpoint = {
 
       // 驗證關閉 → 立刻 login 取 token + 設 cookie（舊流程）
       const loginResult = await req.payload.login({
-        collection: 'users',
+        collection: 'customers',
         data: { email, password },
         req,
       })

@@ -173,12 +173,11 @@ export async function POST(req: Request) {
     // ── 訪客臨時帳號 ────────────────────────────────────────────────
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const guestUser = (await (payload as any).create({
-      collection: 'users',
+      collection: 'customers',
       data: {
         email: syntheticGuestEmail(randomUUID()),
         password: `guest_${randomUUID()}_${Date.now()}`,
         name: input.shippingAddress.recipientName || '訪客',
-        role: 'customer',
         isGuest: true,
         _verified: true,
       },
@@ -255,7 +254,7 @@ export async function POST(req: Request) {
       })) as unknown as Record<string, unknown>
     } catch (orderErr) {
       try {
-        await payload.delete({ collection: 'users', id: guestUser.id as never, overrideAccess: true })
+        await payload.delete({ collection: 'customers', id: guestUser.id as never, overrideAccess: true })
       } catch (cleanupErr) {
         console.error('[guest-order] 建單失敗後清除臨時帳號也失敗', guestUser.id, cleanupErr)
       }

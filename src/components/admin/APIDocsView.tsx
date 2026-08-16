@@ -375,7 +375,7 @@ curl '${baseUrl}/api/products?limit=10' \\
 
           <h3 style={{ fontSize: 14, fontWeight: 600, margin: '12px 0 4px' }}>建立會員（公開端點）</h3>
           <pre style={codeBlock}>
-{`curl -X POST '${baseUrl}/api/users/register' \\
+{`curl -X POST '${baseUrl}/api/customers/register' \\
   -H 'Content-Type: application/json' \\
   -d '{"email":"new@example.com","password":"<PW>","name":"小明"}'`}
           </pre>

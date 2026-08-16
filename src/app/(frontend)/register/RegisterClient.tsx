@@ -12,7 +12,7 @@ import { getCurrentAttribution } from '@/lib/tracking'
 /**
  * 客戶自助註冊頁（client 端）
  * -------------
- * Email/Password：POST `/api/users/register`（Users.ts 新增的 custom endpoint）
+ * Email/Password：POST `/api/customers/register`（Customers.ts 新增的 custom endpoint）
  *   成功 → 後端同時 login 下 cookie → 直接 redirect 到 /account
  * OAuth 註冊：next-auth signIn()，按鈕顯示由 server wrapper
  *   （page.tsx → getEnabledSocialProviders）決定：後台開關 AND env 憑證齊全。
@@ -48,7 +48,7 @@ export default function RegisterClient({ socialProviders }: { socialProviders: S
     try {
       // PR-B：把 first-touch UTM 帶上，後端 customerRegister 會寫入 firstTouchAttribution
       const attrib = getCurrentAttribution()
-      const res = await fetch('/api/users/register', {
+      const res = await fetch('/api/customers/register', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

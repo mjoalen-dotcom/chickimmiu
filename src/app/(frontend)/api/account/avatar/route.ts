@@ -64,7 +64,7 @@ export async function POST(request: Request): Promise<Response> {
   })) as { id: number }
 
   await payload.update({
-    collection: 'users',
+    collection: 'customers',
     id: user.id,
     data: { avatar: created.id },
     overrideAccess: true,
@@ -81,7 +81,7 @@ export async function DELETE(request: Request): Promise<Response> {
   }
 
   await payload.update({
-    collection: 'users',
+    collection: 'customers',
     id: user.id,
     data: { avatar: null },
     overrideAccess: true,

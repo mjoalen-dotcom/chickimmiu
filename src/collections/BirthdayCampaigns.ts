@@ -62,7 +62,7 @@ export const BirthdayCampaigns: CollectionConfig = {
         if (data.targetUser) {
           try {
             const userId = typeof data.targetUser === 'object' ? data.targetUser.id : data.targetUser
-            const user = await req.payload.findByID({ collection: 'users', id: userId })
+            const user = await req.payload.findByID({ collection: 'customers', id: userId })
             const tierCode = (user as any)?.membershipTier || data.targetTier || 'ordinary'
             const frontName = TIER_FRONT_NAMES[tierCode] || '優雅初遇者'
             const userName = (user as any)?.name || (user as any)?.email || ''

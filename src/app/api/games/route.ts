@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
         } else if (typeof rawPlayer === 'string') {
           playerId = rawPlayer
           try {
-            const playerDoc = await payload.findByID({ collection: 'users', id: rawPlayer })
+            const playerDoc = await payload.findByID({ collection: 'customers', id: rawPlayer })
             playerName = (playerDoc as unknown as Record<string, unknown>).name as string || '匿名玩家'
           } catch {
             // Player may have been deleted

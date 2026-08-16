@@ -49,7 +49,7 @@ export async function linkOrCreateSocialUser(
   let existing: PayloadUserDoc | null = null
   if (socialField) {
     const bySocial = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { [`socialLogins.${socialField}`]: { equals: input.providerAccountId } },
       limit: 1,
     })
@@ -61,7 +61,7 @@ export async function linkOrCreateSocialUser(
   // 2) email 匹配
   if (!existing && email) {
     const byEmail = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { email: { equals: email } },
       limit: 1,
     })
@@ -82,12 +82,11 @@ export async function linkOrCreateSocialUser(
     // 在 verify 開啟時會拒絕未驗證 user，造成 /account → bridge → /account 無限循環。
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const created = await (payload as any).create({
-      collection: 'users',
+      collection: 'customers',
       data: {
         email: email || placeholderEmailFor(input.provider, input.providerAccountId),
         password: `social_${crypto.randomUUID()}_${Date.now()}`,
         name: input.name || (email ? email.split('@')[0] : `LINE 會員`),
-        role: 'customer',
         _verified: true,
         ...(socialField ? { socialLogins: { [socialField]: input.providerAccountId } } : {}),
       },
@@ -111,7 +110,7 @@ export async function linkOrCreateSocialUser(
   // 該 email 已屬於別的會員時保留 placeholder，留給客服做人工合併）
   if (email && isPlaceholderEmail(existing.email)) {
     const emailTaken = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { email: { equals: email } },
       limit: 1,
     })
@@ -127,7 +126,7 @@ export async function linkOrCreateSocialUser(
   if (Object.keys(updateData).length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updated = await (payload.update as any)({
-      collection: 'users',
+      collection: 'customers',
       id: existing.id,
       data: updateData,
     })

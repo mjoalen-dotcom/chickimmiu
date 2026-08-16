@@ -75,7 +75,7 @@ export async function GET(): Promise<NextResponse<ApiResponse | { error: string 
   }
 
   const userDoc = (await payload.findByID({
-    collection: 'users',
+    collection: 'customers',
     id: user.id,
     depth: 0,
   })) as unknown as Record<string, unknown>

@@ -26,7 +26,7 @@ export async function resolveApiUser(
     const session = await nextAuth()
     if (session?.user?.email) {
       const { docs } = await payload.find({
-        collection: 'users',
+        collection: 'customers',
         where: { email: { equals: session.user.email.toLowerCase() } },
         limit: 1,
       })

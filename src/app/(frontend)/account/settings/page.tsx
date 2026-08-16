@@ -46,7 +46,7 @@ export default async function SettingsPage() {
   if (!sessionUser) redirect('/login?redirect=/account/settings')
 
   const userDoc = (await payload.findByID({
-    collection: 'users',
+    collection: 'customers',
     id: sessionUser.id,
     depth: 0,
   })) as unknown as LooseRecord

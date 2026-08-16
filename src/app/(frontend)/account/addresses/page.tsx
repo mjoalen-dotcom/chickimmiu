@@ -20,7 +20,7 @@ export default async function AddressesPage() {
   if (!sessionUser) redirect('/login?redirect=/account/addresses')
 
   const userDoc = (await payload.findByID({
-    collection: 'users',
+    collection: 'customers',
     id: sessionUser.id,
     depth: 0,
   })) as unknown as LooseRecord

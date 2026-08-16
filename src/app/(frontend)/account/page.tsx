@@ -77,7 +77,7 @@ export default async function AccountPage() {
   if (!sessionUser) redirect('/login?redirect=/account')
 
   const [userDoc, tiersResult, ordersResult, badgesResult, treasuresResult, pointsTxnsResult] = await Promise.all([
-    payload.findByID({ collection: 'users', id: sessionUser.id, depth: 1 }),
+    payload.findByID({ collection: 'customers', id: sessionUser.id, depth: 1 }),
     payload.find({ collection: 'membership-tiers', sort: 'level', limit: 20, depth: 0 }),
     payload.find({
       collection: 'orders',

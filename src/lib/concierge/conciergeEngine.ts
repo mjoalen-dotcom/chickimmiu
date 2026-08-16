@@ -104,7 +104,7 @@ export async function validateConciergeEligibility(
   const payload = await getPayload({ config })
 
   const user = await payload.findByID({
-    collection: 'users',
+    collection: 'customers',
     id: userId,
     depth: 1,
   })
@@ -148,7 +148,7 @@ export async function getAssignedConcierge(
   const payload = await getPayload({ config })
 
   const user = await payload.findByID({
-    collection: 'users',
+    collection: 'customers',
     id: userId,
     depth: 1,
   })
@@ -337,7 +337,7 @@ export async function submitConciergeRequest(
 
   // 取得用戶信用分數
   const user = await payload.findByID({
-    collection: 'users',
+    collection: 'customers',
     id: request.userId,
   })
   const creditScore = (user as unknown as Record<string, unknown>).creditScore as number ?? 0
@@ -593,7 +593,7 @@ export async function applyBirthdayMonthUpgrade(userId: string): Promise<string[
   const payload = await getPayload({ config })
 
   const user = await payload.findByID({
-    collection: 'users',
+    collection: 'customers',
     id: userId,
     depth: 1,
   })

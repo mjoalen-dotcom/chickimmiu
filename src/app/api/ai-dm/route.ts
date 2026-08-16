@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch user with depth to get related data
-    const member = await payload.findByID({ collection: 'users', id: userId, depth: 2 })
+    const member = await payload.findByID({ collection: 'customers', id: userId, depth: 2 })
     if (!member) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }

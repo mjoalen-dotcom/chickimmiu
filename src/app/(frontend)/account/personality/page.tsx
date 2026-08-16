@@ -138,7 +138,7 @@ export default async function PersonalityPage() {
   if (!sessionUser) redirect('/login?redirect=/account/personality')
 
   const user = (await payload.findByID({
-    collection: 'users',
+    collection: 'customers',
     id: sessionUser.id,
     depth: 0,
     overrideAccess: true,

@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
     // 餘額預檢（hold 時 adjustWallet 會再嚴格判一次，防併發）
     const fresh = (await payload
-      .findByID({ collection: 'users', id: user.id, depth: 0 })
+      .findByID({ collection: 'customers', id: user.id, depth: 0 })
       .catch(() => null)) as unknown as Record<string, unknown> | null
     const balance = Number(fresh?.storedValueBalance) || 0
     if (amount > balance) {

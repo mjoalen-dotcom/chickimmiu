@@ -60,7 +60,7 @@ export const ConciergeServiceRequests: CollectionConfig = {
             const payload = await getPayload({ config })
             const userId = typeof data.requester === 'string' ? data.requester : data.requester.id || data.requester
             const user = await payload.findByID({
-              collection: 'users',
+              collection: 'customers',
               id: userId,
               depth: 1,
             })

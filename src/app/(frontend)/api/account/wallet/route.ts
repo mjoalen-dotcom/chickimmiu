@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     }
 
     const fresh = (await payload
-      .findByID({ collection: 'users', id: user.id, depth: 0 })
+      .findByID({ collection: 'customers', id: user.id, depth: 0 })
       .catch(() => null)) as unknown as Record<string, unknown> | null
 
     const balances = {

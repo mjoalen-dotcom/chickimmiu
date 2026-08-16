@@ -197,7 +197,7 @@ function getTpeMonthlyKey(): string {
 
 async function getUserTierSlug(userId: string): Promise<string> {
   const payload = await getPayload({ config })
-  const user = await payload.findByID({ collection: 'users', id: userId })
+  const user = await payload.findByID({ collection: 'customers', id: userId })
   const userData = user as unknown as Record<string, unknown>
 
   if (!userData.memberTier) return 'ordinary'
@@ -528,7 +528,7 @@ export async function recordGamePlay(params: RecordGamePlayParams): Promise<Reco
   })
 
   // Read user ONCE to get current balances
-  const user = await payload.findByID({ collection: 'users', id: params.userId })
+  const user = await payload.findByID({ collection: 'customers', id: params.userId })
   const userData = user as unknown as Record<string, unknown>
   let pointsBalance = (userData.points as number) || 0
   let creditBalance = (userData.shoppingCredit as number) || 0
@@ -579,7 +579,7 @@ export async function recordGamePlay(params: RecordGamePlayParams): Promise<Reco
   // Single write to user document
   if (Object.keys(userUpdates).length > 0) {
     await (payload.update as Function)({
-      collection: 'users',
+      collection: 'customers',
       id: params.userId,
       data: userUpdates as never,
     })
@@ -674,7 +674,7 @@ export async function performDailyCheckin(userId: string): Promise<DailyCheckinR
   const payload = await getPayload({ config })
   const todayTpe = getTpeDateString()
 
-  const user = await payload.findByID({ collection: 'users', id: userId })
+  const user = await payload.findByID({ collection: 'customers', id: userId })
   const userData = user as unknown as Record<string, unknown>
 
   const outcome = computeCheckinOutcome({
@@ -705,7 +705,7 @@ export async function performDailyCheckin(userId: string): Promise<DailyCheckinR
 
   // 2. Update streak fields on user
   await (payload.update as Function)({
-    collection: 'users',
+    collection: 'customers',
     id: userId,
     data: {
       totalCheckIns: newTotal,
@@ -1030,7 +1030,7 @@ export async function drawMovieTicket(userId: string): Promise<MovieLotteryResul
   }
 
   // 查使用者目前餘額 + tier/credit（快照用）
-  const user = await payload.findByID({ collection: 'users', id: userId })
+  const user = await payload.findByID({ collection: 'customers', id: userId })
   const userData = user as unknown as Record<string, unknown>
   const userPoints = (userData.points as number) || 0
 

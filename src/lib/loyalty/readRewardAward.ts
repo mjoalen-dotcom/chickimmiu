@@ -116,11 +116,11 @@ export async function awardKimBlogReadReward(
       },
     })
     await (payload.update as (args: {
-      collection: 'users'
+      collection: 'customers'
       id: string | number
       data: Record<string, unknown>
     }) => Promise<unknown>)({
-      collection: 'users',
+      collection: 'customers',
       id: user.id as string | number,
       data: { points: newBalance },
     })

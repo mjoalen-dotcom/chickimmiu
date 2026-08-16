@@ -1,13 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getPayload } from 'payload'
+import { getPayload, type BasePayload } from 'payload'
 import config from '@payload-config'
-import type { Where } from 'payload'
+import { resolveBearerUser } from '@/lib/auth/resolveBearerUser'
 
 /**
  * 單一管家請求 API
  * GET   /api/concierge/:id — 取得請求詳情（T5 擁有者或管理員）
  * PATCH /api/concierge/:id — 更新請求（管理員：狀態、指派、備註；T5 用戶：取消）
+ *
+ * APP-API-001步驟16修復：原本手動查 `apiToken` 欄位（Users/Customers皆無此
+ * 欄位，永遠查無）+ cookie fallback 抓「第一個_verified:true的user」（不比對
+ * token本人，形同虛設）——這支路由的身分驗證從建立以來就沒真的生效過，
+ * isOwner 永遠 false（連 request.user 欄位名稱都是錯的，實際欄位叫
+ * requester）。改用與同層 concierge/route.ts、v1 API 一致的
+ * resolveBearerUser（Bearer/JWT）+ payload.auth（cookie）雙軌解析。
  */
+async function resolveCurrentUser(
+  req: NextRequest,
+  payload: BasePayload,
+): Promise<Record<string, unknown> | null> {
+  const authHeader = req.headers.get('authorization')
+  if (authHeader && /^(Bearer|JWT)\s+/i.test(authHeader)) {
+    const { user } = await resolveBearerUser(req)
+    if (user) return user as unknown as Record<string, unknown>
+  }
+  const { user } = await payload.auth({ headers: req.headers })
+  return (user as unknown as Record<string, unknown>) || null
+}
 
 export async function GET(
   req: NextRequest,
@@ -18,46 +37,7 @@ export async function GET(
     const payload = await getPayload({ config })
 
     // 驗證身份
-    const authHeader = req.headers.get('authorization')
-    let currentUser: Record<string, unknown> | null = null
-
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.slice(7)
-      try {
-        const result = await payload.find({
-          collection: 'users',
-          where: { apiToken: { equals: token } } satisfies Where,
-          limit: 1,
-        })
-        if (result.docs.length > 0) {
-          currentUser = result.docs[0] as unknown as Record<string, unknown>
-        }
-      } catch {
-        // token 驗證失敗
-      }
-    }
-
-    // 嘗試從 cookie 驗證
-    if (!currentUser) {
-      try {
-        const cookieHeader = req.headers.get('cookie') || ''
-        const tokenMatch = cookieHeader.match(/payload-token=([^;]+)/)
-        if (tokenMatch) {
-          const verifyResult = await payload.find({
-            collection: 'users',
-            where: { _verified: { equals: true } } satisfies Where,
-            limit: 1,
-            user: undefined,
-          })
-          // 透過 Payload auth 驗證
-          if (verifyResult.docs.length > 0) {
-            currentUser = verifyResult.docs[0] as unknown as Record<string, unknown>
-          }
-        }
-      } catch {
-        // cookie 驗證失敗
-      }
-    }
+    const currentUser = await resolveCurrentUser(req, payload)
 
     // 取得請求
     let request: Record<string, unknown> | null = null
@@ -83,14 +63,11 @@ export async function GET(
     }
 
     // 權限檢查：只有擁有者（T5）或管理員可以查看
-    const requestUser = request.user as string | Record<string, unknown>
+    const requestUser = request.requester as string | Record<string, unknown>
     const requestUserId =
       typeof requestUser === 'string' ? requestUser : requestUser?.id
     const isOwner = currentUser && String(currentUser.id) === String(requestUserId)
-    const isAdmin =
-      currentUser &&
-      ((currentUser.role as string) === 'admin' ||
-        (currentUser.roles as string[] | undefined)?.includes('admin'))
+    const isAdmin = currentUser && (currentUser as { role?: string }).role === 'admin'
 
     if (!isOwner && !isAdmin) {
       return NextResponse.json(
@@ -152,43 +129,7 @@ export async function PATCH(
     const payload = await getPayload({ config })
 
     // 驗證身份
-    const authHeader = req.headers.get('authorization')
-    let currentUser: Record<string, unknown> | null = null
-
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.slice(7)
-      try {
-        const result = await payload.find({
-          collection: 'users',
-          where: { apiToken: { equals: token } } satisfies Where,
-          limit: 1,
-        })
-        if (result.docs.length > 0) {
-          currentUser = result.docs[0] as unknown as Record<string, unknown>
-        }
-      } catch {
-        // token 驗證失敗
-      }
-    }
-
-    if (!currentUser) {
-      try {
-        const cookieHeader = req.headers.get('cookie') || ''
-        const tokenMatch = cookieHeader.match(/payload-token=([^;]+)/)
-        if (tokenMatch) {
-          const verifyResult = await payload.find({
-            collection: 'users',
-            where: { _verified: { equals: true } } satisfies Where,
-            limit: 1,
-          })
-          if (verifyResult.docs.length > 0) {
-            currentUser = verifyResult.docs[0] as unknown as Record<string, unknown>
-          }
-        }
-      } catch {
-        // cookie 驗證失敗
-      }
-    }
+    const currentUser = await resolveCurrentUser(req, payload)
 
     // 取得請求
     let existing: Record<string, unknown> | null = null
@@ -214,14 +155,11 @@ export async function PATCH(
     }
 
     // 權限判斷
-    const requestUser = existing.user as string | Record<string, unknown>
+    const requestUser = existing.requester as string | Record<string, unknown>
     const requestUserId =
       typeof requestUser === 'string' ? requestUser : requestUser?.id
     const isOwner = currentUser && String(currentUser.id) === String(requestUserId)
-    const isAdmin =
-      currentUser &&
-      ((currentUser.role as string) === 'admin' ||
-        (currentUser.roles as string[] | undefined)?.includes('admin'))
+    const isAdmin = currentUser && (currentUser as { role?: string }).role === 'admin'
 
     if (!isOwner && !isAdmin) {
       return NextResponse.json(

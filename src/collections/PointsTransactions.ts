@@ -56,7 +56,7 @@ export const PointsTransactions: CollectionConfig = {
           const amount = typeof data.amount === 'number' ? data.amount : 0
           if (userId) {
             const user = (await req.payload.findByID({
-              collection: 'users',
+              collection: 'customers',
               id: userId,
               depth: 0,
             })) as unknown as LooseRecord
@@ -85,7 +85,7 @@ export const PointsTransactions: CollectionConfig = {
         if (delta === 0) return doc
 
         const user = (await req.payload.findByID({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           depth: 0,
         })) as unknown as LooseRecord
@@ -93,11 +93,11 @@ export const PointsTransactions: CollectionConfig = {
         const next = Math.max(0, current + delta)
 
         await (req.payload.update as (args: {
-          collection: 'users'
+          collection: 'customers'
           id: string | number
           data: Record<string, unknown>
         }) => Promise<unknown>)({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           data: { points: next },
         })
@@ -114,7 +114,7 @@ export const PointsTransactions: CollectionConfig = {
         if (amount === 0) return
 
         const user = (await req.payload.findByID({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           depth: 0,
         })) as unknown as LooseRecord
@@ -122,11 +122,11 @@ export const PointsTransactions: CollectionConfig = {
         const next = Math.max(0, current - amount)
 
         await (req.payload.update as (args: {
-          collection: 'users'
+          collection: 'customers'
           id: string | number
           data: Record<string, unknown>
         }) => Promise<unknown>)({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           data: { points: next },
         })

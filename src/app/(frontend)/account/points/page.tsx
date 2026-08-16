@@ -133,7 +133,7 @@ export default async function PointsPage() {
 
   // Refetch user with depth:1 so memberTier is populated
   const user = (await payload.findByID({
-    collection: 'users',
+    collection: 'customers',
     id: sessionUser.id,
     depth: 1,
   })) as unknown as LooseRecord

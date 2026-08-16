@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
   let user: Record<string, unknown>
   try {
     user = (await payload.findByID({
-      collection: 'users',
+      collection: 'customers',
       id: userId,
       depth: 1,
       overrideAccess: true,

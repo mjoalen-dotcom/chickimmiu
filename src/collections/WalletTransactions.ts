@@ -70,7 +70,7 @@ export const WalletTransactions: CollectionConfig = {
           const amount = typeof data.amount === 'number' ? data.amount : 0
           if (userId) {
             const user = (await req.payload.findByID({
-              collection: 'users',
+              collection: 'customers',
               id: userId,
               depth: 0,
             })) as unknown as LooseRecord
@@ -100,7 +100,7 @@ export const WalletTransactions: CollectionConfig = {
 
         const field = balanceField(doc.wallet)
         const user = (await req.payload.findByID({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           depth: 0,
         })) as unknown as LooseRecord
@@ -108,11 +108,11 @@ export const WalletTransactions: CollectionConfig = {
         const next = Math.max(0, current + delta)
 
         await (req.payload.update as (args: {
-          collection: 'users'
+          collection: 'customers'
           id: string | number
           data: Record<string, unknown>
         }) => Promise<unknown>)({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           data: { [field]: next },
         })
@@ -130,7 +130,7 @@ export const WalletTransactions: CollectionConfig = {
 
         const field = balanceField((doc as LooseRecord).wallet)
         const user = (await req.payload.findByID({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           depth: 0,
         })) as unknown as LooseRecord
@@ -138,11 +138,11 @@ export const WalletTransactions: CollectionConfig = {
         const next = Math.max(0, current - amount)
 
         await (req.payload.update as (args: {
-          collection: 'users'
+          collection: 'customers'
           id: string | number
           data: Record<string, unknown>
         }) => Promise<unknown>)({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           data: { [field]: next },
         })

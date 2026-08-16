@@ -343,11 +343,11 @@ export async function submitChallenge(
   })
 
   // Award points to user
-  const user = await payload.findByID({ collection: 'users', id: userId })
+  const user = await payload.findByID({ collection: 'customers', id: userId })
   const userData = user as unknown as Record<string, unknown>
   const currentPoints = (userData.points as number) || 0
   await (payload.update as Function)({
-    collection: 'users',
+    collection: 'customers',
     id: userId,
     data: { points: currentPoints + challengeResult.pointsReward } as never,
   })
@@ -396,14 +396,14 @@ export async function generateShareCard(
 
   // Award share bonus: 10 points
   const shareBonus = 10
-  const user = await payload.findByID({ collection: 'users', id: userId })
+  const user = await payload.findByID({ collection: 'customers', id: userId })
   const userData = user as unknown as Record<string, unknown>
   const currentPoints = (userData.points as number) || 0
 
   // Only award share bonus once (check metadata)
   if (!meta.shareAwarded) {
     await (payload.update as Function)({
-      collection: 'users',
+      collection: 'customers',
       id: userId,
       data: { points: currentPoints + shareBonus } as never,
     })

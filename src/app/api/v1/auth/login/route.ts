@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     let result: { token?: string; user?: Record<string, unknown>; exp?: number }
     try {
       result = (await payload.login({
-        collection: 'users',
+        collection: 'customers',
         data: { email, password },
       })) as never
     } catch (err) {

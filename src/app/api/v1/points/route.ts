@@ -180,7 +180,7 @@ export async function POST(req: NextRequest) {
 
     // ── 2d. User points ──
     const user = (await payload.findByID({
-      collection: 'users',
+      collection: 'customers',
       id: sessionUser.id,
       depth: 1,
     })) as unknown as LooseRecord
@@ -297,7 +297,7 @@ export async function POST(req: NextRequest) {
 
       // (b) deduct user.points
       await payload.update({
-        collection: 'users',
+        collection: 'customers',
         id: sessionUser.id,
         data: { points: userPoints - cost } as LooseRecord,
         overrideAccess: true,
@@ -305,7 +305,7 @@ export async function POST(req: NextRequest) {
       reverters.unshift(async () => {
         await payload
           .update({
-            collection: 'users',
+            collection: 'customers',
             id: sessionUser.id,
             data: { points: userPoints } as LooseRecord,
             overrideAccess: true,
