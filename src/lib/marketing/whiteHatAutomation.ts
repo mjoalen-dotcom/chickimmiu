@@ -945,7 +945,7 @@ async function buildOperationalSummary(payload: PayloadLike): Promise<Operationa
     }),
     payload.find({
       collection: 'customer-service-tickets',
-      where: { status: { in: ['open', 'pending'] } } satisfies Where,
+      where: { status: { in: ['open', 'pending_human'] } } satisfies Where,
       limit: 100,
       depth: 0,
     }).catch(() => ({ docs: [] })),
