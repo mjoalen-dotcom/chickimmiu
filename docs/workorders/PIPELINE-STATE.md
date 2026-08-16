@@ -1,7 +1,7 @@
 # PIPELINE-STATE.md｜切換管線狀態機（唯一真相源）
 
 > /next 每次執行後更新本檔並 commit。狀態：⚪未開始 🔵進行中 ✅完成 🔴失敗 ⏸暫停 ⏳等待外部 🟡部分完成（機器驗證項未100%達標，已部署但需Alan裁示是否算過關）
-> 最後更新：2026-08-15｜目前步驟：12（Phase 0已完成，等 Alan 確認再進 Phase 1／Prompt P2）｜停滯天數：0
+> 最後更新：2026-08-16｜目前步驟：14（PG建置+搬移演練已成功，等「下一步」觸發正式切pre）｜停滯天數：0
 
 | # | 步驟 | 依據 | 閘型 | 機器驗證項 | 狀態 | 完成日 | 產出 |
 |---|---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@
 | 10 | 前台收口（/diag /games、404） | Prompt I | AUTO | /diag 與 /games 回 404 或需權限 | 🟡 | 2026-08-15 | hetzner/main commit 0388ab6 + 7edd49c（deployed to pre）；機器驗證項字面未達標——查證後 /diag、/games **皆判定不應回 404 或加權限**，詳見 docs/fe-qa/diag-games-disposition.md；/diag 是客服「iPad白屏」診斷頁且全站無真正公開連結（F4判定源自誤讀 layout.tsx 開機兜底畫面內嵌 script 字串），/games 是完整會員遊戲化功能（footer/浮動選單/會員中心多處刻意連結），非測試頁。清理3處無用console.log（DailyCheckIn即時簽到log、partner/earnings與withdraw的UI原型stub log改TODO註解，詳見docs/fe-qa/console-log-cleanup-20260815.md）；附帶發現/partner/*整組為未串接真後端的原型頁面（已確認robots排除索引+全站無連結，風險低，不在此步驟處理）。404/error.tsx原已符合品牌化要求；**意外發現並修復**：因(frontend)/(payload) route group各自帶入`<html>`（multiple root layouts架構），完全不存在的網址（非route內notFound()觸發）會繞過(frontend)/not-found.tsx退回Next內建純白英文404頁——新增根層級`src/app/not-found.tsx`修復，curl實測已回品牌化內容。新增行動端人工巡檢清單docs/fe-qa/mobile-qa-checklist.md。**另一發現，非本步驟範圍未修**：商品頁(PDP)查無slug時走soft-404（HTTP狀態200但內容為404，已知的Next.js streaming限制，程式碼內已有註解說明；影響SEO爬蟲判讀但不影響真人使用者），修復需動PDP核心渲染邏輯，風險較高，建議另立技術債項目處理，非本次前台收口範圍。 |
 | 11 | BP-002 合併檢查點 | 外包 | ⏳WAIT | pre 上購物車＋OAuth 全流程通過 | ✅ | 2026-08-15 | WO-BP002（三項資安修復：OAuth未驗證email帳號接管/bridge開放轉址/運費fail-open + 訪客結帳後台開關 + 數字product id超賣防線bug）三個commit（`e27c790`／`d8192d7`／`dcf85c3`）皆已是目前 HEAD（`09f0bfb`）的祖先，`git merge-base --is-ancestor` 三項全確認為 true；`dcf85c3` 本身即是「WO-BP002 標記為已部署 prod」的 ADR 文件更新（2026-08-14），早於本次 AUTOPILOT 管線 2026-08-15 啟動之前就已完成並上 prod，非僅 pre。live curl 確認 `/checkout` 200、`/api/auth/bridge` 正常 307（非開放轉址）。無需額外合併動作，直接視為已通過。 |
 | 12 | PG 盤點 | DB-PG Prompt P1 | AUTO（RAM 餘裕<800MB → 升級 CPX32 呈報 INPUT） | PG-PHASE0-AUDIT.md 產出 | ✅ | 2026-08-15 | docs/db/PG-PHASE0-AUDIT.md；288表/69,527筆、media僅metadata(實體在R2)、記憶體可用2.8GB免升級CPX32、richText/json欄位風險清單已列。**Prompt P1 明文「輸出報告後停下等確認」——本步驟依工單規定執行到此為止，不自動進入Phase 1（Prompt P2建置與資料搬移）**，需 Alan 看過報告後再說「下一步」觸發。 |
-| 13 | PG 建置＋搬移演練 | Prompt P2 | AUTO | 演練環境全表 count 對帳通過＋20 筆深度 diff 無差異 | 🔵 | | |
+| 13 | PG 建置＋搬移演練 | Prompt P2 | AUTO | 演練環境全表 count 對帳通過＋20 筆深度 diff 無差異 | ✅ | 2026-08-16 | Hetzner同機裝PostgreSQL 16.14（apt，Ubuntu 24.04內建庫）+ 建`ckmu` db／`ckmu_app`專用帳號，pg_hba預設就只允許local socket＋127.0.0.1/::1（無需額外設定）。payload.config.ts雙軌化：同一顆DATABASE_URI依scheme（file: vs postgres://）自動選adapter，正式.env的DATABASE_URI全程沒動過（仍指SQLite，pm2常駐行程行為零改變）。`payload migrate:create`對PG產生全新baseline migration（287張CREATE TABLE，獨立`src/migrations-pg/`目錄，不跟既有104個SQLite方言migration混）+ `payload migrate`套用成功。`scripts/migrate-sqlite-to-pg.ts`資料搬移：繞過Local API（避免hooks對歷史資料誤觸發副作用），直接SQL層搬，`session_replication_role=replica`停用FK檢查取代拓樸排序。**演練跑三次才成功，過程踩兩個真bug**：①`ckmu_app`不是superuser，設不了`session_replication_role`——改用postgres superuser跑遷移腳本（app執行期仍用低權限`ckmu_app`，只有這支一次性遷移工具用superuser）；②**嚴重bug**：TRUNCATE跟INSERT原本同一個per-table迴圈搬，後面字母序較晚的表TRUNCATE CASCADE把「已經插入過資料的較早的表」波及清空（media晚於products的payload_folders依賴關係，實測21,962筆media資料在全部”成功”跑完後憑空消失，count對帳當下是假象）——修法：TRUNCATE全部表獨立一輪先跑完再統一INSERT，兩階段徹底分開，另加事後獨立覆核（不只信插入當下數字）。最終：287表/69,562筆全數count對帳通過（雙重驗證），sequence setval正確（抽驗products/orders/users/media皆與MAX(id)一致），20筆products深度diff（depth:2含category/variants/images/tags關聯）**零真實差異**（唯一表面差異是Payload admin資料夾瀏覽器的「同資料夾其他項目」虛擬欄位，SQLite/PG預設排序不同導致順序不同，非真實商品資料）。依Prompt P2「演練成功才給我pre執行指令」原意，本步驟到此為止，**未切換pre實際DATABASE_URI**（那是步驟14），現正式站全程未受影響。 |
 | 14 | PG 切換（pre） | Prompt P3 前半 | AUTO（切換前強制最終備份） | 回歸清單逐項✅；正式環境 count 對帳通過 | ⚪ | | |
 | 15 | PG 運維化（備份／還原／回滾演練） | Prompt P3 後半 | AUTO | 還原演練紀錄＋回滾演練紀錄＋runbook 定稿 | ⚪ | | |
 | 16 | 顧客認證（customers 分離＋JWT） | APP-API Prompt Q1 | AUTO（若需既有顧客資料遷移 → 方案呈報 INPUT） | 測試綠；隔離滲透 3 項全 403 | ⚪ | | |
@@ -63,5 +63,6 @@
 ## 停滯與異常（站會讀取區）
 
 - 目前紅燈：無
-- 等待 Alan 事項：(A) **多 session 並行風險**——`/next` 的「讀STATE避免撞車」機制只在先後接力時有效，是否要調整為「同時間只讓一個 AI 主跑 AUTOPILOT」由 Alan決定；(B) **Google Fonts 部署脆弱點已第4次出現**（今日累計），建議改用 `next/font/local` 自行託管字型檔根除間歇性部署失敗，是否排入後續工作待 Alan 決定；(C) **PG遷移Phase 0已完成**，`docs/db/PG-PHASE0-AUDIT.md`待Alan過目，確認後說「下一步」才會進Phase 1（Prompt P2 建置與資料搬移，會實際裝PostgreSQL16並寫搬移腳本，屬於高風險操作，會依工單要求先在演練環境跑過再談pre）。
+- 等待 Alan 事項：(A) **多 session 並行風險**——`/next` 的「讀STATE避免撞車」機制只在先後接力時有效，是否要調整為「同時間只讓一個 AI 主跑 AUTOPILOT」由 Alan決定；(B) **Google Fonts 部署脆弱點已第4次出現**，建議改用 `next/font/local` 自行託管字型檔根除間歇性部署失敗，是否排入後續工作待 Alan 決定；(C) **PG遷移Phase 1演練已成功**，287表/69,562筆全對帳通過+20筆深度diff零差異，**pre目前仍在跑SQLite（尚未切換）**，說「下一步」才會觸發步驟14（Prompt P3前半：實際把pre的DATABASE_URI切到PG、停機窗口執行最後一次增量搬移、PM2重啟、全功能回歸驗證——這是真的會影響正式營運環境的一步，切換前會先做最終備份）。
 - ~~PDP soft-404~~ ✅ 08-16 改middleware存在性檢查已修復生效。~~合作夥伴結帳歸因缺口~~ ✅ 08-16 已串接完成（cookie擷取+Orders beforeChange hook）。
+- 🔑 **PG rehearsal 憑證位置**：`.env`（server）的 `DATABASE_URI_PG_REHEARSAL`（app專用帳號 `ckmu_app`）；superuser密碼另外設在 `postgres` role（一次性遷移腳本需要用它跑`session_replication_role`，app執行期不應該用superuser）。步驟14正式切換時這組憑證的角色定位需要重新盤點——是否要讓正式app改連`ckmu_app`（推薦，維持最小權限）而非目前演練用的superuser連線。
