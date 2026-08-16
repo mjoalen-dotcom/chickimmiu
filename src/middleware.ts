@@ -96,15 +96,31 @@ export async function middleware(req: NextRequest) {
   const segments = req.nextUrl.pathname.split('/').filter(Boolean)
   if (segments.length === 2 && segments[0] === 'products') {
     const slug = segments[1]
-    const result = await checkProductExists(req, slug)
-    if (!result.exists) {
-      if (result.aliasTarget) {
-        return NextResponse.redirect(new URL(`/products/${result.aliasTarget}`, req.url), 308)
+    let debugInfo = 'checked'
+    try {
+      const result = await checkProductExists(req, slug)
+      debugInfo = JSON.stringify(result)
+      if (!result.exists) {
+        if (result.aliasTarget) {
+          const res = NextResponse.redirect(
+            new URL(`/products/${result.aliasTarget}`, req.url),
+            308,
+          )
+          res.headers.set('x-ckmu-mw-debug', debugInfo)
+          return res
+        }
+        const res = NextResponse.rewrite(
+          new URL(`/products/__notfound__/${encodeURIComponent(slug)}`, req.url),
+        )
+        res.headers.set('x-ckmu-mw-debug', `rewrite:${debugInfo}`)
+        return res
       }
-      return NextResponse.rewrite(
-        new URL(`/products/__notfound__/${encodeURIComponent(slug)}`, req.url),
-      )
+    } catch (err) {
+      debugInfo = `threw:${String((err as Error)?.message || err)}`
     }
+    const res = NextResponse.next()
+    res.headers.set('x-ckmu-mw-debug', debugInfo)
+    return res
   }
 
   return NextResponse.next()
