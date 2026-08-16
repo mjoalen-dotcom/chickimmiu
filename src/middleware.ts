@@ -71,18 +71,18 @@ const EXISTS_CHECK_TIMEOUT_MS = 1500
 async function checkProductExists(
   req: NextRequest,
   slug: string,
-): Promise<{ exists: boolean; aliasTarget?: string }> {
+): Promise<{ exists: boolean; aliasTarget?: string; debug?: string }> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), EXISTS_CHECK_TIMEOUT_MS)
   try {
     const url = new URL('/api/products/exists', req.url)
     url.searchParams.set('slug', slug)
     const res = await fetch(url, { signal: controller.signal })
-    if (!res.ok) return { exists: true } // fail-open
+    if (!res.ok) return { exists: true, debug: `not-ok:${res.status}:${url.toString()}` }
     const data = (await res.json()) as { exists: boolean; aliasTarget?: string }
-    return data
-  } catch {
-    return { exists: true } // fail-open：逾時／連線失敗一律放行
+    return { ...data, debug: `ok:${url.toString()}` }
+  } catch (err) {
+    return { exists: true, debug: `catch:${String((err as Error)?.name)}:${String((err as Error)?.message)}` }
   } finally {
     clearTimeout(timer)
   }
