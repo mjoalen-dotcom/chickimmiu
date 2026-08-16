@@ -165,11 +165,23 @@ async function main() {
               return raw === 1 || raw === '1' || raw === true
             }
             if (meta?.udtName === 'jsonb' || meta?.udtName === 'json') {
+              // 保留原始字串直接交給 pg，讓 PG 自己把 text 參數 cast 成 jsonb——
+              // 不要在 JS 端 JSON.parse() 後把「解析出來的物件/陣列」當參數傳給
+              // pg：node-postgres 對 JS Array 參數有特殊處理（會试著序列化成
+              // Postgres array literal 語法，不是 JSON），JSON 陣列欄位（例如
+              // automation_logs.executed_steps）一格式化就整個壞掉，PG 端回
+              // "invalid input syntax for type json"。這裡只用 JSON.parse 驗證
+              // 格式合不合法（合法才照原字串送，順便及早抓出真正壞掉的資料），
+              // 不採用解析後的值。
               if (typeof raw === 'string') {
                 try {
-                  return JSON.parse(raw)
+                  JSON.parse(raw)
+                  return raw
                 } catch {
-                  return raw // 不是合法 JSON 字串就原樣塞（極少數欄位可能本來就是 plain text）
+                  console.warn(
+                    `[migrate] 警告：表欄位含非法 JSON 字串，原樣當 text 塞入（PG 端會再報錯）`,
+                  )
+                  return raw
                 }
               }
               return raw
