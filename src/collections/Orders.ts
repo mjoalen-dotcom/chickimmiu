@@ -41,8 +41,9 @@ import {
  */
 const readOwnOrReferral: Access = ({ req: { user } }) => {
   if (!user) return false
-  if (user.role === 'admin') return true
-  if (user.role === 'partner') {
+  const role = (user as { role?: string }).role
+  if (role === 'admin') return true
+  if (role === 'partner') {
     return { 'affiliateInfo.affiliateUser': { equals: user.id } } as Where
   }
   return { customer: { equals: user.id } }
@@ -609,7 +610,7 @@ export const Orders: CollectionConfig = {
       label: '管理員備註（僅內部可見）',
       type: 'textarea',
       access: {
-        read: ({ req: { user } }) => Boolean(user?.role === 'admin'),
+        read: ({ req: { user } }) => Boolean((user as { role?: string } | null | undefined)?.role === 'admin'),
       },
     },
   ],

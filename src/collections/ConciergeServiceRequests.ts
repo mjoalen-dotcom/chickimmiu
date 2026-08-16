@@ -24,7 +24,7 @@ export const ConciergeServiceRequests: CollectionConfig = {
   access: {
     read: ({ req: { user } }) => {
       if (!user) return false
-      if (user.role === 'admin') return true
+      if ((user as { role?: string }).role === 'admin') return true
       // 璀璨天后會員只能看自己的請求
       return {
         requester: { equals: user.id },
@@ -32,7 +32,7 @@ export const ConciergeServiceRequests: CollectionConfig = {
     },
     create: ({ req: { user } }) => {
       if (!user) return false
-      if (user.role === 'admin') return true
+      if ((user as { role?: string }).role === 'admin') return true
       // 僅 diamond (T5 璀璨天后) 可建立
       const tierObj = user.memberTier as unknown as Record<string, unknown> | undefined
       const tierSlug = typeof user.memberTier === 'string'

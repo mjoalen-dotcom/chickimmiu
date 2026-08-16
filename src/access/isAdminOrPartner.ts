@@ -7,5 +7,6 @@ import type { Access } from 'payload'
  */
 export const isAdminOrPartner: Access = ({ req: { user } }) => {
   if (!user) return false
-  return user.role === 'admin' || user.role === 'partner'
+  const role = (user as { role?: string }).role
+  return role === 'admin' || role === 'partner'
 }

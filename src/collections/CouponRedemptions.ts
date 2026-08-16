@@ -24,7 +24,7 @@ export const CouponRedemptions: CollectionConfig = {
   access: {
     read: ({ req: { user } }) => {
       if (!user) return false
-      if (user.role === 'admin') return true
+      if ((user as { role?: string }).role === 'admin') return true
       return { user: { equals: user.id } } as Where
     },
     create: () => true, // Orders hook 內以 overrideAccess 寫入；前台不直接 POST

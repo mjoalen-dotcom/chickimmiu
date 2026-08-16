@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     const where: Where = {}
 
     // 非管理員僅能查看自己的請求
-    if (user.role !== 'admin') {
+    if ((user as { role?: string }).role !== 'admin') {
       // 驗證 T5 資格
       const eligibility = await validateConciergeEligibility(String(user.id))
       if (!eligibility.eligible) {
@@ -79,12 +79,12 @@ export async function GET(req: NextRequest) {
         status: d.status,
         assignedConciergeName: conciergeName,
         requestDetail: d.requestDetail,
-        aiResponse: user.role === 'admin' ? d.aiResponse : {
+        aiResponse: (user as { role?: string }).role === 'admin' ? d.aiResponse : {
           aiSuggestion: (d.aiResponse as unknown as Record<string, unknown> | undefined)?.aiSuggestion,
         },
         resolution: d.resolution,
         isBirthdayMonthRequest: d.isBirthdayMonthRequest,
-        conciergeNotes: user.role === 'admin'
+        conciergeNotes: (user as { role?: string }).role === 'admin'
           ? d.conciergeNotes
           : ((d.conciergeNotes as unknown as Array<Record<string, unknown>> | undefined) || [])
               .filter((n) => n.noteType === 'customer_facing'),

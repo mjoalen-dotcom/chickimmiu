@@ -162,7 +162,7 @@ export const Products: CollectionConfig = {
   },
   access: {
     read: ({ req: { user } }) => {
-      if (user?.role === 'admin') return true
+      if ((user as { role?: string } | null | undefined)?.role === 'admin') return true
       return { status: { equals: 'published' } }
     },
     create: isAdmin,

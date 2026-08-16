@@ -24,7 +24,8 @@ export default async function PartnerLayout({ children }: { children: React.Reac
   const headersList = await nextHeaders()
   const { user } = await payload.auth({ headers: headersList })
   if (!user) redirect('/login?redirect=/partner')
-  if (user.role !== 'partner' && user.role !== 'admin') redirect('/account')
+  const role = (user as { role?: string }).role
+  if (role !== 'partner' && role !== 'admin') redirect('/account')
 
   return (
     <div className="bg-cream-50 min-h-screen">

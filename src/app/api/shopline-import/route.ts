@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     // 驗證登入狀態（需要 admin 或 partner 權限）
     const { user } = await payload.auth({ headers: req.headers })
-    if (!user || (user.role !== 'admin' && user.role !== 'partner')) {
+    if (!user || ((user as { role?: string }).role !== 'admin' && (user as { role?: string }).role !== 'partner')) {
       return NextResponse.json({ error: '需要管理員權限' }, { status: 401 })
     }
 

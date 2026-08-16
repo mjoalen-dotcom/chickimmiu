@@ -22,7 +22,8 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 })
   }
-  if (user.role !== 'partner' && user.role !== 'admin') {
+  const role = (user as { role?: string }).role
+  if (role !== 'partner' && role !== 'admin') {
     return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 })
   }
 

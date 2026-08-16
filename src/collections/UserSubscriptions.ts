@@ -26,7 +26,7 @@ export const UserSubscriptions: CollectionConfig = {
     // 會員可查自己的訂閱（前台顯示）；寫入全走 server（overrideAccess）
     read: ({ req: { user } }) => {
       if (!user) return false
-      if (user.role === 'admin') return true
+      if ((user as { role?: string }).role === 'admin') return true
       return { user: { equals: user.id } }
     },
     create: isAdmin,

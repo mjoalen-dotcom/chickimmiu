@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const headers = await nextHeaders()
     const { user } = await payload.auth({ headers })
 
-    if (!user || user.role !== 'admin') {
+    if (!user || (user as { role?: string }).role !== 'admin') {
       return NextResponse.json(
         { success: false, message: '僅限後台管理員使用' },
         { status: 403 },

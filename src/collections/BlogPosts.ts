@@ -116,7 +116,7 @@ export const BlogPosts: CollectionConfig = {
   },
   access: {
     read: ({ req: { user } }) => {
-      if (user?.role === 'admin') return true
+      if ((user as { role?: string } | null | undefined)?.role === 'admin') return true
       return {
         and: [
           { status: { equals: 'published' } },
@@ -716,7 +716,7 @@ export const BlogPosts: CollectionConfig = {
                       name: 'accessPasswordHash',
                       type: 'text',
                       access: {
-                        read: ({ req: { user } }) => user?.role === 'admin',
+                        read: ({ req: { user } }) => (user as { role?: string } | null | undefined)?.role === 'admin',
                       },
                       admin: {
                         hidden: true,

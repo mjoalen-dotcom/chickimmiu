@@ -30,7 +30,7 @@ export const ShippingMethods: CollectionConfig = {
      * 後台管理員一律看得到全部（否則會誤以為資料被刪了）。
      */
     read: ({ req: { user } }) => {
-      if (user?.role === 'admin') return true
+      if ((user as { role?: string } | null | undefined)?.role === 'admin') return true
       if (loadEcpayLogisticsConfig().isConfigured) return true
       return { carrier: { not_in: CVS_CARRIERS } }
     },

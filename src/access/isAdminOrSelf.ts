@@ -7,7 +7,10 @@ import type { Access } from 'payload'
 export const isAdminOrSelf: Access = ({ req: { user } }) => {
   if (!user) return false
 
-  if (user.role === 'admin') return true
+  // req.user 是 User | Customer 聯集（見 access/isAdmin.ts 註解）。Customer
+  // 沒有 role，這裡讀不到 'admin'，直接落到下面的 self-scoping，正是顧客
+  // 只能看自己資料的預期行為。
+  if ((user as { role?: string }).role === 'admin') return true
 
   return {
     id: {

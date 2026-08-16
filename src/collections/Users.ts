@@ -162,7 +162,8 @@ export const Users: CollectionConfig = {
   access: {
     admin: ({ req: { user } }) => {
       if (!user) return false
-      return user.role === 'admin' || user.role === 'operator' || user.role === 'partner'
+      const role = (user as { role?: string }).role
+      return role === 'admin' || role === 'operator' || role === 'partner'
     },
     read: isAdminOrSelf,
     create: isAdmin,
@@ -170,7 +171,7 @@ export const Users: CollectionConfig = {
     // 只允許可還原的 trash 操作。Payload 在 soft-delete 時會把 deletedAt
     // 傳入 delete access；永久 DELETE 沒有 data，因此會被拒絕。
     delete: ({ req: { user }, data }) =>
-      user?.role === 'admin' && Boolean((data as { deletedAt?: unknown } | undefined)?.deletedAt),
+      (user as { role?: string } | null | undefined)?.role === 'admin' && Boolean((data as { deletedAt?: unknown } | undefined)?.deletedAt),
   },
   endpoints: [
     createExportEndpoint('users', userFieldMappings),

@@ -199,7 +199,7 @@ export async function GET(req: NextRequest) {
   try {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
-    if (!user || user.role !== 'admin') {
+    if (!user || (user as { role?: string }).role !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 401 })
     }
 

@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: req.headers })
 
-  if (!user || user.role !== 'admin') {
+  if (!user || (user as { role?: string }).role !== 'admin') {
     return jsonError('需要管理員權限', 403)
   }
 

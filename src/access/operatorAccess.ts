@@ -7,8 +7,10 @@ export const isOperator = (user: unknown): boolean =>
       (user as { role?: unknown }).role === 'operator',
   )
 
-export const isAdminOrOperator: Access = ({ req: { user } }) =>
-  Boolean(user && (user.role === 'admin' || user.role === 'operator'))
+export const isAdminOrOperator: Access = ({ req: { user } }) => {
+  const role = (user as { role?: string } | null | undefined)?.role
+  return Boolean(user && (role === 'admin' || role === 'operator'))
+}
 
 const allowOperator = (base: Access | undefined): Access => async (args) => {
   if (isOperator(args.req.user)) return true
@@ -49,6 +51,6 @@ export const adminOnlyGlobal = (config: GlobalConfig): GlobalConfig => ({
   ...config,
   admin: {
     ...config.admin,
-    hidden: ({ user }) => user?.role !== 'admin',
+    hidden: ({ user }) => (user as { role?: string } | null | undefined)?.role !== 'admin',
   },
 })

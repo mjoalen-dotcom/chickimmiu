@@ -5,10 +5,15 @@ import { isAdmin } from '../access/isAdmin'
 /**
  * Partner 只能讀取 / 更新自己的 Affiliate 資料
  */
+// req.user 是 User | Customer 聯集（APP-API-001 步驟16分離後）。partner 是
+// users collection 專屬角色（不隨顧客分離移動），Customer 沒有 role 欄位，
+// 讀不到 'admin'/'partner'，自然落到最後 return false——顧客 token 天生
+//進不了合作夥伴後台。
 const readOwnAffiliate: Access = ({ req: { user } }) => {
   if (!user) return false
-  if (user.role === 'admin') return true
-  if (user.role === 'partner') {
+  const role = (user as { role?: string }).role
+  if (role === 'admin') return true
+  if (role === 'partner') {
     return { user: { equals: user.id } }
   }
   return false
@@ -16,8 +21,9 @@ const readOwnAffiliate: Access = ({ req: { user } }) => {
 
 const updateOwnAffiliate: Access = ({ req: { user } }) => {
   if (!user) return false
-  if (user.role === 'admin') return true
-  if (user.role === 'partner') {
+  const role = (user as { role?: string }).role
+  if (role === 'admin') return true
+  if (role === 'partner') {
     return { user: { equals: user.id } }
   }
   return false
@@ -64,7 +70,7 @@ export const Affiliates: CollectionConfig = {
       max: 100,
       defaultValue: 10,
       access: {
-        update: ({ req: { user } }) => Boolean(user?.role === 'admin'),
+        update: ({ req: { user } }) => Boolean((user as { role?: string } | null | undefined)?.role === 'admin'),
       },
     },
     {
@@ -79,7 +85,7 @@ export const Affiliates: CollectionConfig = {
         { label: '已暫停', value: 'suspended' },
       ],
       access: {
-        update: ({ req: { user } }) => Boolean(user?.role === 'admin'),
+        update: ({ req: { user } }) => Boolean((user as { role?: string } | null | undefined)?.role === 'admin'),
       },
     },
     // ── 收益統計（僅 Admin 可修改） ──
@@ -89,7 +95,7 @@ export const Affiliates: CollectionConfig = {
       type: 'number',
       defaultValue: 0,
       min: 0,
-      access: { update: ({ req: { user } }) => Boolean(user?.role === 'admin') },
+      access: { update: ({ req: { user } }) => Boolean((user as { role?: string } | null | undefined)?.role === 'admin') },
     },
     {
       name: 'withdrawableAmount',
@@ -97,7 +103,7 @@ export const Affiliates: CollectionConfig = {
       type: 'number',
       defaultValue: 0,
       min: 0,
-      access: { update: ({ req: { user } }) => Boolean(user?.role === 'admin') },
+      access: { update: ({ req: { user } }) => Boolean((user as { role?: string } | null | undefined)?.role === 'admin') },
     },
     {
       name: 'pendingAmount',
@@ -105,7 +111,7 @@ export const Affiliates: CollectionConfig = {
       type: 'number',
       defaultValue: 0,
       min: 0,
-      access: { update: ({ req: { user } }) => Boolean(user?.role === 'admin') },
+      access: { update: ({ req: { user } }) => Boolean((user as { role?: string } | null | undefined)?.role === 'admin') },
     },
     {
       name: 'totalWithdrawn',
@@ -113,7 +119,7 @@ export const Affiliates: CollectionConfig = {
       type: 'number',
       defaultValue: 0,
       min: 0,
-      access: { update: ({ req: { user } }) => Boolean(user?.role === 'admin') },
+      access: { update: ({ req: { user } }) => Boolean((user as { role?: string } | null | undefined)?.role === 'admin') },
     },
     // ── 銀行資訊（Partner 可自行修改） ──
     {
@@ -133,7 +139,7 @@ export const Affiliates: CollectionConfig = {
       label: '提款申請紀錄',
       type: 'array',
       access: {
-        update: ({ req: { user } }) => Boolean(user?.role === 'admin'),
+        update: ({ req: { user } }) => Boolean((user as { role?: string } | null | undefined)?.role === 'admin'),
       },
       fields: [
         { name: 'amount', label: '申請金額', type: 'number', required: true, min: 0 },

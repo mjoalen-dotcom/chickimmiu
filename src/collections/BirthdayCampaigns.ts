@@ -45,7 +45,7 @@ export const BirthdayCampaigns: CollectionConfig = {
   access: {
     read: ({ req: { user } }) => {
       if (!user) return false
-      if (user.role === 'admin') return true
+      if ((user as { role?: string }).role === 'admin') return true
       return { targetUser: { equals: user.id } }
     },
     create: isAdmin,
