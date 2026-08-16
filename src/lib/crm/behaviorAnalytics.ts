@@ -293,7 +293,7 @@ export async function calculateRFM(userId: string): Promise<RFMScore> {
     const payload = await getPayload({ config })
 
     // 取得使用者資料
-    const user = await payload.findByID({ collection: 'users', id: userId })
+    const user = await payload.findByID({ collection: 'customers', id: userId })
     const userData = user as unknown as Record<string, unknown>
     const creditScore = safeNum(userData.creditScore, 100)
 
@@ -378,10 +378,7 @@ export async function calculateAllRFM(): Promise<RFMScore[]> {
     const payload = await getPayload({ config })
 
     const usersResult = await payload.find({
-      collection: 'users',
-      where: {
-        role: { equals: 'customer' },
-      } satisfies Where,
+      collection: 'customers',
       limit: 10000,
     })
 
@@ -424,7 +421,7 @@ export async function generateAutoTags(userId: string): Promise<AutoTagSuggestio
     const tags: AutoTagSuggestion[] = []
 
     // 取得使用者資料
-    const user = await payload.findByID({ collection: 'users', id: userId })
+    const user = await payload.findByID({ collection: 'customers', id: userId })
     const userData = user as unknown as Record<string, unknown>
     const creditScore = safeNum(userData.creditScore, 100)
     const totalSpent = safeNum(userData.lifetimeSpend) || safeNum(userData.totalSpent)
@@ -614,7 +611,7 @@ export async function predictLTV(userId: string): Promise<LTVPrediction> {
     const payload = await getPayload({ config })
 
     // 取得使用者資料
-    const user = await payload.findByID({ collection: 'users', id: userId })
+    const user = await payload.findByID({ collection: 'customers', id: userId })
     const userData = user as unknown as Record<string, unknown>
     const creditScore = safeNum(userData.creditScore, 100)
     const creditStatus = getCreditStatus(creditScore)
@@ -746,7 +743,7 @@ export async function predictChurn(userId: string): Promise<ChurnPrediction> {
     const payload = await getPayload({ config })
 
     // 取得使用者資料
-    const user = await payload.findByID({ collection: 'users', id: userId })
+    const user = await payload.findByID({ collection: 'customers', id: userId })
     const userData = user as unknown as Record<string, unknown>
     const creditScore = safeNum(userData.creditScore, 100)
     const lastOrderDate = userData.lastOrderDate
@@ -1153,7 +1150,7 @@ export async function getMember360View(userId: string): Promise<Member360View> {
     const payload = await getPayload({ config })
 
     // 取得使用者資料
-    const user = await payload.findByID({ collection: 'users', id: userId })
+    const user = await payload.findByID({ collection: 'customers', id: userId })
     const userData = user as unknown as Record<string, unknown>
 
     // 等級前台名稱
@@ -1379,10 +1376,7 @@ export async function getAnalyticsDashboard(): Promise<AnalyticsDashboard> {
 
     // ── 取得所有客戶會員 ──
     const allUsersResult = await payload.find({
-      collection: 'users',
-      where: {
-        role: { equals: 'customer' },
-      } satisfies Where,
+      collection: 'customers',
       limit: 10000,
     })
 
@@ -1526,9 +1520,8 @@ export async function getAnalyticsDashboard(): Promise<AnalyticsDashboard> {
       try {
         // 新會員
         const newMembersResult = await payload.find({
-          collection: 'users',
+          collection: 'customers',
           where: {
-            role: { equals: 'customer' },
             createdAt: {
               greater_than: monthStart.toISOString(),
               less_than: monthEnd.toISOString(),
@@ -1562,9 +1555,8 @@ export async function getAnalyticsDashboard(): Promise<AnalyticsDashboard> {
         // 流失會員估計：該月超過 90 天未購買的會員數量
         const churnThreshold = new Date(monthEnd.getTime() - 90 * 24 * 60 * 60 * 1000)
         const churnedResult = await payload.find({
-          collection: 'users',
+          collection: 'customers',
           where: {
-            role: { equals: 'customer' },
             lastOrderDate: {
               less_than: churnThreshold.toISOString(),
             },

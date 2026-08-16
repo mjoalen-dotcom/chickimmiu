@@ -26,7 +26,7 @@ async function getOrderLineUid(payload: Payload, order: OrderDoc): Promise<strin
   if (customerId === undefined || customerId === null) return null
   try {
     const user = (await payload.findByID({
-      collection: 'users',
+      collection: 'customers',
       id: customerId,
       depth: 0,
     })) as unknown as { lineUid?: string }

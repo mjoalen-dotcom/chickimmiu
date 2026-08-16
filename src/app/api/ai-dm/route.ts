@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       }
 
       await (payload.update as Function)({
-        collection: 'users',
+        collection: 'customers',
         id: userId,
         data: {
           aiDmPreferences: {

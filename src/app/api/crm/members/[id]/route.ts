@@ -183,7 +183,7 @@ export async function GET(
     let user: Record<string, unknown> | null = null
     try {
       const found = await payload.findByID({
-        collection: 'users',
+        collection: 'customers',
         id,
         depth: 1,
       })

@@ -495,7 +495,7 @@ export async function analyzeBySegment(campaignId: string): Promise<Record<strin
 
     // 取得會員的分群碼
     const user = await payload.findByID({
-      collection: 'users',
+      collection: 'customers',
       id: userId,
     })
 
@@ -590,7 +590,7 @@ export async function analyzeByCreditScore(
     if (!userId) continue
 
     const user = await payload.findByID({
-      collection: 'users',
+      collection: 'customers',
       id: userId,
     })
 

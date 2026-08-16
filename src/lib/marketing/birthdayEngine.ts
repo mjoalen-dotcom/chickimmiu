@@ -20,6 +20,18 @@ import type { Where } from 'payload'
 import { TIER_FRONT_NAMES } from '../crm/tierEngine'
 import { sendMessage } from './channelDispatcher'
 
+// Customers/Users 只有 `birthday`（完整日期）欄位，沒有 `birthdayMonth`——
+// 用 where 篩不存在的欄位不會報錯但永遠篩不出東西（或視adapter行為而定，
+// 都不是我們要的）。生日月份要在抓出資料後用這支從date欄位算，跟
+// memberAnalytics.ts 的 parseBirthday() 同一套邏輯（UTC月份，避免時區
+// 邊界誤判）。
+function birthdayMonthOf(raw: unknown): number | null {
+  if (typeof raw !== 'string' || !raw) return null
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return null
+  return d.getUTCMonth() + 1
+}
+
 // ══════════════════════════════════════════════════════════
 // Types
 // ══════════════════════════════════════════════════════════
@@ -254,7 +266,7 @@ export async function calculateBirthdayGifts(userId: string): Promise<BirthdayGi
   const payload = await getPayload({ config })
 
   // 讀取會員資料
-  const userDoc = await payload.findByID({ collection: 'users', id: userId })
+  const userDoc = await payload.findByID({ collection: 'customers', id: userId })
   const user = userDoc as unknown as Record<string, unknown>
   const tierCode = typeof user.tier === 'string' ? user.tier : 'ordinary'
   const creditScore = typeof user.creditScore === 'number' ? user.creditScore : 80
@@ -393,22 +405,27 @@ export async function createBirthdayCampaignsForMonth(
 ): Promise<{ created: number; skipped: number }> {
   const payload = await getPayload({ config })
 
-  // 查詢生日月份符合的會員
+  // 查詢有填生日的會員（customers 集合本身即全為顧客，無需 role 篩選），
+  // 再用 birthday 日期欄位在應用層算月份是否符合——Customers 沒有
+  // birthdayMonth 欄位可以直接篩。
   const usersResult = await payload.find({
-    collection: 'users',
+    collection: 'customers',
     where: {
-      birthdayMonth: { equals: month },
-      role: { equals: 'customer' },
+      birthday: { exists: true },
     } satisfies Where,
     limit: 10000,
+    depth: 0,
   })
+  const birthdayDocs = usersResult.docs.filter(
+    (d) => birthdayMonthOf((d as unknown as Record<string, unknown>).birthday) === month,
+  )
 
-  console.log(`[Birthday] ${year}/${month} 找到 ${usersResult.totalDocs} 位壽星`)
+  console.log(`[Birthday] ${year}/${month} 找到 ${birthdayDocs.length} 位壽星`)
 
   let created = 0
   let skipped = 0
 
-  for (const userDoc of usersResult.docs) {
+  for (const userDoc of birthdayDocs) {
     const userId = extractUserId(userDoc.id as unknown as string)
     const campaignId = await createBirthdayCampaignForUser(userId, month, year)
 
@@ -451,7 +468,7 @@ export async function executeBirthdayPhase(
   const giftConfig = campaign.giftConfig
 
   // 讀取使用者名稱
-  const userDoc = await payload.findByID({ collection: 'users', id: userId })
+  const userDoc = await payload.findByID({ collection: 'customers', id: userId })
   const user = userDoc as unknown as Record<string, unknown>
   const userName = typeof user.name === 'string' ? user.name : '親愛的'
 
@@ -597,15 +614,19 @@ export async function getBirthdayDashboard(): Promise<BirthdayDashboardData> {
   const currentMonth = now.getMonth() + 1
   const currentYear = now.getFullYear()
 
-  // 當月壽星數
-  const birthdayUsers = await payload.find({
-    collection: 'users',
+  // 當月壽星數（customers 集合本身即全為顧客，無需 role 篩選）。同上，
+  // Customers 沒有 birthdayMonth 欄位，抓 birthday 後在應用層算月份。
+  const birthdayUsersRaw = await payload.find({
+    collection: 'customers',
     where: {
-      birthdayMonth: { equals: currentMonth },
-      role: { equals: 'customer' },
+      birthday: { exists: true },
     } satisfies Where,
-    limit: 0,
+    limit: 10000,
+    depth: 0,
   })
+  const currentMonthBirthdayCount = birthdayUsersRaw.docs.filter(
+    (d) => birthdayMonthOf((d as unknown as Record<string, unknown>).birthday) === currentMonth,
+  ).length
 
   // 活躍活動
   const activeCampaigns = await payload.find({
@@ -729,7 +750,7 @@ export async function getBirthdayDashboard(): Promise<BirthdayDashboardData> {
 
       let userName = '會員'
       try {
-        const userDoc = await payload.findByID({ collection: 'users', id: uid })
+        const userDoc = await payload.findByID({ collection: 'customers', id: uid })
         const u = userDoc as unknown as Record<string, unknown>
         userName = typeof u.name === 'string' ? u.name : '會員'
       } catch {
@@ -747,7 +768,7 @@ export async function getBirthdayDashboard(): Promise<BirthdayDashboardData> {
   }
 
   return {
-    currentMonthBirthdays: birthdayUsers.totalDocs,
+    currentMonthBirthdays: currentMonthBirthdayCount,
     activeCampaigns: activeCampaigns.totalDocs,
     completedThisMonth: completedCampaigns.totalDocs,
     totalGiftsIssued,

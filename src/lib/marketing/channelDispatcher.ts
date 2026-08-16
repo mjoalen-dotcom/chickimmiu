@@ -181,7 +181,7 @@ async function sendLineMessage(
   const payload = await getPayload({ config })
 
   // 取得會員的 LINE UID
-  const userDoc = await payload.findByID({ collection: 'users', id: userId })
+  const userDoc = await payload.findByID({ collection: 'customers', id: userId })
   const user = userDoc as unknown as Record<string, unknown>
   const lineUid = typeof user.lineUid === 'string' ? user.lineUid : ''
 
@@ -251,7 +251,7 @@ async function sendEmail(
   const payload = await getPayload({ config })
 
   // 取得會員的 Email
-  const userDoc = await payload.findByID({ collection: 'users', id: userId })
+  const userDoc = await payload.findByID({ collection: 'customers', id: userId })
   const user = userDoc as unknown as Record<string, unknown>
   const email = typeof user.email === 'string' ? user.email : ''
 
@@ -317,7 +317,7 @@ async function sendSMS(userId: string, content: string): Promise<SendResult> {
   const payload = await getPayload({ config })
 
   // 取得會員的手機號碼
-  const userDoc = await payload.findByID({ collection: 'users', id: userId })
+  const userDoc = await payload.findByID({ collection: 'customers', id: userId })
   const user = userDoc as unknown as Record<string, unknown>
   const phone = typeof user.phone === 'string' ? user.phone : ''
 
@@ -366,7 +366,7 @@ async function sendPushNotification(
   const payload = await getPayload({ config })
 
   // 取得會員的 Push Token
-  const userDoc = await payload.findByID({ collection: 'users', id: userId })
+  const userDoc = await payload.findByID({ collection: 'customers', id: userId })
   const user = userDoc as unknown as Record<string, unknown>
   const pushToken = typeof user.pushToken === 'string' ? user.pushToken : ''
 
@@ -452,7 +452,7 @@ async function sendEDM(
   const payload = await getPayload({ config })
 
   // 取得會員的 Email
-  const userDoc = await payload.findByID({ collection: 'users', id: userId })
+  const userDoc = await payload.findByID({ collection: 'customers', id: userId })
   const user = userDoc as unknown as Record<string, unknown>
   const email = typeof user.email === 'string' ? user.email : ''
 

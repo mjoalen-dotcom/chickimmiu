@@ -315,7 +315,7 @@ async function redeemStoreCredit(ctx: RedemptionContext): Promise<RedemptionOutc
 
   const currentCredit = asNum(user.shoppingCredit, 0)
   await payload.update({
-    collection: 'users',
+    collection: 'customers',
     id: userId,
     data: { shoppingCredit: currentCredit + creditAmount } as never,
     overrideAccess: true,

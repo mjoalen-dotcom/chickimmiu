@@ -26,8 +26,7 @@ export async function GET(_req: NextRequest) {
 
     // ── 1. Overview：基本會員統計 ──
     const allMembers = await payload.find({
-      collection: 'users',
-      where: { role: { equals: 'customer' } } as never,
+      collection: 'customers',
       limit: 0,
     })
     const totalMembers = allMembers.totalDocs
@@ -48,9 +47,8 @@ export async function GET(_req: NextRequest) {
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
     const newMembers = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: {
-        role: { equals: 'customer' },
         createdAt: { greater_than: sevenDaysAgo.toISOString() },
       } as never,
       limit: 0,
@@ -59,8 +57,7 @@ export async function GET(_req: NextRequest) {
 
     // 平均累計消費 — 取一批樣本計算
     const sampleMembers = await payload.find({
-      collection: 'users',
-      where: { role: { equals: 'customer' } } as never,
+      collection: 'customers',
       limit: 200,
       sort: '-createdAt',
     })
@@ -138,9 +135,8 @@ export async function GET(_req: NextRequest) {
       const slug = tier.slug as string
       const frontName = (tier.frontName as string) || TIER_FRONT_NAMES[slug] || slug
       const count = await payload.find({
-        collection: 'users',
+        collection: 'customers',
         where: {
-          role: { equals: 'customer' },
           memberTier: { equals: tier.id },
         } as never,
         limit: 0,

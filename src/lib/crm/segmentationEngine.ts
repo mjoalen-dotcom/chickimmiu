@@ -220,7 +220,7 @@ export async function calculateMemberSegment(userId: string): Promise<{
   const { weights, thresholds } = await loadConfigFromGlobal()
 
   // ── 載入會員資料 ──
-  const user = await payload.findByID({ collection: 'users', id: userId })
+  const user = await payload.findByID({ collection: 'customers', id: userId })
   const userData = user as unknown as Record<string, unknown>
 
   const creditScore = typeof userData.creditScore === 'number' ? userData.creditScore : 60
@@ -422,7 +422,7 @@ export async function runDailySegmentation(): Promise<{
   while (hasMore) {
     try {
       const usersResult = await payload.find({
-        collection: 'users',
+        collection: 'customers',
         limit: PAGE_SIZE,
         page,
         sort: 'createdAt',

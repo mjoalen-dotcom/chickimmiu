@@ -23,8 +23,10 @@ async function main() {
   const payload = await getPayload({ config })
 
   // 找 mbti_profile_mbti_type 設好的那個 user
+  // /account/personality 這條路徑實際查的是 customers（見該 page.tsx），
+  // 不是 users——這裡跟著改，否則搬完資料後永遠找不到人。
   const found = await payload.find({
-    collection: 'users',
+    collection: 'customers',
     where: { 'mbtiProfile.mbtiType': { exists: true } } as Where,
     limit: 1,
     overrideAccess: true,

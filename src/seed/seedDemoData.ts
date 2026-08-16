@@ -54,9 +54,12 @@ async function seedDemo() {
   const payload = await getPayload({ config })
 
   // ── Resolve dependencies ──
-  const usersRes = await payload.find({ collection: 'users', limit: 5, depth: 0 })
+  // Demo Order/Returns/Exchanges/UserRewards 都掛在 customer-owned 關聯欄位
+  // 上（relationTo: 'customers'），所以這裡必須從 customers collection 找，
+  // 不能再查 users（那邊現在只剩 admin/operator/partner，FK 對不上）。
+  const usersRes = await payload.find({ collection: 'customers', limit: 5, depth: 0 })
   if (usersRes.docs.length === 0) {
-    log('❌ 找不到任何 user，請先建 admin user (resetAdmin) 或 register')
+    log('❌ 找不到任何 customer，請先 import/register 至少一位顧客')
     process.exit(1)
   }
   const customer =

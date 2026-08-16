@@ -78,7 +78,7 @@ export async function generatePersonalizedContent(
   const template = templateDoc as unknown as TemplateDoc
 
   // 載入會員資料
-  const userDoc = await payload.findByID({ collection: 'users', id: userId })
+  const userDoc = await payload.findByID({ collection: 'customers', id: userId })
   const user = userDoc as unknown as Record<string, unknown>
 
   const tierCode = typeof user.tier === 'string' ? user.tier : 'ordinary'

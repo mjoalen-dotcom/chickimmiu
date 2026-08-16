@@ -20,9 +20,10 @@ type LooseRecord = Record<string, unknown>
 
 async function ensureTestUser(payload: Awaited<ReturnType<typeof getPayload>>) {
   // 找 DB 第一個 customer；不建新使用者（避免觸發 email verification）
+  // customers collection 現在物理上只裝顧客（沒有 role 欄位可篩），所以
+  // 不再需要 role='customer' 篩選——每一筆都是顧客。
   const found = await payload.find({
-    collection: 'users',
-    where: { role: { equals: 'customer' } } as never,
+    collection: 'customers',
     limit: 1,
     sort: 'id',
     overrideAccess: true,
@@ -32,12 +33,12 @@ async function ensureTestUser(payload: Awaited<ReturnType<typeof getPayload>>) {
   }
   const u = found.docs[0] as unknown as LooseRecord
   await payload.update({
-    collection: 'users',
+    collection: 'customers',
     id: u.id as number,
     data: { points: 100000, shoppingCredit: 0 } as LooseRecord,
     overrideAccess: true,
   })
-  return await payload.findByID({ collection: 'users', id: u.id as number, overrideAccess: true })
+  return await payload.findByID({ collection: 'customers', id: u.id as number, overrideAccess: true })
 }
 
 async function ensureRedemption(
@@ -137,7 +138,7 @@ async function main() {
         overrideAccess: true,
       })) as unknown as LooseRecord
       const freshUser = (await payload.findByID({
-        collection: 'users',
+        collection: 'customers',
         id: userId,
         depth: 0,
         overrideAccess: true,
@@ -161,7 +162,7 @@ async function main() {
       )
       if (type === 'store_credit') {
         const after = (await payload.findByID({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           depth: 0,
           overrideAccess: true,

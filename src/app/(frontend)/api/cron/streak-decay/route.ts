@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
   while (hasMore) {
     const result = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { consecutiveCheckIns: { greater_than: 0 } } satisfies Where,
       limit: PAGE,
       page,
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
       try {
         await (payload.update as Function)({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           data: { consecutiveCheckIns: 0 } as unknown as Record<string, unknown>,
         })

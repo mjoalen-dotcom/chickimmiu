@@ -154,7 +154,7 @@ export const afterChangeReverseOrderFinancials: CollectionAfterChangeHook = asyn
       )
       if (totalEarned > 0 && alreadyReversed.totalDocs === 0) {
         const user = (await payload.findByID({
-          collection: 'users',
+          collection: 'customers',
           id: userId as never,
           depth: 0,
           overrideAccess: true,
@@ -164,7 +164,7 @@ export const afterChangeReverseOrderFinancials: CollectionAfterChangeHook = asyn
         const deduct = Math.min(current, totalEarned)
         const balanceAfter = current - deduct
         await payload.update({
-          collection: 'users',
+          collection: 'customers',
           id: userId as never,
           data: { points: balanceAfter } as never,
           overrideAccess: true,

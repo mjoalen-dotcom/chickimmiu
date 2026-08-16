@@ -110,7 +110,7 @@ test('達每日上限 → daily_limit，不寫入', async () => {
   assert.equal(writes.created.length, 0)
 })
 
-test('正常領取 → 基礎 5 點入帳 + users.points 同步 + 交易列 balance', async () => {
+test('正常領取 → 基礎 5 點入帳 + customers.points 同步 + 交易列 balance', async () => {
   const { payload, writes } = stubPayload()
   const r = await awardKimBlogReadReward(payload, user({ points: 100 }), SLUG, 30)
   assert.deepEqual(r.body, { awarded: 5, points: 105, reason: null })
@@ -121,7 +121,7 @@ test('正常領取 → 基礎 5 點入帳 + users.points 同步 + 交易列 bala
   assert.equal(tx.balance, 105)
   assert.ok(String(tx.description).includes(SLUG), 'description 是防重複鍵，必含 slug')
   assert.deepEqual(writes.updated[0], {
-    collection: 'users',
+    collection: 'customers',
     id: 42,
     data: { points: 105 },
   })

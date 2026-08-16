@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
 
     // 驗證使用者存在
     const user = await payload.findByID({
-      collection: 'users',
+      collection: 'customers',
       id: userId,
     })
 

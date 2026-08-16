@@ -203,7 +203,7 @@ export async function generateResponse(params: {
   if (userId) {
     try {
       const payload = await getPayload({ config })
-      const user = await payload.findByID({ collection: 'users', id: userId })
+      const user = await payload.findByID({ collection: 'customers', id: userId })
       const userData = user as unknown as Record<string, unknown>
       userName = userData.name as string | undefined
       creditScore = userData.creditScore as number | undefined ?? INITIAL_CREDIT_SCORE

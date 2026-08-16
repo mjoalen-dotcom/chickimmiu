@@ -285,7 +285,7 @@ export const returnCreditScoreHook: CollectionAfterChangeHook = async ({
       const newStatus = getCreditStatus(result.newScore)
       if (newStatus === 'blacklist' || newStatus === 'suspended') {
         await req.payload.update({
-          collection: 'users',
+          collection: 'customers',
           id: customerId,
           data: {
             isBlacklisted: true,

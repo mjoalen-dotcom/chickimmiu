@@ -129,7 +129,7 @@ export const repeatPurchaseEndpoint: Endpoint = {
 
       // ── 3. 會員 + 等級 label lookup ──────────────────────────────────
       const usersResp = await req.payload.find({
-        collection: 'users',
+        collection: 'customers',
         limit: 10000,
         depth: 0,
         pagination: false,

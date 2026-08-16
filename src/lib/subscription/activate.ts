@@ -79,7 +79,7 @@ export async function syncUserMembership(
   sub: SubDoc | null,
 ): Promise<void> {
   await payload.update({
-    collection: 'users',
+    collection: 'customers',
     id: userId,
     data: {
       membership: sub

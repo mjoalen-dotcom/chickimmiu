@@ -176,7 +176,7 @@ export const shoplineCustomerImportEndpoint: Endpoint = {
 
           if (match.doc) {
             await req.payload.update({
-              collection: 'users',
+              collection: 'customers',
               id: match.doc.id as number,
               data: userData,
               overrideAccess: true,
@@ -192,7 +192,7 @@ export const shoplineCustomerImportEndpoint: Endpoint = {
             })
           } else {
             const newUser = await (req.payload.create as (args: unknown) => Promise<unknown>)({
-              collection: 'users',
+              collection: 'customers',
               draft: false,
               data: {
                 ...userData,
@@ -202,7 +202,6 @@ export const shoplineCustomerImportEndpoint: Endpoint = {
                   `Shopline ${c.customer_id || c.phone || 'Customer'}`,
                 email: c.email || `shopline_${c.customer_id || c.phone}@placeholder.local`,
                 password: generateRandomPassword(),
-                role: 'customer',
                 signupSource: 'shopline',
                 _verified: true,
               },
@@ -258,7 +257,7 @@ async function findExistingUser(
   // Priority 1: email
   if (c.email) {
     const found = await req.payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { email: { equals: c.email } },
       limit: 1,
       depth: 0,
@@ -272,7 +271,7 @@ async function findExistingUser(
   // Priority 2: shoplineCustomerId
   if (c.customer_id) {
     const found = await req.payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { shoplineCustomerId: { equals: c.customer_id } },
       limit: 1,
       depth: 0,
@@ -286,7 +285,7 @@ async function findExistingUser(
   // Priority 3: phone
   if (c.phone) {
     const found = await req.payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { phone: { equals: c.phone } },
       limit: 1,
       depth: 0,

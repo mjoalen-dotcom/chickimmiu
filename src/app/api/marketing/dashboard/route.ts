@@ -241,7 +241,10 @@ export async function GET(_req: NextRequest) {
 
     const activeUserIds = new Set<string>()
     for (const order of recentOrders.docs) {
-      const orderedBy = (order as unknown as Record<string, unknown>).orderedBy
+      // 欄位名稱曾誤打成 orderedBy（Orders.ts 實際欄位是 customer）——
+      // 過去 activeUserIds 永遠是空集合，avgScoreWithCampaign 永遠掉回
+      // 80 的硬編碼預設，從未反映真實資料。
+      const orderedBy = (order as unknown as Record<string, unknown>).customer
       if (typeof orderedBy === 'string') activeUserIds.add(orderedBy)
       else if (typeof orderedBy === 'object' && orderedBy && 'id' in (orderedBy as unknown as Record<string, unknown>)) {
         activeUserIds.add((orderedBy as unknown as Record<string, unknown>).id as unknown as string)
@@ -268,10 +271,9 @@ export async function GET(_req: NextRequest) {
           : 80
     }
 
-    // 隨機取非活躍會員信用分數
+    // 隨機取非活躍會員信用分數（customers 集合本身即全為顧客，無需 role 篩選）
     const inactiveUsers = await payload.find({
-      collection: 'users',
-      where: { role: { equals: 'customer' } } satisfies Where,
+      collection: 'customers',
       limit: 30,
       sort: 'createdAt',
     })

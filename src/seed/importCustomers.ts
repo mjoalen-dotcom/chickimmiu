@@ -225,7 +225,7 @@ async function main() {
     try {
       // Check if already exists
       const existing = await payload.find({
-        collection: 'users',
+        collection: 'customers',
         where: { email: { equals: c.email } },
         limit: 1,
       })
@@ -243,7 +243,6 @@ async function main() {
         email: c.email,
         password: 'CKMU2026!temp', // Temporary password, users will need to reset
         name: c.name || c.recipientName || c.email.split('@')[0],
-        role: 'customer',
         phone: c.memberPhone || c.phone || '',
         points: c.points,
         shoppingCredit: c.shoppingCredit,
@@ -322,7 +321,7 @@ async function main() {
       userData.crmNote = notes.join(' | ')
 
       await (payload.create as Function)({
-        collection: 'users',
+        collection: 'customers',
         data: userData,
         overrideAccess: true,
         disableVerificationEmail: true,

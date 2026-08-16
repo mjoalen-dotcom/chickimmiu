@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import type { Where } from 'payload'
 
 import { verifyCronAuth } from '@/lib/cron/auth'
 import { calculateTier, TIER_LEVELS } from '@/lib/crm/tierEngine'
@@ -60,8 +59,7 @@ export async function POST(request: Request) {
   let page = 1
   while (true) {
     const usersResult = await payload.find({
-      collection: 'users',
-      where: { role: { equals: 'customer' } } satisfies Where,
+      collection: 'customers',
       limit: PAGE_SIZE,
       page,
       depth: 0,
@@ -99,7 +97,7 @@ export async function POST(request: Request) {
         // 只有本來 annualSpend>0 或需要降等才 write
         if (annualSpend > 0 || data.memberTier != null) {
           await (payload.update as Function)({
-            collection: 'users',
+            collection: 'customers',
             id: userId,
             data,
           })

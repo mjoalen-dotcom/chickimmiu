@@ -112,7 +112,7 @@ export async function sendOrderConfirmationEmail(
     const customerId = typeof customer === 'string' ? customer : customer.id
     if (customerId) {
       try {
-        const fresh = await payload.findByID({ collection: 'users', id: customerId })
+        const fresh = await payload.findByID({ collection: 'customers', id: customerId })
         email = (fresh.email as string | undefined) || undefined
         name = (fresh.name as string | undefined) || undefined
       } catch (err) {

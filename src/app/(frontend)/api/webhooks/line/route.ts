@@ -119,7 +119,7 @@ async function handleMessageEvent(event: LineEvent): Promise<void> {
     let customerId: string | number | undefined
     try {
       const byUid = await payload.find({
-        collection: 'users',
+        collection: 'customers',
         where: { lineUid: { equals: lineUserId } },
         limit: 1,
         depth: 0,
@@ -170,7 +170,7 @@ async function handleFollowEvent(event: LineEvent): Promise<void> {
   // 加好友 → 對應會員重新開啟 LINE 訂閱
   try {
     const byUid = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { lineUid: { equals: lineUserId } },
       limit: 1,
       depth: 0,
@@ -179,7 +179,7 @@ async function handleFollowEvent(event: LineEvent): Promise<void> {
       const u = byUid.docs[0] as unknown as { id: string | number; subscriptionStatus?: Record<string, unknown> }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (payload.update as any)({
-        collection: 'users',
+        collection: 'customers',
         id: u.id,
         data: { subscriptionStatus: { ...(u.subscriptionStatus || {}), lineSubscribed: true } },
         overrideAccess: true,
@@ -209,7 +209,7 @@ async function handleUnfollowEvent(event: LineEvent): Promise<void> {
   if (!lineUserId) return
   try {
     const byUid = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { lineUid: { equals: lineUserId } },
       limit: 1,
       depth: 0,
@@ -218,7 +218,7 @@ async function handleUnfollowEvent(event: LineEvent): Promise<void> {
       const u = byUid.docs[0] as unknown as { id: string | number; subscriptionStatus?: Record<string, unknown> }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (payload.update as any)({
-        collection: 'users',
+        collection: 'customers',
         id: u.id,
         data: { subscriptionStatus: { ...(u.subscriptionStatus || {}), lineSubscribed: false } },
         overrideAccess: true,

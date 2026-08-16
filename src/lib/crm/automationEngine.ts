@@ -370,7 +370,7 @@ async function evalConditionForUser(
     return true
   }
 
-  const user = (await payload.findByID({ collection: 'users', id: userId, depth: 0 })) as Record<
+  const user = (await payload.findByID({ collection: 'customers', id: userId, depth: 0 })) as Record<
     string,
     unknown
   >
@@ -485,14 +485,14 @@ export async function executeStep(
         const tag = (step.content || '').trim()
         if (!tag) return false
         const user = (await payload.findByID({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           depth: 0,
         })) as unknown as Record<string, unknown>
         const tags = Array.isArray(user.tags) ? (user.tags as Array<{ tag?: string }>) : []
         if (tags.some((t) => t?.tag === tag)) return true // 已有，視為成功
         await (payload.update as Function)({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           data: { tags: [...tags, { tag }] },
         })
@@ -505,7 +505,7 @@ export async function executeStep(
         const tag = (step.content || '').trim()
         if (!tag) return false
         const user = (await payload.findByID({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           depth: 0,
         })) as unknown as Record<string, unknown>
@@ -513,7 +513,7 @@ export async function executeStep(
         const next = tags.filter((t) => t?.tag !== tag)
         if (next.length === tags.length) return true // 本來就沒有
         await (payload.update as Function)({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           data: { tags: next },
         })
@@ -526,7 +526,7 @@ export async function executeStep(
         try {
           const fieldData = JSON.parse(step.content) as unknown as Record<string, unknown>
           await (payload.update as Function)({
-            collection: 'users',
+            collection: 'customers',
             id: userId,
             data: fieldData,
           })

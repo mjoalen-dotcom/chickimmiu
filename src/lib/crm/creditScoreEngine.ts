@@ -203,7 +203,7 @@ export async function adjustCreditScore(
   const payload = await getPayload({ config })
 
   // 取得目前分數
-  const user = await payload.findByID({ collection: 'users', id: userId })
+  const user = await payload.findByID({ collection: 'customers', id: userId })
   const previousScore = (user as unknown as Record<string, unknown>).creditScore as number | undefined ?? INITIAL_CREDIT_SCORE
 
   // 計算變動
@@ -230,7 +230,7 @@ export async function adjustCreditScore(
 
   // 更新 User 的 creditScore
   await (payload.update as Function)({
-    collection: 'users',
+    collection: 'customers',
     id: userId,
     data: { creditScore: newScore } as unknown as Record<string, unknown>,
   })

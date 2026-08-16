@@ -111,9 +111,9 @@ export async function POST(req: NextRequest) {
       ? [userId]
       : (userIds as string[])
 
-    // 批次載入使用者
+    // 批次載入使用者（行銷訊息收件者一律為顧客）
     const usersResult = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { id: { in: targetUserIds } } satisfies Where,
       limit: targetUserIds.length,
       depth: 1,

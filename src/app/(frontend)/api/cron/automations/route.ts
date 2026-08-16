@@ -145,7 +145,7 @@ async function resolveTargetUserIds(
   // VIP 關懷：tier 屬 gold+
   if (event === 'vip_care') {
     const result = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { tier: { in: ['gold', 'platinum', 'diamond'] } } satisfies Where,
       limit,
       depth: 0,
@@ -188,7 +188,7 @@ async function findDormantUsers(
 
   const registeredBefore = new Date(Date.now() - days * MS_PER_DAY).toISOString()
   const usersResult = await payload.find({
-    collection: 'users',
+    collection: 'customers',
     where: { createdAt: { less_than: registeredBefore } } satisfies Where,
     limit,
     depth: 0,
@@ -206,7 +206,7 @@ async function findBirthdayUsers(
   // 用 createdAt-independent 掃全部然後在 JS 內 filter（生產規模下 users 通常 <10k）。
   const month = new Date().getMonth() + 1
   const result = await payload.find({
-    collection: 'users',
+    collection: 'customers',
     where: { birthday: { exists: true } } satisfies Where,
     limit: 5000,
     depth: 0,

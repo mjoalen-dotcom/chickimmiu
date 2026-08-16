@@ -45,7 +45,7 @@ export async function POST(request: Request) {
         overrideAccess: true,
       })
       const userId = typeof doc.user === 'object' ? doc.user.id : doc.user
-      const u = (await payload.findByID({ collection: 'users', id: userId, depth: 0 })) as unknown as {
+      const u = (await payload.findByID({ collection: 'customers', id: userId, depth: 0 })) as unknown as {
         membership?: { activeSubscription?: number | string | { id: number | string } | null }
       }
       const activeSubId = u.membership?.activeSubscription

@@ -146,7 +146,7 @@ export async function getCustomerEmailFromOrder(
         : String(customer.id ?? '')
     if (customerId) {
       try {
-        const fresh = await payload.findByID({ collection: 'users', id: customerId })
+        const fresh = await payload.findByID({ collection: 'customers', id: customerId })
         return {
           email: (fresh.email as string | undefined) || undefined,
           name: (fresh.name as string | undefined) || undefined,

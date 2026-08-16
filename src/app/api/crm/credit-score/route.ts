@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
 
     // 取得使用者
     const user = await payload.findByID({
-      collection: 'users',
+      collection: 'customers',
       id: userId,
     })
 

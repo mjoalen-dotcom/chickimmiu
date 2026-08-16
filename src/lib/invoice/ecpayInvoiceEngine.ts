@@ -624,7 +624,7 @@ export async function autoIssueInvoiceForOrder(
       customerData = customer
     } else if (customerId) {
       customerData = (await payload.findByID({
-        collection: 'users',
+        collection: 'customers',
         id: customerId,
       })) as unknown as Record<string, unknown>
     }

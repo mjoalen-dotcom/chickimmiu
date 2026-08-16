@@ -173,7 +173,7 @@ export async function POST(req: NextRequest) {
     if (userId) {
       try {
         const user = await payload.findByID({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           depth: 1,
         })

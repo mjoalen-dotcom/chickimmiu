@@ -46,9 +46,7 @@ export async function GET(req: NextRequest) {
 
     const payload = await getPayload({ config })
 
-    const where: Record<string, unknown> = {
-      role: { equals: 'customer' },
-    }
+    const where: Record<string, unknown> = {}
 
     if (search) {
       where.or = [
@@ -79,7 +77,7 @@ export async function GET(req: NextRequest) {
     }
 
     const result = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: where as never,
       page,
       limit,
@@ -167,7 +165,7 @@ export async function PATCH(req: NextRequest) {
 
     // 驗證使用者存在
     const user = await payload.findByID({
-      collection: 'users',
+      collection: 'customers',
       id: userId,
     })
 
@@ -204,7 +202,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updated = await (payload.update as Function)({
-      collection: 'users',
+      collection: 'customers',
       id: userId,
       data: safeData,
     })

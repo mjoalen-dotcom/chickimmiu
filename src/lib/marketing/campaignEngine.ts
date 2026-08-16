@@ -235,7 +235,7 @@ export async function filterTargetAudience(campaignId: string): Promise<string[]
   }
 
   const usersResult = await payload.find({
-    collection: 'users',
+    collection: 'customers',
     where: userWhere satisfies Where,
     limit: 10000,
   })

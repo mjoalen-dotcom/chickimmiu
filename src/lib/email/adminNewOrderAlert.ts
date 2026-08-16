@@ -59,7 +59,7 @@ export async function sendAdminNewOrderAlert(
     customerName = customer.name || ''
   } else if (customer != null) {
     try {
-      const fresh = await payload.findByID({ collection: 'users', id: String(customer) })
+      const fresh = await payload.findByID({ collection: 'customers', id: String(customer) })
       customerEmail = (fresh.email as string | undefined) || ''
       customerName = (fresh.name as string | undefined) || ''
     } catch (err) {

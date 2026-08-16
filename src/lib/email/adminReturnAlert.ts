@@ -79,7 +79,7 @@ export async function sendAdminReturnAlert(
   } else if (customerRef != null) {
     try {
       const u = (await payload.findByID({
-        collection: 'users',
+        collection: 'customers',
         id: customerRef as string | number,
         depth: 0,
       })) as unknown as Record<string, unknown>

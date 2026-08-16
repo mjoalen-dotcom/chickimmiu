@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
   while (hasMore) {
     const usersResult = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       limit: PAGE,
       page,
       depth: 0,
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
         })
 
         await (payload.update as Function)({
-          collection: 'users',
+          collection: 'customers',
           id: userId,
           data: { points: newBalance } as unknown as Record<string, unknown>,
         })

@@ -35,7 +35,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     if (body.userId != null) {
       try {
         simulatedUser = (await payload.findByID({
-          collection: 'users',
+          collection: 'customers',
           id: body.userId as never,
           depth: 0,
           overrideAccess: true,

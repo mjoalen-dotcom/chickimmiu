@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 
-import { generateUniqueReferralCode } from '@/lib/referralCode'
+import { generateUniqueCustomerReferralCode } from '@/lib/referralCode'
 
 import ReferralsClient, {
   type ReferralSummary, type ReferralHistoryItem, type TierBonusRow, type RewardRules,
@@ -75,7 +75,7 @@ export default async function ReferralsPage() {
   // 會看到空字串，下次再試。
   if (!user.referralCode) {
     try {
-      const newCode = await generateUniqueReferralCode(payload)
+      const newCode = await generateUniqueCustomerReferralCode(payload)
       await payload.update({
         collection: 'customers',
         id: sessionUser.id,

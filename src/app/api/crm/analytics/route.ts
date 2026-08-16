@@ -91,8 +91,7 @@ export async function GET(req: NextRequest) {
 
     // ── 1. Total members ──
     const allMembers = await payload.find({
-      collection: 'users',
-      where: { role: { equals: 'customer' } } as never,
+      collection: 'customers',
       limit: 0,
     })
     const totalMembers = allMembers.totalDocs
@@ -108,8 +107,7 @@ export async function GET(req: NextRequest) {
 
     // ── 2. Sample members for aggregation ──
     const sampleMembers = await payload.find({
-      collection: 'users',
-      where: { role: { equals: 'customer' } } as never,
+      collection: 'customers',
       limit: 300,
       sort: '-createdAt',
       depth: 1,
@@ -201,9 +199,8 @@ export async function GET(req: NextRequest) {
     for (const tier of tiers.docs) {
       const frontName = resolveTierFrontName(tier)
       const count = await payload.find({
-        collection: 'users',
+        collection: 'customers',
         where: {
-          role: { equals: 'customer' },
           memberTier: { equals: tier.id },
         } as never,
         limit: 0,
@@ -361,9 +358,8 @@ async function deriveMonthlyTrends(payload: Awaited<ReturnType<typeof getPayload
     const endOfMonth = new Date(year, date.getMonth() + 1, 0, 23, 59, 59)
 
     const newMembers = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: {
-        role: { equals: 'customer' },
         createdAt: {
           greater_than: startOfMonth.toISOString(),
           less_than: endOfMonth.toISOString(),

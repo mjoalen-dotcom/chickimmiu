@@ -12,7 +12,7 @@ export async function sendSubscriptionCancelledEmail(
   sub: SubDoc,
 ): Promise<void> {
   const userId = typeof sub.user === 'object' ? sub.user.id : sub.user
-  const user = (await payload.findByID({ collection: 'users', id: userId, depth: 0 })) as unknown as {
+  const user = (await payload.findByID({ collection: 'customers', id: userId, depth: 0 })) as unknown as {
     email?: string
     name?: string
   }
