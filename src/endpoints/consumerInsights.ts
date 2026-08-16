@@ -142,7 +142,7 @@ export const consumerInsightsEndpoint: Endpoint = {
         collection: 'orders',
         where: {
           createdAt: { greater_than_equal: since },
-          status: { in: ['processing', 'shipped', 'delivered', 'completed'] },
+          status: { in: ['processing', 'shipped', 'delivered'] },
         },
         limit: 20000,
         depth: 0,

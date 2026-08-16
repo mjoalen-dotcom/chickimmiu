@@ -185,7 +185,7 @@ export const memberAnalyticsEndpoint: Endpoint = {
         overrideAccess: true,
         where: {
           // 只算已付款以上狀態，避免未成立訂單汙染偏好統計
-          status: { in: ['processing', 'shipped', 'delivered', 'completed'] },
+          status: { in: ['processing', 'shipped', 'delivered'] },
         },
       })
       const orders = ordersResp.docs as unknown as OrderLite[]
