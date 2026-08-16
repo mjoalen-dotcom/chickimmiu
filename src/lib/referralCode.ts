@@ -18,10 +18,27 @@ function randomCode(): string {
  * 若 MAX_ATTEMPTS 次都撞到，fallback 帶 timestamp 後綴避免整條流程掛掉。
  */
 export async function generateUniqueReferralCode(payload: BasePayload): Promise<string> {
+  return generateUniqueReferralCodeFor(payload, 'users')
+}
+
+/**
+ * 2026-08-16 APP-API-001 步驟16：顧客搬進獨立的 customers collection 後，
+ * 推薦碼唯一性要對新表檢查，不能再查 users（顧客資料已經不在那裡了）。
+ * 保留參數化版本，users 版維持只是為了不動到任何還沒遷移前就呼叫過
+ * 舊版函式的呼叫點（理論上遷移完成後不會再有）。
+ */
+export async function generateUniqueCustomerReferralCode(payload: BasePayload): Promise<string> {
+  return generateUniqueReferralCodeFor(payload, 'customers')
+}
+
+async function generateUniqueReferralCodeFor(
+  payload: BasePayload,
+  collection: 'users' | 'customers',
+): Promise<string> {
   for (let i = 0; i < MAX_ATTEMPTS; i++) {
     const code = randomCode()
     const hit = await payload.find({
-      collection: 'users',
+      collection,
       where: { referralCode: { equals: code } },
       limit: 1,
       pagination: false,

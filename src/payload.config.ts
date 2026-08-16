@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url'
 import sharp from 'sharp'
 
 import { Users } from './collections/Users'
+import { Customers } from './collections/Customers'
 import { Media } from './collections/Media'
 import { Categories } from './collections/Categories'
 import { MembershipTiers } from './collections/MembershipTiers'
@@ -471,6 +472,9 @@ export default buildConfig({
     // ③ 會員與 CRM — 會員核心 → 訂閱 → 點數回饋 → 錢包 → 收藏 →
     // 客服對話 → 行為事件（同類相鄰，高頻在前）。
     Users,
+    // APP-API-001 步驟16：從 Users 分離出來的獨立顧客 auth collection，
+    // 緊接 Users 之後方便後台對照。
+    Customers,
     MembershipTiers,
     MemberSegments,
     SubscriptionPlans,
