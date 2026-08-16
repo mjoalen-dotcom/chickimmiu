@@ -1,4 +1,5 @@
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
+import { postgresAdapter } from '@payloadcms/db-postgres'
 import { resendAdapter } from '@payloadcms/email-resend'
 import { lexicalEditor, UploadFeature } from '@payloadcms/richtext-lexical'
 import { s3Storage } from '@payloadcms/storage-s3'
@@ -601,17 +602,36 @@ export default buildConfig({
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
-  db: sqliteAdapter({
-    client: {
-      url: process.env.DATABASE_URI || 'file:./data/chickimmiu.db',
-      ...(process.env.DATABASE_AUTH_TOKEN ? { authToken: process.env.DATABASE_AUTH_TOKEN } : {}),
-    },
+  // DB-PG-001 Phase 1：雙軌 adapter，同一顆 DATABASE_URI 依 scheme 決定走哪個
+  // adapter，不新增額外環境變數——SQLite 值維持原樣（file:...）就照舊跑
+  // sqliteAdapter；把 DATABASE_URI 換成 postgres://... 才會切到 postgresAdapter。
+  // 舊 SQLite 值本身就是「一鍵切回」的備援，不用另外註解保留。
+  db: (() => {
+    const uri = process.env.DATABASE_URI || 'file:./data/chickimmiu.db'
+    const isPostgres = uri.startsWith('postgres://') || uri.startsWith('postgresql://')
     // Env-gated schema push. Default OFF because the interactive prompt
     // blocks DB writes in non-TTY stdin (observed: POST /api/users/login
     // stalls 30s then succeeds but persists nothing). Set PAYLOAD_ENABLE_PUSH=true
     // only when you explicitly want dev-mode schema drift without a migration file.
-    push: process.env.PAYLOAD_ENABLE_PUSH === 'true',
-  }),
+    const push = process.env.PAYLOAD_ENABLE_PUSH === 'true'
+    if (isPostgres) {
+      return postgresAdapter({
+        pool: { connectionString: uri },
+        // SQLite 原始資料是數字自增 ID（products.id=1395 這類），搬過去也要
+        // 維持一樣的整數 ID 語意，不能換成 uuid（既有前台/API/外部串接
+        // 到處都是數字 ID 的假設）。
+        idType: 'serial',
+        push,
+      })
+    }
+    return sqliteAdapter({
+      client: {
+        url: uri,
+        ...(process.env.DATABASE_AUTH_TOKEN ? { authToken: process.env.DATABASE_AUTH_TOKEN } : {}),
+      },
+      push,
+    })
+  })(),
   email: emailAdapter,
   sharp,
   plugins,
