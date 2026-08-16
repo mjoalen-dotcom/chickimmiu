@@ -113,6 +113,16 @@ const PHASE_DEFINITIONS: PhaseDefinition[] = [
   { phase: 5, name: '感謝回饋', channels: ['line', 'email', 'push'] },
 ]
 
+// BirthdayCampaigns.status 沒有通用的「active」值——狀態本身就是目前所在
+// 的階段（scheduled → phase1_preview → ... → phase5_followup → completed）。
+const PHASE_STATUS: Record<1 | 2 | 3 | 4 | 5, string> = {
+  1: 'phase1_preview',
+  2: 'phase2_greeting',
+  3: 'phase3_midmonth',
+  4: 'phase4_countdown',
+  5: 'phase5_followup',
+}
+
 /** 預設 Tier 禮物設定（可被 marketing-automation-settings 覆寫） */
 const DEFAULT_TIER_GIFTS: Record<string, Omit<BirthdayGiftConfig, 'tierCode' | 'tierFrontName' | 'couponCode' | 'creditScoreBonus'>> = {
   ordinary: {
@@ -370,7 +380,7 @@ export async function createBirthdayCampaignForUser(
         user: userId,
         month,
         year,
-        status: 'active',
+        status: 'scheduled',
         tierCode: giftConfig.tierCode,
         giftConfig,
         phases,
@@ -531,7 +541,7 @@ export async function executeBirthdayPhase(
     id: campaignId,
     data: {
       phases: updatedPhases,
-      status: allPhasesSent ? 'completed' : 'active',
+      status: allPhasesSent ? 'completed' : PHASE_STATUS[phase],
     } as unknown as Record<string, unknown>,
   })
 
@@ -556,11 +566,12 @@ export async function runDailyBirthdayScheduler(): Promise<{ executed: number; e
   const now = new Date()
   const todayStr = now.toISOString().split('T')[0] // YYYY-MM-DD
 
-  // 查詢所有 active 的生日活動
+  // 查詢所有還在進行中的生日活動（status本身就是目前階段，not completed/
+  // cancelled即為進行中，涵蓋scheduled與5個phase狀態）
   const activeCampaigns = await payload.find({
     collection: 'birthday-campaigns',
     where: {
-      status: { equals: 'active' },
+      status: { not_in: ['completed', 'cancelled'] },
     } satisfies Where,
     limit: 10000,
   })
@@ -632,7 +643,7 @@ export async function getBirthdayDashboard(): Promise<BirthdayDashboardData> {
   const activeCampaigns = await payload.find({
     collection: 'birthday-campaigns',
     where: {
-      status: { equals: 'active' },
+      status: { not_in: ['completed', 'cancelled'] },
       month: { equals: currentMonth },
       year: { equals: currentYear },
     } satisfies Where,
@@ -734,7 +745,7 @@ export async function getBirthdayDashboard(): Promise<BirthdayDashboardData> {
   const upcomingCampaigns = await payload.find({
     collection: 'birthday-campaigns',
     where: {
-      status: { equals: 'active' },
+      status: { not_in: ['completed', 'cancelled'] },
     } satisfies Where,
     limit: 20,
     sort: 'phases.scheduledDate',

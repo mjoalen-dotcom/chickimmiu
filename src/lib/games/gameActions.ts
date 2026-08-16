@@ -95,7 +95,7 @@ export async function performDailyCheckin(userId: number) {
   // 查看今天是否已簽到
   const where: Where = {
     user: { equals: userId },
-    gameType: { equals: 'daily-checkin' },
+    gameType: { equals: 'daily_checkin' },
     createdAt: { greater_than: today.toISOString() },
   }
   const todayRecord = await payload.find({
@@ -113,7 +113,7 @@ export async function performDailyCheckin(userId: number) {
   yesterday.setDate(yesterday.getDate() - 1)
   const yesterdayWhere: Where = {
     user: { equals: userId },
-    gameType: { equals: 'daily-checkin' },
+    gameType: { equals: 'daily_checkin' },
     createdAt: {
       greater_than: yesterday.toISOString(),
       less_than: today.toISOString(),
@@ -144,14 +144,14 @@ export async function performDailyCheckin(userId: number) {
     collection: 'mini-game-records',
     data: {
       user: userId,
-      gameType: 'daily-checkin',
+      gameType: 'daily_checkin',
       result: isDay7 ? 'day7_bonus' : 'checkin',
       pointsEarned: points,
       streak: currentStreak,
     } as unknown as Record<string, unknown>,
   })
 
-  const award = await awardGamePoints(userId, points, 'daily-checkin', `連續簽到第 ${currentStreak} 天`)
+  const award = await awardGamePoints(userId, points, 'daily_checkin', `連續簽到第 ${currentStreak} 天`)
 
   return {
     success: true,
@@ -201,7 +201,7 @@ export async function spinWheel(userId: number) {
     collection: 'mini-game-records',
     data: {
       user: userId,
-      gameType: 'spin-wheel',
+      gameType: 'spin_wheel',
       result: selectedPrize.prizeName as string,
       pointsEarned: points,
       metadata: {
@@ -213,7 +213,7 @@ export async function spinWheel(userId: number) {
   })
 
   if (points > 0) {
-    await awardGamePoints(userId, points, 'spin-wheel', `轉盤獲得 ${selectedPrize.prizeName}`)
+    await awardGamePoints(userId, points, 'spin_wheel', `轉盤獲得 ${selectedPrize.prizeName}`)
   }
 
   return {
@@ -270,7 +270,7 @@ export async function playScratchCard(userId: number) {
     collection: 'mini-game-records',
     data: {
       user: userId,
-      gameType: 'scratch-card',
+      gameType: 'scratch_card',
       result: allSame ? `三連中！${bestCell.name}` : bestCell.name,
       pointsEarned: points,
       metadata: { cells, allSame },
@@ -278,7 +278,7 @@ export async function playScratchCard(userId: number) {
   })
 
   if (points > 0) {
-    await awardGamePoints(userId, points, 'scratch-card', allSame ? `三連中 ${bestCell.name}` : `刮中 ${bestCell.name}`)
+    await awardGamePoints(userId, points, 'scratch_card', allSame ? `三連中 ${bestCell.name}` : `刮中 ${bestCell.name}`)
   }
 
   return {
@@ -313,7 +313,7 @@ export async function drawMovieTicket(userId: number) {
     collection: 'mini-game-records',
     data: {
       user: userId,
-      gameType: 'movie-lottery',
+      gameType: 'movie_lottery',
       result: won ? 'win' : 'lose',
       pointsEarned: won ? 0 : 0,
       metadata: { pointsCost, won, ticketType: movieSettings.ticketType },
@@ -374,14 +374,14 @@ export async function submitFashionChallenge(
     collection: 'mini-game-records',
     data: {
       user: userId,
-      gameType: 'fashion-challenge',
+      gameType: 'fashion_challenge',
       result: `${rank}級 (${totalScore}分)`,
       pointsEarned: points,
       metadata: { selectedItems, timeTaken, totalScore, rank },
     } as unknown as Record<string, unknown>,
   })
 
-  await awardGamePoints(userId, points, 'fashion-challenge', `穿搭挑戰 ${rank}級`)
+  await awardGamePoints(userId, points, 'fashion_challenge', `穿搭挑戰 ${rank}級`)
 
   return {
     success: true,
@@ -526,14 +526,14 @@ export async function submitStylePK(userId: number, imageUrl: string, caption: s
     collection: 'mini-game-records',
     data: {
       user: userId,
-      gameType: 'style-pk',
+      gameType: 'style_pk',
       result: 'submitted',
       pointsEarned: 10,
       metadata: { postId: post.id, imageUrl },
     } as unknown as Record<string, unknown>,
   })
 
-  await awardGamePoints(userId, 10, 'style-pk', '穿搭PK投稿')
+  await awardGamePoints(userId, 10, 'style_pk', '穿搭PK投稿')
 
   return {
     success: true,
@@ -548,7 +548,7 @@ export async function voteStylePK(userId: number, postId: number) {
   const pkSettings = (gameSettings.stylePK || {}) as unknown as Record<string, unknown>
   const voterPoints = (pkSettings.voterPoints as number) || 3
 
-  await awardGamePoints(userId, voterPoints, 'style-pk', '穿搭PK投票')
+  await awardGamePoints(userId, voterPoints, 'style_pk', '穿搭PK投票')
 
   return {
     success: true,

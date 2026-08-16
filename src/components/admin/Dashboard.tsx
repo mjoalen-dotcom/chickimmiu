@@ -139,7 +139,7 @@ async function fetchTodayStats(): Promise<TodayStats> {
   const [ordersData, usersRes, ticketsRes, returnsRes] = await Promise.all([
     fetchOrdersInRange(today, tomorrow),
     safeJson(`/api/users?limit=0&depth=0&where[createdAt][greater_than_equal]=${encodeURIComponent(today.toISOString())}&where[role][equals]=customer`),
-    safeJson('/api/customer-service-tickets?limit=0&depth=0&where[status][in][0]=open&where[status][in][1]=pending'),
+    safeJson('/api/customer-service-tickets?limit=0&depth=0&where[status][in][0]=open&where[status][in][1]=pending_human'),
     safeJson('/api/returns?limit=0&depth=0&where[createdAt][greater_than_equal]=' + encodeURIComponent(today.toISOString())),
   ])
 

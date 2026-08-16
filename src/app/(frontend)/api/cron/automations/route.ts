@@ -144,12 +144,25 @@ async function resolveTargetUserIds(
 
   // VIP 關懷：tier 屬 gold+
   if (event === 'vip_care') {
-    const result = await payload.find({
-      collection: 'customers',
-      where: { tier: { in: ['gold', 'platinum', 'diamond'] } } satisfies Where,
-      limit,
+    // Customers 沒有 `tier` 欄位——會員等級是 `memberTier` relationship，
+    // 要先把 slug 解成 membership-tiers 的 id 才能篩（用 slug/等級碼字串
+    // 直接篩 relationship 欄位不會匹配到任何東西，這條 VIP 關懷觸發
+    // 之前一直是空篩選）。
+    const gteTiers = await payload.find({
+      collection: 'membership-tiers',
+      where: { slug: { in: ['gold', 'platinum', 'diamond'] } } satisfies Where,
+      limit: 10,
       depth: 0,
     })
+    const tierIds = gteTiers.docs.map((t) => t.id)
+    const result = tierIds.length
+      ? await payload.find({
+          collection: 'customers',
+          where: { memberTier: { in: tierIds } } satisfies Where,
+          limit,
+          depth: 0,
+        })
+      : { docs: [] as LooseRecord[] }
     return result.docs.map((d) => String((d as unknown as LooseRecord).id))
   }
 
