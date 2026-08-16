@@ -76,7 +76,7 @@ export const StyleWishes: CollectionConfig = {
       name: 'seeker',
       label: '許願者',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       required: true,
       index: true,
     },
@@ -148,7 +148,7 @@ export const StyleWishes: CollectionConfig = {
           name: 'granter',
           label: '回應者',
           type: 'relationship',
-          relationTo: 'users',
+          relationTo: 'customers',
           required: true,
         },
         {

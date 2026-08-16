@@ -145,7 +145,7 @@ export const Orders: CollectionConfig = {
       name: 'customer',
       label: '訂購會員',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       required: true,
     },
     {

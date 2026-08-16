@@ -183,7 +183,7 @@ export const Conversations: CollectionConfig = {
               name: 'customer',
               label: '會員',
               type: 'relationship',
-              relationTo: 'users',
+              relationTo: 'customers',
               index: true,
               admin: {
                 description: '若客戶有登入則 link；沒登入時走下方 anonId + guest 欄位',

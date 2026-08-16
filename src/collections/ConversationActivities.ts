@@ -53,6 +53,12 @@ export const ConversationActivities: CollectionConfig = {
           name: 'actor',
           label: '操作者',
           type: 'relationship',
+          // APP-API-001步驟16：actorType含'customer'選項，但目前唯一寫入處
+          // （Conversations.afterChange）只會寫actorType:'staff'|'system'，
+          // 從未寫入customer——doc comment提到的「客戶reopen」webhook路徑尚未
+          // 實作。實作那條路徑時，這裡要嘛改polymorphic relationTo（依
+          // actorType驗證是users還是customers），要嘛拆成staffActor/
+          // customerActor兩個欄位。暫留users，現況零行為影響。
           relationTo: 'users',
           admin: {
             width: '50%',

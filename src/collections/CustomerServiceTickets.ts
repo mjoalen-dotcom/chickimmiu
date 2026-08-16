@@ -25,7 +25,7 @@ export const CustomerServiceTickets: CollectionConfig = {
       name: 'user',
       label: '會員',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
     },
     {
       name: 'channel',

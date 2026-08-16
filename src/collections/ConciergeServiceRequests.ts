@@ -100,7 +100,7 @@ export const ConciergeServiceRequests: CollectionConfig = {
       name: 'requester',
       label: '請求會員',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       required: true,
       index: true,
     },

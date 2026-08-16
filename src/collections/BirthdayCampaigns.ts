@@ -145,7 +145,7 @@ export const BirthdayCampaigns: CollectionConfig = {
       name: 'targetUser',
       label: '目標會員',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       required: true,
       index: true,
     },

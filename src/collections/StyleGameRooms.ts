@@ -94,7 +94,7 @@ export const StyleGameRooms: CollectionConfig = {
       name: 'host',
       label: '房主',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       required: true,
       index: true,
     },
@@ -107,7 +107,7 @@ export const StyleGameRooms: CollectionConfig = {
           name: 'user',
           label: '會員',
           type: 'relationship',
-          relationTo: 'users',
+          relationTo: 'customers',
           required: true,
         },
         {
@@ -227,7 +227,7 @@ export const StyleGameRooms: CollectionConfig = {
           name: 'winner',
           label: '勝者',
           type: 'relationship',
-          relationTo: 'users',
+          relationTo: 'customers',
           admin: {
             description: '團隊戰可留空，改看 submissions 得票',
           },

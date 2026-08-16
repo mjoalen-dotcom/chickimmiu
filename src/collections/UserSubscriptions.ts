@@ -37,7 +37,7 @@ export const UserSubscriptions: CollectionConfig = {
     {
       type: 'row',
       fields: [
-        { name: 'user', label: '會員', type: 'relationship', relationTo: 'users', required: true, index: true, admin: { width: '50%' } },
+        { name: 'user', label: '會員', type: 'relationship', relationTo: 'customers', required: true, index: true, admin: { width: '50%' } },
         { name: 'plan', label: '方案', type: 'relationship', relationTo: 'subscription-plans', required: true, admin: { width: '50%' } },
       ],
     },

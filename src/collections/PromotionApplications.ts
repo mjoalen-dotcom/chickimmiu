@@ -65,7 +65,7 @@ export const PromotionApplications: CollectionConfig = {
           required: true,
           index: true,
         },
-        { name: 'user', label: '會員', type: 'relationship', relationTo: 'users', index: true },
+        { name: 'user', label: '會員', type: 'relationship', relationTo: 'customers', index: true },
       ],
     },
     {

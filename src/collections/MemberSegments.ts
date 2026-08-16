@@ -35,7 +35,7 @@ export const MemberSegments: CollectionConfig = {
       name: 'user',
       label: '會員',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       required: true,
       unique: true,
       index: true,

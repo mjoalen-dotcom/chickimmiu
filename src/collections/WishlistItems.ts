@@ -46,7 +46,7 @@ export const WishlistItems: CollectionConfig = {
       name: 'user',
       label: '會員',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       required: true,
       index: true,
     },

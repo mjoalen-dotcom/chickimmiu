@@ -52,7 +52,7 @@ export const StyleSubmissions: CollectionConfig = {
       name: 'player',
       label: '作者',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       required: true,
       index: true,
     },

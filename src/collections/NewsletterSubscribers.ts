@@ -120,7 +120,7 @@ export const NewsletterSubscribers: CollectionConfig = {
       name: 'user',
       label: '會員（若為登入會員訂閱）',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       admin: { description: '匿名訪客留空' },
     },
     {

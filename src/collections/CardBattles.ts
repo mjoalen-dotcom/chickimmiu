@@ -70,14 +70,14 @@ export const CardBattles: CollectionConfig = {
       name: 'challenger',
       label: '挑戰者',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       required: true,
     },
     {
       name: 'opponent',
       label: '對手',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
     },
     {
       name: 'referralCode',

@@ -37,7 +37,7 @@ export const MarketingExecutionLogs: CollectionConfig = {
       name: 'user',
       label: '用戶',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       required: true,
       index: true,
     },

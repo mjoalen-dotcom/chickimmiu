@@ -37,7 +37,7 @@ export const Refunds: CollectionConfig = {
       admin: { readOnly: true, description: '格式：RFD-YYYYMMDD-XXXX' },
     },
     { name: 'order', label: '原始訂單', type: 'relationship', relationTo: 'orders', required: true },
-    { name: 'customer', label: '申請人', type: 'relationship', relationTo: 'users', required: true },
+    { name: 'customer', label: '申請人', type: 'relationship', relationTo: 'customers', required: true },
     { name: 'returnRequest', label: '關聯退貨單', type: 'relationship', relationTo: 'returns', admin: { description: '若因退貨產生的退款，可關聯退貨單' } },
     {
       name: 'type',

@@ -53,7 +53,7 @@ export const Invoices: CollectionConfig = {
       name: 'customer',
       label: '購買人',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       required: true,
       index: true,
     },

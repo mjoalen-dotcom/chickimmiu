@@ -145,15 +145,20 @@ export const Customers: CollectionConfig = {
     },
   },
   access: {
+    // req.user 型別現在是 User | Customer 的聯集（兩個 collection 都有 auth）。
+    // 只有 User 才有 role 欄位——Customer 文件本身不可能通過這裡的 admin 檢查
+    // （沒有 role 就一律 false），這正是分離的意義：顧客 token 天生過不了
+    // admin 檢查，不需要額外判斷是哪個 collection 發的。
     admin: ({ req: { user } }) => {
-      if (!user) return false
-      return user.role === 'admin' || user.role === 'operator' || user.role === 'partner'
+      const role = (user as { role?: string } | undefined)?.role
+      return role === 'admin' || role === 'operator' || role === 'partner'
     },
     read: isAdminOrSelf,
     create: isAdmin,
     update: isAdminOrSelf,
     delete: ({ req: { user }, data }) =>
-      user?.role === 'admin' && Boolean((data as { deletedAt?: unknown } | undefined)?.deletedAt),
+      (user as { role?: string } | undefined)?.role === 'admin' &&
+      Boolean((data as { deletedAt?: unknown } | undefined)?.deletedAt),
   },
   endpoints: [
     createExportEndpoint('customers', customerFieldMappings),

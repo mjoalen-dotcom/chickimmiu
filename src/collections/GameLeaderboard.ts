@@ -23,7 +23,7 @@ export const GameLeaderboard: CollectionConfig = {
       name: 'player',
       label: '玩家',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       required: true,
     },
     {

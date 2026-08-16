@@ -141,7 +141,7 @@ export const StyleVotes: CollectionConfig = {
       name: 'voter',
       label: '投票人',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       required: true,
       index: true,
     },

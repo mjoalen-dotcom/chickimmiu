@@ -102,7 +102,7 @@ export const CollectibleCards: CollectionConfig = {
       name: 'owner',
       label: '目前擁有者',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       index: true,
       admin: {
         description: 'burned/revoked 時為空。',
@@ -112,7 +112,7 @@ export const CollectibleCards: CollectionConfig = {
       name: 'originalOwner',
       label: '首位擁有者',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       admin: {
         description: '永遠不變。',
         readOnly: true,

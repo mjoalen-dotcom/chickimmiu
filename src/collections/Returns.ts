@@ -45,7 +45,7 @@ export const Returns: CollectionConfig = {
       },
     },
     { name: 'order', label: '原始訂單', type: 'relationship', relationTo: 'orders', required: true },
-    { name: 'customer', label: '申請人', type: 'relationship', relationTo: 'users', required: true },
+    { name: 'customer', label: '申請人', type: 'relationship', relationTo: 'customers', required: true },
     {
       name: 'items',
       label: '退貨商品',

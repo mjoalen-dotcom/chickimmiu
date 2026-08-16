@@ -33,7 +33,7 @@ export const ProductReviews: CollectionConfig = {
   },
   fields: [
     { name: 'product', label: '商品', type: 'relationship', relationTo: 'products', required: true, index: true },
-    { name: 'reviewer', label: '評價者', type: 'relationship', relationTo: 'users', required: true },
+    { name: 'reviewer', label: '評價者', type: 'relationship', relationTo: 'customers', required: true },
     { name: 'rating', label: '星級', type: 'number', required: true, min: 1, max: 5 },
     { name: 'title', label: '標題', type: 'text' },
     { name: 'content', label: '評價內容', type: 'textarea', required: true },

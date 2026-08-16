@@ -67,7 +67,7 @@ export const CouponRedemptions: CollectionConfig = {
   },
   fields: [
     { name: 'coupon', label: '優惠券', type: 'relationship', relationTo: 'coupons', required: true },
-    { name: 'user', label: '使用會員', type: 'relationship', relationTo: 'users', admin: { description: 'Guest 結帳可留空（本階段強制登入，所以通常有值）' } },
+    { name: 'user', label: '使用會員', type: 'relationship', relationTo: 'customers', admin: { description: 'Guest 結帳可留空（本階段強制登入，所以通常有值）' } },
     { name: 'order', label: '訂單', type: 'relationship', relationTo: 'orders', required: true },
     { name: 'discountAmount', label: '實際折抵金額', type: 'number', required: true, min: 0 },
     {

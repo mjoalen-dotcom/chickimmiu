@@ -75,14 +75,14 @@ export const CollectibleCardEvents: CollectionConfig = {
       name: 'fromUser',
       label: '原擁有者',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       index: true,
     },
     {
       name: 'toUser',
       label: '新擁有者',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       index: true,
     },
     {

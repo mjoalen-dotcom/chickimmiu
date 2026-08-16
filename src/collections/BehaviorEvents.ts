@@ -95,7 +95,7 @@ export const BehaviorEvents: CollectionConfig = {
       name: 'user',
       label: '會員（已登入）',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       admin: { description: '訪客留空' },
     },
     {
