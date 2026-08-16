@@ -622,6 +622,13 @@ export default buildConfig({
         // 到處都是數字 ID 的假設）。
         idType: 'serial',
         push,
+        // ⚠️ 絕對不能跟 sqliteAdapter 共用 src/migrations——那 104 個既有檔案
+        // 是 SQLite 方言（drizzle-orm/sqlite-core），直接拿去對 PG 跑
+        // `payload migrate` 會整批失敗。PG 是全新 schema（見 Prompt P2：
+        // 「以 Payload migration 建全新 schema，不用 pgloader 硬轉」），
+        // 用獨立目錄，第一次 migrate:create 會產生一支涵蓋所有 collections
+        // 的 baseline migration。
+        migrationDir: './src/migrations-pg',
       })
     }
     return sqliteAdapter({
