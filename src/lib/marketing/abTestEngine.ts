@@ -186,7 +186,7 @@ export async function createABTest(
       campaign: campaignId,
       variants: variantsWithMetrics,
       winnerMetric,
-      status: 'active',
+      status: 'running',
       minSampleSize: 100,
     } as unknown as Record<string, unknown>,
   })
@@ -261,7 +261,7 @@ export async function trackABTestEvent(
     const testDoc = await payload.findByID({ collection: 'ab-tests', id: abTestId })
     const test = testDoc as unknown as ABTestDoc
 
-    if (test.status !== 'active') {
+    if (test.status !== 'running') {
       console.log(`[Marketing] A/B 測試已非進行中狀態，跳過事件追蹤: ${abTestId}`)
       return
     }
@@ -433,7 +433,7 @@ export async function autoSelectWinner(abTestId: string): Promise<void> {
   const testDoc = await payload.findByID({ collection: 'ab-tests', id: abTestId })
   const test = testDoc as unknown as ABTestDoc
 
-  if (test.status !== 'active') {
+  if (test.status !== 'running') {
     console.log(`[Marketing] A/B 測試非進行中，跳過自動選出: ${abTestId}`)
     return
   }
