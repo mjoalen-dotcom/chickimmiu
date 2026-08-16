@@ -75,7 +75,12 @@ async function checkProductExists(
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), EXISTS_CHECK_TIMEOUT_MS)
   try {
-    const url = new URL('/api/products/exists', req.url)
+    // 直接打 127.0.0.1（nginx proxy_pass 的同一個 target），繞開 TLS／nginx／
+    // 對外網域，避免 middleware 對「自己同一個 deployment」發 fetch 時的已知
+    // 不穩定行為（實測：走 req.url 的公開網域 origin 一律 TypeError:fetch failed，
+    // 即使伺服器本機 curl 打同一個公開網址完全正常）。
+    const internalOrigin = process.env.INTERNAL_ORIGIN || 'http://127.0.0.1:3000'
+    const url = new URL('/api/products/exists', internalOrigin)
     url.searchParams.set('slug', slug)
     const res = await fetch(url, { signal: controller.signal })
     if (!res.ok) return { exists: true, debug: `not-ok:${res.status}:${url.toString()}` }
