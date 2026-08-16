@@ -69,25 +69,25 @@ function adminBasicAuth(req: NextRequest): NextResponse | null {
 const EXISTS_CHECK_TIMEOUT_MS = 1500
 
 async function checkProductExists(
-  req: NextRequest,
   slug: string,
-): Promise<{ exists: boolean; aliasTarget?: string; debug?: string }> {
+): Promise<{ exists: boolean; aliasTarget?: string }> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), EXISTS_CHECK_TIMEOUT_MS)
   try {
     // 直接打 127.0.0.1（nginx proxy_pass 的同一個 target），繞開 TLS／nginx／
-    // 對外網域，避免 middleware 對「自己同一個 deployment」發 fetch 時的已知
-    // 不穩定行為（實測：走 req.url 的公開網域 origin 一律 TypeError:fetch failed，
-    // 即使伺服器本機 curl 打同一個公開網址完全正常）。
+    // 對外網域——實測 middleware 對自己同一個 deployment 的公開網域
+    // （req.url 的 origin）發 fetch 一律 TypeError:fetch failed，即使伺服器
+    // 本機 curl 打同一個公開網址完全正常；這是 Next.js middleware 對
+    // 「自己同一個 deployment」發 fetch 的已知不穩定行為，繞開對外網域
+    // 走內部 target 後問題消失。
     const internalOrigin = process.env.INTERNAL_ORIGIN || 'http://127.0.0.1:3000'
     const url = new URL('/api/products/exists', internalOrigin)
     url.searchParams.set('slug', slug)
     const res = await fetch(url, { signal: controller.signal })
-    if (!res.ok) return { exists: true, debug: `not-ok:${res.status}:${url.toString()}` }
-    const data = (await res.json()) as { exists: boolean; aliasTarget?: string }
-    return { ...data, debug: `ok:${url.toString()}` }
-  } catch (err) {
-    return { exists: true, debug: `catch:${String((err as Error)?.name)}:${String((err as Error)?.message)}` }
+    if (!res.ok) return { exists: true } // fail-open
+    return (await res.json()) as { exists: boolean; aliasTarget?: string }
+  } catch {
+    return { exists: true } // fail-open：逾時／連線失敗一律放行
   } finally {
     clearTimeout(timer)
   }
@@ -101,31 +101,15 @@ export async function middleware(req: NextRequest) {
   const segments = req.nextUrl.pathname.split('/').filter(Boolean)
   if (segments.length === 2 && segments[0] === 'products') {
     const slug = segments[1]
-    let debugInfo = 'checked'
-    try {
-      const result = await checkProductExists(req, slug)
-      debugInfo = JSON.stringify(result)
-      if (!result.exists) {
-        if (result.aliasTarget) {
-          const res = NextResponse.redirect(
-            new URL(`/products/${result.aliasTarget}`, req.url),
-            308,
-          )
-          res.headers.set('x-ckmu-mw-debug', debugInfo)
-          return res
-        }
-        const res = NextResponse.rewrite(
-          new URL(`/products/__notfound__/${encodeURIComponent(slug)}`, req.url),
-        )
-        res.headers.set('x-ckmu-mw-debug', `rewrite:${debugInfo}`)
-        return res
+    const result = await checkProductExists(slug)
+    if (!result.exists) {
+      if (result.aliasTarget) {
+        return NextResponse.redirect(new URL(`/products/${result.aliasTarget}`, req.url), 308)
       }
-    } catch (err) {
-      debugInfo = `threw:${String((err as Error)?.message || err)}`
+      return NextResponse.rewrite(
+        new URL(`/products/__notfound__/${encodeURIComponent(slug)}`, req.url),
+      )
     }
-    const res = NextResponse.next()
-    res.headers.set('x-ckmu-mw-debug', debugInfo)
-    return res
   }
 
   return NextResponse.next()
