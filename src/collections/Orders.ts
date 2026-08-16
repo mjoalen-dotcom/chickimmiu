@@ -20,6 +20,7 @@ import {
   afterChangeWritePromotionRecords,
   afterChangeReversePromotions,
 } from '../lib/promotions/orderPricingHook'
+import { beforeChangeAffiliateAttribution } from '../lib/affiliate/orderAttributionHook'
 import {
   afterChangeReverseOrderFinancials,
   writePurchasePointsLedger,
@@ -751,6 +752,8 @@ export const Orders: CollectionConfig = {
           return data
         }
       },
+      // ── 合作夥伴分潤歸因（total 已由 beforeChangeServerPricing 定案後才算佣金）──
+      beforeChangeAffiliateAttribution,
       // ── 寶物箱自動附加 ──
       // 新訂單 create 時，把該會員所有 unused + 實體 + 未過期的 UserRewards
       // 自動塞進 data.gifts。admin 可以在 admin panel 手動先填 data.gifts，

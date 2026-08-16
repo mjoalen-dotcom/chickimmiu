@@ -42,6 +42,7 @@ import {
   getStoredUTM,
   purchaseEventId,
   getCurrentAttribution,
+  getPartnerRefCode,
 } from '@/lib/tracking'
 import { sendServerPurchaseEvent } from '@/app/actions/tracking'
 import { Price } from '@/components/common/Price'
@@ -1129,6 +1130,11 @@ export default function CheckoutPage() {
         }
       })(),
       customerNote: form.customerNote || undefined,
+      // 合作夥伴推廣連結歸因：只送 code 字串，其餘（affiliateUser／佣金比例／
+      // 佣金金額）一律由 Orders.beforeChange 依伺服器端資料重算，不採信這裡
+      // 送出的任何其他值——這個欄位就算被竄改也頂多變成一個查無此碼、
+      // 直接被 hook 清空，不會影響金額或帳號。
+      affiliateInfo: getPartnerRefCode() ? { referralCode: getPartnerRefCode() } : undefined,
     }
 
     let createdOrderNumber = ''

@@ -281,10 +281,30 @@ export function parseAndStoreUTM(): UTMParams {
     }
   }
 
+  // 合作夥伴推薦碼 — 獨立於上面 UTM 分析用的 cookie，只給結帳歸因用。
+  // Last-click：每次帶新的 ?ref= 進站都覆寫（業界慣例，最後點的連結拿佣金），
+  // 30 天到期。這裡只存字串本身，checkout 送單時一起帶上，真正的驗證／
+  // 查對應合作夥伴／算佣金一律在 Orders.ts 的 beforeChange hook 裡用伺服器端
+  // 資料做，這裡不驗證 code 是否真實存在（壞碼在下單當下會被 hook 清空）。
+  if (params.ref) {
+    try {
+      setCookie('ckmu-partner-ref', params.ref, 30)
+    } catch {
+      // blocked
+    }
+  }
+
   // 永遠 ensure session ID 存在
   getOrCreateSessionId()
 
   return params
+}
+
+/**
+ * 讀取合作夥伴推薦碼 cookie（結帳頁組 order payload 時呼叫）。
+ */
+export function getPartnerRefCode(): string | undefined {
+  return getCookie('ckmu-partner-ref') || undefined
 }
 
 /**

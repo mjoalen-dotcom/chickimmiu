@@ -43,6 +43,25 @@ function fail(status: number, error: string, code: string, extra?: Record<string
 }
 
 /**
+ * 合作夥伴推薦碼——從 request 自己的 Cookie header 讀（伺服器端來源，不信任
+ * client body），跟 Orders.beforeChange 的 affiliate attribution hook 是同一顆
+ * cookie（tracking.ts `getPartnerRefCode()` 寫的那個）。
+ */
+function partnerRefFromCookieHeader(req: Request): string | undefined {
+  const raw = req.headers.get('cookie') || ''
+  const match = raw
+    .split(';')
+    .map((p) => p.trim())
+    .find((p) => p.startsWith('ckmu-partner-ref='))
+  if (!match) return undefined
+  try {
+    return decodeURIComponent(match.slice('ckmu-partner-ref='.length)) || undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * 限流用的來源 IP。
  * ⚠️ 不可取 X-Forwarded-For 的**第一段** —— 那段是 client 自己送的，攻擊者每次換一個
  * 假 IP 就能無限繞過限流。nginx 會設 X-Real-IP，並把真正的來源附加在 XFF 最後一段，
@@ -204,6 +223,10 @@ export async function POST(req: Request) {
             discountAmount: a.discountAmount > 0 ? a.discountAmount : a.shippingDiscountAmount,
           })),
           attribution: input.attribution,
+          affiliateInfo: (() => {
+            const code = partnerRefFromCookieHeader(req)
+            return code ? { referralCode: code } : undefined
+          })(),
           shippingFee: b.shippingFee,
           codFee: b.codFee,
           total: b.total,
