@@ -113,6 +113,24 @@ async function main() {
       await pg.query(`SET session_replication_role = replica`)
     }
 
+    // ── 3b. TRUNCATE 全部放在插入資料「之前」、獨立一輪跑完 ──
+    // 🔥 踩過的坑：原本 truncate 跟 insert 綁在同一個 per-table 迴圈裡（每張表
+    // truncate 完馬上插入該表資料才進下一張表），結果後面字母序較晚的表
+    // truncate 時帶 CASCADE，把「已經插入過資料的較早的表」（例如
+    // payload_folders 晚於 media 處理，但 media.folder 參照
+    // payload_folders.id，truncate payload_folders CASCADE 就把已經插好的
+    // 21,962 筆 media 資料整個清空）——實測直接把 media/products/orders
+    // 這些表的資料在跑完全部「成功」之後又憑空消失，count 對帳當下是對的
+    // （因為對帳是每表插入完馬上檢查），但那是假象，因為後面的表还沒處理。
+    // 修法：truncate 全部表一次跑完（此時反正全部都要清空，CASCADE 提早
+    // 波及其他表也無妨），再統一進 insert 階段，兩階段徹底分開。
+    if (TRUNCATE_FIRST && !DRY_RUN) {
+      for (const table of pgTables) {
+        await pg.query(`TRUNCATE TABLE "${table}" CASCADE`)
+      }
+      console.log('[migrate] TRUNCATE 全部表完成，開始插入資料')
+    }
+
     const reconciliation: { table: string; sqlite: number; pg: number; ok: boolean }[] = []
 
     for (const table of pgTables) {
@@ -145,10 +163,6 @@ async function main() {
       if (columns.length === 0) {
         reconciliation.push({ table, sqlite: sqliteRows.length, pg: 0, ok: false })
         continue
-      }
-
-      if (TRUNCATE_FIRST && !DRY_RUN) {
-        await pg.query(`TRUNCATE TABLE "${table}" CASCADE`)
       }
 
       if (!DRY_RUN) {
@@ -229,16 +243,40 @@ async function main() {
       console.log('[migrate] sequence setval 完成')
     }
 
-    // ── 5. 對帳彙總 ──
+    // ── 5. 對帳彙總（in-loop 版，插入當下的即時計數）──
     const mismatches = reconciliation.filter((r) => !r.ok)
-    console.log('\n========== 對帳彙總 ==========')
+    console.log('\n========== 對帳彙總（插入當下）==========')
     console.log(`共 ${reconciliation.length} 表，SQLite 總筆數 ${reconciliation.reduce((s, r) => s + r.sqlite, 0)}`)
     if (mismatches.length > 0) {
       console.error(`❌ ${mismatches.length} 表不一致：`)
       mismatches.forEach((m) => console.error(`   ${m.table}: sqlite=${m.sqlite} pg=${m.pg}`))
       process.exitCode = 1
     } else {
-      console.log(DRY_RUN ? '(dry-run，未實際寫入)' : '✅ 全表 count 對帳通過')
+      console.log(DRY_RUN ? '(dry-run，未實際寫入)' : '✅ 全表 count 對帳通過（插入當下）')
+    }
+
+    // ── 6. 全部處理完後「重新」query 一次 PG 每表筆數 ──
+    // 踩過教訓：per-table 插入當下的計數可能被後面某張表的 TRUNCATE CASCADE
+    // 事後波及變成假象（已修：truncate 全部移到最前面一輪跑完），這裡多加
+    // 一層事後獨立覆核，不只信插入當下的數字，跑完全部流程（含 sequence
+    // setval）後再重新對一次帳，確保最終狀態才是真的準。
+    if (!DRY_RUN) {
+      console.log('\n========== 事後獨立覆核（全部流程跑完後重新 query）==========')
+      const finalMismatches: string[] = []
+      for (const r of reconciliation) {
+        const finalCountRes = await pg.query<{ c: string }>(`SELECT COUNT(*) as c FROM "${r.table}"`)
+        const finalCount = Number(finalCountRes.rows[0]?.c ?? 0)
+        if (finalCount !== r.sqlite) {
+          finalMismatches.push(`${r.table}: sqlite=${r.sqlite} pg(最終)=${finalCount}`)
+        }
+      }
+      if (finalMismatches.length > 0) {
+        console.error(`❌ 事後覆核發現 ${finalMismatches.length} 表跟插入當下不一致（可能又被別的表 cascade 波及）：`)
+        finalMismatches.forEach((m) => console.error(`   ${m}`))
+        process.exitCode = 1
+      } else {
+        console.log('✅ 事後獨立覆核通過，最終狀態與插入當下一致')
+      }
     }
   } finally {
     await pg.end()
