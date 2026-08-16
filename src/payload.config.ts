@@ -31,6 +31,11 @@ import { Pages } from './collections/Pages'
 import { CelebrityFeatures } from './collections/CelebrityFeatures'
 import { SubscriptionPlans } from './collections/SubscriptionPlans'
 import { UserSubscriptions } from './collections/UserSubscriptions'
+import { SocialWallConnections } from './collections/SocialWallConnections'
+import { SocialWallWidgets } from './collections/SocialWallWidgets'
+import { SocialWallSubscriptions } from './collections/SocialWallSubscriptions'
+import { SocialWallLicenses } from './collections/SocialWallLicenses'
+import { SocialWallUsageDaily } from './collections/SocialWallUsageDaily'
 import { ProductReviews } from './collections/ProductReviews'
 import { Returns } from './collections/Returns'
 import { Exchanges } from './collections/Exchanges'
@@ -550,6 +555,13 @@ export default buildConfig({
     withOperatorManage(Podcasts),
     withOperatorManage(SiteThemes),
     withOperatorManage(Media),
+    // Ⓦ 牆聚 WallGather — wall.ckmu.co 獨立 SaaS 資料域。
+    // 訂閱、授權與用量不與服飾會員方案混用；Meta token 只存祕密參照。
+    SocialWallConnections,
+    SocialWallWidgets,
+    SocialWallSubscriptions,
+    SocialWallLicenses,
+    SocialWallUsageDaily,
     // 2026-08-15 步驟03分組整併：原「⑦ 系統與安全」已拆散——LoginAttempts
     // 併入 ③ 會員與CRM、Currencies 併入 ① 訂單與物流（admin.group 已改，
     // 陣列位置維持不動，故在各自新群組內排序偏後，符合兩者「低頻使用」性質）。
