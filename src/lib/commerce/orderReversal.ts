@@ -16,7 +16,7 @@
 // `sql` 只是 drizzle 的 template tag（兩個 adapter 都是同一份 re-export），
 // 方言差異在 SQL 文字本身，不在這個 import。
 import { sql } from '@payloadcms/db-sqlite'
-import { getDrizzle } from '../db/dialectSafeSql'
+import { runSql } from '../db/dialectSafeSql'
 import type { CollectionAfterChangeHook, Payload } from 'payload'
 
 const relId = (v: unknown): number | string | null => {
@@ -31,8 +31,8 @@ const relId = (v: unknown): number | string | null => {
  * SQLite/PG 都吃——詳見 lib/db/dialectSafeSql.ts。
  */
 async function decrementCouponUsage(payload: Payload, couponId: number | string): Promise<void> {
-  const drizzle = getDrizzle(payload)
-  await drizzle.run(
+  await runSql(
+    payload,
     sql`UPDATE coupons
         SET usage_count = COALESCE(usage_count, 0) - 1
         WHERE id = ${Number(couponId)}

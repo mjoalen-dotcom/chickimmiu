@@ -33,7 +33,27 @@ export function affectedRows(res: unknown): number {
   return 0
 }
 
-/** 取得 payload 底層的 drizzle runner（兩種 adapter 介面相同）。 */
-export function getDrizzle(payload: unknown): { run: (q: unknown) => Promise<unknown> } {
-  return (payload as { db: { drizzle: { run: (q: unknown) => Promise<unknown> } } }).db.drizzle
+/**
+ * 執行一句原子 SQL，兩種 adapter 都能跑。
+ *
+ * 🔥 這裡不是抽象潔癖，是踩過的坑：drizzle 的兩種 database 類別**方法名不同**。
+ *   - SQLite（BetterSQLite3Database）：有 run()，沒有 execute()
+ *   - PG（NodePgDatabase）：有 execute()，**沒有 run()**
+ * 舊版這裡導出 getDrizzle() 並在呼叫端寫 `.run(...)`，切到 PG 之後三個呼叫點
+ * 一律 `TypeError: run is not a function`——SQL 字串本身是對的（用 psql 驗過），
+ * 但那句 SQL 從來沒被執行過。教訓：驗證 SQL 方言相容 ≠ 驗證 driver 方法存在，
+ * 兩件事要分開驗。（pre 實測：typeof run=undefined、typeof execute=function）
+ *
+ * 故意不再導出 raw drizzle，避免呼叫端又寫回 .run()。
+ */
+export async function runSql(payload: unknown, query: unknown): Promise<unknown> {
+  const d = (payload as { db?: { drizzle?: Record<string, unknown> } })?.db?.drizzle
+  if (!d) throw new Error('[dialectSafeSql] 取不到 payload.db.drizzle')
+  if (typeof d.run === 'function') {
+    return (d.run as (q: unknown) => Promise<unknown>)(query)
+  }
+  if (typeof d.execute === 'function') {
+    return (d.execute as (q: unknown) => Promise<unknown>)(query)
+  }
+  throw new Error('[dialectSafeSql] drizzle 既無 run() 也無 execute()，無法執行原子 SQL')
 }
