@@ -9,9 +9,14 @@ export const metadata: Metadata = {
 }
 
 export default function SocialWallDashboardPage() {
+  const today = new Intl.DateTimeFormat('zh-TW', {
+    dateStyle: 'long',
+    timeZone: 'Asia/Taipei',
+  }).format(new Date())
+
   return (
     <main className="sw-root sw-dashboard">
-      <div className="sw-announcement"><span>預覽工作台</span>目前使用示範資料，尚未連結正式會員與付款</div>
+      <div className="sw-announcement"><span>封測工作台</span>網域授權使用正式驗證鏈；內容與帳務仍為示範／沙盒</div>
       <SocialWallNav compact />
       <div className="sw-dashboard__shell">
         <aside className="sw-dashboard__menu">
@@ -24,13 +29,13 @@ export default function SocialWallDashboardPage() {
         </aside>
         <section className="sw-dashboard__content">
           <div className="sw-dashboard__heading">
-            <div><span>2026 年 8 月 16 日</span><h1>晚上好，Alan</h1><p>這裡是 wall.ckmu.co 的本機產品預覽。</p></div>
+            <div><span>{today}</span><h1>歡迎回來</h1><p>這裡是 wall.ckmu.co 的公開封測工作台。</p></div>
             <Link className="sw-button" href="/social-wall/studio"><Plus size={17} /> 建立社群牆</Link>
           </div>
 
           <div className="sw-dashboard__stats">
-            <article><span><LayoutGrid size={18} />社群牆</span><strong>1</strong><small>方案上限 3</small></article>
-            <article><span><Globe2 size={18} />授權網域</span><strong>1</strong><small>方案上限 3</small></article>
+            <article><span><LayoutGrid size={18} />社群牆</span><strong>1</strong><small>Free 方案上限 1</small></article>
+            <article><span><Globe2 size={18} />授權網域</span><strong>1</strong><small>Free 方案上限 1</small></article>
             <article><span><BarChart3 size={18} />本月載入</span><strong>—</strong><small>部署後開始計算</small></article>
           </div>
 
@@ -52,8 +57,8 @@ export default function SocialWallDashboardPage() {
           </article>
 
           <div className="sw-dashboard__columns">
-            <article id="domains"><div><Globe2 size={20} /><span>網域授權</span></div><strong>blog.kimlafayette.com</strong><p>草稿授權；正式版會核發短效載入簽章。</p><Link href="/social-wall/studio">管理授權 →</Link></article>
-            <article id="plan"><div><ShieldCheck size={20} /><span>目前方案</span></div><strong>Creator 封測</strong><p>3 個社群牆、3 個網域。尚未啟用扣款。</p><a href="/social-wall#pricing">查看方案 →</a></article>
+            <article id="domains"><div><Globe2 size={20} /><span>網域授權</span></div><strong>blog.kimlafayette.com</strong><p>正式部署後核發五分鐘短效載入簽章。</p><Link href="/social-wall/studio">管理授權 →</Link></article>
+            <article id="plan"><div><ShieldCheck size={20} /><span>目前方案</span></div><strong>Free 封測</strong><p>1 個社群牆、1 個網域。真實扣款保持關閉。</p><a href="/social-wall#pricing">查看方案 →</a></article>
           </div>
         </section>
       </div>

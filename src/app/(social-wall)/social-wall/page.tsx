@@ -37,8 +37,8 @@ export default function SocialWallHomePage() {
   return (
     <main className="sw-root">
       <div className="sw-announcement">
-        <span>本機 MVP</span>
-        Meta 串接、付款與正式訂閱尚未啟用
+        <span>公開封測</span>
+        網域授權鏈已完成；Meta 官方連線與付費續訂仍在沙盒
       </div>
       <SocialWallNav />
 
@@ -127,7 +127,7 @@ export default function SocialWallHomePage() {
             <span>PRICING</span>
             <h2>先免費開始，<br />需要時再升級。</h2>
           </div>
-          <p>以下為 MVP 商業模型建議價，只供產品驗證；尚未開放正式付款或自動續訂。</p>
+          <p>以下為封測建議價；目前可免費試作，尚未開放正式付款或自動續訂。</p>
         </div>
         <div className="sw-plan-grid">
           {plans.map((plan) => (
@@ -164,8 +164,8 @@ export default function SocialWallHomePage() {
           <p>嵌入程式會依精確網域取得短效簽章，未授權來源無法載入。這能阻止一般盜用，但不宣稱是不可破解的 DRM。</p>
         </details>
         <details>
-          <summary>現在可以付款訂閱嗎？</summary>
-          <p>還不行。目前是本機 MVP，付款、續訂通知、發票與退款流程會在沙盒驗證通過並取得部署授權後才開放。</p>
+          <summary>現在可以開始使用或付款訂閱嗎？</summary>
+          <p>可以先免費試作、驗證嵌入與網域授權。付款、續訂通知、發票與退款仍在沙盒，通過完整驗收前不會啟用真實扣款。</p>
         </details>
       </section>
 
@@ -180,7 +180,7 @@ export default function SocialWallHomePage() {
           <span className="sw-brand__mark" aria-hidden="true"><i /><i /><i /><i /></span>
           <span><strong>牆聚</strong><small>WallGather</small></span>
         </div>
-        <p>wall.ckmu.co · 繁中社群牆 SaaS MVP</p>
+        <p>wall.ckmu.co · 繁中社群牆 SaaS 公開封測</p>
         <span>© 2026 CKMU</span>
       </footer>
     </main>

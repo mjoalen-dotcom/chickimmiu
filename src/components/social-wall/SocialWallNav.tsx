@@ -27,8 +27,8 @@ export function SocialWallNav({ compact = false }: SocialWallNavProps) {
       </nav>
 
       <div className="sw-nav__actions">
-        <Link className="sw-link-button" href="/login?redirect=/social-wall/dashboard">
-          登入
+        <Link className="sw-link-button" href="/social-wall/dashboard">
+          封測工作台
         </Link>
         <Link className="sw-button sw-button--small" href="/social-wall/studio">
           免費試做

@@ -28,6 +28,7 @@
     "seed:journeys:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedAutomationJourneys.ts -- --dry-run",
     "seed:campaign72h": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedCampaign72h.ts",
     "seed:campaign72h:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedCampaign72h.ts -- --dry-run",
+    "seed:social-wall:demo": "cross-env NODE_OPTIONS=--no-deprecation payload run scripts/seed-social-wall-demo.ts",
     "test:promotions": "node --test src/lib/promotions/evaluator.test.mjs",
     "migrate:media:r2": "cross-env NODE_OPTIONS=--no-deprecation payload run scripts/migrate-media-to-r2.ts",
     "migrate:media:r2:dry": "cross-env MIGRATE_DRY_RUN=1 NODE_OPTIONS=--no-deprecation payload run scripts/migrate-media-to-r2.ts",
