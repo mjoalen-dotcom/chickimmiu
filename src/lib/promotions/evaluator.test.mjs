@@ -676,3 +676,165 @@ test('隔離：無效規則（version 0）→ invalid_rule 不中斷其他規則
   assert.equal(res.applications.length, 1)
   assert.ok(res.rejections.some((r) => r.reasonCodes[0] === 'invalid_rule'))
 })
+
+// ── 新增條件（P0-B 規則能力補完）────────────────────────────────────────────
+
+/** 只驗條件成不成立：用最單純的滿額折，湊齊條件就折 100 */
+function condRule(when) {
+  return mix2Rule({
+    ruleKey: 'c72:cond:v1',
+    slug: 'cond',
+    when,
+    then: { type: 'order_fixed_discount', amount: 100, allocation: 'proportional_to_eligible_lines' },
+  })
+}
+const applied = (res) => res.applications.length === 1
+
+test('買A+B：只買 2×A 不成立（scope include 是 OR，這條才是 AND）', () => {
+  const res = evaluatePromotions(
+    input({
+      rules: [condRule([{ type: 'cart_contains_all_products', values: ['PA', 'PB'] }])],
+      lines: [line({ lineId: 'L1', productId: 'PA' }), line({ lineId: 'L2', productId: 'PA' })],
+    }),
+  )
+  assert.equal(applied(res), false)
+})
+
+test('買A+B：A 與 B 各一件 → 成立', () => {
+  const res = evaluatePromotions(
+    input({
+      rules: [condRule([{ type: 'cart_contains_all_products', values: ['PA', 'PB'] }])],
+      lines: [line({ lineId: 'L1', productId: 'PA' }), line({ lineId: 'L2', productId: 'PB' })],
+    }),
+  )
+  assert.equal(applied(res), true)
+})
+
+test('買A+B：被 scope 排除的商品不算數（湊不齊）', () => {
+  const rule = condRule([{ type: 'cart_contains_all_products', values: ['PA', 'PB'] }])
+  rule.scope = { excludeProducts: ['PB'] }
+  const res = evaluatePromotions(
+    input({
+      rules: [rule],
+      lines: [line({ lineId: 'L1', productId: 'PA' }), line({ lineId: 'L2', productId: 'PB' })],
+    }),
+  )
+  assert.equal(applied(res), false)
+})
+
+test('買A+B：空清單視為設定錯誤 → fail closed 不成立', () => {
+  const res = evaluatePromotions(
+    input({
+      rules: [condRule([{ type: 'cart_contains_all_products', values: [] }])],
+      lines: [line({ lineId: 'L1', productId: 'PA' })],
+    }),
+  )
+  assert.equal(applied(res), false)
+})
+
+test('回購：orderCount=0 不成立、>0 成立', () => {
+  const rule = condRule([{ type: 'repeat_purchase', value: true }])
+  const first = evaluatePromotions(
+    input({
+      rules: [rule],
+      lines: [line({ lineId: 'L1' })],
+      member: { userId: 'u1', segmentSlugs: [], orderCount: 0 },
+    }),
+  )
+  assert.equal(applied(first), false)
+  const repeat = evaluatePromotions(
+    input({
+      rules: [rule],
+      lines: [line({ lineId: 'L1' })],
+      member: { userId: 'u1', segmentSlugs: [], orderCount: 3 },
+    }),
+  )
+  assert.equal(applied(repeat), true)
+})
+
+test('回購：未登入（member=null）一律不成立', () => {
+  const res = evaluatePromotions(
+    input({
+      rules: [condRule([{ type: 'repeat_purchase', value: true }])],
+      lines: [line({ lineId: 'L1' })],
+      member: null,
+    }),
+  )
+  assert.equal(applied(res), false)
+})
+
+test('生日月：生日月份 == 當月才成立', () => {
+  const rule = condRule([{ type: 'birthday_month', value: true }])
+  const hit = evaluatePromotions(
+    input({
+      rules: [rule],
+      lines: [line({ lineId: 'L1' })],
+      member: { userId: 'u1', segmentSlugs: [], birthdayMonth: 8 },
+      currentMonth: 8,
+    }),
+  )
+  assert.equal(applied(hit), true)
+  const miss = evaluatePromotions(
+    input({
+      rules: [rule],
+      lines: [line({ lineId: 'L1' })],
+      member: { userId: 'u1', segmentSlugs: [], birthdayMonth: 9 },
+      currentMonth: 8,
+    }),
+  )
+  assert.equal(applied(miss), false)
+})
+
+test('生日月：未填生日 → 不成立（不可因為缺資料就放行）', () => {
+  const res = evaluatePromotions(
+    input({
+      rules: [condRule([{ type: 'birthday_month', value: true }])],
+      lines: [line({ lineId: 'L1' })],
+      member: { userId: 'u1', segmentSlugs: [], birthdayMonth: null },
+      currentMonth: 8,
+    }),
+  )
+  assert.equal(applied(res), false)
+})
+
+test('沉睡召回：member_segment_in 鎖定 SLP1', () => {
+  const rule = condRule([{ type: 'member_segment_in', values: ['SLP1'] }])
+  const hit = evaluatePromotions(
+    input({
+      rules: [rule],
+      lines: [line({ lineId: 'L1' })],
+      member: { userId: 'u1', segmentSlugs: ['SLP1'] },
+    }),
+  )
+  assert.equal(applied(hit), true)
+  const miss = evaluatePromotions(
+    input({
+      rules: [rule],
+      lines: [line({ lineId: 'L1' })],
+      member: { userId: 'u1', segmentSlugs: ['VIP1'] },
+    }),
+  )
+  assert.equal(applied(miss), false)
+})
+
+test('KOL：無推薦碼不成立；帶任意碼即成立（values 未指定）', () => {
+  const rule = condRule([{ type: 'referral_attributed' }])
+  const none = evaluatePromotions(input({ rules: [rule], lines: [line({ lineId: 'L1' })] }))
+  assert.equal(applied(none), false)
+  const any = evaluatePromotions(
+    input({ rules: [rule], lines: [line({ lineId: 'L1' })], referralCode: 'kolA' }),
+  )
+  assert.equal(applied(any), true)
+})
+
+test('KOL：指定推薦碼時只認清單內的（大小寫不敏感）', () => {
+  const rule = condRule([{ type: 'referral_attributed', values: ['KOLA', 'KOLB'] }])
+  const ok = evaluatePromotions(
+    input({ rules: [rule], lines: [line({ lineId: 'L1' })], referralCode: 'kola' }),
+  )
+  assert.equal(applied(ok), true)
+  const wrong = evaluatePromotions(
+    input({ rules: [rule], lines: [line({ lineId: 'L1' })], referralCode: 'kolZ' }),
+  )
+  assert.equal(applied(wrong), false)
+})

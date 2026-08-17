@@ -209,8 +209,29 @@ export function ruleDocToSnapshot(
     if (Array.isArray(conditions.segmentsNotIn) && conditions.segmentsNotIn.length > 0) {
       when.push({ type: 'member_segment_not_in', values: conditions.segmentsNotIn.map(String) })
     }
+    // 沉睡召回等「正面鎖定分群」：evaluator 早就支援 member_segment_in，
+    // 但後台一直只開排除用的 segmentsNotIn，導致這個能力打不開。
+    if (Array.isArray(conditions.segmentsIn) && conditions.segmentsIn.length > 0) {
+      when.push({ type: 'member_segment_in', values: conditions.segmentsIn.map(String) })
+    }
+    // 買 A + B：必須同時湊齊指定商品（scope include 是 OR，做不到這件事）
+    const requireAll = relIds(conditions.requireAllProducts)
+    if (requireAll.length > 0) {
+      when.push({ type: 'cart_contains_all_products', values: requireAll })
+    }
     if (conditions.membersOnly) when.push({ type: 'is_member', value: true })
     if (conditions.firstPurchaseOnly) when.push({ type: 'first_purchase', value: true })
+    if (conditions.repeatPurchaseOnly) when.push({ type: 'repeat_purchase', value: true })
+    if (conditions.birthdayMonthOnly) when.push({ type: 'birthday_month', value: true })
+    if (conditions.referralRequired || (Array.isArray(conditions.referralCodesIn) && conditions.referralCodesIn.length > 0)) {
+      const codes = Array.isArray(conditions.referralCodesIn)
+        ? conditions.referralCodesIn
+            .map((c) => (typeof c === 'object' && c !== null ? (c as Record<string, unknown>).code : c))
+            .filter((c): c is string => typeof c === 'string' && c.trim() !== '')
+            .map((c) => c.trim())
+        : []
+      when.push({ type: 'referral_attributed', ...(codes.length > 0 ? { values: codes } : {}) })
+    }
     if (Array.isArray(conditions.channels) && conditions.channels.length > 0) {
       when.push({ type: 'channel_in', values: conditions.channels.map(String) as Array<'web' | 'app' | 'line'> })
     }
@@ -380,12 +401,21 @@ export async function buildMemberSnapshot(
   } catch {
     // 分群讀取失敗 → 不阻擋（分群條件會自然不成立）
   }
+  // 生日月份：UTC 取月，與 memberAnalytics.parseBirthday / birthdayEngine 同一套算法
+  let birthdayMonth: number | null = null
+  if (typeof user.birthday === 'string' && user.birthday) {
+    const d = new Date(user.birthday)
+    if (!Number.isNaN(d.getTime())) birthdayMonth = d.getUTCMonth() + 1
+  }
+  const orderCount = typeof user.orderCount === 'number' ? user.orderCount : 0
   return {
     userId: user.id as number | string,
     tierSlug,
     segmentSlugs,
-    isFirstPurchase: (typeof user.orderCount === 'number' ? user.orderCount : 0) === 0,
+    isFirstPurchase: orderCount === 0,
     blocked,
+    orderCount,
+    birthdayMonth,
   }
 }
 

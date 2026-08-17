@@ -69,6 +69,12 @@ export interface PricingInput {
   paymentMethod?: string | null
   /** preview 模式：允許 draft/paused 活動、跳過用量查詢（Campaign Studio 試算用） */
   previewCampaignId?: number | string | null
+  /**
+   * 推薦碼（KOL / 分潤歸因）。referral_attributed 規則條件用。
+   * 一律由伺服器端從 request cookie 讀出後傳入，**不接受 client body 帶值**——
+   * 否則任何人都能自稱帶了 KOL 碼來吃專屬折扣。
+   */
+  referralCode?: string | null
 }
 
 export interface PricingBreakdown {
@@ -479,6 +485,13 @@ export async function computeOrderPricing(payload: Payload, input: PricingInput)
     shippingFee: thresholdFree ? 0 : shippingBaseFee,
     rules: [...rules, ...coupons.snapshots],
     usage,
+    referralCode: input.referralCode ?? null,
+    // 生日月比對用台北時區的「當月」。evaluator 保持純函式不碰時區，這裡算好傳入。
+    currentMonth: Number(
+      new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Taipei', month: 'numeric' }).format(
+        new Date(serverNow),
+      ),
+    ),
   })
 
   const promotionDiscount = evaluation.applications

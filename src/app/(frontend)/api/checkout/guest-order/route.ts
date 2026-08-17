@@ -4,6 +4,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 import { computeOrderPricing } from '@/lib/promotions/pricing'
+import { readReferralCodeFromRequest } from '@/lib/affiliate/referralCookie'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { issuePayloadToken } from '@/lib/auth/issuePayloadToken'
 import {
@@ -40,25 +41,6 @@ const GUEST_SESSION_MAX_AGE = 2 * 60 * 60
 
 function fail(status: number, error: string, code: string, extra?: Record<string, unknown>) {
   return NextResponse.json({ success: false, error, code, ...extra }, { status })
-}
-
-/**
- * 合作夥伴推薦碼——從 request 自己的 Cookie header 讀（伺服器端來源，不信任
- * client body），跟 Orders.beforeChange 的 affiliate attribution hook 是同一顆
- * cookie（tracking.ts `getPartnerRefCode()` 寫的那個）。
- */
-function partnerRefFromCookieHeader(req: Request): string | undefined {
-  const raw = req.headers.get('cookie') || ''
-  const match = raw
-    .split(';')
-    .map((p) => p.trim())
-    .find((p) => p.startsWith('ckmu-partner-ref='))
-  if (!match) return undefined
-  try {
-    return decodeURIComponent(match.slice('ckmu-partner-ref='.length)) || undefined
-  } catch {
-    return undefined
-  }
 }
 
 /**
@@ -130,6 +112,8 @@ export async function POST(req: Request) {
       channel: 'web',
       shippingMethodId: input.shippingMethodId,
       paymentMethod: input.paymentMethod,
+      // 伺服器端 cookie 來源，KOL/分潤專屬規則(referral_attributed)要吃得到
+      referralCode: readReferralCodeFromRequest(req) ?? null,
     })
     if (!pricing.ok) {
       return fail(400, '購物車內容已變動，請回到購物車重新確認', 'PRICING_FAILED', {
@@ -223,7 +207,7 @@ export async function POST(req: Request) {
           })),
           attribution: input.attribution,
           affiliateInfo: (() => {
-            const code = partnerRefFromCookieHeader(req)
+            const code = readReferralCodeFromRequest(req)
             return code ? { referralCode: code } : undefined
           })(),
           shippingFee: b.shippingFee,
