@@ -132,6 +132,56 @@ export const afterChangeReverseOrderFinancials: CollectionAfterChangeHook = asyn
     payload.logger.error({ err, msg: '[orderReversal] 券回沖失敗', orderId })
   }
 
+  // ── 1.5 分潤佣金回沖 ───────────────────────────────────────────────────────
+  // Orders.afterChange 在付款成功時累加 Affiliates.totalEarnings/pendingAmount
+  // 並把 commissionStatus 標成 confirmed，但一直沒有對應的退款回沖——訂單退掉
+  // 佣金卻留著，最後會變成可提領的真錢。
+  //
+  // 這條路徑在 2026-08-16 之前是死的（checkout 從不寫入 affiliateInfo.
+  // referralCode，累加條件 commissionStatus==='pending' 永遠不成立），是分潤
+  // 歸因接上結帳之後才變成實際會發生的漏洞，故一併補上。
+  // 冪等：只處理 confirmed，處理完標成 cancelled，重跑不會重複扣。
+  try {
+    const aff = (doc as Record<string, unknown>).affiliateInfo as Record<string, unknown> | undefined
+    const commission = Number(aff?.commissionAmount) || 0
+    const affUserId = relId(aff?.affiliateUser)
+    if (aff?.commissionStatus === 'confirmed' && commission > 0 && affUserId != null) {
+      const affRes = await payload.find({
+        collection: 'affiliates',
+        where: { user: { equals: affUserId } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      })
+      const affDoc = affRes.docs[0] as unknown as Record<string, unknown> | undefined
+      if (affDoc) {
+        // 不讓任何一項變負數（可能已被 admin 手動調整過或部分已結算）
+        await payload.update({
+          collection: 'affiliates',
+          id: affDoc.id as never,
+          data: {
+            totalEarnings: Math.max(0, (Number(affDoc.totalEarnings) || 0) - commission),
+            pendingAmount: Math.max(0, (Number(affDoc.pendingAmount) || 0) - commission),
+          } as never,
+          overrideAccess: true,
+        })
+        await payload.update({
+          collection: 'orders',
+          id: orderId as never,
+          data: {
+            affiliateInfo: { ...aff, commissionStatus: 'cancelled' },
+          } as never,
+          overrideAccess: true,
+        })
+        payload.logger.info(
+          `[orderReversal] ${orderNumber}: 回沖分潤佣金 NT$${commission}（${status}）`,
+        )
+      }
+    }
+  } catch (err) {
+    payload.logger.error({ err, msg: '[orderReversal] 分潤佣金回沖失敗', orderId })
+  }
+
   // ── 2. 點數扣回 ───────────────────────────────────────────────────────────
   try {
     const userId = relId((doc as Record<string, unknown>).customer)
