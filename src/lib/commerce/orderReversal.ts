@@ -13,7 +13,10 @@
  * 全部 idempotent：以「該單是否已有 refund_deduct row」與 redemption 是否還在為準，
  * 重跑不會重複扣。促銷 applications / 活動預算的回沖在 lib/promotions/orderPricingHook.ts。
  */
+// `sql` 只是 drizzle 的 template tag（兩個 adapter 都是同一份 re-export），
+// 方言差異在 SQL 文字本身，不在這個 import。
 import { sql } from '@payloadcms/db-sqlite'
+import { getDrizzle } from '../db/dialectSafeSql'
 import type { CollectionAfterChangeHook, Payload } from 'payload'
 
 const relId = (v: unknown): number | string | null => {
@@ -22,13 +25,18 @@ const relId = (v: unknown): number | string | null => {
   return v as number | string
 }
 
-/** 條件式原子遞減 usageCount（避免 read-modify-write 競態，且不會變負數） */
+/**
+ * 條件式原子遞減 usageCount（避免 read-modify-write 競態，且不會變負數）。
+ * 不用 MAX()/GREATEST()（方言不同），改用 WHERE 擋負數，語意相同且
+ * SQLite/PG 都吃——詳見 lib/db/dialectSafeSql.ts。
+ */
 async function decrementCouponUsage(payload: Payload, couponId: number | string): Promise<void> {
-  const drizzle = (payload.db as unknown as { drizzle: { run: (q: unknown) => Promise<unknown> } }).drizzle
+  const drizzle = getDrizzle(payload)
   await drizzle.run(
-    sql`UPDATE \`coupons\`
-        SET \`usage_count\` = MAX(0, COALESCE(\`usage_count\`, 0) - 1)
-        WHERE \`id\` = ${Number(couponId)}`,
+    sql`UPDATE coupons
+        SET usage_count = COALESCE(usage_count, 0) - 1
+        WHERE id = ${Number(couponId)}
+          AND COALESCE(usage_count, 0) > 0`,
   )
 }
 

@@ -19,7 +19,10 @@
  * - applications 標 reversed + 活動 budgetSpent 原子回沖（不低於 0）
  */
 import { APIError } from 'payload'
+// `sql` 只是 drizzle 的 template tag（兩個 adapter 都是同一份 re-export），
+// 方言差異在 SQL 文字本身，不在這個 import。
 import { sql } from '@payloadcms/db-sqlite'
+import { affectedRows, getDrizzle } from '../db/dialectSafeSql'
 import type { CollectionBeforeChangeHook, CollectionAfterChangeHook } from 'payload'
 
 import { computeOrderPricing, type RawCartItem } from './pricing'
@@ -108,14 +111,14 @@ export const beforeChangeServerPricing: CollectionBeforeChangeHook = async ({ da
     }
     for (const [campaignId, amount] of byCampaign) {
       if (amount <= 0) continue
-      const drizzle = (req.payload.db as unknown as { drizzle: { run: (q: unknown) => Promise<{ rowsAffected?: number }> } }).drizzle
+      const drizzle = getDrizzle(req.payload)
       const res = await drizzle.run(
-        sql`UPDATE \`marketing_campaigns\`
-            SET \`commerce_budget_spent\` = COALESCE(\`commerce_budget_spent\`, 0) + ${amount}
-            WHERE \`id\` = ${Number(campaignId)}
-              AND (\`commerce_budget_cap\` IS NULL OR COALESCE(\`commerce_budget_spent\`, 0) + ${amount} <= \`commerce_budget_cap\`)`,
+        sql`UPDATE marketing_campaigns
+            SET commerce_budget_spent = COALESCE(commerce_budget_spent, 0) + ${amount}
+            WHERE id = ${Number(campaignId)}
+              AND (commerce_budget_cap IS NULL OR COALESCE(commerce_budget_spent, 0) + ${amount} <= commerce_budget_cap)`,
       )
-      if (!res || (res.rowsAffected ?? 0) === 0) {
+      if (affectedRows(res) === 0) {
         throw new APIError('活動預算已用完，優惠內容已更新，請重新整理結帳頁', 409)
       }
     }
@@ -276,11 +279,13 @@ export const afterChangeReversePromotions: CollectionAfterChangeHook = async ({ 
     }
     for (const [campaignId, amount] of byCampaign) {
       if (amount <= 0) continue
-      const drizzle = (req.payload.db as unknown as { drizzle: { run: (q: unknown) => Promise<unknown> } }).drizzle
+      const drizzle = getDrizzle(req.payload)
+      // 不用 MAX()/GREATEST()（方言不同），用 WHERE 擋掉會變負數的情形。
       await drizzle.run(
-        sql`UPDATE \`marketing_campaigns\`
-            SET \`commerce_budget_spent\` = MAX(0, COALESCE(\`commerce_budget_spent\`, 0) - ${amount})
-            WHERE \`id\` = ${Number(campaignId)}`,
+        sql`UPDATE marketing_campaigns
+            SET commerce_budget_spent = COALESCE(commerce_budget_spent, 0) - ${amount}
+            WHERE id = ${Number(campaignId)}
+              AND COALESCE(commerce_budget_spent, 0) >= ${amount}`,
       )
     }
   } catch (err) {
