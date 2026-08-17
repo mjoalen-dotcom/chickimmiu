@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 
-import { checkRateLimit } from '@/lib/rateLimit'
+import { checkRateLimit, clientIpForRateLimit } from '@/lib/rateLimit'
 import { issuePayloadToken } from '@/lib/auth/issuePayloadToken'
 import { verifyGuestClaimToken } from '@/lib/commerce/guestClaimToken'
 import { isSyntheticGuestEmail } from '@/lib/commerce/guestCheckout'
@@ -27,16 +27,6 @@ import { isSyntheticGuestEmail } from '@/lib/commerce/guestCheckout'
 const RATE_LIMIT_MAX = 5
 const RATE_LIMIT_WINDOW_MS = 10 * 60_000
 
-function clientIp(req: Request): string {
-  const real = req.headers.get('x-real-ip')?.trim()
-  if (real) return real
-  const fwd = req.headers.get('x-forwarded-for')
-  if (fwd) {
-    const parts = fwd.split(',').map((p) => p.trim()).filter(Boolean)
-    if (parts.length > 0) return parts[parts.length - 1]!
-  }
-  return 'unknown'
-}
 
 function fail(status: number, error: string, code: string) {
   return NextResponse.json({ success: false, error, code }, { status })
@@ -58,7 +48,7 @@ export async function POST(req: Request) {
   if (password.length < 8) return fail(400, '密碼至少 8 個字元', 'WEAK_PASSWORD')
   if (!acceptTerms) return fail(400, '請勾選同意服務條款', 'TERMS_REQUIRED')
 
-  const rate = checkRateLimit(`guest-claim:${clientIp(req)}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS)
+  const rate = checkRateLimit(`guest-claim:${clientIpForRateLimit(req)}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS)
   if (!rate.allowed) {
     return NextResponse.json(
       { success: false, error: '嘗試次數過多，請稍後再試', code: 'RATE_LIMITED' },
@@ -109,7 +99,7 @@ export async function POST(req: Request) {
     if (guestUserId == null || !orderDoc) return fail(400, '找不到對應的訂單', 'ORDER_NOT_FOUND')
 
     const guestUser = (await payload
-      .findByID({ collection: 'users', id: guestUserId as never, depth: 0, overrideAccess: true })
+      .findByID({ collection: 'customers', id: guestUserId as never, depth: 0, overrideAccess: true })
       .catch(() => null)) as Record<string, unknown> | null
     if (!guestUser) return fail(400, '找不到對應的帳號', 'USER_NOT_FOUND')
     if (guestUser.isGuest !== true) return fail(409, '此訂單已經綁定會員帳號', 'ALREADY_MEMBER')
@@ -119,7 +109,7 @@ export async function POST(req: Request) {
 
     // 信箱已被其他會員使用 → 不搶，請他登入（不透露更多細節）
     const taken = await payload.find({
-      collection: 'users',
+      collection: 'customers',
       where: { email: { equals: email } },
       limit: 1,
       depth: 0,
@@ -136,7 +126,7 @@ export async function POST(req: Request) {
     // ── 就地升級（訂單的 customer 不變 → 訂單自動進會員中心）──────────
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (payload.update as any)({
-      collection: 'users',
+      collection: 'customers',
       id: guestUserId,
       data: {
         email,
@@ -172,14 +162,14 @@ export async function POST(req: Request) {
     })
     try {
       const fresh = (await payload.findByID({
-        collection: 'users',
+        collection: 'customers',
         id: guestUserId as never,
         depth: 0,
         overrideAccess: true,
       })) as unknown as { id: string | number; email?: string } & Record<string, unknown>
       const { token: sessionToken, expiresIn } = await issuePayloadToken(payload, fresh)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const authConfig = (payload as any).collections?.users?.config?.auth
+      const authConfig = (payload as any).collections?.customers?.config?.auth
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cookiePrefix = ((payload as any).config?.cookiePrefix as string | undefined) || 'payload'
       const rawSameSite = authConfig?.cookies?.sameSite

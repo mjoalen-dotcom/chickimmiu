@@ -92,6 +92,14 @@ export interface PricingBreakdown {
   freeShippingThreshold: number | null
   codFee: number
   total: number
+  /**
+   * 下單當下的商品成本合計 Σ(unitCost×qty)。商品成本日後會被改，沒有這份
+   * 快照就無法回頭稽核「這張單/這檔活動實際毛利多少」，30% 毛利底線護欄
+   * 也就無從事後驗證。
+   */
+  itemsCost: number
+  /** false = 有商品缺 unitCost → itemsCost 低估、毛利會被高估，分析時要排除 */
+  costDataComplete: boolean
 }
 
 export interface PricingResult {
@@ -621,6 +629,10 @@ export async function computeOrderPricing(payload: Payload, input: PricingInput)
     freeShippingThreshold,
     codFee,
     total,
+    // 成本快照：含贈品行（贈品是實打實的成本，不能因為售價 0 就不算）。
+    // 缺任一行成本就標 costDataComplete=false，讓下游知道這筆毛利是高估的。
+    itemsCost: lines.reduce((s, l) => s + (l.snapshot.unitCost ?? 0) * l.quantity, 0),
+    costDataComplete: lines.every((l) => l.snapshot.unitCost != null),
   }
 
   const quoteHash = computeQuoteHash({

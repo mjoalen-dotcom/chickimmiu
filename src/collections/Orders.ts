@@ -290,6 +290,24 @@ export const Orders: CollectionConfig = {
           type: 'row',
           fields: [
             {
+              name: 'itemsCostSnapshot',
+              label: '商品成本快照（NT$）',
+              type: 'number',
+              min: 0,
+              admin: { readOnly: true, description: '下單當下 Σ(單件成本×數量)，供事後毛利稽核' },
+            },
+            {
+              name: 'costDataComplete',
+              label: '成本資料完整',
+              type: 'checkbox',
+              admin: { readOnly: true, description: 'false = 有商品沒填成本，毛利會被高估' },
+            },
+          ],
+        },
+        {
+          type: 'row',
+          fields: [
+            {
               name: 'discountTotal',
               label: '活動折抵合計',
               type: 'number',
