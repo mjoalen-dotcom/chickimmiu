@@ -291,6 +291,32 @@ export const Orders: CollectionConfig = {
           type: 'row',
           fields: [
             {
+              name: 'itemsCostSnapshot',
+              label: '商品成本快照（NT$）',
+              type: 'number',
+              min: 0,
+              admin: {
+                readOnly: true,
+                description:
+                  '下單當下 Σ(單件成本×數量)。商品成本日後會被改，沒有這份快照就無法回頭稽核「這張單/這檔活動實際毛利多少」——毛利底線護欄也就無從驗證。',
+              },
+            },
+            {
+              name: 'costDataComplete',
+              label: '成本資料完整',
+              type: 'checkbox',
+              admin: {
+                readOnly: true,
+                description:
+                  'false = 有商品沒填成本，上面的成本快照低估、毛利會被高估，做活動成效分析時要排除或另行處理。',
+              },
+            },
+          ],
+        },
+        {
+          type: 'row',
+          fields: [
+            {
               name: 'discountTotal',
               label: '活動折抵合計',
               type: 'number',

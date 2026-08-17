@@ -5,7 +5,7 @@ import config from '@payload-config'
 
 import { computeOrderPricing } from '@/lib/promotions/pricing'
 import { readReferralCodeFromRequest } from '@/lib/affiliate/referralCookie'
-import { checkRateLimit } from '@/lib/rateLimit'
+import { checkRateLimit, clientIpForRateLimit } from '@/lib/rateLimit'
 import { issuePayloadToken } from '@/lib/auth/issuePayloadToken'
 import {
   syntheticGuestEmail,
@@ -43,22 +43,6 @@ function fail(status: number, error: string, code: string, extra?: Record<string
   return NextResponse.json({ success: false, error, code, ...extra }, { status })
 }
 
-/**
- * 限流用的來源 IP。
- * ⚠️ 不可取 X-Forwarded-For 的**第一段** —— 那段是 client 自己送的，攻擊者每次換一個
- * 假 IP 就能無限繞過限流。nginx 會設 X-Real-IP，並把真正的來源附加在 XFF 最後一段，
- * 所以優先讀 X-Real-IP，退而取 XFF 的最後一段。
- */
-function clientIp(req: Request): string {
-  const real = req.headers.get('x-real-ip')?.trim()
-  if (real) return real
-  const fwd = req.headers.get('x-forwarded-for')
-  if (fwd) {
-    const parts = fwd.split(',').map((p) => p.trim()).filter(Boolean)
-    if (parts.length > 0) return parts[parts.length - 1]!
-  }
-  return 'unknown'
-}
 
 export async function POST(req: Request) {
   let body: unknown
@@ -68,7 +52,7 @@ export async function POST(req: Request) {
     return fail(400, '請求格式錯誤', 'INVALID_BODY')
   }
 
-  const rate = checkRateLimit(`guest-order:${clientIp(req)}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS)
+  const rate = checkRateLimit(`guest-order:${clientIpForRateLimit(req)}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS)
   if (!rate.allowed) {
     return NextResponse.json(
       { success: false, error: '嘗試次數過多，請稍後再試', code: 'RATE_LIMITED' },
@@ -228,6 +212,9 @@ export async function POST(req: Request) {
             pricingVersion: pricing.quote.pricingVersion,
             serverEnforced: true,
             quoteHash: pricing.quote.quoteHash,
+            // 訪客單走 local API、不經 beforeChangeServerPricing，成本快照要自己寫
+            itemsCostSnapshot: b.itemsCost,
+            costDataComplete: b.costDataComplete,
             discountTotal: b.promotionDiscount,
             shippingDiscountTotal: pricing.evaluation?.shippingDiscountTotal ?? 0,
             appliedPromotionSnapshots: pricing.evaluation?.applications ?? [],

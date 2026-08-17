@@ -4,6 +4,7 @@ import config from '@payload-config'
 
 import { computeOrderPricing, type RawCartItem } from '@/lib/promotions/pricing'
 import { readReferralCodeFromRequest } from '@/lib/affiliate/referralCookie'
+import { checkRateLimit, clientIpForRateLimit } from '@/lib/rateLimit'
 
 /**
  * POST /api/pricing/quote（CHIC Commerce OS P0-B）
@@ -30,7 +31,31 @@ interface QuoteBody {
   paymentMethod?: string | null
 }
 
+/**
+ * 限流：這支刻意**不要求登入**（訪客也要看得到購物車金額），所以 IP 限流是
+ * 唯一的濫用防線。一次報價會打好幾次 DB（商品／規則／活動／券／用量／物流），
+ * 不設限等於開放一個高成本端點給全世界。
+ *
+ * 額度取捨：前台 useCartQuote 已 debounce 400ms，真人一個 session 大概數十次；
+ * 120/分鐘（≈2/秒）對真人綽綽有餘（含辦公室共用 IP 的情形），對腳本則是有效
+ * 上限。
+ */
+const RATE_LIMIT_MAX = 120
+const RATE_LIMIT_WINDOW_MS = 60_000
+
 export async function POST(request: Request) {
+  const rate = checkRateLimit(
+    `pricing-quote:${clientIpForRateLimit(request)}`,
+    RATE_LIMIT_MAX,
+    RATE_LIMIT_WINDOW_MS,
+  )
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { ok: false, errors: ['rate_limited'] },
+      { status: 429, headers: { 'Retry-After': String(rate.retryAfter) } },
+    )
+  }
+
   let body: QuoteBody = {}
   try {
     body = (await request.json()) as QuoteBody

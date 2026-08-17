@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Where } from 'payload'
+import { requireAdminApi } from '@/lib/auth/requireAdminApi'
 
 /**
  * 行銷活動 API
@@ -20,6 +21,9 @@ const TIER_FRONT_NAMES: Record<string, string> = {
 
 export async function GET(req: NextRequest) {
   try {
+    const guard = await requireAdminApi(req)
+    if (!guard.ok) return guard.response
+    const payload = guard.payload
     const { searchParams } = req.nextUrl
     const page = parseInt(searchParams.get('page') || '1', 10)
     const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100)
@@ -30,7 +34,6 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search')
     const sortBy = searchParams.get('sortBy') || '-createdAt'
 
-    const payload = await getPayload({ config })
 
     const conditions: Where[] = []
 
@@ -118,6 +121,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const guard = await requireAdminApi(req)
+    if (!guard.ok) return guard.response
+    const payload = guard.payload
     const body = await req.json()
     const {
       campaignName,
@@ -152,7 +158,6 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const payload = await getPayload({ config })
 
     // 檢查 slug 是否已存在
     const existing = await payload.find({

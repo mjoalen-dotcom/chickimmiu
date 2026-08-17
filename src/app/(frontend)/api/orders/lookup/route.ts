@@ -3,7 +3,7 @@ import { timingSafeEqual, createHash } from 'node:crypto'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 
-import { checkRateLimit } from '@/lib/rateLimit'
+import { checkRateLimit, clientIpForRateLimit } from '@/lib/rateLimit'
 import { parseLookupIdentifier, phoneMatches } from '@/lib/commerce/orderLookup'
 
 /**
@@ -23,16 +23,6 @@ import { parseLookupIdentifier, phoneMatches } from '@/lib/commerce/orderLookup'
 const RATE_LIMIT_MAX = 10
 const RATE_LIMIT_WINDOW_MS = 10 * 60_000
 
-function clientIp(req: Request): string {
-  const real = req.headers.get('x-real-ip')?.trim()
-  if (real) return real
-  const fwd = req.headers.get('x-forwarded-for')
-  if (fwd) {
-    const parts = fwd.split(',').map((p) => p.trim()).filter(Boolean)
-    if (parts.length > 0) return parts[parts.length - 1]!
-  }
-  return 'unknown'
-}
 
 /** 長度固定的比較，避免以字串長度側漏 */
 function emailMatches(a: string, b: string): boolean {
@@ -78,7 +68,7 @@ export async function POST(req: Request) {
     )
   }
 
-  const rate = checkRateLimit(`order-lookup:${clientIp(req)}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS)
+  const rate = checkRateLimit(`order-lookup:${clientIpForRateLimit(req)}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS)
   if (!rate.allowed) {
     return NextResponse.json(
       { success: false, error: '查詢次數過多，請稍後再試', code: 'RATE_LIMITED' },

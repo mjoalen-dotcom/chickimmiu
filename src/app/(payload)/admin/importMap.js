@@ -91,6 +91,7 @@ import { default as default_6935afc6ffc87a7d434a45937e35c56e } from '@/component
 import { default as default_340cf3538fa47d0416e0abd461790ca4 } from '@/components/admin/AdminStyles'
 import { default as default_550b036f5ba594f02403b10f8dc4b8c7 } from '@/components/admin/NavScrollPersist'
 import { default as default_c4734b417dd2f37db2adf0e6ec330b48 } from '@/components/admin/AdminUserMenu'
+import { default as default_1f5088ade160c51a8bdf9e95b593e24a } from '@/components/admin/OpsCopilotView'
 import { default as default_870d6594408b76ace6f11f3de206bdb6 } from '@/components/admin/BlogStudioView'
 import { default as default_2d06cb1f7cc5e626d7a62ddfe11d9bc5 } from '@/components/admin/BlogAlbumsView'
 import { default as default_b49611ccd828469519fd79e264a9eb51 } from '@/components/admin/HelpView'
@@ -202,6 +203,7 @@ export const importMap = {
   "@/components/admin/AdminStyles#default": default_340cf3538fa47d0416e0abd461790ca4,
   "@/components/admin/NavScrollPersist#default": default_550b036f5ba594f02403b10f8dc4b8c7,
   "@/components/admin/AdminUserMenu#default": default_c4734b417dd2f37db2adf0e6ec330b48,
+  "@/components/admin/OpsCopilotView#default": default_1f5088ade160c51a8bdf9e95b593e24a,
   "@/components/admin/BlogStudioView#default": default_870d6594408b76ace6f11f3de206bdb6,
   "@/components/admin/BlogAlbumsView#default": default_2d06cb1f7cc5e626d7a62ddfe11d9bc5,
   "@/components/admin/HelpView#default": default_b49611ccd828469519fd79e264a9eb51,

@@ -71,3 +71,25 @@ export function checkRateLimit(
 export function _resetRateLimitForTests(): void {
   buckets.clear()
 }
+
+/**
+ * 限流用的來源 IP（唯一正確實作，勿各自複製）
+ * ─────────────────────────────────────────────
+ * ⚠️ 絕不可取 X-Forwarded-For 的**第一段**——那段是 client 自己送的，
+ * 攻擊者每次換一個假 IP 就能無限繞過限流。nginx 會設 X-Real-IP，並把真正
+ * 的來源附加在 XFF 的**最後一段**，所以優先讀 X-Real-IP，退而取 XFF 末段。
+ *
+ * 2026-08-17 稽核：當時 5 個自訂限流各自實作，其中
+ * newsletter/subscribe 與 kim-blog/analytics/track 取的是第一段（可繞過），
+ * 已全部改用本函式。
+ */
+export function clientIpForRateLimit(req: Request): string {
+  const real = req.headers.get('x-real-ip')?.trim()
+  if (real) return real
+  const fwd = req.headers.get('x-forwarded-for')
+  if (fwd) {
+    const parts = fwd.split(',').map((p) => p.trim()).filter(Boolean)
+    if (parts.length > 0) return parts[parts.length - 1]!
+  }
+  return 'unknown'
+}

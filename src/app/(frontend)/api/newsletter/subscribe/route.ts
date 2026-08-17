@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { clientIpForRateLimit } from '@/lib/rateLimit'
 
 /**
  * POST /api/newsletter/subscribe  { email, name?, source?, locale? }
@@ -69,11 +70,6 @@ function json(
   return NextResponse.json(body, { status, headers: corsHeaders(req) })
 }
 
-function clientIp(req: NextRequest): string | undefined {
-  const xff = req.headers.get('x-forwarded-for')
-  if (xff) return xff.split(',')[0]!.trim()
-  return req.headers.get('x-real-ip') || undefined
-}
 
 function isRateLimited(ip: string) {
   const now = Date.now()
@@ -94,7 +90,7 @@ export async function POST(req: NextRequest) {
   if (origin && !KIM_BLOG_ALLOWED_ORIGINS.has(origin)) {
     return json(req, { success: false, error: 'origin_not_allowed' }, 403)
   }
-  if (isRateLimited(clientIp(req) || '0.0.0.0')) {
+  if (isRateLimited(clientIpForRateLimit(req) || '0.0.0.0')) {
     return json(req, { success: false, error: '請稍後再試' }, 429)
   }
 
@@ -117,7 +113,7 @@ export async function POST(req: NextRequest) {
     const isKimBlogSubscription = source === 'kim-blog'
     const name = body.name ? String(body.name).trim().slice(0, 120) : undefined
     const locale = body.locale ? String(body.locale).trim().slice(0, 12) : undefined
-    const ipAddress = clientIp(req)
+    const ipAddress = clientIpForRateLimit(req)
     const now = new Date().toISOString()
 
     // 若為登入會員，回連 user（best-effort，未登入則跳過）

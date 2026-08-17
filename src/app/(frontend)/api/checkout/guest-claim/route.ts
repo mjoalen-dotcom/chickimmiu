@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 
-import { checkRateLimit } from '@/lib/rateLimit'
+import { checkRateLimit, clientIpForRateLimit } from '@/lib/rateLimit'
 import { issuePayloadToken } from '@/lib/auth/issuePayloadToken'
 import { verifyGuestClaimToken } from '@/lib/commerce/guestClaimToken'
 import { isSyntheticGuestEmail } from '@/lib/commerce/guestCheckout'
@@ -27,16 +27,6 @@ import { isSyntheticGuestEmail } from '@/lib/commerce/guestCheckout'
 const RATE_LIMIT_MAX = 5
 const RATE_LIMIT_WINDOW_MS = 10 * 60_000
 
-function clientIp(req: Request): string {
-  const real = req.headers.get('x-real-ip')?.trim()
-  if (real) return real
-  const fwd = req.headers.get('x-forwarded-for')
-  if (fwd) {
-    const parts = fwd.split(',').map((p) => p.trim()).filter(Boolean)
-    if (parts.length > 0) return parts[parts.length - 1]!
-  }
-  return 'unknown'
-}
 
 function fail(status: number, error: string, code: string) {
   return NextResponse.json({ success: false, error, code }, { status })
@@ -58,7 +48,7 @@ export async function POST(req: Request) {
   if (password.length < 8) return fail(400, '密碼至少 8 個字元', 'WEAK_PASSWORD')
   if (!acceptTerms) return fail(400, '請勾選同意服務條款', 'TERMS_REQUIRED')
 
-  const rate = checkRateLimit(`guest-claim:${clientIp(req)}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS)
+  const rate = checkRateLimit(`guest-claim:${clientIpForRateLimit(req)}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS)
   if (!rate.allowed) {
     return NextResponse.json(
       { success: false, error: '嘗試次數過多，請稍後再試', code: 'RATE_LIMITED' },

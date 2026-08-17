@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Where } from 'payload'
 import { calculateCampaignMetrics } from '@/lib/marketing/performanceTracker'
+import { requireAdminApi } from '@/lib/auth/requireAdminApi'
 
 /**
  * 單一行銷活動 API
@@ -21,12 +22,14 @@ const TIER_FRONT_NAMES: Record<string, string> = {
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params
-    const payload = await getPayload({ config })
+    const guard = await requireAdminApi(req)
+    if (!guard.ok) return guard.response
+    const payload = guard.payload
 
     const campaign = await payload.findByID({
       collection: 'marketing-campaigns',
@@ -132,8 +135,10 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
+    const guard = await requireAdminApi(req)
+    if (!guard.ok) return guard.response
+    const payload = guard.payload
     const body = await req.json()
-    const payload = await getPayload({ config })
 
     // 驗證活動存在
     const existing = await payload.findByID({
@@ -228,12 +233,14 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params
-    const payload = await getPayload({ config })
+    const guard = await requireAdminApi(req)
+    if (!guard.ok) return guard.response
+    const payload = guard.payload
 
     const existing = await payload.findByID({
       collection: 'marketing-campaigns',

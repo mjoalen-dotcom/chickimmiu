@@ -1,6 +1,7 @@
 import config from '@payload-config'
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
+import { clientIpForRateLimit } from '@/lib/rateLimit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -76,14 +77,6 @@ function json(
   })
 }
 
-function clientIp(request: NextRequest) {
-  return (
-    request.headers.get('cf-connecting-ip') ||
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    '0.0.0.0'
-  )
-}
 
 function isRateLimited(ip: string) {
   const now = Date.now()
@@ -147,7 +140,7 @@ export async function POST(request: NextRequest) {
   if (origin && !allowedOrigins().has(origin)) {
     return json(request, { ok: false, error: 'origin_not_allowed' }, 403)
   }
-  if (isRateLimited(clientIp(request))) {
+  if (isRateLimited(clientIpForRateLimit(request))) {
     return json(request, { ok: false, error: 'rate_limited' }, 429)
   }
 

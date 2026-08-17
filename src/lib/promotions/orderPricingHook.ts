@@ -182,6 +182,10 @@ export const beforeChangeServerPricing: CollectionBeforeChangeHook = async ({ da
     pricingVersion: result.quote.pricingVersion,
     serverEnforced: true,
     quoteHash: result.quote.quoteHash,
+    // 成本快照：商品成本日後會被改，沒有這份就無法回頭稽核這張單/這檔活動的
+    // 真實毛利，30% 毛利底線護欄也無從事後驗證。
+    itemsCostSnapshot: b.itemsCost,
+    costDataComplete: b.costDataComplete,
     discountTotal: b.promotionDiscount,
     shippingDiscountTotal: evaluation?.shippingDiscountTotal ?? 0,
     appliedPromotionSnapshots: evaluation?.applications ?? [],
