@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 import { computeOrderPricing, type RawCartItem } from '@/lib/promotions/pricing'
+import { readReferralCodeFromRequest } from '@/lib/affiliate/referralCookie'
 
 /**
  * POST /api/pricing/quote（CHIC Commerce OS P0-B）
@@ -58,6 +59,8 @@ export async function POST(request: Request) {
       channel: 'web',
       shippingMethodId: body.shippingMethodId ?? null,
       paymentMethod: body.paymentMethod ?? null,
+      // 伺服器端從 cookie 讀，刻意不看 body（見 referralCookie.ts 註解）
+      referralCode: readReferralCodeFromRequest(request) ?? null,
     })
 
     if (!result.ok) {

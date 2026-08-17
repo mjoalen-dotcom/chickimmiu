@@ -153,6 +153,12 @@ interface ConditionContext {
   orderSubtotal: number
   member: EvaluationInput['member']
   channel: EvaluationInput['channel']
+  /** eligible 行出現過的 productId（toKey 正規化）；cart_contains_all_products 用 */
+  eligibleProductIds: Set<string>
+  /** 本次結帳的推薦碼（已 lowercase）；referral_attributed 用 */
+  referralCode: string | null
+  /** 下單當下月份 1-12（台北時區，呼叫端算）；birthday_month 用 */
+  currentMonth: number | null
 }
 
 function checkConditions(conditions: PromotionCondition[], ctx: ConditionContext): boolean {
@@ -188,6 +194,35 @@ function checkConditions(conditions: PromotionCondition[], ctx: ConditionContext
       case 'channel_in':
         if (!c.values.includes(ctx.channel)) return false
         break
+      case 'cart_contains_all_products': {
+        // 空清單視為設定錯誤 → fail closed（不要讓「沒設商品」等同無條件通過）
+        if (c.values.length === 0) return false
+        for (const p of c.values) {
+          if (!ctx.eligibleProductIds.has(toKey(p))) return false
+        }
+        break
+      }
+      case 'repeat_purchase': {
+        // 未登入沒有購買史可言：要求回購時一律不成立
+        if (!ctx.member) return c.value === false
+        const isRepeat = (ctx.member.orderCount ?? 0) > 0
+        if (isRepeat !== c.value) return false
+        break
+      }
+      case 'birthday_month': {
+        if (!ctx.member || ctx.currentMonth == null) return c.value === false
+        const isBirthdayMonth =
+          ctx.member.birthdayMonth != null && ctx.member.birthdayMonth === ctx.currentMonth
+        if (isBirthdayMonth !== c.value) return false
+        break
+      }
+      case 'referral_attributed': {
+        if (!ctx.referralCode) return false
+        if (c.values && c.values.length > 0) {
+          if (!c.values.some((v) => String(v).toLowerCase() === ctx.referralCode)) return false
+        }
+        break
+      }
       default: {
         // 未知條件型別 → 視為不成立（fail closed）
         return false
@@ -447,6 +482,9 @@ export function evaluatePromotions(input: EvaluationInput): EvaluationResult {
       orderSubtotal,
       member: input.member,
       channel: input.channel,
+      eligibleProductIds: new Set(eligible.map((l) => toKey(l.line.productId))),
+      referralCode: input.referralCode ? String(input.referralCode).toLowerCase() : null,
+      currentMonth: input.currentMonth ?? null,
     })
     if (!condOk) {
       reject(rule, ['condition_not_met'])

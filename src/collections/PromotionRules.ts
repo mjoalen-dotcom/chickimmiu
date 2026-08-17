@@ -264,13 +264,49 @@ export const PromotionRules: CollectionConfig = {
               options: ['VIP1', 'VIP2', 'POT1', 'REG1', 'REG2', 'RISK1', 'RISK2', 'NEW1', 'SLP1', 'BLK1'],
               admin: { description: '預設建議排除 BLK1（黑名單）' },
             },
+            {
+              name: 'segmentsIn',
+              label: '限定分群',
+              type: 'select',
+              hasMany: true,
+              options: ['VIP1', 'VIP2', 'POT1', 'REG1', 'REG2', 'RISK1', 'RISK2', 'NEW1', 'SLP1', 'BLK1'],
+              admin: {
+                description:
+                  '空 = 不限。只有列在這裡的分群才吃得到這條規則；沉睡召回選 SLP1。與「排除分群」可並用（先排除再限定）。',
+              },
+            },
           ],
+        },
+        {
+          name: 'requireAllProducts',
+          label: '必須同時購買（買 A + B）',
+          type: 'relationship',
+          relationTo: 'products',
+          hasMany: true,
+          admin: {
+            description:
+              '空 = 不限。設了就必須「每一件」都在購物車裡才成立。注意這是 AND，跟上面「適用範圍」的 include 清單（OR）不同——只用 include 列 A、B 的話，買 2 件 A 也會過。列在這裡的商品也必須落在適用範圍內，否則永遠湊不齊。',
+          },
         },
         {
           type: 'row',
           fields: [
             { name: 'membersOnly', label: '限登入會員', type: 'checkbox', defaultValue: false },
             { name: 'firstPurchaseOnly', label: '限首購', type: 'checkbox', defaultValue: false },
+            {
+              name: 'repeatPurchaseOnly',
+              label: '限回購',
+              type: 'checkbox',
+              defaultValue: false,
+              admin: { description: '已有成立訂單的會員才吃得到（與「限首購」互斥，勿同時勾）' },
+            },
+            {
+              name: 'birthdayMonthOnly',
+              label: '限生日月',
+              type: 'checkbox',
+              defaultValue: false,
+              admin: { description: '會員生日月份 == 下單當月（台北時區）。未填生日的會員不成立。' },
+            },
             {
               name: 'channels',
               label: '限通路',
@@ -282,6 +318,29 @@ export const PromotionRules: CollectionConfig = {
                 { label: 'LINE', value: 'line' },
               ],
               admin: { description: '空 = 不限' },
+            },
+          ],
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'referralRequired',
+              label: '限推薦連結進來（KOL / 分潤）',
+              type: 'checkbox',
+              defaultValue: false,
+              admin: { description: '需帶 ?ref= 推薦碼（存 30 天 cookie，伺服器端讀取，不信任前端）' },
+            },
+            {
+              name: 'referralCodesIn',
+              label: '限定推薦碼',
+              type: 'array',
+              admin: {
+                description: '空 = 任何推薦碼皆可（需勾左邊）。填了就只有這些碼吃得到，大小寫不敏感。',
+                condition: (_d, sibling) =>
+                  Boolean((sibling as Record<string, unknown> | undefined)?.referralRequired),
+              },
+              fields: [{ name: 'code', label: '推薦碼', type: 'text', required: true }],
             },
           ],
         },

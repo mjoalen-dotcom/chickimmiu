@@ -26,6 +26,7 @@ import { affectedRows, getDrizzle } from '../db/dialectSafeSql'
 import type { CollectionBeforeChangeHook, CollectionAfterChangeHook } from 'payload'
 
 import { computeOrderPricing, type RawCartItem } from './pricing'
+import { readReferralCodeFromRequest } from '../affiliate/referralCookie'
 import { loadPromotionSettings } from './snapshots'
 
 const relId = (v: unknown): number | string | null => {
@@ -81,6 +82,18 @@ export const beforeChangeServerPricing: CollectionBeforeChangeHook = async ({ da
     ...(typeof data.couponCode === 'string' ? [data.couponCode] : []),
   ].filter(Boolean)
 
+  // 推薦碼決定 referral_attributed 規則能不能套用（KOL 專屬折扣），所以來源必須可信：
+  // 一律從 request 的 Cookie header 讀，**絕不採信 data.affiliateInfo.referralCode**
+  // ——那個欄位在登入結帳路徑上是 client 送上來的，可以隨便填別人的 KOL 碼。
+  // （local API 路徑在本 hook 開頭就 early return 了，那條由 guest-order route
+  // 自己計價並自行從 cookie 讀，不經過這裡。）
+  let referralCode: string | null = null
+  try {
+    referralCode = readReferralCodeFromRequest(req as unknown as Request) ?? null
+  } catch {
+    referralCode = null
+  }
+
   const result = await computeOrderPricing(req.payload, {
     items,
     couponCodes,
@@ -88,6 +101,7 @@ export const beforeChangeServerPricing: CollectionBeforeChangeHook = async ({ da
     channel: 'web',
     shippingMethodId: relId((data.shippingMethod as Record<string, unknown> | undefined)?.method),
     paymentMethod: typeof data.paymentMethod === 'string' ? data.paymentMethod : null,
+    referralCode,
   })
 
   if (!result.ok) {

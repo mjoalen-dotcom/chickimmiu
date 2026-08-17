@@ -43,6 +43,22 @@ export type PromotionCondition =
   | { type: 'is_member'; value: boolean }
   | { type: 'first_purchase'; value: boolean }
   | { type: 'channel_in'; values: Array<'web' | 'app' | 'line'> }
+  /**
+   * 買 A + B：eligible 行必須「同時」出現這裡列的每一個 productId。
+   * 用 eligible 行（scope 篩過的）判定，所以跟 scope 是 AND 關係——
+   * 被 scope 排除的商品不算數，語意上「這條規則看得到的商品裡要湊齊這些」。
+   * 這是 scope include 清單做不到的事：include 是 OR，買 2×A 也會過。
+   */
+  | { type: 'cart_contains_all_products'; values: Array<number | string> }
+  /** 回購：已有成立訂單（與 first_purchase 互補） */
+  | { type: 'repeat_purchase'; value: boolean }
+  /** 生日月：會員生日的月份 == 下單當下（台北時區）的月份 */
+  | { type: 'birthday_month'; value: boolean }
+  /**
+   * KOL / 推薦歸因：values 空 = 只要求「有帶任何推薦碼」；
+   * values 有值 = 推薦碼必須是其中之一（大小寫不敏感）。
+   */
+  | { type: 'referral_attributed'; values?: string[] }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 效果（then）
@@ -180,6 +196,10 @@ export interface MemberSnapshot {
   segmentSlugs: string[]
   isFirstPurchase?: boolean
   blocked?: boolean
+  /** 歷史成立訂單數；repeat_purchase 條件用（isFirstPurchase 是它的補集） */
+  orderCount?: number
+  /** 生日月份 1-12（UTC 取月，與 memberAnalytics/birthdayEngine 同一套算法）；未填生日 = null */
+  birthdayMonth?: number | null
 }
 
 export interface UsageSnapshot {
@@ -201,6 +221,16 @@ export interface EvaluationInput {
   shippingFee: number
   rules: PromotionRuleSnapshot[]
   usage: UsageSnapshot
+  /**
+   * 本次結帳帶到的推薦碼（來源：?ref= 存的 30 天 cookie，伺服器端讀）。
+   * referral_attributed 條件用。null/undefined = 無歸因。
+   */
+  referralCode?: string | null
+  /**
+   * 下單當下的月份 1-12（台北時區，由呼叫端算好傳入）。
+   * birthday_month 條件用；evaluator 不自己算時區。
+   */
+  currentMonth?: number
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
