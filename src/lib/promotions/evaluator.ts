@@ -642,6 +642,7 @@ export function evaluatePromotions(input: EvaluationInput): EvaluationResult {
         type: 'grant_reward',
         rewardKey: rule.then.rewardKey,
         quantity: rule.then.quantity,
+        ...(rule.then.rewardType ? { rewardType: rule.then.rewardType } : {}),
       })
     }
 

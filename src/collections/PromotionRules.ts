@@ -485,6 +485,25 @@ export const PromotionRules: CollectionConfig = {
               },
             },
             {
+              name: 'rewardType',
+              label: '獎項類型',
+              type: 'select',
+              options: [
+                { label: '免運券', value: 'free_shipping_coupon' },
+                { label: '電影券（實體）', value: 'movie_ticket_physical' },
+                { label: '電影券（電子）', value: 'movie_ticket_digital' },
+                { label: '優惠券', value: 'coupon' },
+                { label: '贈品（實體）', value: 'gift_physical' },
+                { label: '徽章', value: 'badge' },
+                { label: '客服履行兌換券', value: 'voucher' },
+              ],
+              admin: {
+                description: '對應寶物箱（UserRewards）的獎項類型；留空 = 客服履行兌換券',
+                condition: (_d, sibling) =>
+                  (sibling as Record<string, unknown> | undefined)?.effectType === 'grant_reward',
+              },
+            },
+            {
               name: 'rewardKey',
               label: '獎勵代碼',
               type: 'text',

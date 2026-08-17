@@ -13,6 +13,7 @@ import type {
   PromotionEffect,
   PromotionRuleSnapshot,
   UsageSnapshot,
+  UserRewardType,
 } from './types'
 
 export const PRICING_VERSION = 'pe-v1'
@@ -184,7 +185,14 @@ export function ruleDocToSnapshot(
         then = { type: 'points_multiplier', multiplier: num(effectGroup.multiplier) ?? 1 }
         break
       case 'grant_reward':
-        then = { type: 'grant_reward', rewardKey: String(effectGroup.rewardKey ?? ''), quantity: 1 }
+        then = {
+          type: 'grant_reward',
+          rewardKey: String(effectGroup.rewardKey ?? ''),
+          quantity: 1,
+          ...(typeof effectGroup.rewardType === 'string' && effectGroup.rewardType
+            ? { rewardType: effectGroup.rewardType as UserRewardType }
+            : {}),
+        }
         break
       default:
         return null
