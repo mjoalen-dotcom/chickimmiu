@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
   ].join(',')
   const url = new URL(`${apiBase}/${version}/${encodeURIComponent(userId)}/media`)
   url.searchParams.set('fields', fields)
-  url.searchParams.set('limit', '12')
+  url.searchParams.set('limit', '32')
 
   try {
     const graphResponse = await fetch(url, {
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
           InstagramApiItem =>
           Boolean(item.id && item.media_type && item.media_url && item.permalink),
       )
-      .slice(0, 6)
+      .slice(0, 32)
       .map((item) => ({
         id: item.id,
         caption: item.caption?.slice(0, 500),

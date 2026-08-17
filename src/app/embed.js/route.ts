@@ -6,10 +6,14 @@ const loader = String.raw`(() => {
   const source = new URL(script.src);
   const target = script.parentElement || document.body;
   const host = window.location.host;
+  const requestedHeight = Number(script.getAttribute('data-height'));
+  const initialHeight = Number.isFinite(requestedHeight) && requestedHeight >= 120 && requestedHeight <= 1200
+    ? Math.round(requestedHeight)
+    : 420;
   const frame = document.createElement('iframe');
   frame.title = script.getAttribute('data-title') || '社群牆';
   frame.loading = 'lazy';
-  frame.style.cssText = 'border:0;display:block;width:100%;height:420px;overflow:hidden;background:transparent;';
+  frame.style.cssText = 'border:0;display:block;width:100%;height:' + initialHeight + 'px;overflow:hidden;background:transparent;';
   frame.setAttribute('scrolling', 'no');
   frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
 

@@ -124,7 +124,7 @@ const nextConfig = {
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-ancestors 'self' https: http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'none'",
+            value: "default-src 'self'; img-src 'self' data: blob: https://pre.chickimmiu.com https://*.cdninstagram.com https://*.fbcdn.net; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-ancestors 'self' https: http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'none'",
           },
         ],
       },

@@ -3,8 +3,10 @@ import { headers } from 'next/headers'
 
 import { DemoWall, defaultDemoWallSettings } from '@/components/social-wall/DemoWall'
 import { EmbedResizeReporter } from '@/components/social-wall/EmbedResizeReporter'
+import { SnapStyleWall } from '@/components/social-wall/SnapStyleWall'
 import { normalizeWidgetHost } from '@/lib/social-wall/domain-policy'
 import { verifyEmbedToken, SOCIAL_WALL_DEVELOPMENT_SECRET } from '@/lib/social-wall/embed-token'
+import { loadKimWallFeed } from '@/lib/social-wall/kim-wall-feed'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,10 +51,18 @@ export default async function SocialWallEmbedPage({ params, searchParams }: Embe
     return <main className="sw-embed-error"><strong>此社群牆無法載入</strong><span>請確認網域授權或重新取得嵌入碼。</span></main>
   }
 
+  const theme = query.theme ?? 'light'
+  const wall =
+    publicId === 'kim-lafayette-demo' ? (
+      <SnapStyleWall feed={await loadKimWallFeed()} theme={theme} />
+    ) : (
+      <DemoWall settings={{ ...defaultDemoWallSettings, theme }} />
+    )
+
   return (
     <main className="sw-embed-root">
       <EmbedResizeReporter widgetId={publicId} />
-      <DemoWall settings={{ ...defaultDemoWallSettings, theme: query.theme ?? 'light' }} />
+      {wall}
     </main>
   )
 }
