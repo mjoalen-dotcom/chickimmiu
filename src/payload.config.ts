@@ -38,6 +38,7 @@ import { Refunds } from './collections/Refunds'
 import { ShippingMethods } from './collections/ShippingMethods'
 import { UGCPosts } from './collections/UGCPosts'
 import { PointsRedemptions } from './collections/PointsRedemptions'
+import { CampaignActivities } from './collections/CampaignActivities'
 import { MarketingCampaigns } from './collections/MarketingCampaigns'
 import { PromotionRules } from './collections/PromotionRules'
 import { PromotionApplications } from './collections/PromotionApplications'
@@ -385,6 +386,10 @@ export default buildConfig({
           Component: '@/components/admin/HelpView',
           path: '/help',
         },
+        campaignStudio: {
+          Component: '@/components/admin/CampaignStudioView',
+          path: '/campaign-studio',
+        },
         memberAnalytics: {
           Component: '@/components/admin/MemberAnalyticsView',
           path: '/member-analytics',
@@ -501,6 +506,7 @@ export default buildConfig({
     GiftRules,
     Bundles,
     MarketingCampaigns,
+    CampaignActivities,
     PromotionRules, // Campaign Engine：版本化促銷規則（活動 Root 的子規則）
     PromotionApplications, // Campaign Engine：促銷套用不可變交易紀錄
     FestivalTemplates,
