@@ -100,7 +100,12 @@ export const MarketingCampaigns: CollectionConfig = {
     afterChange: [
       // P0-C §6.2：稽核軌跡。工作單要求「任何 active/paused/ended 變更寫入
       // Audit Log：操作者、前後值、原因、版本與時間」——原本完全沒有。
-      // 刻意只記不擋：寫入失敗不讓活動存檔失敗，但記 error log。
+      //
+      // 稽核寫入沿用同一個 transaction（見 campaignAudit.ts 的外鍵死鎖說明），
+      // 因此語意是 fail-closed：稽核寫不進去，這次變更也不會存檔。對一個會直接
+      // 花錢的物件來說「有變更卻查不到紀錄」比「存不了檔」更糟，這是刻意取捨。
+      // 下面的 catch 只能攔到非 DB 層的錯（PG 一旦報錯整條 transaction 就作廢），
+      // 留著是為了讓 error log 有內容可查，不是為了讓存檔繼續。
       async ({ doc, previousDoc, operation, req }) => {
         try {
           await recordCampaignActivity({ payload: req.payload, req, doc, previousDoc, operation })
