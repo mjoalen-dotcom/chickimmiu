@@ -37,7 +37,7 @@ export async function grantRegistrationReferralReward(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const p = payload as any
 
-  const user = (await p.findByID({ collection: 'customers', id: userId, depth: 0 })) as
+  const user = (await p.findByID({ collection: 'users', id: userId, depth: 0 })) as
     | Record<string, unknown>
     | undefined
   if (!user) return { granted: false, reason: 'no_user' }
@@ -65,7 +65,7 @@ export async function grantRegistrationReferralReward(
   // 先標旗標（防 afterChange / 並發再進入重複發），再發獎。
   // 取捨：發獎若 throw，旗標已標 → 寧可漏發不重發（雙重入帳對金流更糟）。
   await p.update({
-    collection: 'customers',
+    collection: 'users',
     id: user.id,
     data: { registrationReferralRewarded: true },
     overrideAccess: true,
