@@ -44,6 +44,16 @@ export const PromotionSettings: GlobalConfig = {
       },
     },
     {
+      name: 'requireSeparateApprover',
+      label: '核准需另一位管理員（職責分離）',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        description:
+          '開啟後，送審者不得把自己設為核准人——避免一個人就能決定花多少行銷預算。預設關閉：團隊只有一位管理員時開啟會卡死營運，等有第二位管理員再打開。',
+      },
+    },
+    {
       name: 'serverPricingEnforcement',
       label: '伺服器計價強制（安全防線）',
       type: 'checkbox',

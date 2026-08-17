@@ -94,6 +94,7 @@ import { default as default_c4734b417dd2f37db2adf0e6ec330b48 } from '@/component
 import { default as default_870d6594408b76ace6f11f3de206bdb6 } from '@/components/admin/BlogStudioView'
 import { default as default_2d06cb1f7cc5e626d7a62ddfe11d9bc5 } from '@/components/admin/BlogAlbumsView'
 import { default as default_b49611ccd828469519fd79e264a9eb51 } from '@/components/admin/HelpView'
+import { default as default_97778666f97d9eb46547c569d70956d3 } from '@/components/admin/CampaignStudioView'
 import { default as default_b3d544e796f2e72482a7e1ca06c557a3 } from '@/components/admin/MemberAnalyticsView'
 import { default as default_ff00d70a4277286e7d2a45db4d136e59 } from '@/components/admin/RepeatPurchaseView'
 import { default as default_228bc0748acd5f4d29b08ed7f8ad4ffb } from '@/components/admin/ConsumerInsightsView'
@@ -205,6 +206,7 @@ export const importMap = {
   "@/components/admin/BlogStudioView#default": default_870d6594408b76ace6f11f3de206bdb6,
   "@/components/admin/BlogAlbumsView#default": default_2d06cb1f7cc5e626d7a62ddfe11d9bc5,
   "@/components/admin/HelpView#default": default_b49611ccd828469519fd79e264a9eb51,
+  "@/components/admin/CampaignStudioView#default": default_97778666f97d9eb46547c569d70956d3,
   "@/components/admin/MemberAnalyticsView#default": default_b3d544e796f2e72482a7e1ca06c557a3,
   "@/components/admin/RepeatPurchaseView#default": default_ff00d70a4277286e7d2a45db4d136e59,
   "@/components/admin/ConsumerInsightsView#default": default_228bc0748acd5f4d29b08ed7f8ad4ffb,

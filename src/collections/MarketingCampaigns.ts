@@ -1,4 +1,6 @@
 import type { CollectionConfig } from 'payload'
+import { checkTransition } from '../lib/marketing/campaignLifecycle'
+import { recordCampaignActivity } from '../lib/marketing/campaignAudit'
 
 import { isAdmin } from '../access/isAdmin'
 
@@ -41,6 +43,71 @@ export const MarketingCampaigns: CollectionConfig = {
           }
         }
         return data
+      },
+      // P0-C §6.2：狀態機強制。原本 10 個狀態只是下拉選項，任何轉換都放行
+      // （active 可拉回 draft、ended 可拉回 active），等於沒有生命週期。
+      ({ data, originalDoc, operation }) => {
+        if (!data) return data
+        const from = operation === 'create' ? null : (originalDoc?.status as string | undefined)
+        const to = data.status as string | undefined
+        if (to === undefined) return data // 沒動到 status 的更新不檢查
+
+        const override = Boolean(data.statusOverride ?? originalDoc?.statusOverride)
+        if (override) {
+          const reason = String(data.statusOverrideReason ?? originalDoc?.statusOverrideReason ?? '').trim()
+          if (!reason) {
+            throw new Error('勾選「強制覆寫狀態」時必須填寫「覆寫原因」——這次操作會被寫入活動操作記錄供事後追查')
+          }
+          return data
+        }
+
+        const check = checkTransition(from, to)
+        if (!check.allowed) throw new Error(check.message)
+        return data
+      },
+      // P0-C §6.2：職責分離 — 不得自己核准自己送審的活動。
+      // 預設關閉（小團隊只有一個 admin 時會卡死營運），由
+      // promotion-settings.requireSeparateApprover 開啟。
+      async ({ data, originalDoc, req }) => {
+        if (!data) return data
+        const approvedBy = (data.commerce as Record<string, any> | undefined)?.approval?.approvedBy
+        if (!approvedBy) return data
+        const prevApprovedBy = (originalDoc?.commerce as Record<string, any> | undefined)?.approval?.approvedBy
+        const relId = (v: unknown) =>
+          v == null ? null : typeof v === 'object' ? ((v as Record<string, unknown>).id ?? null) : v
+        // 只在「核准人這次才被設定/變更」時檢查，避免每次存檔都擋
+        if (String(relId(approvedBy)) === String(relId(prevApprovedBy))) return data
+
+        const actorId = (req.user as Record<string, unknown> | null | undefined)?.id
+        if (actorId == null || String(relId(approvedBy)) !== String(actorId)) return data
+
+        try {
+          const settings = (await req.payload.findGlobal({
+            slug: 'promotion-settings' as never,
+          })) as Record<string, unknown>
+          if (settings?.requireSeparateApprover === true) {
+            throw new Error(
+              '職責分離：不可將核准人設為自己。請由另一位管理員核准此活動（此規則由「促銷引擎設定 → 核准需另一位管理員」控制）。',
+            )
+          }
+        } catch (err) {
+          // 只有我們自己丟的職責分離錯誤要往上拋；設定讀取失敗不擋存檔
+          if (err instanceof Error && err.message.startsWith('職責分離')) throw err
+        }
+        return data
+      },
+    ],
+    afterChange: [
+      // P0-C §6.2：稽核軌跡。工作單要求「任何 active/paused/ended 變更寫入
+      // Audit Log：操作者、前後值、原因、版本與時間」——原本完全沒有。
+      // 刻意只記不擋：寫入失敗不讓活動存檔失敗，但記 error log。
+      async ({ doc, previousDoc, operation, req }) => {
+        try {
+          await recordCampaignActivity({ payload: req.payload, req, doc, previousDoc, operation })
+        } catch (err) {
+          req.payload.logger.error({ err, msg: '[campaign-audit] 稽核紀錄寫入失敗（不影響活動存檔）' })
+        }
+        return doc
       },
     ],
   },
@@ -390,6 +457,30 @@ export const MarketingCampaigns: CollectionConfig = {
             },
             { name: 'approvalNote', label: '核准備註', type: 'text' },
           ],
+        },
+      ],
+    },
+    {
+      type: 'row',
+      fields: [
+        {
+          name: 'statusOverride',
+          label: '強制覆寫狀態',
+          type: 'checkbox',
+          defaultValue: false,
+          admin: {
+            description:
+              '狀態機逃生門：正常請照 草稿→送審→核准→排程→上線 依序操作。確實需要例外時勾選並填原因，該次轉換會在活動操作記錄中標記為強制覆寫。',
+          },
+        },
+        {
+          name: 'statusOverrideReason',
+          label: '覆寫原因',
+          type: 'text',
+          admin: {
+            condition: (_d, sibling) =>
+              Boolean((sibling as Record<string, unknown> | undefined)?.statusOverride),
+          },
         },
       ],
     },
