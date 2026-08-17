@@ -46,12 +46,21 @@ export function campaignPointsMultiplier(intents: RewardIntent[]): number {
 /**
  * grant_reward → 寫進既有 UserRewards（寶物箱）。
  *
- * 冪等：以 `sourceRecord` 記 `order:<orderId>:<ruleKey>`，寫入前先查有沒有
- * 同一把 key 的紀錄。付款狀態 hook 可能因為 nested update 重跑，沒有這道
- * 檢查會重複發獎。
+ * 冪等：以「同一張訂單 + 同一個獎項名稱」判重（attachedToOrder + displayName）。
+ * 原本想用 sourceRecord 記 `order:<id>:<ruleKey>`，但那是指向 mini-game-records
+ * 的 relationship，塞不了字串。付款狀態 hook 可能因 nested update 重跑，
+ * 沒有這道檢查會重複發獎。
  *
  * 失敗不拋出——發獎失敗不該讓訂單付款流程整個炸掉，記 log 由人工補發。
  */
+/**
+ * 活動發出的獎項預設效期（天）。
+ * UserRewards.expiresAt 是必填、無預設值，活動獎項又沒有天然的到期日，
+ * 所以在這裡給一個明確的預設而不是讓它是 undefined。
+ * 之後要讓規則作者自訂效期時，改成從 RewardIntent 帶進來即可。
+ */
+const REWARD_EXPIRY_DAYS = 90
+
 export async function grantIntentRewards(
   payload: Payload,
   args: {
@@ -100,6 +109,14 @@ export async function grantIntentRewards(
           amount: qty,
           state: 'unused',
           attachedToOrder: args.orderId,
+          // 🔥 expiresAt 是 required 且沒有 defaultValue、沒有 beforeChange 補值
+          //（UserRewards.ts:162-169）。上一版漏傳，於是每一次 create 都丟
+          // ValidationError「以下欄位無效：過期時間」，被下面自己的 catch 記進 log
+          // 就結束——granted 永遠是 0，外面看起來一切正常，實際上這條發獎路徑
+          // 從上線起一次都沒成功過（2026-08-17 在 pre 實測確認）。
+          // 教訓同 [[feedback-payload-relation-id-normalization]]：只記不擋的 catch
+          // 會把「功能整條沒運作」偽裝成「沒有錯誤」。
+          expiresAt: new Date(Date.now() + REWARD_EXPIRY_DAYS * 86_400_000).toISOString(),
         } as never,
         overrideAccess: true,
       })
