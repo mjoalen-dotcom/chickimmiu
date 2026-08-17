@@ -351,6 +351,60 @@ function computeEffect(
 // 主函式
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * 不作用在「購物車行」上的效果型別。
+ * 這些效果不產生折扣分攤，但**會花錢**（贈品成本、點數面額、獎項價值），
+ * 所以一樣要進活動預算。以前是四個硬編碼的字串比較散在兩處，加一種效果
+ * 就得記得兩邊都改；改成單一常數 + 下面的 exhaustive switch，漏改由 tsc 擋。
+ */
+const NON_LINE_EFFECTS: ReadonlySet<PromotionEffect['type']> = new Set([
+  'free_shipping',
+  'gift_item',
+  'points_multiplier',
+  'grant_reward',
+])
+
+/**
+ * 算出一條規則要佔用多少**活動預算成本**（NT$），與顧客看到的折扣無關。
+ *
+ * 回傳 null = 成本算不出來 → 呼叫端 fail closed 拒絕這條規則
+ *（工作單 §10.1：「成本缺失時 fail closed：不套折扣並記錄 reason」）。
+ * 純函式，所有外部數值都由 snapshots.ts 先查好塞進 effect 裡。
+ */
+export function resolveEffectCost(
+  then: PromotionEffect,
+  ctx: { eligibleSubtotal: number },
+): number | null {
+  switch (then.type) {
+    case 'gift_item': {
+      if (then.unitCostTwd == null || !Number.isFinite(then.unitCostTwd)) return null
+      const qty = Math.max(1, Math.floor(then.quantity || 1))
+      return Math.max(0, Math.round(then.unitCostTwd * qty))
+    }
+    case 'points_multiplier': {
+      const { pointsPerDollar: ppd, pointsToCurrencyRate: rate, multiplier } = then
+      if (ppd == null || rate == null || !(rate > 0) || !(multiplier > 1)) {
+        // multiplier <= 1 不額外發點 → 零成本；其餘缺值一律算不出
+        return multiplier != null && multiplier <= 1 ? 0 : null
+      }
+      const factor = Number.isFinite(then.costSafetyFactor) && then.costSafetyFactor > 0
+        ? then.costSafetyFactor
+        : 1
+      const extraPoints = ctx.eligibleSubtotal * ppd * (multiplier - 1)
+      return Math.max(0, Math.ceil((extraPoints / rate) * factor))
+    }
+    // 免運的成本就是運費抵扣本身，由呼叫端以 shippingDiscountAmount 計入，這裡不重複算
+    case 'free_shipping':
+      return 0
+    // grant_reward 目前 DSL 沒有金額欄位，無法換算 NT$。
+    // 依 P0-B 規格：先計 0 並在 dashboard 列件數，等獎項價值欄位補上再改成真實成本。
+    case 'grant_reward':
+      return 0
+    default:
+      return 0
+  }
+}
+
 export function evaluatePromotions(input: EvaluationInput): EvaluationResult {
   const applications: AppliedPromotion[] = []
   const rejections: RejectedPromotion[] = []
@@ -465,11 +519,7 @@ export function evaluatePromotions(input: EvaluationInput): EvaluationResult {
     const eligibleSubtotal = eligible.reduce((s, l) => s + l.originalValue, 0)
     eligibleSubtotalByRule[rule.ruleKey] = eligibleSubtotal
 
-    const isLineEffect =
-      rule.then.type !== 'free_shipping' &&
-      rule.then.type !== 'gift_item' &&
-      rule.then.type !== 'points_multiplier' &&
-      rule.then.type !== 'grant_reward'
+    const isLineEffect = !NON_LINE_EFFECTS.has(rule.then.type)
     if (isLineEffect && eligible.length === 0) {
       reject(rule, ['no_eligible_lines'])
       pushProgress(rule, eligible, false)
@@ -530,6 +580,8 @@ export function evaluatePromotions(input: EvaluationInput): EvaluationResult {
     let shippingDiscountAmount = 0
     let allocations: LineAllocation[] = []
     let groupsApplied = 0
+    /** 佔用活動預算的成本，與顧客看到的折扣分開（見 types.ts AppliedPromotion） */
+    let budgetCostAmount = 0
 
     if (rule.then.type === 'free_shipping') {
       shippingDiscountAmount = Math.max(0, input.shippingFee - shippingDiscountTotal)
@@ -538,11 +590,17 @@ export function evaluatePromotions(input: EvaluationInput): EvaluationResult {
         continue
       }
       groupsApplied = 1
-    } else if (
-      rule.then.type === 'gift_item' ||
-      rule.then.type === 'points_multiplier' ||
-      rule.then.type === 'grant_reward'
-    ) {
+    } else if (NON_LINE_EFFECTS.has(rule.then.type)) {
+      // 這三種效果不折價，但會花錢（贈品成本／點數面額／獎項價值）。
+      // 以前直接 groupsApplied=1 就跳到落地，完全繞過活動預算檢查 ——
+      // 等於「不折價 = 免費」，budgetCap 對它們形同虛設。
+      const cost = resolveEffectCost(rule.then, { eligibleSubtotal })
+      if (cost == null) {
+        reject(rule, ['missing_cost_data'])
+        pushProgress(rule, eligible, false)
+        continue
+      }
+      budgetCostAmount = cost
       groupsApplied = 1
     } else {
       const outcome = computeEffect(rule.then, eligible, stateByLine)
@@ -563,22 +621,6 @@ export function evaluatePromotions(input: EvaluationInput): EvaluationResult {
           discountAmount,
           eligible.map((l) => ({ lineId: l.line.lineId, weight: l.remaining, capacity: l.remaining })),
         )
-      }
-
-      // 8b. 活動預算（fail closed：campaign_rule 一定要有 budgetRemaining 條目）
-      if (rule.source === 'campaign_rule') {
-        const budgetKey = toKey(rule.campaignId)
-        if (!(budgetKey in input.usage.budgetRemaining)) {
-          reject(rule, ['budget_unknown'])
-          pushProgress(rule, eligible, false)
-          continue
-        }
-        const remainingBudget = input.usage.budgetRemaining[budgetKey]
-        if (remainingBudget != null && discountAmount > remainingBudget) {
-          reject(rule, ['budget_exhausted'])
-          pushProgress(rule, eligible, false)
-          continue
-        }
       }
 
       // 8c. 毛利底線（fail closed：缺任一 eligible 行成本 → 整條不套用）
@@ -607,6 +649,31 @@ export function evaluatePromotions(input: EvaluationInput): EvaluationResult {
 
       if (discountAmount <= 0) {
         reject(rule, ['zero_discount'])
+        pushProgress(rule, eligible, false)
+        continue
+      }
+    }
+
+    // 8b. 活動預算 —— 對**所有**效果型別共用（fail closed）
+    //
+    // 從原本的 else 分支提出來的。兩個原因：
+    //  1. gift_item / points_multiplier / grant_reward 現在有 budgetCostAmount，
+    //     不檢查的話 Alan 拍板的「成本計入活動預算」等於沒做。
+    //  2. free_shipping 原本也繞過這裡，但 orderPricingHook 的原子 SQL **有**把
+    //     運費抵扣算進 budgetSpent —— 於是 evaluator 說可以套、下單時才
+    //     rowsAffected=0 丟 409，顧客看到的是硬錯誤而不是優雅降級。
+    //     現在預算不足會在 evaluator 就變成 budget_exhausted 拒絕。
+    if (rule.source === 'campaign_rule') {
+      const budgetKey = toKey(rule.campaignId)
+      if (!(budgetKey in input.usage.budgetRemaining)) {
+        reject(rule, ['budget_unknown'])
+        pushProgress(rule, eligible, false)
+        continue
+      }
+      const remainingBudget = input.usage.budgetRemaining[budgetKey]
+      const totalCost = discountAmount + shippingDiscountAmount + budgetCostAmount
+      if (remainingBudget != null && totalCost > remainingBudget) {
+        reject(rule, ['budget_exhausted'])
         pushProgress(rule, eligible, false)
         continue
       }
@@ -659,6 +726,7 @@ export function evaluatePromotions(input: EvaluationInput): EvaluationResult {
       effectType: rule.then.type,
       discountAmount,
       shippingDiscountAmount,
+      budgetCostAmount,
       allocations: allocations.filter((a) => a.amount > 0),
       groupsApplied,
       reasonCodes: ['applied'],

@@ -571,7 +571,7 @@ test('效果：贈品/點數倍率/grant_reward → reward intents 不折價', (
     benefitClass: 'order_promo',
     scope: {},
     when: [{ type: 'order_subtotal_gte', value: 1000 }],
-    then: { type: 'gift_item', productId: 99, quantity: 1 },
+    then: { type: 'gift_item', productId: 99, quantity: 1, unitCostTwd: 300 },
     stacking: { stackableWith: 'all' },
   })
   const points = mix2Rule({
@@ -580,7 +580,13 @@ test('效果：贈品/點數倍率/grant_reward → reward intents 不折價', (
     benefitClass: 'order_promo',
     scope: {},
     when: [],
-    then: { type: 'points_multiplier', multiplier: 1.5 },
+    then: {
+      type: 'points_multiplier',
+      multiplier: 1.5,
+      pointsPerDollar: 1,
+      pointsToCurrencyRate: 100,
+      costSafetyFactor: 2.5,
+    },
     stacking: { stackableWith: 'all' },
   })
   const key = mix2Rule({
@@ -837,4 +843,81 @@ test('KOL：指定推薦碼時只認清單內的（大小寫不敏感）', () =>
     input({ rules: [rule], lines: [line({ lineId: 'L1' })], referralCode: 'kolZ' }),
   )
   assert.equal(applied(wrong), false)
+})
+
+test('效果成本：算不出成本 → fail closed 拒絕（不是靜默當 0 成本）', () => {
+  // 贈品查不到成本（unitCostTwd=null，例如 176 件沒有任何成本資料的商品）
+  const giftNoCost = mix2Rule({
+    ruleKey: 'c72:gift-nocost:v1',
+    slug: 'gift-nocost',
+    benefitClass: 'order_promo',
+    scope: {},
+    when: [],
+    then: { type: 'gift_item', productId: 77, quantity: 1, unitCostTwd: null },
+    stacking: { stackableWith: 'all' },
+  })
+  // 點數倍率讀不到換算率設定
+  const ptsNoRate = mix2Rule({
+    ruleKey: 'c72:pts-norate:v1',
+    slug: 'pts-norate',
+    benefitClass: 'order_promo',
+    scope: {},
+    when: [],
+    then: {
+      type: 'points_multiplier',
+      multiplier: 2,
+      pointsPerDollar: null,
+      pointsToCurrencyRate: null,
+      costSafetyFactor: 2.5,
+    },
+    stacking: { stackableWith: 'all' },
+  })
+  const res = evaluatePromotions(
+    input({ rules: [giftNoCost, ptsNoRate], lines: [line({ lineId: 'L1', unitPrice: 1200 })] }),
+  )
+  assert.equal(res.applications.length, 0, '成本算不出來時不可套用')
+  assert.equal(res.rewardIntents.length, 0, '不可發出 reward intent')
+  for (const r of res.rejections) {
+    assert.ok(
+      r.reasonCodes.includes('missing_cost_data'),
+      `應以 missing_cost_data 拒絕，實際：${r.reasonCodes.join(',')}`,
+    )
+  }
+})
+
+test('效果成本：贈品成本會佔用活動預算（Alan 2026-08-17 拍板 #6）', () => {
+  const gift = mix2Rule({
+    ruleKey: 'c72:gift-budget:v1',
+    slug: 'gift-budget',
+    benefitClass: 'order_promo',
+    scope: {},
+    when: [],
+    then: { type: 'gift_item', productId: 99, quantity: 2, unitCostTwd: 300 },
+    stacking: { stackableWith: 'all' },
+  })
+  // 預算 500 < 贈品成本 600 → 應被預算擋下（以前完全不查，等於免費送）
+  const tight = evaluatePromotions(
+    input({
+      rules: [gift],
+      lines: [line({ lineId: 'L1', unitPrice: 1200 })],
+      usage: { perUserApplied: {}, totalApplied: {}, budgetRemaining: { c72: 500 } },
+    }),
+  )
+  assert.equal(tight.applications.length, 0, '預算不足時贈品規則必須被擋下')
+  assert.ok(
+    tight.rejections.some((r) => r.reasonCodes.includes('budget_exhausted')),
+    '應以 budget_exhausted 拒絕',
+  )
+
+  // 預算 1000 > 600 → 可套用，且 budgetCostAmount 要正確
+  const ok = evaluatePromotions(
+    input({
+      rules: [gift],
+      lines: [line({ lineId: 'L1', unitPrice: 1200 })],
+      usage: { perUserApplied: {}, totalApplied: {}, budgetRemaining: { c72: 1000 } },
+    }),
+  )
+  assert.equal(ok.applications.length, 1)
+  assert.equal(ok.applications[0].budgetCostAmount, 600, '2 件 × NT$300')
+  assert.equal(ok.discountTotal, 0, '贈品成本不可變成顧客折扣')
 })
