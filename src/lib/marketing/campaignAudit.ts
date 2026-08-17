@@ -103,8 +103,14 @@ export async function recordCampaignActivity(args: {
     summary = `「${name}」變更：${labels.join('、') || '設定'}`
   }
 
+  // 🔥 必須帶 req（沿用同一個 transaction）。不帶 req 會另開一條連線，而
+  // campaign_activities.campaign_id 的外鍵檢查要對 marketing_campaigns 那一列
+  // 上 KEY SHARE 鎖——該列正被外層尚未 commit 的 transaction 鎖住，於是新
+  // transaction 等外層、外層等 afterChange 回來，後台一按存檔就永遠轉圈。
+  // （已於 pre 用 pg_stat_activity 實測到 wait_event=transactionid 死等）
   await payload.create({
     collection: 'campaign-activities',
+    req,
     data: {
       campaign: doc.id as number | string,
       type,
