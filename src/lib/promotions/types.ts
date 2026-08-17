@@ -111,9 +111,33 @@ export type PromotionEffect =
   /** 免運 */
   | { type: 'free_shipping' }
   /** 滿額贈（不折價，產生 reward intent，由 Reward Orchestrator 落地） */
-  | { type: 'gift_item'; productId: number | string; quantity: number }
+  | {
+      type: 'gift_item'
+      productId: number | string
+      quantity: number
+      /**
+       * 這件贈品的單位成本（NT$）。由 snapshots.ts（唯一 I/O 層）查好餵進來——
+       * evaluator 是純函式，不可自己去查。
+       * null = 查不到成本 → evaluator 會 fail closed 拒絕這條規則
+       *（工作單 §10.1「成本缺失時 fail closed：不套折扣並記錄 reason」）。
+       */
+      unitCostTwd: number | null
+    }
   /** 點數倍率（reward intent；實際發點仍走 points ledger） */
-  | { type: 'points_multiplier'; multiplier: number }
+  | {
+      type: 'points_multiplier'
+      multiplier: number
+      /** 每消費 1 元發幾點（LoyaltySettings.pointsConfig.pointsPerDollar） */
+      pointsPerDollar: number | null
+      /** 幾點折抵 1 元（LoyaltySettings.pointsConfig.pointsToCurrencyRate） */
+      pointsToCurrencyRate: number | null
+      /**
+       * 下單當下無法得知最終發點倍率（會員等級 × 訂閱權益都在付款時才確定），
+       * 所以預留時用這個係數保守高估，付款後再依實際發點差額修正。
+       * 偏商家安全：寧可先多佔預算，也不要事後超支。
+       */
+      costSafetyFactor: number
+    }
   /** 發 XP / Mystery Key 等（reward intent；P1 Member Economy 接手落地） */
   | {
       type: 'grant_reward'
@@ -293,6 +317,18 @@ export interface AppliedPromotion {
   discountAmount: number
   /** 免運抵扣金額 */
   shippingDiscountAmount: number
+  /**
+   * 這條規則佔用的**活動預算成本**（NT$），與折扣完全分開。
+   *
+   * 為什麼不能借用 discountAmount：pricing.ts 會把 discountAmount 加總成
+   * promotionDiscount 並真的從訂單金額扣掉。把贈品成本記進去等於白送顧客
+   * 一筆等額折扣。這一欄只進 marketing_campaigns.commerce_budget_spent，
+   * 不影響顧客付多少。
+   *
+   * 也不可與 Orders.promotion.itemsCostSnapshot 混用——那是整車 COGS
+   *（含顧客自己付錢買的商品），語意完全不同。
+   */
+  budgetCostAmount: number
   allocations: LineAllocation[]
   /** 套用了幾組（every_full_group 時 >1） */
   groupsApplied: number

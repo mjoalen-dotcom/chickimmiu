@@ -110,11 +110,25 @@ export async function loadTierSlugMap(payload: Payload): Promise<Map<string, str
 }
 
 /** 規則 doc（後台授權 UI）→ evaluator snapshot。轉換失敗回 null（fail closed）。 */
+/**
+ * 成本與換算率的查詢結果，由 loadActiveCommerceRules 批次查好後傳進來。
+ * ruleDocToSnapshot 保持同步、無 I/O，避免對每條規則各打一次 DB。
+ */
+export interface RuleCostContext {
+  /** productId(string) → 單位成本 NT$；查不到或無成本資料時為 null */
+  giftCostByProductId: Map<string, number | null>
+  /** 每消費 1 元發幾點 */
+  pointsPerDollar: number | null
+  /** 幾點折抵 1 元 */
+  pointsToCurrencyRate: number | null
+}
+
 export function ruleDocToSnapshot(
   rule: Record<string, unknown>,
   campaign: CampaignLite,
   tierSlugById: Map<string, string>,
   defaultMarginFloorPct: number | null,
+  costCtx?: RuleCostContext,
 ): PromotionRuleSnapshot | null {
   try {
     const effectGroup = (rule.effect ?? {}) as Record<string, unknown>
@@ -178,11 +192,28 @@ export function ruleDocToSnapshot(
       case 'gift_item': {
         const giftProduct = relId(effectGroup.giftProduct)
         if (giftProduct == null) return null
-        then = { type: 'gift_item', productId: giftProduct, quantity: num(effectGroup.giftQuantity) ?? 1 }
+        // 成本由 loadActiveCommerceRules 批次查好。查不到 → null →
+        // evaluator 的 resolveEffectCost 回 null → fail closed 拒絕這條規則。
+        // 這是刻意的：算不出成本就不能判斷會花多少活動預算，寧可不送。
+        const unitCostTwd = costCtx?.giftCostByProductId.get(String(giftProduct)) ?? null
+        then = {
+          type: 'gift_item',
+          productId: giftProduct,
+          quantity: num(effectGroup.giftQuantity) ?? 1,
+          unitCostTwd,
+        }
         break
       }
       case 'points_multiplier':
-        then = { type: 'points_multiplier', multiplier: num(effectGroup.multiplier) ?? 1 }
+        then = {
+          type: 'points_multiplier',
+          multiplier: num(effectGroup.multiplier) ?? 1,
+          pointsPerDollar: costCtx?.pointsPerDollar ?? null,
+          pointsToCurrencyRate: costCtx?.pointsToCurrencyRate ?? null,
+          // 下單時還不知道最終發點倍率（會員等級 1.5x × 訂閱 1.5x 都在付款後才定），
+          // 用 2.5 保守高估先佔預算，付款後再依實際發點差額修正。
+          costSafetyFactor: 2.5,
+        }
         break
       case 'grant_reward':
         then = {
@@ -195,6 +226,10 @@ export function ruleDocToSnapshot(
         }
         break
       default:
+        // 靜默 return null 是這個檔案最危險的一行：後台 select 加了新效果值、
+        // PG enum 也加了，但這裡沒加 case 的話，規則存得進 DB、狀態顯示 active、
+        // evaluator 卻永遠收不到，而且沒有任何錯誤訊息。加一行 warn 讓它至少可查。
+        console.warn(`[promotions/snapshots] 未支援的效果型別「${effectType}」，規則已略過`)
         return null
     }
 
@@ -318,6 +353,67 @@ function campaignToLite(doc: Record<string, unknown>): CampaignLite | null {
  * - campaign killSwitch / paused / ended → 排除
  * - 排程窗仍由 evaluator 按 server now 判定（snapshot 帶 startAt/endAt）
  */
+/**
+ * 批次載入成本換算所需的資料。
+ *
+ * 商品成本的 fallback 鏈很重要：pre 實測 products.cost 只有 55/1395 有值（4%），
+ * 但 sourcing.costTWD 有 1219/1395（87%）。只讀 cost 的話 fail-closed 會擋掉
+ * 96% 的商品，贈品類規則等於不能用。仍有 176 件完全沒有成本資料 —— 那些就該被擋，
+ * 算不出成本就不知道會花掉多少活動預算。
+ */
+export async function loadRuleCostContext(
+  payload: Payload,
+  giftProductIds: string[],
+): Promise<RuleCostContext> {
+  const giftCostByProductId = new Map<string, number | null>()
+
+  if (giftProductIds.length > 0) {
+    try {
+      const res = await payload.find({
+        collection: 'products',
+        where: { id: { in: giftProductIds } },
+        limit: giftProductIds.length,
+        depth: 0,
+        overrideAccess: true,
+      })
+      for (const raw of res.docs as unknown as Array<Record<string, unknown>>) {
+        const sourcing = raw.sourcing as Record<string, unknown> | undefined
+        const candidates = [raw.cost, sourcing?.costTWD]
+        let cost: number | null = null
+        for (const c of candidates) {
+          const n = Number(c)
+          if (Number.isFinite(n) && n > 0) {
+            cost = n
+            break
+          }
+        }
+        giftCostByProductId.set(String(raw.id), cost)
+      }
+    } catch (err) {
+      // 查不到就全部留空 → 下游 fail closed，不要靜默當成 0 成本
+      console.warn('[promotions/snapshots] 贈品成本查詢失敗，相關規則將 fail closed', err)
+    }
+  }
+
+  let pointsPerDollar: number | null = null
+  let pointsToCurrencyRate: number | null = null
+  try {
+    const g = (await payload.findGlobal({ slug: 'loyalty-settings' as never })) as Record<
+      string,
+      unknown
+    >
+    const pc = g?.pointsConfig as Record<string, unknown> | undefined
+    const ppd = Number(pc?.pointsPerDollar)
+    const rate = Number(pc?.pointsToCurrencyRate)
+    if (Number.isFinite(ppd) && ppd > 0) pointsPerDollar = ppd
+    if (Number.isFinite(rate) && rate > 0) pointsToCurrencyRate = rate
+  } catch {
+    // 讀不到設定 → 留 null → points_multiplier 規則 fail closed
+  }
+
+  return { giftCostByProductId, pointsPerDollar, pointsToCurrencyRate }
+}
+
 export async function loadActiveCommerceRules(
   payload: Payload,
   opts: { settings: PromotionEngineSettings; statuses?: string[] },
@@ -361,10 +457,29 @@ export async function loadActiveCommerceRules(
       depth: 0,
       overrideAccess: true,
     })
-    for (const doc of res.docs as Array<Record<string, unknown>>) {
+    const ruleDocs = res.docs as Array<Record<string, unknown>>
+
+    // ── 成本資料：一次批次查完，不對每條規則各打一次 DB ──────────────────
+    const giftProductIds = new Set<string>()
+    for (const doc of ruleDocs) {
+      const eg = (doc.effect ?? {}) as Record<string, unknown>
+      if (eg.effectType === 'gift_item') {
+        const pid = relId(eg.giftProduct)
+        if (pid != null) giftProductIds.add(String(pid))
+      }
+    }
+    const costCtx = await loadRuleCostContext(payload, [...giftProductIds])
+
+    for (const doc of ruleDocs) {
       const campaign = byId.get(String(relId(doc.campaign)))
       if (!campaign) continue
-      const snap = ruleDocToSnapshot(doc, campaign, tierSlugById, opts.settings.defaultMarginFloorPct)
+      const snap = ruleDocToSnapshot(
+        doc,
+        campaign,
+        tierSlugById,
+        opts.settings.defaultMarginFloorPct,
+        costCtx,
+      )
       if (snap) rules.push(snap)
     }
   } catch {
