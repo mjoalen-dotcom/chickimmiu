@@ -2,6 +2,7 @@ import * as migration_20260816_023522_pg_baseline from './20260816_023522_pg_bas
 import * as migration_20260817_035151_p0b_rule_conditions from './20260817_035151_p0b_rule_conditions';
 import * as migration_20260817_042534_p0b_reward_type from './20260817_042534_p0b_reward_type';
 import * as migration_20260817_044059_cost_snapshot from './20260817_044059_cost_snapshot';
+import * as migration_20260817_051044_p0c_campaign_governance from './20260817_051044_p0c_campaign_governance';
 
 export const migrations = [
   {
@@ -22,6 +23,11 @@ export const migrations = [
   {
     up: migration_20260817_044059_cost_snapshot.up,
     down: migration_20260817_044059_cost_snapshot.down,
-    name: '20260817_044059_cost_snapshot'
+    name: '20260817_044059_cost_snapshot',
+  },
+  {
+    up: migration_20260817_051044_p0c_campaign_governance.up,
+    down: migration_20260817_051044_p0c_campaign_governance.down,
+    name: '20260817_051044_p0c_campaign_governance'
   },
 ];
