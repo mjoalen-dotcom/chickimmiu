@@ -8,6 +8,7 @@ import { ArrowLeft, Calendar, User, ArrowRight } from 'lucide-react'
 import { ArticleJsonLd, BreadcrumbJsonLd } from '@/components/seo/JsonLd'
 import { RenderLexical } from '@/components/lexical/RenderLexical'
 import { BrandHeroPlayer } from '@/components/blog/BrandHeroPlayer'
+import { BlogViewBeacon } from '@/components/blog/BlogViewBeacon'
 
 /**
  * 找 published 文章：先用精確 slug match，沒命中時用 prefix `${slug}-%` 找
@@ -191,6 +192,8 @@ export default async function BlogPostPage({ params }: Props) {
 
   return (
     <>
+      {/* 閱讀滿門檻秒數才計一次，計到的是閱讀不是曝光 —— 見 lib/blog/viewCount.ts */}
+      <BlogViewBeacon slug={String(post.slug || '')} />
       <ArticleJsonLd
         title={post.title as string}
         description={(post.excerpt as string) || undefined}

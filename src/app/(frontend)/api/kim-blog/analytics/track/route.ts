@@ -2,6 +2,7 @@ import config from '@payload-config'
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import { clientIpForRateLimit } from '@/lib/rateLimit'
+import { extractBlogSlug, incrementBlogViewCount, shouldCountView } from '@/lib/blog/viewCount'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -218,6 +219,25 @@ export async function POST(request: NextRequest) {
         overrideAccess: true,
       })
       written += 1
+
+      // 金老佛爺部落格（靜態站）的文章閱讀也要計進 blog-posts.viewCount。
+      // 路徑形如 /blog/5069384750/，那串數字就是 slug。
+      // 只認 pageview；同一 session 同一篇在視窗內只計一次。
+      // 失敗不影響事件已寫入的結果，所以獨立 try。
+      if (eventType === 'pageview') {
+        const blogSlug = extractBlogSlug(rawPath)
+        if (blogSlug && shouldCountView(`kim:${sessionId}:${blogSlug}`)) {
+          try {
+            await incrementBlogViewCount(payload, blogSlug)
+          } catch (err) {
+            payload.logger.warn({
+              err,
+              msg: '[kim-blog/analytics] viewCount 遞增失敗',
+              slug: blogSlug,
+            })
+          }
+        }
+      }
     } catch (error) {
       payload.logger.error({
         err: error,

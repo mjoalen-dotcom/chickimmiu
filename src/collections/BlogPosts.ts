@@ -116,7 +116,7 @@ export const BlogPosts: CollectionConfig = {
   },
   access: {
     read: ({ req: { user } }) => {
-      if (user?.role === 'admin') return true
+      if ((user as { role?: string } | null | undefined)?.role === 'admin') return true
       return {
         and: [
           { status: { equals: 'published' } },
@@ -623,7 +623,9 @@ export const BlogPosts: CollectionConfig = {
                       index: true,
                       admin: {
                         description:
-                          '顯示在金老佛爺部落格文章旁，可手動輸入 PIXNET 原始人氣或校正數字。',
+                          '真實閱讀會自動累加（購物網站與金老佛爺部落格兩邊都計，同一人同一篇 6 小時內只計一次）。' +
+                          '這裡仍可手動修改：自動累加走原子疊加，不會覆蓋你填的數字，也不會動到「最後修改時間」。' +
+                          '既有數字是 PIXNET 搬過來的歷史人氣。',
                       },
                     },
                     {
@@ -716,7 +718,7 @@ export const BlogPosts: CollectionConfig = {
                       name: 'accessPasswordHash',
                       type: 'text',
                       access: {
-                        read: ({ req: { user } }) => user?.role === 'admin',
+                        read: ({ req: { user } }) => (user as { role?: string } | null | undefined)?.role === 'admin',
                       },
                       admin: {
                         hidden: true,
