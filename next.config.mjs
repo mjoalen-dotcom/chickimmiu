@@ -30,6 +30,11 @@ const nextConfig = {
   },
   experimental: {
     reactCompiler: false,
+    // 正式機是 2 vCPU / 3.7GB。Next 預設用 CPU 數開 static generation worker，
+    // 兩個 worker 各長到 2.5-3.2GB 就會被 kernel OOM 砍掉（build 在
+    // 「Generating static pages」階段無錯誤訊息直接 ELIFECYCLE，dmesg 才看得到
+    // Out of memory）。限成 1 個 worker：build 慢一點，但不會隨機掛掉。
+    cpus: 1,
   },
   async headers() {
     // R2 圖床公開 URL（custom domain 或 pub-*.r2.dev）— 沒設就跳過。
