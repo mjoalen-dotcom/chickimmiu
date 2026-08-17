@@ -22,7 +22,7 @@ import { APIError } from 'payload'
 // `sql` 只是 drizzle 的 template tag（兩個 adapter 都是同一份 re-export），
 // 方言差異在 SQL 文字本身，不在這個 import。
 import { sql } from '@payloadcms/db-sqlite'
-import { affectedRows, getDrizzle } from '../db/dialectSafeSql'
+import { affectedRows, runSql } from '../db/dialectSafeSql'
 import type { CollectionBeforeChangeHook, CollectionAfterChangeHook } from 'payload'
 
 import { computeOrderPricing, type RawCartItem } from './pricing'
@@ -125,8 +125,8 @@ export const beforeChangeServerPricing: CollectionBeforeChangeHook = async ({ da
     }
     for (const [campaignId, amount] of byCampaign) {
       if (amount <= 0) continue
-      const drizzle = getDrizzle(req.payload)
-      const res = await drizzle.run(
+      const res = await runSql(
+        req.payload,
         sql`UPDATE marketing_campaigns
             SET commerce_budget_spent = COALESCE(commerce_budget_spent, 0) + ${amount}
             WHERE id = ${Number(campaignId)}
@@ -297,9 +297,9 @@ export const afterChangeReversePromotions: CollectionAfterChangeHook = async ({ 
     }
     for (const [campaignId, amount] of byCampaign) {
       if (amount <= 0) continue
-      const drizzle = getDrizzle(req.payload)
       // 不用 MAX()/GREATEST()（方言不同），用 WHERE 擋掉會變負數的情形。
-      await drizzle.run(
+      await runSql(
+        req.payload,
         sql`UPDATE marketing_campaigns
             SET commerce_budget_spent = COALESCE(commerce_budget_spent, 0) - ${amount}
             WHERE id = ${Number(campaignId)}

@@ -16,7 +16,7 @@
 // `sql` 只是 drizzle 的 template tag（兩個 adapter 都是同一份 re-export），
 // 方言差異在 SQL 文字本身，不在這個 import。
 import { sql } from '@payloadcms/db-sqlite'
-import { getDrizzle } from '../db/dialectSafeSql'
+import { runSql } from '../db/dialectSafeSql'
 import type { CollectionAfterChangeHook, Payload } from 'payload'
 
 const relId = (v: unknown): number | string | null => {
@@ -25,10 +25,14 @@ const relId = (v: unknown): number | string | null => {
   return v as number | string
 }
 
-/** 條件式原子遞減 usageCount（避免 read-modify-write 競態，且不會變負數） */
+/**
+ * 條件式原子遞減 usageCount（避免 read-modify-write 競態，且不會變負數）。
+ * 不用 MAX()/GREATEST()（方言不同），改用 WHERE 擋負數，語意相同且
+ * SQLite/PG 都吃——詳見 lib/db/dialectSafeSql.ts。
+ */
 async function decrementCouponUsage(payload: Payload, couponId: number | string): Promise<void> {
-  const drizzle = getDrizzle(payload)
-  await drizzle.run(
+  await runSql(
+    payload,
     sql`UPDATE coupons
         SET usage_count = COALESCE(usage_count, 0) - 1
         WHERE id = ${Number(couponId)}
@@ -208,7 +212,7 @@ export const afterChangeReverseOrderFinancials: CollectionAfterChangeHook = asyn
       )
       if (totalEarned > 0 && alreadyReversed.totalDocs === 0) {
         const user = (await payload.findByID({
-          collection: 'users',
+          collection: 'customers',
           id: userId as never,
           depth: 0,
           overrideAccess: true,
@@ -218,7 +222,7 @@ export const afterChangeReverseOrderFinancials: CollectionAfterChangeHook = asyn
         const deduct = Math.min(current, totalEarned)
         const balanceAfter = current - deduct
         await payload.update({
-          collection: 'users',
+          collection: 'customers',
           id: userId as never,
           data: { points: balanceAfter } as never,
           overrideAccess: true,
