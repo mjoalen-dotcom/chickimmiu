@@ -70,6 +70,16 @@ export type AllocationMode = 'proportional_to_eligible_lines'
 /** 湊組時挑哪些單件（僅 percent_discount_nth_unit / percent_discount_per_group 用） */
 export type UnitSelection = 'cheapest_first' | 'most_expensive_first'
 
+/** UserRewards.rewardType 的合法值（與 collections/UserRewards.ts 同步，勿自行擴充） */
+export type UserRewardType =
+  | 'free_shipping_coupon'
+  | 'movie_ticket_physical'
+  | 'movie_ticket_digital'
+  | 'coupon'
+  | 'gift_physical'
+  | 'badge'
+  | 'voucher'
+
 export type PromotionEffect =
   /** 任選 N 件現折 X 元（72H 主打：groupSize 2、amount 1000） */
   | {
@@ -105,7 +115,13 @@ export type PromotionEffect =
   /** 點數倍率（reward intent；實際發點仍走 points ledger） */
   | { type: 'points_multiplier'; multiplier: number }
   /** 發 XP / Mystery Key 等（reward intent；P1 Member Economy 接手落地） */
-  | { type: 'grant_reward'; rewardKey: string; quantity: number }
+  | {
+      type: 'grant_reward'
+      rewardKey: string
+      quantity: number
+      /** 對齊 UserRewards.rewardType 的封閉 enum；未指定時落地為 'voucher' */
+      rewardType?: UserRewardType
+    }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 疊加與護欄
@@ -301,6 +317,7 @@ export interface RewardIntent {
   quantity?: number
   multiplier?: number
   rewardKey?: string
+  rewardType?: UserRewardType
 }
 
 /** 前台 Cart Progress 用的提示（0/2 → 1/2 → UNLOCKED） */

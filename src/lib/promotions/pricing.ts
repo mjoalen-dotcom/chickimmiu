@@ -152,6 +152,14 @@ async function materializeCartLines(payload: Payload, items: RawCartItem[]): Pro
   const errors: string[] = []
   const cleaned = items
     .filter((i) => i && i.productId != null && asNumber(i.quantity) > 0)
+    // 促銷引擎發的贈品行「不從 client 收」——一律由伺服器在評估後自己注入
+    // （見下方 materializePromotionGifts）。這裡把「宣稱是贈品卻沒有
+    // gift-rules 依據」的行直接丟掉而不是報錯：
+    //   - 若是上一輪 server 注入後又被送回來（結帳重算的正常情況）→ 丟掉再重推導，
+    //     避免被當成偽造行擋單。
+    //   - 若是有人手動偽造 isGift 想白拿 → 一樣丟掉，拿不到東西。
+    // 舊的 gift-rules 贈品（帶 giftRuleRef）不受影響，仍走原本的重驗路徑。
+    .filter((i) => !(i.isGift && i.giftRuleRef == null))
     .slice(0, 60)
   if (cleaned.length === 0) return { lines: [], errors: ['empty_cart'] }
 
@@ -493,6 +501,70 @@ export async function computeOrderPricing(payload: Payload, input: PricingInput)
       ),
     ),
   })
+
+  // ── 促銷贈品實體化（gift_item / Buy X Get Y / 滿額贈）────────────────────
+  // evaluator 只吐 RewardIntent，本身不碰 I/O。這裡把 intent 變成真的 0 元行。
+  // 放在評估「之後」是刻意的：贈品行預設就被 scope 排除（excludeGiftLines），
+  // 不參與任何規則的 eligible 計算，所以事後追加不會回頭影響已算好的結果，
+  // 也不會產生「贈品讓自己再湊出一個贈品」的遞迴。
+  const giftIntents = evaluation.rewardIntents.filter((r) => r.type === 'gift_item')
+  if (giftIntents.length > 0) {
+    const giftIds = [...new Set(giftIntents.map((g) => String(g.productId)))]
+    try {
+      const giftRes = await payload.find({
+        collection: 'products',
+        where: { id: { in: giftIds } },
+        limit: giftIds.length,
+        depth: 0,
+        overrideAccess: true,
+      })
+      const giftById = new Map<string, Record<string, unknown>>()
+      for (const d of giftRes.docs as unknown as Array<Record<string, unknown>>) {
+        giftById.set(String(d.id), d)
+      }
+      for (const intent of giftIntents) {
+        const p = giftById.get(String(intent.productId))
+        // 贈品商品被刪或下架 → 略過（不擋單、不報錯）；折扣本身已經算完，
+        // 顧客不會因為贈品缺貨而結不了帳。
+        if (!p) continue
+        const qty = Math.max(1, Math.floor(Number(intent.quantity) || 1))
+        let lineId = `${intent.productId}:base:gift:${intent.ruleKey}`
+        while (lines.some((l) => l.lineId === lineId)) lineId = `${lineId}+`
+        lines.push({
+          lineId,
+          productId: (p.id as number | string) ?? intent.productId!,
+          productName: String(p.name ?? p.title ?? ''),
+          sku: null,
+          variantLabel: null,
+          quantity: qty,
+          unitPrice: 0,
+          lineSubtotal: 0,
+          isGift: true,
+          isAddOn: false,
+          bundleRef: null,
+          // 促銷引擎發的贈品沒有 gift-rules doc；來源記在 promotion 快照的
+          // rewardIntents 裡（含 ruleKey），對帳靠那份。
+          giftRuleRef: null,
+          addOnRuleRef: null,
+          snapshot: {
+            lineId,
+            productId: (p.id as number | string) ?? intent.productId!,
+            variantKey: null,
+            unitPrice: 0,
+            quantity: qty,
+            unitCost: typeof p.cost === 'number' ? p.cost : null,
+            categoryIds: [],
+            tags: [],
+            isGiftLine: true,
+            isAddOnLine: false,
+            bundleId: null,
+          },
+        })
+      }
+    } catch {
+      // 贈品載入失敗不擋單：折扣已算完，贈品下次重算再補。
+    }
+  }
 
   const promotionDiscount = evaluation.applications
     .filter((a) => a.source === 'campaign_rule')

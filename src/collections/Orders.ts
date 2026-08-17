@@ -6,6 +6,11 @@ import { recordInventory } from '../lib/inventory/server'
 import { adjustWallet } from '../lib/wallet/server'
 import { createExportEndpoint, type FieldMapping } from '../endpoints/importExport'
 import { orderCreditScoreHook } from '../lib/crm/creditScoreHooks'
+import {
+  campaignPointsMultiplier,
+  grantIntentRewards,
+  readRewardIntents,
+} from '../lib/promotions/rewardOrchestrator'
 import { autoIssueInvoiceForOrder } from '../lib/invoice/ecpayInvoiceEngine'
 import { sendOrderConfirmationEmail } from '../lib/email/orderConfirmation'
 import { sendPaymentReceivedEmail } from '../lib/email/paymentReceived'
@@ -1067,7 +1072,13 @@ export const Orders: CollectionConfig = {
                   } catch (subErr) {
                     console.error('[Orders Hook] 訂閱倍率查詢失敗（用 1）:', subErr)
                   }
-                  pointsEarned = Math.floor(basePoints * multiplier * subscriptionMultiplier)
+                  // 活動點數倍率（promotion 的 points_multiplier 效果）。
+                  // 原本這個效果只寫一筆 RewardIntent、沒有任何程式讀它，
+                  // 規則設了也不會生效；接進既有的倍率鏈（tier × 訂閱 × 活動）。
+                  const campaignMultiplier = campaignPointsMultiplier(readRewardIntents(doc))
+                  pointsEarned = Math.floor(
+                    basePoints * multiplier * subscriptionMultiplier * campaignMultiplier,
+                  )
                 }
               } catch (err) {
                 console.error('[Orders Hook] LoyaltySettings 讀取失敗:', err)
@@ -1102,6 +1113,19 @@ export const Orders: CollectionConfig = {
                 points: pointsEarned,
                 balanceAfter: currentPoints + pointsEarned,
               })
+              // 活動獎項（grant_reward：Mystery Key / 徽章 / 兌換券等）→ 寶物箱。
+              // 同樣是原本只寫 intent、沒人消費的效果。冪等靠「同訂單+同獎項名」判重。
+              try {
+                await grantIntentRewards(payload, {
+                  userId: customerId,
+                  orderId: doc.id as number | string,
+                  orderNumber: doc.orderNumber as string | undefined,
+                  intents: readRewardIntents(doc),
+                })
+              } catch (rewardErr) {
+                console.error('[Orders Hook] 活動獎項發放失敗（不阻斷訂單）:', rewardErr)
+              }
+
               console.log(
                 `[Orders Hook] 付款完成：${doc.orderNumber} 會員 ${customerId} +${pointsEarned} 點，累積消費 +NT$${orderTotal}`,
               )
