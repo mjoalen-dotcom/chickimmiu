@@ -36,7 +36,11 @@ const loader = String.raw`(() => {
       return response.json();
     })
     .then((data) => {
-      frame.src = data.embedUrl;
+      if (!data || typeof data.token !== 'string' || !data.token) throw new Error('token missing');
+      const frameUrl = new URL('/embed/' + encodeURIComponent(widget), source.origin);
+      frameUrl.searchParams.set('token', data.token);
+      frameUrl.searchParams.set('host', host);
+      frame.src = frameUrl.toString();
       target.insertBefore(frame, script.nextSibling);
     })
     .catch(showError);
