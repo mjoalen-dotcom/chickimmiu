@@ -42,6 +42,7 @@ import { CampaignActivities } from './collections/CampaignActivities'
 import { MarketingCampaigns } from './collections/MarketingCampaigns'
 import { PromotionRules } from './collections/PromotionRules'
 import { PromotionApplications } from './collections/PromotionApplications'
+import { PromotionDropClaims } from './collections/PromotionDropClaims'
 import { MessageTemplates } from './collections/MessageTemplates'
 import { EmailTemplates } from './collections/EmailTemplates'
 import { ABTests } from './collections/ABTests'
@@ -509,6 +510,7 @@ export default buildConfig({
     CampaignActivities,
     PromotionRules, // Campaign Engine：版本化促銷規則（活動 Root 的子規則）
     PromotionApplications, // Campaign Engine：促銷套用不可變交易紀錄
+    PromotionDropClaims, // Campaign Engine：限量券包／神秘禮物的領取憑據（每人 1 次 + 回沖依據）
     FestivalTemplates,
     BirthdayCampaigns,
     AutomationJourneys,

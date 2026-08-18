@@ -127,6 +127,28 @@ const relId = (v: unknown): number | string | null => {
 }
 
 /** 穩定 hash：同 breakdown + 行 + 規則 → 同 hash（竄改/漂移偵測） */
+/**
+ * 商品單位成本的取值鏈：`product.cost → product.sourcing.costTWD`。
+ *（variant.costOverride 由呼叫端在找到對應 sku 之後另外覆寫。）
+ *
+ * 🔥 sourcing.costTWD 這一段不是優化而是必要條件：Shopline XLSX 匯入器只寫
+ * sourcing.costTWD、不寫 top-level cost。pre 實測 products.cost 只有 55/1395
+ * 有值（4%），sourcing.costTWD 有 1219/1395（87%）。少了這段 fallback，
+ * 成本 fail-closed 一上線就會把 96% 的商品擋掉，所有贈品類活動集體失效。
+ *
+ * 後台毛利 widget 早就做了這個 fallback，計價引擎沒有 —— 這是兩套成本口徑
+ * 長期不一致的來源，一併對齊。
+ *
+ * ⚠️ Products.cost 有 field-level access（isLoggedInFieldLevel），任何讀取路徑
+ * 沒帶 overrideAccess 的話這一欄會被剝掉、靜默算成 0。
+ */
+export function resolveProductUnitCost(product: Record<string, unknown>): number | null {
+  if (typeof product.cost === 'number' && product.cost > 0) return product.cost
+  const sourcing = product.sourcing as Record<string, unknown> | undefined
+  const twd = Number(sourcing?.costTWD)
+  return Number.isFinite(twd) && twd > 0 ? twd : null
+}
+
 export function computeQuoteHash(parts: {
   pricingVersion: string
   lines: Array<{ lineId: string; unitPrice: number; quantity: number; lineSubtotal: number }>
@@ -200,7 +222,7 @@ async function materializeCartLines(payload: Payload, items: RawCartItem[]): Pro
 
     // variant（成本覆寫 + 標籤）；找不到 sku 不擋（沿用現行寬鬆行為）
     let variantLabel: string | null = item.variantText ?? null
-    let unitCost: number | null = typeof product.cost === 'number' ? product.cost : null
+    let unitCost: number | null = resolveProductUnitCost(product)
     if (item.sku && Array.isArray(product.variants)) {
       const variant = (product.variants as Array<Record<string, unknown>>).find((v) => v.sku === item.sku)
       if (variant) {
@@ -560,7 +582,7 @@ export async function computeOrderPricing(payload: Payload, input: PricingInput)
             variantKey: null,
             unitPrice: 0,
             quantity: qty,
-            unitCost: typeof p.cost === 'number' ? p.cost : null,
+            unitCost: resolveProductUnitCost(p),
             categoryIds: [],
             tags: [],
             isGiftLine: true,

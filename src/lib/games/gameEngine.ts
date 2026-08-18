@@ -1,7 +1,9 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Where } from 'payload'
+import { sql } from '@payloadcms/db-sqlite'
 import { recordWalletTxn } from '../wallet/server'
+import { affectedRows, runSql } from '../db/dialectSafeSql'
 
 // ── Types ──
 
@@ -33,7 +35,7 @@ interface DailyPlaysResult {
   requiresPoints: boolean
 }
 
-interface DrawnPrize {
+export interface DrawnPrize {
   prize: string
   type: PrizeType
   amount: number
@@ -45,6 +47,20 @@ interface DrawnPrize {
   expiryDays?: number
   /** PrizePool.couponCode（type=coupon 時可能有） */
   couponCode?: string
+  /**
+   * PrizePool.estimatedValue（NT$）。
+   *
+   * 這一欄原本不存在，正是「遊戲 API 與月度金額上限只用 estimatePrizeValueTwd()、
+   * 完全不看 admin 設的 estimatedValue，而 /games/terms 機率公示頁卻用
+   * `estimatedValue ?? estimatePrizeValueTwd()`」這個不一致的根因 ——
+   * 對外揭露的獎品價值與內部風控用的價值是兩個數字。補上這一欄之後，
+   * 促銷的成本入帳與法規公示頁才能用同一個來源。
+   */
+  estimatedValue?: number
+  /** PrizePool.inventoryUnlimited；限量獎才需要走原子扣減 */
+  inventoryUnlimited?: boolean
+  /** PrizePool.redemptionInstructions（落地成 UserRewards 時沿用） */
+  redemptionInstructions?: string
 }
 
 interface RecordGamePlayParams {
@@ -282,6 +298,22 @@ interface PoolPrize {
   deliveryMethod?: DrawnPrize['deliveryMethod']
   expiryDays?: number
   tierBoost?: Record<string, number>
+  estimatedValue?: number
+  inventoryUnlimited?: boolean
+  redemptionInstructions?: string
+}
+
+/**
+ * 抽獎的可選過濾條件。三個既有呼叫端都不傳 → 行為完全不變。
+ *
+ * excludePrizeTypes 存在的理由：Alan 拍板「神秘禮物獎池不含銘謝惠顧」。
+ * 這件事必須靠程式硬過濾，不能靠 admin 記得不掛 none —— 後者是靠人不靠碼，
+ * 而且 /games/terms 機率公示頁會照實把獎池列出去，錯了就是對外揭露錯誤。
+ */
+export interface DrawPrizeOptions {
+  excludePrizeTypes?: string[]
+  /** 已經試過但庫存被搶完的獎，重抽時排除 */
+  excludePoolIds?: number[]
 }
 
 /**
@@ -293,7 +325,7 @@ interface PoolPrize {
  *   - 在 startsAt..endsAt 時間區間內（任一未設則該邊不限）
  * 回傳空陣列代表該遊戲尚未在 PrizePool 設定 → 呼叫端應 fallback 到 GAME_CONFIGS
  */
-async function loadPoolPrizes(gameType: string): Promise<PoolPrize[]> {
+async function loadPoolPrizes(gameType: string, opts?: DrawPrizeOptions): Promise<PoolPrize[]> {
   const payload = await getPayload({ config })
   const now = new Date().toISOString()
 
@@ -323,6 +355,9 @@ async function loadPoolPrizes(gameType: string): Promise<PoolPrize[]> {
     return []
   }
 
+  const excludeTypes = opts?.excludePrizeTypes ?? []
+  const excludeIds = opts?.excludePoolIds ?? []
+
   return res.docs.map((d) => {
     const r = d as Record<string, unknown>
     const tierBoost = (r.tierBoost as Record<string, number> | undefined) || undefined
@@ -336,8 +371,15 @@ async function loadPoolPrizes(gameType: string): Promise<PoolPrize[]> {
       deliveryMethod: r.deliveryMethod as DrawnPrize['deliveryMethod'],
       expiryDays: typeof r.expiryDays === 'number' ? r.expiryDays : undefined,
       tierBoost,
+      estimatedValue: typeof r.estimatedValue === 'number' ? r.estimatedValue : undefined,
+      inventoryUnlimited: r.inventoryUnlimited === true,
+      redemptionInstructions:
+        typeof r.redemptionInstructions === 'string' ? r.redemptionInstructions : undefined,
     }
-  }).filter((p) => p.weight > 0)
+  }).filter(
+    (p) =>
+      p.weight > 0 && !excludeTypes.includes(p.prizeType) && !excludeIds.includes(p.id),
+  )
 }
 
 /**
@@ -363,16 +405,88 @@ async function decrementPoolInventory(poolId: number): Promise<void> {
   }
 }
 
+function toDrawnPrize(p: PoolPrize): DrawnPrize {
+  return {
+    prize: p.name,
+    type: p.prizeType,
+    amount: p.amount,
+    sourcePoolId: p.id,
+    deliveryMethod: p.deliveryMethod,
+    expiryDays: p.expiryDays,
+    couponCode: p.couponCode,
+    estimatedValue: p.estimatedValue,
+    inventoryUnlimited: p.inventoryUnlimited,
+    redemptionInstructions: p.redemptionInstructions,
+  }
+}
+
+/**
+ * 原子扣減限量獎庫存。回傳 true = 這一份搶到了；false = 已被搶完。
+ *
+ * 🔥 為什麼不能用上面的 decrementPoolInventory：那支是 read-modify-write
+ *（先 findByID 讀 remaining、再 update remaining-1），它自己的註解就寫了
+ * 「同時搶最後一個可能 oversell 1-2 個」。遊戲情境可接受（admin 事後修），
+ * 但「限量先搶先贏」的超發是對顧客的承諾違約，不可接受。
+ *
+ * 條件式 UPDATE 把「檢查」與「扣減」合併成一個 DB 操作，rowsAffected===0
+ * 就是「別人先搶到了」—— 這是本 repo 唯一正確的搶額度樣板（orderPricingHook
+ * 的活動預算預留同一形狀）。
+ *
+ * 刻意**不動**既有的 decrementPoolInventory：遊戲已上線，改它等於改已驗證過的行為。
+ */
+export async function atomicDecrementPoolInventory(
+  payload: unknown,
+  poolId: number,
+): Promise<boolean> {
+  try {
+    const res = await runSql(
+      payload,
+      sql`UPDATE prize_pools
+          SET inventory_remaining = COALESCE(inventory_remaining, 0) - 1
+          WHERE id = ${Number(poolId)}
+            AND inventory_unlimited = false
+            AND COALESCE(inventory_remaining, 0) > 0`,
+    )
+    return affectedRows(res) > 0
+  } catch (err) {
+    console.error('[gameEngine] atomicDecrementPoolInventory 失敗', { poolId, err })
+    return false
+  }
+}
+
+/**
+ * 退款回沖時把限量獎庫存加回去。
+ * 用 WHERE 擋住「加超過原始總量」而不是用 GREATEST/MIN —— PG 的純量 MAX/MIN
+ * 與 SQLite 名稱不同，識別字與函式都要挑兩個方言都吃的寫法。
+ */
+export async function restorePoolInventory(payload: unknown, poolId: number): Promise<boolean> {
+  try {
+    const res = await runSql(
+      payload,
+      sql`UPDATE prize_pools
+          SET inventory_remaining = COALESCE(inventory_remaining, 0) + 1
+          WHERE id = ${Number(poolId)}
+            AND inventory_unlimited = false
+            AND (inventory_total IS NULL OR COALESCE(inventory_remaining, 0) < inventory_total)`,
+    )
+    return affectedRows(res) > 0
+  } catch (err) {
+    console.error('[gameEngine] restorePoolInventory 失敗', { poolId, err })
+    return false
+  }
+}
+
 export async function drawPrize(
   gameType: string,
   tierSlug: string,
   creditScore: number = 100,
+  opts?: DrawPrizeOptions,
 ): Promise<DrawnPrize | null> {
   const tierBonus = TIER_BONUS_MAP[tierSlug] ?? 0
   const creditBonus = (creditScore / 100) * 0.05
 
   // 1) 優先嘗試從 PrizePools 撈 admin 設定的獎品
-  const poolPrizes = await loadPoolPrizes(gameType)
+  const poolPrizes = await loadPoolPrizes(gameType, opts)
   if (poolPrizes.length > 0) {
     const maxAmount = Math.max(...poolPrizes.map((p) => p.amount), 1)
     const adjusted = poolPrizes.map((p) => {
@@ -389,28 +503,9 @@ export async function drawPrize(
       let r = Math.random() * total
       for (const e of adjusted) {
         r -= e.adjustedWeight
-        if (r <= 0) {
-          return {
-            prize: e.name,
-            type: e.prizeType,
-            amount: e.amount,
-            sourcePoolId: e.id,
-            deliveryMethod: e.deliveryMethod,
-            expiryDays: e.expiryDays,
-            couponCode: e.couponCode,
-          }
-        }
+        if (r <= 0) return toDrawnPrize(e)
       }
-      const last = adjusted[adjusted.length - 1]
-      return {
-        prize: last.name,
-        type: last.prizeType,
-        amount: last.amount,
-        sourcePoolId: last.id,
-        deliveryMethod: last.deliveryMethod,
-        expiryDays: last.expiryDays,
-        couponCode: last.couponCode,
-      }
+      return toDrawnPrize(adjusted[adjusted.length - 1])
     }
   }
 
@@ -418,10 +513,15 @@ export async function drawPrize(
   const gameConfig = GAME_CONFIGS[gameType]
   if (!gameConfig || gameConfig.prizeTable.length === 0) return null
 
-  const sortedByAmount = [...gameConfig.prizeTable].sort((a, b) => a.amount - b.amount)
+  // 硬編碼獎表也要套同一組排除條件，否則「獎池不含 none」在 fallback 路徑會破功
+  const excludeTypes = opts?.excludePrizeTypes ?? []
+  const fallbackTable = gameConfig.prizeTable.filter((e) => !excludeTypes.includes(e.type))
+  if (fallbackTable.length === 0) return null
+
+  const sortedByAmount = [...fallbackTable].sort((a, b) => a.amount - b.amount)
   const maxAmount = sortedByAmount[sortedByAmount.length - 1]?.amount ?? 1
 
-  const adjustedEntries = gameConfig.prizeTable.map((entry) => {
+  const adjustedEntries = fallbackTable.map((entry) => {
     if (entry.type === 'none') {
       return { ...entry, adjustedWeight: entry.weight }
     }

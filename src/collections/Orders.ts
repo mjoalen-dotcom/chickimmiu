@@ -11,6 +11,10 @@ import {
   grantIntentRewards,
   readRewardIntents,
 } from '../lib/promotions/rewardOrchestrator'
+import {
+  applyBudgetCostDelta,
+  settlePaidPromotionRewards,
+} from '../lib/promotions/paidRewardOrchestrator'
 import { autoIssueInvoiceForOrder } from '../lib/invoice/ecpayInvoiceEngine'
 import { sendOrderConfirmationEmail } from '../lib/email/orderConfirmation'
 import { sendPaymentReceivedEmail } from '../lib/email/paymentReceived'
@@ -1508,6 +1512,72 @@ export const Orders: CollectionConfig = {
           } catch (err) {
             console.error('[Orders Hook] mint 卡異常：', err)
           }
+        }
+      },
+      // ── 付款成功：限量券包 / 神秘禮物落地（抽獎 + 發券 + 預算差額修正）──
+      //
+      // 刻意做成獨立的薄 hook，不塞進上面那個大 afterChange：那支在
+      // grantIntentRewards 之前還有 findByID(customers)、LoyaltySettings 讀取、
+      // customers.update、writePurchasePointsLedger，任何一步 throw 都會讓後面
+      // 完全不執行。這裡沿用 mint 造型卡 hook 的形狀：paid-gated、委派給 lib 模組、
+      // 錯誤只記 log 不阻斷。
+      async ({ doc, previousDoc, req }) => {
+        const paymentStatus = doc.paymentStatus as string
+        const prevPaymentStatus = previousDoc?.paymentStatus as string | undefined
+        // 冪等第一層：付款狀態的 unpaid→paid 邊緣。第二層是 promotion-drop-claims
+        // 的 status==='granted'（callback 重送 / nested update 會走到那裡）。
+        if (paymentStatus !== 'paid' || prevPaymentStatus === 'paid') return
+
+        const intents = readRewardIntents(doc as Record<string, unknown>)
+        if (!intents.some((i) => i.type === 'coupon_drop' || i.type === 'mystery_gift')) return
+
+        try {
+          const customerId =
+            typeof doc.customer === 'object' && doc.customer !== null
+              ? ((doc.customer as Record<string, unknown>).id as string | number)
+              : (doc.customer as string | number)
+          if (customerId == null) return
+
+          const customer = (await req.payload.findByID({
+            collection: 'customers',
+            id: customerId,
+            depth: 0,
+            overrideAccess: true,
+          })) as unknown as Record<string, unknown>
+
+          // 本功能限登入會員：訪客結帳每筆都新建一個 isGuest 臨時帳號，
+          // 以 user id 為鍵的「每人 1 次」對它等於零約束。
+          if (customer?.isGuest === true) {
+            console.log(
+              `[Orders Hook] 訂單 ${doc.orderNumber} 為訪客單，限量券包／神秘禮物不發放（限登入會員）`,
+            )
+            return
+          }
+
+          const tier = customer?.memberTier
+          const tierSlug =
+            typeof tier === 'string'
+              ? tier
+              : ((tier as Record<string, unknown> | null | undefined)?.slug as string | undefined) ??
+                'ordinary'
+
+          const result = await settlePaidPromotionRewards(req.payload, {
+            userId: customerId,
+            orderId: doc.id as string | number,
+            orderNumber: doc.orderNumber as string | undefined,
+            tierSlug,
+            creditScore: Number(customer?.creditScore) || 100,
+            intents,
+          })
+          // 下單時預留的是估算值（獎池最高值 / 券面額），付款後才知道實際發了什麼。
+          // 差額正負都要處理：抽到便宜的獎要把多佔的預算還回去，否則活動會提早
+          // 顯示「預算已用完」而擋掉後面的訂單。
+          await applyBudgetCostDelta(req.payload, result.costDelta)
+          console.log(
+            `[Orders Hook] 訂單 ${doc.orderNumber} 促銷獎勵落地：發放 ${result.granted}、略過 ${result.skipped}、失敗 ${result.failed}`,
+          )
+        } catch (err) {
+          console.error('[Orders Hook] 促銷獎勵落地異常：', err)
         }
       },
       // ── 訂單取消：撤回該訂單 mint 的造型卡（status=active 的才撤） ──

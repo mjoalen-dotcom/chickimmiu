@@ -31,6 +31,14 @@ function hintLabel(hint: QuoteProgressHint, badgeText: string | null | undefined
   if (hint.kind === 'subtotal' && hint.effectAmount) {
     return `滿 NT$${hint.target.toLocaleString()} 折 NT$${hint.effectAmount.toLocaleString()}`
   }
+  // 兩種效果都限登入會員（訪客結帳每筆都是新的臨時帳號，「每人 1 次」擋不住），
+  // 文案要講清楚，不要讓訪客解鎖了才發現領不到。
+  if (hint.effectType === 'coupon_drop') {
+    return '限量券包（會員限定，先搶先贏）'
+  }
+  if (hint.effectType === 'mystery_gift') {
+    return '神秘禮物（會員限定，付款後抽獎．保證有獎）'
+  }
   return '活動優惠'
 }
 
