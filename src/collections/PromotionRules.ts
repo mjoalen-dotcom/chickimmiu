@@ -2,6 +2,17 @@ import type { CollectionConfig } from 'payload'
 import { isAdmin } from '../access/isAdmin'
 
 /**
+ * Payload relationship 欄位的值可能是 id（number|string）或已 populate 的 doc 物件。
+ * 只認其中一種形狀是本專案踩過的坑（會讓整段防線靜默跳過而不報錯）。
+ */
+function relationId(v: unknown): number | string | null {
+  if (v == null) return null
+  if (typeof v === 'number' || typeof v === 'string') return v
+  const id = (v as Record<string, unknown>).id
+  return typeof id === 'number' || typeof id === 'string' ? id : null
+}
+
+/**
  * PromotionRules — 版本化促銷規則（CHIC Commerce OS P0-B）
  *
  * - 隸屬 marketing-campaigns（活動 Root）；一條規則 = 一個受限 DSL 實例。
@@ -30,7 +41,7 @@ export const PromotionRules: CollectionConfig = {
   },
   hooks: {
     beforeValidate: [
-      ({ data }) => {
+      async ({ data, req, originalDoc }) => {
         if (!data) return data
         // slug 正規化（ruleKey 組成元素：campaignId:slug:vN）
         if (typeof data.slug === 'string') {
@@ -68,6 +79,120 @@ export const PromotionRules: CollectionConfig = {
         if (type === 'gift_item' && !effect.giftProduct) {
           throw new Error('gift_item 必須指定贈品商品')
         }
+
+        // ── Coupon Drop / Mystery Gift 守門 ────────────────────────────────
+        // 這兩種效果一旦成本算不出來，evaluator 會 fail closed 靜默不發，
+        // admin 只會看到「活動好像沒生效」而查不出原因。把檢查提前到存檔當下。
+        if (type === 'coupon_drop' || type === 'mystery_gift') {
+          // Alan 需求 4：兩者皆「每人每檔活動 1 次」。鎖進 schema，不靠 admin 記得填。
+          const guardrails = (data.guardrails ?? {}) as Record<string, unknown>
+          if (guardrails.perUserLimit !== 1) {
+            throw new Error(
+              '限量券包／神秘禮物一律「每人每檔活動 1 次」：請把護欄的「每人可套用次數」設為 1',
+            )
+          }
+        }
+
+        const payload = req?.payload
+        if (type === 'coupon_drop') {
+          if (!effect.dropCoupon) throw new Error('限量券包必須指定要發的券（模板）')
+
+          if (payload) {
+            const couponId = relationId(effect.dropCoupon)
+            const coupon = couponId == null
+              ? null
+              : await payload
+                  .findByID({ collection: 'coupons', id: couponId, depth: 0, overrideAccess: true })
+                  .catch(() => null)
+            if (!coupon) throw new Error('指定的券不存在，請重新選擇')
+            const c = coupon as unknown as Record<string, unknown>
+            const discountType = String(c.discountType ?? '')
+            const isFixed = discountType === 'fixed' || discountType === 'fixed_amount'
+            const cap = Number(c.maxDiscountAmount)
+            if (!isFixed && !(Number.isFinite(cap) && cap > 0)) {
+              throw new Error(
+                '百分比折扣券必須設定「最高折抵金額」才能算出面額 —— 沒有上限的話訂單越大賠越多，無法納入活動預算控管',
+              )
+            }
+
+            // 「限量」要有意義就必須有總量。總量掛在活動上（規則 active 後 effect 被鎖，
+            // 掛規則上等於上線後不能加碼）。
+            const campaignId = relationId(data.campaign)
+            const campaign = campaignId == null
+              ? null
+              : await payload
+                  .findByID({
+                    collection: 'marketing-campaigns',
+                    id: campaignId,
+                    depth: 0,
+                    overrideAccess: true,
+                  })
+                  .catch(() => null)
+            const total = Number(
+              ((campaign as Record<string, unknown> | null)?.commerce as Record<string, unknown> | undefined)
+                ?.dropTotal,
+            )
+            if (!(Number.isFinite(total) && total > 0)) {
+              throw new Error(
+                '請先到所屬活動設定「限量發放總量」（活動 → 商務設定），否則「限量先搶先贏」沒有上限可搶',
+              )
+            }
+
+            // quota 計數掛在活動上，一檔活動只能有一條限量規則，否則兩條規則共用
+            // 同一個計數器、誰扣到誰的分不清楚。
+            const siblings = await payload
+              .find({
+                collection: 'promotion-rules' as never,
+                where: {
+                  and: [
+                    { campaign: { equals: campaignId } },
+                    { status: { equals: 'active' } },
+                    { 'effect.effectType': { equals: 'coupon_drop' } },
+                    ...(originalDoc?.id != null ? [{ id: { not_equals: originalDoc.id } }] : []),
+                  ],
+                },
+                limit: 1,
+                depth: 0,
+                overrideAccess: true,
+              })
+              .catch(() => null)
+            if (siblings && siblings.totalDocs > 0) {
+              throw new Error(
+                '同一檔活動只能有一條啟用中的限量券包規則（總量計數掛在活動上，兩條規則會互相扣對方的額度）',
+              )
+            }
+          }
+        }
+
+        if (type === 'mystery_gift') {
+          const slug = typeof effect.fallbackPrizeSlug === 'string' ? effect.fallbackPrizeSlug.trim() : ''
+          if (!slug) {
+            throw new Error('神秘禮物必須指定保底獎 slug —— 這是「保證有獎」的最後一道保證')
+          }
+          if (payload) {
+            const res = await payload
+              .find({
+                collection: 'prize-pools' as never,
+                where: { slug: { equals: slug } },
+                limit: 1,
+                depth: 0,
+                overrideAccess: true,
+              })
+              .catch(() => null)
+            const prize = res?.docs?.[0] as Record<string, unknown> | undefined
+            if (!prize) throw new Error(`保底獎 slug「${slug}」在獎池中不存在`)
+            if (prize.active !== true) throw new Error(`保底獎「${slug}」目前未啟用`)
+            if (prize.inventoryUnlimited !== true) {
+              throw new Error(
+                `保底獎「${slug}」必須是「無限量」—— 有庫存上限的獎不能當保底，搶完就會出現無獎`,
+              )
+            }
+            if (String(prize.prizeType ?? '') === 'none') {
+              throw new Error(`保底獎「${slug}」不可以是銘謝惠顧（Alan 拍板：獎池不含 none）`)
+            }
+          }
+        }
+
         return data
       },
     ],
@@ -367,6 +492,11 @@ export const PromotionRules: CollectionConfig = {
             { label: '滿額贈品', value: 'gift_item' },
             { label: '點數倍率', value: 'points_multiplier' },
             { label: '發放獎勵（XP/鑰匙等）', value: 'grant_reward' },
+            // value 必須與 src/lib/promotions/types.ts 的 PromotionEffect union
+            // 及 PG enum_promotion_rules_effect_effect_type 完全同名。
+            // 四者不一致 = 規則存得進去、狀態 active、evaluator 永遠收不到、零錯誤訊息。
+            { label: '限量券包（先搶先贏）', value: 'coupon_drop' },
+            { label: '神秘禮物（付款後抽獎，保證有獎）', value: 'mystery_gift' },
           ],
         },
         {
@@ -510,6 +640,45 @@ export const PromotionRules: CollectionConfig = {
               admin: {
                 description: '例：mystery-key；實際發放由 P1 Member Economy 落地',
                 condition: (_, siblingData) => String(siblingData?.effectType) === 'grant_reward',
+              },
+            },
+          ],
+        },
+        // ── Coupon Drop / Mystery Gift ────────────────────────────────────────
+        // ⚠️ 這些欄位必須留在 effect group 之內：condition 讀的是 siblingData，
+        // 放到 group 外面抓不到 effectType，條件永遠 false、欄位永久隱形。
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'dropCoupon',
+              label: '要發的券（模板）',
+              type: 'relationship',
+              relationTo: 'coupons',
+              admin: {
+                description:
+                  '付款成功後複製這張券的設定、動態產生一次性券碼發給顧客。百分比折扣券必須設「最高折抵金額」，否則面額算不出來、規則會被擋下。',
+                condition: (_, siblingData) => String(siblingData?.effectType) === 'coupon_drop',
+              },
+            },
+            {
+              name: 'dropQuantity',
+              label: '每人發幾張',
+              type: 'number',
+              min: 1,
+              defaultValue: 1,
+              admin: {
+                condition: (_, siblingData) => String(siblingData?.effectType) === 'coupon_drop',
+              },
+            },
+            {
+              name: 'fallbackPrizeSlug',
+              label: '保底獎 slug',
+              type: 'text',
+              admin: {
+                description:
+                  '指向 PrizePools.slug，且該獎必須是「無限量」。限量獎全被搶完時發這個 —— 這是「保證有獎」的最後一道保證。',
+                condition: (_, siblingData) => String(siblingData?.effectType) === 'mystery_gift',
               },
             },
           ],

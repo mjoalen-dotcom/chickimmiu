@@ -444,6 +444,32 @@ export const MarketingCampaigns: CollectionConfig = {
           ],
         },
         {
+          type: 'row',
+          fields: [
+            {
+              name: 'dropTotal',
+              label: '限量發放總量（份）',
+              type: 'number',
+              min: 1,
+              admin: {
+                description:
+                  '限量券包／神秘禮物的先搶先贏總量。計數刻意掛在活動而非規則上：規則 status=active 後 effect 欄位會被鎖，掛規則上的話上線後想加碼就動不了。',
+              },
+            },
+            {
+              name: 'dropClaimed',
+              label: '已發放（份）',
+              type: 'number',
+              defaultValue: 0,
+              min: 0,
+              admin: {
+                readOnly: true,
+                description: '下單時以條件式 UPDATE 原子扣減（不是先讀再寫，否則同時搶最後一份必超發）；退款回沖',
+              },
+            },
+          ],
+        },
+        {
           name: 'approval',
           label: '核准',
           type: 'group',

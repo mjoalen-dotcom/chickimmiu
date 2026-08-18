@@ -2,8 +2,9 @@ import type { Metadata } from 'next'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Where } from 'payload'
-import { GAME_DEFS } from '@/lib/games/gameConfig'
+import { GAME_DEFS, type GameDef } from '@/lib/games/gameConfig'
 import { estimatePrizeValueTwd } from '@/lib/games/abuseDetection'
+import { MYSTERY_GIFT_POOL_TAG } from '@/lib/promotions/types'
 
 export const metadata: Metadata = {
   title: '遊戲規範與獎項公示 | CHIC KIM & MIU',
@@ -31,6 +32,30 @@ interface PoolEntry {
   startsAt: string | null
   endsAt: string | null
 }
+
+/**
+ * 訂單神秘禮物不是「遊戲」，但依消保法／公平會規範，贈獎活動一樣要公示中獎機率
+ * 與獎項價值。做成一個假的 GameDef 混進下面同一份表格渲染，是為了讓機率算法、
+ * 價值優先序（`estimatedValue ?? estimatePrizeValueTwd()`）與剩餘庫存顯示
+ * 完全共用同一份程式 —— 對外揭露的數字若和內部扣預算的數字分家，就是揭露錯誤。
+ *
+ * slug 用連字號版是因為下面的查表統一走 `slug.replace(/-/g, '_')`。
+ */
+const MYSTERY_GIFT_SECTION: GameDef = {
+  id: 'order-mystery-gift',
+  slug: MYSTERY_GIFT_POOL_TAG.replace(/_/g, '-'),
+  enabledKey: 'orderMysteryGiftEnabled' as GameDef['enabledKey'],
+  settingsKey: 'orderMysteryGift' as GameDef['settingsKey'],
+  name: '訂單神秘禮物',
+  icon: '🎁',
+  color: 'from-rose-400 to-fuchsia-500',
+  description: '活動期間下單並完成付款後自動抽獎。本活動保證有獎，獎池不含銘謝惠顧。',
+  category: 'luck',
+  categoryLabel: '購物回饋',
+  implementationStatus: 'ready',
+}
+
+const PUBLIC_PRIZE_SECTIONS: GameDef[] = [...GAME_DEFS, MYSTERY_GIFT_SECTION]
 
 const PRIZE_TYPE_LABELS: Record<string, string> = {
   points: '會員點數',
@@ -179,14 +204,14 @@ export default async function GamesTermsPage() {
             機率為當前後台設定之即時值；獎品上下架、庫存售罄等變動會即時影響實際抽獎結果。
           </p>
 
-          {GAME_DEFS.filter((g) => poolByGame[g.slug.replace(/-/g, '_')]).length === 0 && (
+          {PUBLIC_PRIZE_SECTIONS.filter((g) => poolByGame[g.slug.replace(/-/g, "_")]).length === 0 && (
             <div className="bg-white border border-dashed border-cream-300 rounded-2xl p-8 text-center text-sm text-muted-foreground">
               <p>後台尚未設定大獎池獎品 — 系統暫以預設獎項抽獎，admin 可至「⑤ 互動體驗 → 大獎池獎品」配置。</p>
             </div>
           )}
 
           <div className="space-y-6">
-            {GAME_DEFS.map((game) => {
+            {PUBLIC_PRIZE_SECTIONS.map((game) => {
               const gameKey = game.slug.replace(/-/g, '_')
               const prizes = poolByGame[gameKey]
               if (!prizes || prizes.length === 0) return null
@@ -202,6 +227,13 @@ export default async function GamesTermsPage() {
                     </div>
                     <span className="text-xs text-muted-foreground">{prizes.length} 項獎品</span>
                   </div>
+
+                  {game.id === MYSTERY_GIFT_SECTION.id && (
+                    <div className="px-5 py-3 bg-rose-50 border-b border-rose-100 text-xs leading-relaxed text-rose-900">
+                      本活動<strong>保證有獎</strong>，獎池不含「銘謝惠顧」；限量獎項發放完畢後改發保底獎項。
+                      每位會員每檔活動限領一次，需登入會員且訂單完成付款後始發放；訂單取消或退款時獎項失效。
+                    </div>
+                  )}
 
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">

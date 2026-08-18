@@ -80,6 +80,14 @@ export type UserRewardType =
   | 'badge'
   | 'voucher'
 
+/**
+ * 訂單神秘禮物專屬的獎池標籤（對應 PrizePools.eligibleGames 的一個值）。
+ *
+ * 刻意與遊戲獎池分開：遊戲獎池的機率是營運日常在調的，訂單發獎若共用同一個池，
+ * 改遊戲機率就會連帶改到訂單發獎的期望成本，而後者是計入活動預算的。
+ */
+export const MYSTERY_GIFT_POOL_TAG = 'order_mystery_gift'
+
 export type PromotionEffect =
   /** 任選 N 件現折 X 元（72H 主打：groupSize 2、amount 1000） */
   | {
@@ -145,6 +153,46 @@ export type PromotionEffect =
       quantity: number
       /** 對齊 UserRewards.rewardType 的封閉 enum；未指定時落地為 'voucher' */
       rewardType?: UserRewardType
+    }
+  /**
+   * 限量券包（先搶先贏）。付款成功後發一張「下次可用」的券給顧客。
+   * 總量上限掛在 marketing_campaigns.commerceDropTotal（不掛規則，因為規則
+   * status=active 後 effect 被鎖，上線後要加碼就動不了）。
+   */
+  | {
+      type: 'coupon_drop'
+      /** 模板券 doc id；落地時複製欄位動態產生一次性券碼 */
+      couponId: number | string
+      /**
+       * 這張券的最大曝險面額（NT$）：固定額券 = discountValue；
+       * 百分比券 = maxDiscountAmount，沒設上限就是算不出。
+       * 由 snapshots.ts 查好餵進來，null = fail closed。
+       */
+      faceValueTwd: number | null
+      quantity: number
+    }
+  /**
+   * 神秘禮物（付款成功後抽獎，保證有獎）。
+   * 抽獎不可放進 evaluator（本檔開頭的不變量：純函式、無隨機、無 Date.now），
+   * 所以這裡只產生 intent，由 paidRewardOrchestrator 在付款後抽。
+   */
+  | {
+      type: 'mystery_gift'
+      /** 對應 PrizePools.eligibleGames 的值 */
+      poolTag: string
+      /** 硬排除的獎項型別；Alan 拍板獎池不含 'none'（銘謝惠顧） */
+      excludePrizeTypes: string[]
+      /**
+       * 獎池中最高的獎項價值（NT$），下單時用它保守預留預算，
+       * 付款後抽完再用實際 estimatedValue 做差額修正。
+       * null = 獎池有獎品缺 estimatedValue 且無法自動換算 → fail closed。
+       */
+      maxPrizeValueTwd: number | null
+      /**
+       * 保底獎的 PrizePools.slug（必須 inventoryUnlimited=true）。
+       * 「保證有獎」的最後一道保證：限量獎全被搶完時發這個。
+       */
+      fallbackPoolSlug: string | null
     }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -348,12 +396,27 @@ export interface RejectedPromotion {
 export interface RewardIntent {
   ruleKey: string
   campaignId: number | string | null
-  type: 'gift_item' | 'points_multiplier' | 'grant_reward'
+  type: 'gift_item' | 'points_multiplier' | 'grant_reward' | 'coupon_drop' | 'mystery_gift'
   productId?: number | string
   quantity?: number
   multiplier?: number
   rewardKey?: string
   rewardType?: UserRewardType
+  /** coupon_drop：模板券 doc id */
+  couponId?: number | string
+  /** mystery_gift：對應 PrizePools.eligibleGames */
+  poolTag?: string
+  /** mystery_gift：限量獎全被搶完時的保底獎 slug */
+  fallbackPoolSlug?: string
+  /** mystery_gift：抽獎時要排除的獎項型別（Alan 拍板不含 'none'） */
+  excludePrizeTypes?: string[]
+  /**
+   * 「每人每檔活動 1 次」與重放冪等共用的鍵（落地端組成
+   * `${claimKey}:u${userId}` 寫進 promotion-drop-claims.idempotencyKey）。
+   */
+  claimKey?: string
+  /** 下單當下預留的估算成本（NT$）；付款後用實際值做差額修正 */
+  costAmount?: number
 }
 
 /** 前台 Cart Progress 用的提示（0/2 → 1/2 → UNLOCKED） */

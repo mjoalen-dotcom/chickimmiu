@@ -17,6 +17,7 @@
 // 方言差異在 SQL 文字本身，不在這個 import。
 import { sql } from '@payloadcms/db-sqlite'
 import { runSql } from '../db/dialectSafeSql'
+import { restorePoolInventory } from '../games/gameEngine'
 import type { CollectionAfterChangeHook, Payload } from 'payload'
 
 const relId = (v: unknown): number | string | null => {
@@ -247,6 +248,106 @@ export const afterChangeReverseOrderFinancials: CollectionAfterChangeHook = asyn
     }
   } catch (err) {
     payload.logger.error({ err, msg: '[orderReversal] 點數回收失敗', orderId })
+  }
+
+  // ── 4. 限量券包 / 神秘禮物回沖 ─────────────────────────────────────────────
+  //
+  // 為什麼要新寫而不是沿用既有機制：Orders 的取消還原只撈 state='pending_attach'
+  // 的 user-rewards，而促銷發的獎是 state='unused' —— 查詢條件永遠不匹配，
+  // 退款完全不回沖已發出的獎。放寬那邊的 where 會誤傷 checkout 隨單寄出流程，
+  // 所以在這裡另開一段。
+  //
+  // 四件事必須成套：quota、獎品庫存、獎項失效、活動預算。少一件就是單向漏。
+  //
+  // ⚠️ idempotencyKey 刻意**不刪**（Alan 2026-08-17 拍板「退款不恢復領取資格」）：
+  // 刪掉的話「下單 → 退款 → 再領」就是無限刷。
+  try {
+    const claims = await payload.find({
+      collection: 'promotion-drop-claims' as never,
+      where: {
+        and: [{ order: { equals: orderId } }, { status: { in: ['reserved', 'granted'] } }],
+      },
+      limit: 50,
+      depth: 0,
+      overrideAccess: true,
+    })
+    for (const raw of claims.docs as unknown as Array<Record<string, unknown>>) {
+      const campaignId = relId(raw.campaign)
+
+      // (a) 限量總量退回。用 WHERE 擋負數，不用 GREATEST（PG/SQLite 純量函式名不同）。
+      //     只有真的扣過的才退，避免重複回沖把別人的額度也退掉。
+      if (raw.quotaConsumed === true && campaignId != null) {
+        await runSql(
+          payload,
+          sql`UPDATE marketing_campaigns
+              SET commerce_drop_claimed = COALESCE(commerce_drop_claimed, 0) - 1
+              WHERE id = ${Number(campaignId)}
+                AND COALESCE(commerce_drop_claimed, 0) > 0`,
+        ).catch((err) => payload.logger.error({ err, msg: '[orderReversal] drop quota 退回失敗' }))
+      }
+
+      // (b) 限量獎庫存還原
+      const poolId = relId(raw.prizePool)
+      if (poolId != null) await restorePoolInventory(payload, Number(poolId))
+
+      // (c) 已發出的寶物作廢。UserRewards.state 沒有 'revoked'（實測 enum 只有
+      //     unused / pending_attach / shipped / consumed / expired），用 'expired'
+      //     + expiresAt=now 表達，可省一支 ALTER TYPE migration。
+      const rewardId = relId(raw.grantedReward)
+      if (rewardId != null) {
+        await payload
+          .update({
+            collection: 'user-rewards',
+            id: rewardId as never,
+            data: { state: 'expired', expiresAt: new Date().toISOString() } as never,
+            overrideAccess: true,
+          })
+          .catch((err) => payload.logger.error({ err, msg: '[orderReversal] 獎項作廢失敗', rewardId }))
+      }
+
+      // (d) 動態產生的 drop 券停用
+      const couponId = relId(raw.coupon)
+      if (couponId != null) {
+        await payload
+          .update({
+            collection: 'coupons',
+            id: couponId as never,
+            data: { isActive: false } as never,
+            overrideAccess: true,
+          })
+          .catch((err) => payload.logger.error({ err, msg: '[orderReversal] drop 券停用失敗', couponId }))
+      }
+
+      // (e) 活動預算退回實際佔用的成本
+      const cost = Number(raw.budgetCostAmount) || 0
+      if (cost > 0 && campaignId != null) {
+        await runSql(
+          payload,
+          sql`UPDATE marketing_campaigns
+              SET commerce_budget_spent = COALESCE(commerce_budget_spent, 0) - ${cost}
+              WHERE id = ${Number(campaignId)}
+                AND COALESCE(commerce_budget_spent, 0) >= ${cost}`,
+        ).catch((err) => payload.logger.error({ err, msg: '[orderReversal] drop 預算退回失敗' }))
+      }
+
+      await payload.update({
+        collection: 'promotion-drop-claims' as never,
+        id: raw.id as never,
+        data: {
+          status: 'reversed',
+          reversedAt: new Date().toISOString(),
+          reversalReason: `order_${status}`,
+        } as never,
+        overrideAccess: true,
+      })
+    }
+    if (claims.docs.length > 0) {
+      payload.logger.info(
+        `[orderReversal] ${orderNumber}: 回沖 ${claims.docs.length} 筆限量領取（${status}）`,
+      )
+    }
+  } catch (err) {
+    payload.logger.error({ err, msg: '[orderReversal] 限量券包／神秘禮物回沖失敗', orderId })
   }
 
   return doc

@@ -921,3 +921,136 @@ test('效果成本：贈品成本會佔用活動預算（Alan 2026-08-17 拍板 
   assert.equal(ok.applications[0].budgetCostAmount, 600, '2 件 × NT$300')
   assert.equal(ok.discountTotal, 0, '贈品成本不可變成顧客折扣')
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// P0-B 收尾：Coupon Drop / Mystery Gift
+// ─────────────────────────────────────────────────────────────────────────────
+
+function dropRule(then, partial = {}) {
+  return mix2Rule({
+    ruleKey: 'c72:drop:v1',
+    slug: 'drop',
+    benefitClass: 'order_promo',
+    scope: {},
+    when: [],
+    then,
+    stacking: { stackableWith: 'all' },
+    guardrails: { perUserLimit: 1 },
+    ...partial,
+  })
+}
+
+test('coupon_drop / mystery_gift 走 non-line 分支，不會被 no_eligible_lines 或 zero_discount 拒絕', () => {
+  const cases = [
+    { type: 'coupon_drop', couponId: 7, faceValueTwd: 200, quantity: 1 },
+    {
+      type: 'mystery_gift',
+      poolTag: 'order_mystery_gift',
+      excludePrizeTypes: ['none'],
+      maxPrizeValueTwd: 350,
+      fallbackPoolSlug: 'consolation',
+    },
+  ]
+  for (const then of cases) {
+    const r = evaluatePromotions(
+      input({
+        rules: [dropRule(then)],
+        lines: [line({ lineId: 'L1', unitPrice: 1200, tags: ['final-sale'] })],
+        usage: { perUserApplied: {}, totalApplied: {}, budgetRemaining: { c72: 10000 } },
+      }),
+    )
+    assert.equal(r.applications.length, 1, `${then.type} 應套用成功`)
+    assert.equal(r.discountTotal, 0, `${then.type} 不產生顧客折扣`)
+    assert.equal(r.rewardIntents.length, 1, `${then.type} 應產生一筆 reward intent`)
+    assert.equal(r.rewardIntents[0].type, then.type)
+    assert.equal(r.rewardIntents[0].claimKey, 'c72:drop:v1', 'claimKey 應等於 ruleKey')
+  }
+})
+
+test('budgetCostAmount：券面額 × 張數；神秘禮物用獎池最高值保守預留', () => {
+  const drop = evaluatePromotions(
+    input({
+      rules: [dropRule({ type: 'coupon_drop', couponId: 7, faceValueTwd: 200, quantity: 3 })],
+      lines: [line({ lineId: 'L1', unitPrice: 1200 })],
+      usage: { perUserApplied: {}, totalApplied: {}, budgetRemaining: { c72: 10000 } },
+    }),
+  )
+  assert.equal(drop.applications[0].budgetCostAmount, 600, '3 張 × NT$200')
+  assert.equal(drop.rewardIntents[0].costAmount, 600, 'intent 也要帶成本，落地端要拿它算差額')
+
+  const gift = evaluatePromotions(
+    input({
+      rules: [
+        dropRule({
+          type: 'mystery_gift',
+          poolTag: 'order_mystery_gift',
+          excludePrizeTypes: ['none'],
+          maxPrizeValueTwd: 888,
+          fallbackPoolSlug: 'consolation',
+        }),
+      ],
+      lines: [line({ lineId: 'L1', unitPrice: 1200 })],
+      usage: { perUserApplied: {}, totalApplied: {}, budgetRemaining: { c72: 10000 } },
+    }),
+  )
+  assert.equal(gift.applications[0].budgetCostAmount, 888, '下單時用獎池最高值預留')
+})
+
+test('fail closed：面額／獎池價值算不出來 → missing_cost_data，且不出現在 applications', () => {
+  const cases = [
+    // 百分比券沒設 maxDiscountAmount → snapshots 餵 null
+    { type: 'coupon_drop', couponId: 7, faceValueTwd: null, quantity: 1 },
+    // 獎池有獎品缺 estimatedValue 且無法自動換算 → snapshots 餵 null
+    {
+      type: 'mystery_gift',
+      poolTag: 'order_mystery_gift',
+      excludePrizeTypes: ['none'],
+      maxPrizeValueTwd: null,
+      fallbackPoolSlug: 'consolation',
+    },
+  ]
+  for (const then of cases) {
+    const r = evaluatePromotions(
+      input({
+        rules: [dropRule(then)],
+        lines: [line({ lineId: 'L1', unitPrice: 1200 })],
+        usage: { perUserApplied: {}, totalApplied: {}, budgetRemaining: { c72: 10000 } },
+      }),
+    )
+    assert.equal(r.applications.length, 0, `${then.type} 成本算不出來時不可套用`)
+    assert.equal(r.rewardIntents.length, 0, `${then.type} 不可產生 intent（否則付款後會照發）`)
+    assert.ok(
+      r.rejections.some((x) => x.reasonCodes.includes('missing_cost_data')),
+      `${then.type} 應以 missing_cost_data 拒絕`,
+    )
+  }
+})
+
+test('預算不足時 coupon_drop 被 budget_exhausted 擋下（成本有計入加總）', () => {
+  const r = evaluatePromotions(
+    input({
+      rules: [dropRule({ type: 'coupon_drop', couponId: 7, faceValueTwd: 500, quantity: 1 })],
+      lines: [line({ lineId: 'L1', unitPrice: 1200 })],
+      usage: { perUserApplied: {}, totalApplied: {}, budgetRemaining: { c72: 499 } },
+    }),
+  )
+  assert.equal(r.applications.length, 0)
+  assert.ok(r.rejections.some((x) => x.reasonCodes.includes('budget_exhausted')))
+})
+
+test('perUserLimit=1：同一人第二次套用被 per_user_limit_reached 擋下', () => {
+  const rule = dropRule({ type: 'coupon_drop', couponId: 7, faceValueTwd: 200, quantity: 1 })
+  const r = evaluatePromotions(
+    input({
+      rules: [rule],
+      lines: [line({ lineId: 'L1', unitPrice: 1200 })],
+      usage: {
+        perUserApplied: { 'c72:drop:v1': 1 },
+        totalApplied: {},
+        budgetRemaining: { c72: 10000 },
+      },
+    }),
+  )
+  assert.equal(r.applications.length, 0, '報價期的軟檢查要先擋一層（硬防線是 DB unique）')
+  assert.ok(r.rejections.some((x) => x.reasonCodes.includes('per_user_limit_reached')))
+})

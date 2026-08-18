@@ -7,6 +7,8 @@
  */
 import type { Payload } from 'payload'
 
+import { estimatePrizeValueTwd } from '../games/abuseDetection'
+import { MYSTERY_GIFT_POOL_TAG } from './types'
 import type {
   MemberSnapshot,
   PromotionCondition,
@@ -121,6 +123,17 @@ export interface RuleCostContext {
   pointsPerDollar: number | null
   /** 幾點折抵 1 元 */
   pointsToCurrencyRate: number | null
+  /**
+   * couponId(string) → 最大曝險面額 NT$。
+   * 固定額券 = discountValue；百分比券 = maxDiscountAmount。
+   * 百分比券沒設 maxDiscountAmount = 無限曝險 → null → fail closed。
+   */
+  couponFaceValueById: Map<string, number | null>
+  /**
+   * poolTag → 該獎池中最高的獎項價值 NT$（下單時的保守預留基準）。
+   * 獎池中任一 active 獎品算不出價值 → null → fail closed。
+   */
+  maxPrizeValueByPoolTag: Map<string, number | null>
 }
 
 export function ruleDocToSnapshot(
@@ -225,6 +238,35 @@ export function ruleDocToSnapshot(
             : {}),
         }
         break
+      case 'coupon_drop': {
+        const dropCoupon = relId(effectGroup.dropCoupon)
+        if (dropCoupon == null) return null
+        then = {
+          type: 'coupon_drop',
+          couponId: dropCoupon,
+          // 面額由 loadRuleCostContext 批次查好；null → evaluator fail closed。
+          // PromotionRules.beforeValidate 已在存檔當下擋掉「百分比券沒設上限」，
+          // 這裡的 null 是第二道防線（例如券在規則上線後被改成百分比）。
+          faceValueTwd: costCtx?.couponFaceValueById.get(String(dropCoupon)) ?? null,
+          quantity: num(effectGroup.dropQuantity) ?? 1,
+        }
+        break
+      }
+      case 'mystery_gift': {
+        // poolTag 固定：這是「訂單神秘禮物」專屬獎池，與遊戲獎池分開，
+        // 免得改動遊戲獎池時意外改到訂單發獎的機率。
+        const poolTag = MYSTERY_GIFT_POOL_TAG
+        const fallback = effectGroup.fallbackPrizeSlug
+        then = {
+          type: 'mystery_gift',
+          poolTag,
+          // Alan 拍板：獎池不含銘謝惠顧。靠程式硬過濾而不是靠 admin 記得不掛 none。
+          excludePrizeTypes: ['none'],
+          maxPrizeValueTwd: costCtx?.maxPrizeValueByPoolTag.get(poolTag) ?? null,
+          fallbackPoolSlug: typeof fallback === 'string' && fallback ? fallback : null,
+        }
+        break
+      }
       default:
         // 靜默 return null 是這個檔案最危險的一行：後台 select 加了新效果值、
         // PG enum 也加了，但這裡沒加 case 的話，規則存得進 DB、狀態顯示 active、
@@ -364,8 +406,12 @@ function campaignToLite(doc: Record<string, unknown>): CampaignLite | null {
 export async function loadRuleCostContext(
   payload: Payload,
   giftProductIds: string[],
+  dropCouponIds: string[] = [],
+  mysteryPoolTags: string[] = [],
 ): Promise<RuleCostContext> {
   const giftCostByProductId = new Map<string, number | null>()
+  const couponFaceValueById = new Map<string, number | null>()
+  const maxPrizeValueByPoolTag = new Map<string, number | null>()
 
   if (giftProductIds.length > 0) {
     try {
@@ -411,7 +457,108 @@ export async function loadRuleCostContext(
     // 讀不到設定 → 留 null → points_multiplier 規則 fail closed
   }
 
-  return { giftCostByProductId, pointsPerDollar, pointsToCurrencyRate }
+  // ── Coupon Drop：券的最大曝險面額 ────────────────────────────────────────
+  if (dropCouponIds.length > 0) {
+    try {
+      const res = await payload.find({
+        collection: 'coupons',
+        where: { id: { in: dropCouponIds } },
+        limit: dropCouponIds.length,
+        depth: 0,
+        overrideAccess: true,
+      })
+      for (const raw of res.docs as unknown as Array<Record<string, unknown>>) {
+        couponFaceValueById.set(String(raw.id), couponFaceValueTwd(raw))
+      }
+    } catch (err) {
+      console.warn('[promotions/snapshots] 券面額查詢失敗，coupon_drop 規則將 fail closed', err)
+    }
+  }
+
+  // ── Mystery Gift：獎池最高獎項價值（下單時的保守預留基準）────────────────
+  for (const tag of mysteryPoolTags) {
+    maxPrizeValueByPoolTag.set(tag, await loadMaxPrizeValue(payload, tag))
+  }
+
+  return {
+    giftCostByProductId,
+    pointsPerDollar,
+    pointsToCurrencyRate,
+    couponFaceValueById,
+    maxPrizeValueByPoolTag,
+  }
+}
+
+/**
+ * 券的最大曝險面額（NT$）。
+ * 固定額券就是折抵金額本身；百分比券只有設了 maxDiscountAmount 才算得出上限，
+ * 沒設 = 訂單越大賠越多，無法納入預算控管 → null（fail closed）。
+ */
+function couponFaceValueTwd(coupon: Record<string, unknown>): number | null {
+  const type = String(coupon.discountType ?? '')
+  if (type === 'fixed' || type === 'fixed_amount') {
+    const v = Number(coupon.discountValue)
+    return Number.isFinite(v) && v > 0 ? v : null
+  }
+  const cap = Number(coupon.maxDiscountAmount)
+  return Number.isFinite(cap) && cap > 0 ? cap : null
+}
+
+/**
+ * 查一個獎池中最高的獎項價值（NT$）。
+ *
+ * 價值優先序刻意與 /games/terms 機率公示頁一致（`estimatedValue ?? estimatePrizeValueTwd()`）——
+ * 對外揭露的價值與內部扣預算的價值必須是同一個數字，否則稽核對不起來。
+ *
+ * 回傳 null 的條件：任一 active 獎品的 estimatedValue 為空、且 prizeType 不屬於
+ * points/credit 這種可自動換算的型別。estimatePrizeValueTwd 的 coupon 分支
+ *（`amount*100` 封頂 5000）與 free_shipping 固定 80 都是拍腦袋常數，
+ * 拿來當預算扣款依據會嚴重失真，所以這類獎品一律要求 admin 填 estimatedValue。
+ */
+async function loadMaxPrizeValue(payload: Payload, poolTag: string): Promise<number | null> {
+  try {
+    const now = new Date().toISOString()
+    const res = await payload.find({
+      collection: 'prize-pools' as never,
+      where: {
+        and: [
+          { active: { equals: true } },
+          { eligibleGames: { contains: poolTag } },
+          { or: [{ startsAt: { exists: false } }, { startsAt: { less_than_equal: now } }] },
+          { or: [{ endsAt: { exists: false } }, { endsAt: { greater_than_equal: now } }] },
+        ],
+      },
+      limit: 200,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const docs = res.docs as unknown as Array<Record<string, unknown>>
+    const usable = docs.filter((d) => String(d.prizeType ?? '') !== 'none')
+    if (usable.length === 0) return null
+
+    let max = 0
+    for (const d of usable) {
+      const prizeType = String(d.prizeType ?? '')
+      const est = Number(d.estimatedValue)
+      if (Number.isFinite(est) && est > 0) {
+        max = Math.max(max, est)
+        continue
+      }
+      // 沒填 estimatedValue：只有 points / credit 敢自動換算，其餘一律算不出
+      if (prizeType === 'points' || prizeType === 'credit') {
+        max = Math.max(max, estimatePrizeValueTwd(prizeType, Number(d.amount) || 0))
+        continue
+      }
+      console.warn(
+        `[promotions/snapshots] 獎池「${poolTag}」的獎品 ${String(d.slug ?? d.id)} 缺 estimatedValue（型別 ${prizeType}），mystery_gift 規則 fail closed`,
+      )
+      return null
+    }
+    return max > 0 ? max : null
+  } catch (err) {
+    console.warn(`[promotions/snapshots] 獎池「${poolTag}」查詢失敗，mystery_gift 規則將 fail closed`, err)
+    return null
+  }
 }
 
 export async function loadActiveCommerceRules(
@@ -461,14 +608,26 @@ export async function loadActiveCommerceRules(
 
     // ── 成本資料：一次批次查完，不對每條規則各打一次 DB ──────────────────
     const giftProductIds = new Set<string>()
+    const dropCouponIds = new Set<string>()
+    const mysteryPoolTags = new Set<string>()
     for (const doc of ruleDocs) {
       const eg = (doc.effect ?? {}) as Record<string, unknown>
       if (eg.effectType === 'gift_item') {
         const pid = relId(eg.giftProduct)
         if (pid != null) giftProductIds.add(String(pid))
+      } else if (eg.effectType === 'coupon_drop') {
+        const cid = relId(eg.dropCoupon)
+        if (cid != null) dropCouponIds.add(String(cid))
+      } else if (eg.effectType === 'mystery_gift') {
+        mysteryPoolTags.add(MYSTERY_GIFT_POOL_TAG)
       }
     }
-    const costCtx = await loadRuleCostContext(payload, [...giftProductIds])
+    const costCtx = await loadRuleCostContext(
+      payload,
+      [...giftProductIds],
+      [...dropCouponIds],
+      [...mysteryPoolTags],
+    )
 
     for (const doc of ruleDocs) {
       const campaign = byId.get(String(relId(doc.campaign)))

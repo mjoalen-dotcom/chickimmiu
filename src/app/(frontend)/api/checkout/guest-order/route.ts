@@ -4,6 +4,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 import { computeOrderPricing } from '@/lib/promotions/pricing'
+import { reserveCampaignBudgetAndQuota } from '@/lib/promotions/orderPricingHook'
 import { readReferralCodeFromRequest } from '@/lib/affiliate/referralCookie'
 import { checkRateLimit, clientIpForRateLimit } from '@/lib/rateLimit'
 import { issuePayloadToken } from '@/lib/auth/issuePayloadToken'
@@ -104,6 +105,18 @@ export async function POST(req: Request) {
         errors: pricing.errors,
       })
     }
+    // ── 活動預算預留 ────────────────────────────────────────────────
+    // guest-order 走 local API，而 orderPricingHook 的 beforeChange 對 local API
+    // 直接 return —— 整段活動預算原子預留在訪客路徑上從來沒有執行過，訪客單
+    // 完全不吃預算上限。這是既有缺口（非本次引入），但成本計入預算之後會被放大。
+    //
+    // 傳 userId=null：函式內部對 coupon_drop / mystery_gift 一律略過並記 log
+    //（訪客每筆都是新的 isGuest 臨時帳號，「每人 1 次」對它是零約束），
+    // 但折扣與效果成本的預算預留照做。
+    if (pricing.evaluation) {
+      await reserveCampaignBudgetAndQuota(payload, pricing.evaluation, null)
+    }
+
     const b = pricing.breakdown
 
     const minOrder =

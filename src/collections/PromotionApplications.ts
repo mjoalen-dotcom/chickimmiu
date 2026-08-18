@@ -129,6 +129,17 @@ export const PromotionApplications: CollectionConfig = {
       fields: [
         { name: 'discountAmount', label: '商品折抵', type: 'number', required: true, min: 0 },
         { name: 'shippingDiscountAmount', label: '運費折抵', type: 'number', defaultValue: 0, min: 0 },
+        {
+          name: 'budgetCostAmount',
+          label: '佔用活動預算（非折抵）',
+          type: 'number',
+          defaultValue: 0,
+          min: 0,
+          admin: {
+            description:
+              '贈品成本／點數面額／獎項價值。顧客不會少付這筆錢，但活動預算會被佔用。回沖時讀的是這一欄（快照只在下單時用），漏寫就會扣得到、退不回。',
+          },
+        },
       ],
     },
     {

@@ -26,6 +26,7 @@ import { affectedRows, runSql } from '../db/dialectSafeSql'
 import type { CollectionBeforeChangeHook, CollectionAfterChangeHook } from 'payload'
 
 import { computeOrderPricing, type RawCartItem } from './pricing'
+import type { EvaluationResult } from './types'
 import { readReferralCodeFromRequest } from '../affiliate/referralCookie'
 import { loadPromotionSettings } from './snapshots'
 
@@ -48,6 +49,117 @@ interface OrderItemInput {
   bundleRef?: unknown
   giftRuleRef?: unknown
   addOnRuleRef?: unknown
+}
+
+/**
+ * 活動預算 last-slice + 限量 quota + 每人 1 次，三件事一起原子預留。
+ *
+ * 抽成獨立函式是為了讓訪客結帳（guest-order 走 local API，beforeChange 直接
+ * return）也能呼叫 —— 那條路徑目前完全跳過活動預算預留，訪客單不吃預算上限，
+ * 是既有缺口。
+ *
+ * 順序刻意是「先扣 quota、再建 claim」：UNIQUE 衝突時只要補償 quota 一筆，
+ * 不會出現 claim 建了但 quota 沒扣的狀態（反過來則會漏一份額度回不來）。
+ *
+ * @param userId null = 訪客。訪客一律不套用 coupon_drop / mystery_gift：
+ *   guest checkout 每筆都新建一個 isGuest 臨時帳號，以 user id 為鍵的
+ *   「每人 1 次」對訪客等於零約束，PG 的 unique index 也不擋 NULL。
+ *   但活動**預算**的預留照做（那是既有缺口的修補）。
+ */
+export async function reserveCampaignBudgetAndQuota(
+  payload: unknown,
+  evaluation: Pick<EvaluationResult, 'applications' | 'rewardIntents'>,
+  userId: number | string | null,
+): Promise<void> {
+  // (1) 活動預算：折扣 + 運費抵扣 + 效果成本（贈品／點數／獎項）
+  const byCampaign = new Map<string, number>()
+  for (const app of evaluation.applications) {
+    if (app.source !== 'campaign_rule' || app.campaignId == null) continue
+    const key = String(app.campaignId)
+    const cost =
+      (Number(app.discountAmount) || 0) +
+      (Number(app.shippingDiscountAmount) || 0) +
+      (Number(app.budgetCostAmount) || 0)
+    byCampaign.set(key, (byCampaign.get(key) ?? 0) + cost)
+  }
+  for (const [campaignId, amount] of byCampaign) {
+    if (amount <= 0) continue
+    const res = await runSql(
+      payload,
+      sql`UPDATE marketing_campaigns
+          SET commerce_budget_spent = COALESCE(commerce_budget_spent, 0) + ${amount}
+          WHERE id = ${Number(campaignId)}
+            AND (commerce_budget_cap IS NULL OR COALESCE(commerce_budget_spent, 0) + ${amount} <= commerce_budget_cap)`,
+    )
+    if (affectedRows(res) === 0) {
+      throw new APIError('活動預算已用完，優惠內容已更新，請重新整理結帳頁', 409)
+    }
+  }
+
+  // (2)(3) 限量 quota + 每人 1 次 —— 只對限量型效果，且只對登入會員
+  const dropIntents = evaluation.rewardIntents.filter(
+    (i) => i.type === 'coupon_drop' || i.type === 'mystery_gift',
+  )
+  if (dropIntents.length === 0) return
+  if (userId == null) {
+    // 訪客：不發、不扣 quota、不建 claim。明講而不是默默留白。
+    console.info('[orderPricingHook] 訪客結帳：限量券包／神秘禮物不適用（本功能限登入會員）')
+    return
+  }
+
+  for (const intent of dropIntents) {
+    const campaignId = intent.campaignId
+    if (campaignId == null) continue
+    const ruleKey = String(intent.ruleKey ?? '')
+    const claimKey = String(intent.claimKey || ruleKey)
+    if (!claimKey) continue
+
+    // (2) 限量總量：條件式 UPDATE，rowsAffected===0 就是被搶完。
+    //     不是先 SELECT 再 UPDATE —— 那個寫法在同時搶最後一份時必超發。
+    const quotaRes = await runSql(
+      payload,
+      sql`UPDATE marketing_campaigns
+          SET commerce_drop_claimed = COALESCE(commerce_drop_claimed, 0) + 1
+          WHERE id = ${Number(campaignId)}
+            AND (commerce_drop_total IS NULL OR COALESCE(commerce_drop_claimed, 0) + 1 <= commerce_drop_total)`,
+    )
+    if (affectedRows(quotaRes) === 0) {
+      throw new APIError('限量優惠已被領完，請重新整理結帳頁', 409)
+    }
+
+    // (3) 每人每檔 1 次：靠 idempotencyKey 的 UNIQUE index，不是靠先查再寫。
+    //     evaluator 的 perUserLimit 只是報價期的軟檢查（有 TOCTOU）。
+    try {
+      await (payload as { create: Function }).create({
+        collection: 'promotion-drop-claims',
+        data: {
+          idempotencyKey: `${claimKey}:u${userId}`,
+          campaign: campaignId,
+          ruleKey,
+          user: userId,
+          effectType: String(intent.type),
+          status: 'reserved',
+          quotaConsumed: true,
+          budgetCostAmount: Number(intent.costAmount) || 0,
+        },
+        overrideAccess: true,
+      })
+    } catch (err) {
+      // 剛剛扣掉的 quota 要還回去，否則這一份額度永遠回不來
+      await runSql(
+        payload,
+        sql`UPDATE marketing_campaigns
+            SET commerce_drop_claimed = COALESCE(commerce_drop_claimed, 0) - 1
+            WHERE id = ${Number(campaignId)}
+              AND COALESCE(commerce_drop_claimed, 0) > 0`,
+      ).catch(() => undefined)
+
+      if (/UNIQUE|unique|duplicate/i.test(String((err as Error)?.message ?? ''))) {
+        throw new APIError('此活動每人限領一次，您已領取過了', 409)
+      }
+      throw err
+    }
+  }
 }
 
 export const beforeChangeServerPricing: CollectionBeforeChangeHook = async ({ data, operation, req }) => {
@@ -114,28 +226,10 @@ export const beforeChangeServerPricing: CollectionBeforeChangeHook = async ({ da
     throw new APIError('價格已更新（活動 / 優惠變動），請重新整理結帳頁確認金額後再送出', 409)
   }
 
-  // ── 活動預算 last-slice 原子預留（先保留後建單；建單失敗的少數情況偏商家安全）──
+  // ── 活動預算 + 限量 quota + 每人 1 次的原子預留 ──
   const evaluation = result.evaluation
   if (evaluation) {
-    const byCampaign = new Map<string, number>()
-    for (const app of evaluation.applications) {
-      if (app.source !== 'campaign_rule' || app.campaignId == null) continue
-      const key = String(app.campaignId)
-      byCampaign.set(key, (byCampaign.get(key) ?? 0) + app.discountAmount + app.shippingDiscountAmount)
-    }
-    for (const [campaignId, amount] of byCampaign) {
-      if (amount <= 0) continue
-      const res = await runSql(
-        req.payload,
-        sql`UPDATE marketing_campaigns
-            SET commerce_budget_spent = COALESCE(commerce_budget_spent, 0) + ${amount}
-            WHERE id = ${Number(campaignId)}
-              AND (commerce_budget_cap IS NULL OR COALESCE(commerce_budget_spent, 0) + ${amount} <= commerce_budget_cap)`,
-      )
-      if (affectedRows(res) === 0) {
-        throw new APIError('活動預算已用完，優惠內容已更新，請重新整理結帳頁', 409)
-      }
-    }
+    await reserveCampaignBudgetAndQuota(req.payload, evaluation, relId(req.user?.id ?? null))
   }
 
   // ── 以伺服器結果覆寫全部金額欄位 ──
@@ -225,6 +319,9 @@ export const afterChangeWritePromotionRecords: CollectionAfterChangeHook = async
           status: 'applied',
           discountAmount: Number(app.discountAmount) || 0,
           shippingDiscountAmount: Number(app.shippingDiscountAmount) || 0,
+          // 預算預留讀的是快照，但回沖讀的是這一欄（DB）。只寫快照不寫這裡
+          // 會變成「扣得到、退不回」的單向漏預算。
+          budgetCostAmount: Number(app.budgetCostAmount) || 0,
           allocations: app.allocations ?? [],
           idempotencyKey: `${(doc as Record<string, unknown>).id}:${app.ruleKey}`,
         } as never,
@@ -258,6 +355,43 @@ export const afterChangeWritePromotionRecords: CollectionAfterChangeHook = async
       /* 靜默 */
     }
   }
+
+  // 把下單時建好的 reserved claim 綁上訂單 id。
+  // claim 必須在 beforeChange 就建好（UNIQUE index 是「每人 1 次」的唯一真防線，
+  // 要在訂單成立**之前**擋下第二筆），但那時訂單還沒有 id，只能在這裡回填。
+  // 沒有 order 的 reserved claim = 建單失敗留下的孤兒，可由後台依此特徵清理。
+  try {
+    const intents = Array.isArray(promo.rewardIntents)
+      ? (promo.rewardIntents as Array<Record<string, unknown>>)
+      : []
+    for (const intent of intents) {
+      if (intent.type !== 'coupon_drop' && intent.type !== 'mystery_gift') continue
+      if (customerId == null) continue
+      const claimKey = String(intent.claimKey || intent.ruleKey || '')
+      if (!claimKey) continue
+      const found = await req.payload.find({
+        collection: 'promotion-drop-claims' as never,
+        where: { idempotencyKey: { equals: `${claimKey}:u${customerId}` } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      })
+      const claim = found.docs?.[0] as Record<string, unknown> | undefined
+      if (!claim || claim.order != null) continue
+      await req.payload.update({
+        collection: 'promotion-drop-claims' as never,
+        id: claim.id as never,
+        data: {
+          order: (doc as Record<string, unknown>).id,
+          rule: intent.ruleDocId ?? undefined,
+        } as never,
+        overrideAccess: true,
+      })
+    }
+  } catch (err) {
+    console.error('[promotion] drop claim 綁訂單失敗', err instanceof Error ? err.message : err)
+  }
+
   return doc
 }
 
@@ -291,7 +425,12 @@ export const afterChangeReversePromotions: CollectionAfterChangeHook = async ({ 
       })
       const campaignId = relId(raw.campaign)
       if (raw.source === 'campaign_rule' && campaignId != null) {
-        const amount = (Number(raw.discountAmount) || 0) + (Number(raw.shippingDiscountAmount) || 0)
+        // 三項齊全：折扣 + 運費抵扣 + 效果成本。少算 budgetCostAmount 的話，
+        // 贈品／獎項的成本會扣得掉、退不回，活動預算單向漏。
+        const amount =
+          (Number(raw.discountAmount) || 0) +
+          (Number(raw.shippingDiscountAmount) || 0) +
+          (Number(raw.budgetCostAmount) || 0)
         byCampaign.set(String(campaignId), (byCampaign.get(String(campaignId)) ?? 0) + amount)
       }
     }

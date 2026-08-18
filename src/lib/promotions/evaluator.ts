@@ -362,6 +362,8 @@ const NON_LINE_EFFECTS: ReadonlySet<PromotionEffect['type']> = new Set([
   'gift_item',
   'points_multiplier',
   'grant_reward',
+  'coupon_drop',
+  'mystery_gift',
 ])
 
 /**
@@ -400,6 +402,19 @@ export function resolveEffectCost(
     // 依 P0-B 規格：先計 0 並在 dashboard 列件數，等獎項價值欄位補上再改成真實成本。
     case 'grant_reward':
       return 0
+    case 'coupon_drop': {
+      // 券的成本 = 最大曝險面額 × 張數。固定額券 = discountValue；
+      // 百分比券 = maxDiscountAmount，沒設上限就是無限曝險 → snapshots 餵 null。
+      if (then.faceValueTwd == null || !Number.isFinite(then.faceValueTwd)) return null
+      const qty = Math.max(1, Math.floor(then.quantity || 1))
+      return Math.max(0, Math.round(then.faceValueTwd * qty))
+    }
+    case 'mystery_gift': {
+      // 下單當下還沒抽獎（抽獎在付款後），只能用獎池最高值保守預留，
+      // 付款後由 paidRewardOrchestrator 用實際 estimatedValue 做差額修正。
+      if (then.maxPrizeValueTwd == null || !Number.isFinite(then.maxPrizeValueTwd)) return null
+      return Math.max(0, Math.round(then.maxPrizeValueTwd))
+    }
     default:
       return 0
   }
@@ -710,6 +725,27 @@ export function evaluatePromotions(input: EvaluationInput): EvaluationResult {
         rewardKey: rule.then.rewardKey,
         quantity: rule.then.quantity,
         ...(rule.then.rewardType ? { rewardType: rule.then.rewardType } : {}),
+      })
+    } else if (rule.then.type === 'coupon_drop') {
+      rewardIntents.push({
+        ruleKey: rule.ruleKey,
+        campaignId: rule.campaignId,
+        type: 'coupon_drop',
+        couponId: rule.then.couponId,
+        quantity: rule.then.quantity,
+        claimKey: rule.ruleKey,
+        costAmount: budgetCostAmount,
+      })
+    } else if (rule.then.type === 'mystery_gift') {
+      rewardIntents.push({
+        ruleKey: rule.ruleKey,
+        campaignId: rule.campaignId,
+        type: 'mystery_gift',
+        poolTag: rule.then.poolTag,
+        excludePrizeTypes: rule.then.excludePrizeTypes,
+        ...(rule.then.fallbackPoolSlug ? { fallbackPoolSlug: rule.then.fallbackPoolSlug } : {}),
+        claimKey: rule.ruleKey,
+        costAmount: budgetCostAmount,
       })
     }
 
