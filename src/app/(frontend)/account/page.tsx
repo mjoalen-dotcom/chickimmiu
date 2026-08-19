@@ -8,7 +8,13 @@ import { Crown, Coins, Wallet, TrendingUp, Gamepad2, ArrowRight, Package, Ticket
 import { CreditScoreCard } from '@/components/account/CreditScoreCard'
 import AccountAvatarUpload from '@/components/account/AccountAvatarUpload'
 import { HoroscopeBlock } from '@/components/account/HoroscopeBlock'
-import { MBTI_RESULTS, type MBTIType } from '@/lib/games/mbtiResults'
+import { PersonalityAvatar } from '@/components/personality/PersonalityAvatar'
+import { MBTI_RESULTS } from '@/lib/games/mbtiResults'
+import {
+  isMBTIType,
+  isOccasionMode,
+  resolvePersonalityProfile,
+} from '@/lib/personality/personalityProfile'
 
 export const metadata: Metadata = {
   title: '會員總覽',
@@ -195,9 +201,18 @@ export default async function AccountPage() {
 
   // MBTI 個性測驗結果（每位會員終身限 1 次，存在 users.mbtiProfile）
   const mbtiProfile = (user.mbtiProfile as LooseRecord | null | undefined) ?? null
-  const mbtiType = (mbtiProfile?.mbtiType as MBTIType | null | undefined) ?? null
+  const storedMbtiType = mbtiProfile?.mbtiType
+  const storedPrimaryOccasion = mbtiProfile?.primaryOccasion
+  const mbtiType = isMBTIType(storedMbtiType) ? storedMbtiType : null
+  const primaryOccasion = isOccasionMode(storedPrimaryOccasion)
+    ? storedPrimaryOccasion
+    : null
   const mbtiTakenAtRaw = (mbtiProfile?.mbtiTakenAt as string | null | undefined) ?? null
   const mbtiResultDef = mbtiType && MBTI_RESULTS[mbtiType] ? MBTI_RESULTS[mbtiType] : null
+  const personalityProfile = resolvePersonalityProfile({
+    mbtiType,
+    occasion: primaryOccasion,
+  })
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -349,16 +364,16 @@ export default async function AccountPage() {
       </div>
 
       {/* MBTI 個性穿搭 */}
-      <div className="bg-gradient-to-br from-indigo-500/5 to-purple-500/10 rounded-2xl p-6 border border-purple-500/20">
+      <div className="rounded-2xl border border-[#ddc59f] bg-[linear-gradient(135deg,#fffaf5_0%,#faeee8_100%)] p-6 shadow-[0_12px_32px_rgba(78,48,38,0.08)]">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Brain size={20} className="text-purple-500" />
+            <Brain size={20} className="text-[#ae8250]" />
             <h3 className="font-medium">MBTI 個性穿搭</h3>
           </div>
           {mbtiType && (
             <Link
               href="/account/personality"
-              className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
+              className="flex items-center gap-1 text-xs text-[#8b6048] transition-colors hover:text-[#54372d]"
             >
               個性分析頁 <ArrowRight size={12} />
             </Link>
@@ -367,18 +382,26 @@ export default async function AccountPage() {
 
         {mbtiType && mbtiResultDef ? (
           <div>
-            <div className="flex items-start gap-4 mb-4">
-              <div className="text-4xl md:text-5xl font-serif tracking-wider text-purple-700 leading-none">
-                {mbtiType}
-              </div>
+            <div className="mb-5 flex flex-wrap items-center gap-4">
+              <PersonalityAvatar
+                gender={gender}
+                personalityIndex={personalityProfile?.index ?? null}
+                size={108}
+              />
               <div className="flex-1 min-w-0">
+                <div className="font-serif text-4xl leading-none tracking-wider text-[#4b3229] md:text-5xl">
+                  {mbtiType}
+                </div>
+                <p className="mt-2 text-sm font-medium text-[#7b5345]">
+                  {personalityProfile?.name ?? '64 型人格結果待更新'}
+                </p>
                 <p className="text-base font-medium leading-tight">{mbtiResultDef.nickname}</p>
-                <p className="text-xs text-purple-600/80 italic mt-1">{mbtiResultDef.tagline}</p>
+                <p className="mt-1 text-xs italic text-[#986c57]">{mbtiResultDef.tagline}</p>
               </div>
             </div>
 
             <div className="bg-white/60 rounded-xl p-4 mb-3">
-              <p className="text-xs tracking-widest text-purple-600 mb-1.5">你的穿搭風格</p>
+              <p className="mb-1.5 text-xs tracking-widest text-[#9a7545]">你的穿搭風格</p>
               <p className="text-xs text-foreground/80 leading-relaxed">
                 {mbtiResultDef.styleAnalysis}
               </p>
@@ -388,7 +411,7 @@ export default async function AccountPage() {
               {mbtiResultDef.styleKeywords.map((kw) => (
                 <span
                   key={kw}
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-700"
+                  className="rounded-full border border-[#d9b982]/40 bg-white/65 px-2 py-0.5 text-[10px] text-[#765244]"
                 >
                   #{kw}
                 </span>
@@ -403,7 +426,7 @@ export default async function AccountPage() {
 
             <Link
               href="/account/personality"
-              className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-purple-500/10 text-purple-700 hover:bg-purple-500/20 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#ead9c8]/70 px-3 py-1.5 text-xs text-[#6f4b3d] transition-colors hover:bg-[#dfc8b3]"
             >
               <Sparkles size={12} />
               打開 MBTI64 個性分析頁（4 場合 + 3 模式推薦）
