@@ -120,14 +120,20 @@ export const Returns: CollectionConfig = {
         // ── 收到退貨：自動回補庫存 ──
         if (status === 'received' && prevStatus !== 'received') {
           const items = doc.items as {
-            product: string | { id: string }
+            product: string | number | { id: string | number }
             variant?: string
             quantity: number
           }[]
 
           for (const item of items) {
-            const productId = typeof item.product === 'string' ? item.product : item.product?.id
-            if (!productId) continue
+            // product 可能是 string / number / populated object（同 Orders 扣庫存段
+            // 的教訓）：只認 string 會讓 number id 的退貨永遠不回補庫存。
+            const rawProduct = item.product
+            const productId =
+              rawProduct != null && typeof rawProduct === 'object'
+                ? (rawProduct as { id?: string | number }).id
+                : rawProduct
+            if (productId == null || productId === '') continue
 
             try {
               const product = await req.payload.findByID({ collection: 'products', id: productId })

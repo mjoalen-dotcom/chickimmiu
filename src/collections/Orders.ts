@@ -908,14 +908,22 @@ export const Orders: CollectionConfig = {
         // 缺貨拒單已移到 beforeChange 的可用量檢查；此處 Math.max(0,…) 僅作最後夾制。
         if (operation === 'create') {
           const items = doc.items as {
-            product: string | { id: string }
+            product: string | number | { id: string | number }
             sku?: string
             quantity: number
           }[]
 
           for (const item of items) {
-            const productId = typeof item.product === 'string' ? item.product : item.product?.id
-            if (!productId) continue
+            // ⚠️ 同 beforeChange 超賣防線的教訓：product 可能是 string / number /
+            // populated object。舊版只認 string|object，number id（SQLite/PG 原生 id）
+            // 會讓 productId 變 undefined → 扣庫存整段被靜默跳過（verify DB 實測：
+            // 6 張訂單建完庫存原封不動）。
+            const rawProduct = item.product
+            const productId =
+              rawProduct != null && typeof rawProduct === 'object'
+                ? (rawProduct as { id?: string | number }).id
+                : rawProduct
+            if (productId == null || productId === '') continue
 
             try {
               const product = await payload.findByID({ collection: 'products', id: productId })
@@ -979,16 +987,21 @@ export const Orders: CollectionConfig = {
           try {
             const paidItems =
               (doc.items as Array<{
-                product: string | { id: string }
+                product: string | number | { id: string | number }
                 quantity?: number
                 isGift?: boolean
               }>) || []
             const soldDelta = new Map<string, number>()
             for (const it of paidItems) {
               if (it.isGift) continue
-              const pid = typeof it.product === 'string' ? it.product : it.product?.id
+              // number id 也要算進 totalSold（同扣庫存段的教訓）
+              const rawProduct = it.product
+              const pid =
+                rawProduct != null && typeof rawProduct === 'object'
+                  ? (rawProduct as { id?: string | number }).id
+                  : rawProduct
               const qty = Number(it.quantity) || 0
-              if (!pid || qty <= 0) continue
+              if (pid == null || pid === '' || qty <= 0) continue
               soldDelta.set(String(pid), (soldDelta.get(String(pid)) || 0) + qty)
             }
             for (const [pid, qty] of soldDelta) {
@@ -1310,14 +1323,19 @@ export const Orders: CollectionConfig = {
         // ── 訂單取消：自動回補庫存 ──
         if (status === 'cancelled' && prevStatus !== 'cancelled') {
           const items = doc.items as {
-            product: string | { id: string }
+            product: string | number | { id: string | number }
             sku?: string
             quantity: number
           }[]
 
           for (const item of items) {
-            const productId = typeof item.product === 'string' ? item.product : item.product?.id
-            if (!productId) continue
+            // 同上：number id 也要能回補，否則取消單的庫存永遠回不來。
+            const rawProduct = item.product
+            const productId =
+              rawProduct != null && typeof rawProduct === 'object'
+                ? (rawProduct as { id?: string | number }).id
+                : rawProduct
+            if (productId == null || productId === '') continue
 
             try {
               const product = await payload.findByID({ collection: 'products', id: productId })
