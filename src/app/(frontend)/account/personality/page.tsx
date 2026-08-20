@@ -29,6 +29,12 @@ import {
   LUCKY_DAILY_OCCASIONS,
   type OccasionMode,
 } from '@/lib/games/mbtiOccasions'
+import { PersonalityAvatar } from '@/components/personality/PersonalityAvatar'
+import {
+  isMBTIType,
+  isOccasionMode,
+  resolvePersonalityProfile,
+} from '@/lib/personality/personalityProfile'
 import PersonalityClient, {
   type ModeTabKey,
   type ProductLite,
@@ -145,10 +151,14 @@ export default async function PersonalityPage() {
   })) as unknown as LooseRecord
 
   const mbtiProfile = (user.mbtiProfile as LooseRecord | null | undefined) ?? null
-  const mbtiType = (mbtiProfile?.mbtiType as MBTIType | null | undefined) ?? null
-  const primaryOccasion =
-    (mbtiProfile?.primaryOccasion as OccasionMode | null | undefined) ?? null
+  const storedMbtiType = mbtiProfile?.mbtiType
+  const storedPrimaryOccasion = mbtiProfile?.primaryOccasion
+  const mbtiType = isMBTIType(storedMbtiType) ? storedMbtiType : null
+  const primaryOccasion = isOccasionMode(storedPrimaryOccasion)
+    ? storedPrimaryOccasion
+    : null
   const occasionScores = (mbtiProfile?.occasionScores as Record<string, number> | null | undefined) ?? null
+  const gender = typeof user.gender === 'string' ? user.gender : null
 
   // ── 未測會員：CTA 引導去測驗 ──
   if (!mbtiType) {
@@ -159,11 +169,14 @@ export default async function PersonalityPage() {
           <h1 className="text-2xl font-serif">我的個性穿搭分析</h1>
         </div>
         <div className="bg-gradient-to-br from-indigo-500/5 to-purple-500/10 rounded-3xl border border-purple-500/20 p-8 md:p-12 text-center">
-          <p className="text-5xl mb-4">🧠</p>
-          <p className="text-lg font-serif mb-2">尚未完成個性測驗</p>
+          <PersonalityAvatar size={176} className="mx-auto mb-6" />
+          <p className="text-lg font-serif mb-2">
+            {storedMbtiType ? '測驗結果需要更新' : '尚未完成個性測驗'}
+          </p>
           <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-md mx-auto">
-            32 題詳細 MBTI64 測驗 — 16 型 × 4 場合 = 64 sub-personality，找出你的個性穿搭風格。
-            測完後可在這裡讀取你的完整分析、4 種場合對應穿搭、3 種模式商品推薦切換。
+            {storedMbtiType
+              ? '目前儲存的 MBTI 類型無效；系統已安全顯示中性預設圖。重新測驗後會換成正確的 1–64 人物。'
+              : '32 題詳細 MBTI64 測驗 — 16 型 × 4 場合 = 64 sub-personality，找出你的個性穿搭風格。測完後可在這裡讀取完整分析與人物卡。'}
           </p>
           <Link
             href="/games/mbti-style"
@@ -178,6 +191,10 @@ export default async function PersonalityPage() {
 
   const baseResult = MBTI_RESULTS[mbtiType]
   const userPrimaryOccasion: OccasionMode = primaryOccasion ?? 'urban'
+  const personalityProfile = resolvePersonalityProfile({
+    mbtiType,
+    occasion: primaryOccasion,
+  })
   const subKey = `${mbtiType}-${userPrimaryOccasion}`
   const subResult = MBTI_SUB_RESULTS[subKey] ?? MBTI_SUB_RESULTS[`${mbtiType}-urban`]
 
@@ -234,7 +251,6 @@ export default async function PersonalityPage() {
       personality={baseResult.personality}
       styleAnalysis={baseResult.styleAnalysis}
       styleKeywords={baseResult.styleKeywords}
-      accentColor={baseResult.accentColor}
       primaryOccasion={userPrimaryOccasion}
       primaryOccasionLabel={OCCASION_META[userPrimaryOccasion].label}
       primaryOccasionIcon={OCCASION_META[userPrimaryOccasion].icon}
@@ -244,6 +260,9 @@ export default async function PersonalityPage() {
       fourOccasions={fourOccasions}
       occasionScores={occasionScores}
       productsByMode={productsByMode}
+      gender={gender}
+      personalityIndex={personalityProfile?.index ?? null}
+      personalityName={personalityProfile?.name ?? null}
     />
   )
 }

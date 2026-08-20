@@ -88,6 +88,7 @@ import * as migration_20260801_030000_enable_users_trash from './20260801_030000
 import * as migration_20260801_120000_add_blog_excerpt_cta from './20260801_120000_add_blog_excerpt_cta';
 import * as migration_20260801_170000_add_blog_post_visibility from './20260801_170000_add_blog_post_visibility';
 import * as migration_20260803_100000_add_native_app_oauth_client_ids from './20260803_100000_add_native_app_oauth_client_ids';
+import * as migration_20260806_010000_add_ops_actions from './20260806_010000_add_ops_actions';
 import * as migration_20260813_210000_campaign_engine_v1 from './20260813_210000_campaign_engine_v1';
 import * as migration_20260814_120000_add_guest_checkout from './20260814_120000_add_guest_checkout';
 import * as migration_20260814_213000_split_blog_categories_by_site from './20260814_213000_split_blog_categories_by_site';
@@ -542,6 +543,11 @@ export const migrations = [
     up: migration_20260803_100000_add_native_app_oauth_client_ids.up,
     down: migration_20260803_100000_add_native_app_oauth_client_ids.down,
     name: '20260803_100000_add_native_app_oauth_client_ids',
+  },
+  {
+    up: migration_20260806_010000_add_ops_actions.up,
+    down: migration_20260806_010000_add_ops_actions.down,
+    name: '20260806_010000_add_ops_actions',
   },
   {
     up: migration_20260813_210000_campaign_engine_v1.up,

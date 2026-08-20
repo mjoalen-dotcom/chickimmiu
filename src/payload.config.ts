@@ -67,6 +67,7 @@ import { CollectibleCards } from './collections/CollectibleCards'
 import { CollectibleCardEvents } from './collections/CollectibleCardEvents'
 import { SiteThemes } from './collections/SiteThemes'
 import { PrizePools } from './collections/PrizePools'
+import { OpsActions } from './collections/OpsActions'
 
 import { CollectionsPageSettings } from './globals/CollectionsPageSettings'
 import { GlobalSettings } from './globals/GlobalSettings'
@@ -445,6 +446,13 @@ export default buildConfig({
           Component: '@/components/admin/EmailTemplatePreviewView',
           path: '/tools/email-templates',
         },
+        // 營運 AI 助理指揮艙（L2 授權：AI 提案 / admin 核准執行）
+        // 對應 endpoint：/api/ops-copilot/{briefing,actions,chat}
+        // 稽核軌跡在 OpsActions collection；入口連結由 CKMUSystemToolsNavGroup 注入 ⑥
+        opsCopilot: {
+          Component: '@/components/admin/OpsCopilotView',
+          path: '/ops-copilot',
+        },
       },
     },
   },
@@ -552,6 +560,9 @@ export default buildConfig({
     withOperatorManage(Podcasts),
     withOperatorManage(SiteThemes),
     withOperatorManage(Media),
+    // 營運 AI 助理：行動提案稽核軌跡（AI 只能寫 pending，admin 核准後才執行）。
+    // 群組落點比照 CKMUSystemToolsNavGroup 注入的系統工具連結（⑥ 底部）。
+    OpsActions,
     // 2026-08-15 步驟03分組整併：原「⑦ 系統與安全」已拆散——LoginAttempts
     // 併入 ③ 會員與CRM、Currencies 併入 ① 訂單與物流（admin.group 已改，
     // 陣列位置維持不動，故在各自新群組內排序偏後，符合兩者「低頻使用」性質）。

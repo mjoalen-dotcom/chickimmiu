@@ -28,6 +28,7 @@ import React, { useEffect } from 'react'
  *
  * 目前條目（GraphQL Playground 已下架 2026-05-11；AI 部落格草稿產生器
  * 已移到「Ⓚ 兩站部落格」group，見 KimBlogNavGroup.tsx）：
+ *   - 營運 AI 助理指揮艙 (/admin/ops-copilot)
  *   - 一鍵刪除未上架商品 (/admin/tools/bulk-delete-products)
  *   - 白帽自動化行銷中台 (/admin/tools/whitehat-marketing)
  *   - Email 模板預覽 / 測試寄送 (/admin/tools/email-templates)
@@ -46,6 +47,11 @@ const TARGET_GROUP_LABEL = '⑥ 內容與頁面'
 const INJECTED_ATTR = 'data-ckmu-systools-injected'
 
 const items: Item[] = [
+  {
+    href: '/admin/ops-copilot',
+    label: '🤖 營運 AI 助理',
+    id: 'nav-ckmu-ops-copilot',
+  },
   {
     href: '/admin/tools/bulk-delete-products',
     label: '🗑️ 一鍵刪除未上架商品',

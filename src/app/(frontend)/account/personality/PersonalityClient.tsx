@@ -13,6 +13,7 @@ import {
   Crown,
 } from 'lucide-react'
 import type { OccasionMode } from '@/lib/games/mbtiOccasions'
+import { PersonalityAvatar } from '@/components/personality/PersonalityAvatar'
 
 export type ProductLite = {
   id: number
@@ -81,7 +82,6 @@ interface Props {
   personality: string
   styleAnalysis: string
   styleKeywords: string[]
-  accentColor: string
   primaryOccasion: OccasionMode
   primaryOccasionLabel: string
   primaryOccasionIcon: string
@@ -91,6 +91,9 @@ interface Props {
   fourOccasions: OccasionCard[]
   occasionScores: Record<string, number> | null
   productsByMode: Record<ModeTabKey, ProductLite[]>
+  gender: string | null
+  personalityIndex: number | null
+  personalityName: string | null
 }
 
 export default function PersonalityClient({
@@ -100,7 +103,6 @@ export default function PersonalityClient({
   personality,
   styleAnalysis,
   styleKeywords,
-  accentColor,
   primaryOccasion: _primaryOccasion,
   primaryOccasionLabel,
   primaryOccasionIcon,
@@ -110,6 +112,9 @@ export default function PersonalityClient({
   fourOccasions,
   occasionScores,
   productsByMode,
+  gender,
+  personalityIndex,
+  personalityName,
 }: Props) {
   const [tab, setTab] = useState<ModeTabKey>('per-personality')
   const products = productsByMode[tab] ?? []
@@ -118,32 +123,58 @@ export default function PersonalityClient({
   return (
     <main className="max-w-4xl mx-auto py-8 px-4 space-y-8">
       {/* ── Hero ── */}
-      <div className={`rounded-3xl bg-gradient-to-br ${accentColor} p-8 md:p-12 text-white shadow-lg`}>
-        <p className="text-xs tracking-[0.3em] opacity-80 mb-3">YOUR MBTI64 PERSONALITY</p>
-        <div className="flex items-center gap-4 mb-3 flex-wrap">
-          <p className="text-5xl md:text-6xl font-serif tracking-wider">{mbtiType}</p>
-          <div className="bg-white/20 backdrop-blur rounded-2xl px-3 py-1.5">
-            <p className="text-base font-serif">
-              {primaryOccasionIcon} {primaryOccasionLabel}場合
+      <section className="relative overflow-hidden rounded-[2rem] border border-[#ddc59f] bg-[linear-gradient(135deg,#fffaf5_0%,#f9eee8_58%,#f6e3e3_100%)] p-6 shadow-[0_20px_55px_rgba(78,48,38,0.12)] md:p-10">
+        <span className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full border border-[#d7b679]/30" />
+        <span className="pointer-events-none absolute -bottom-24 -left-20 h-64 w-64 rounded-full bg-white/40" />
+        <div className="relative grid items-center gap-7 md:grid-cols-[minmax(0,1fr)_220px] md:gap-10">
+          <div className="min-w-0">
+            <p className="mb-3 text-[11px] tracking-[0.28em] text-[#9b7543]">
+              YOUR MBTI64 PERSONALITY
             </p>
+            <div className="mb-3 flex flex-wrap items-center gap-3">
+              <p className="font-serif text-5xl tracking-wider text-[#3f2b24] md:text-6xl">
+                {mbtiType}
+              </p>
+              <div className="rounded-full border border-[#d7b679]/60 bg-white/65 px-3 py-1.5 text-sm text-[#6a493c] backdrop-blur">
+                {primaryOccasionIcon} {primaryOccasionLabel}場合
+              </div>
+            </div>
+            <p className="mb-1 font-serif text-xl text-[#4c342b] md:text-2xl">
+              {personalityName ?? nickname}
+            </p>
+            <p className="mb-2 text-sm font-medium text-[#8d604f]">{nickname}</p>
+            <p className="max-w-xl text-sm leading-relaxed text-[#664b40]">{tagline}</p>
+
+            {Array.isArray(styleKeywords) && styleKeywords.length > 0 && (
+              <div className="mt-5 flex flex-wrap gap-2">
+                {styleKeywords.map((kw) => (
+                  <span
+                    key={kw}
+                    className="rounded-full border border-[#d9b982]/50 bg-white/65 px-3 py-1 text-xs text-[#765244]"
+                  >
+                    #{kw}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mx-auto flex flex-col items-center md:mx-0">
+            <PersonalityAvatar
+              gender={gender}
+              personalityIndex={personalityIndex}
+              size={220}
+              priority
+              className="max-w-full"
+            />
+            <div className="mt-3 rounded-full border border-[#d7b679]/50 bg-white/75 px-3 py-1 text-[11px] tracking-[0.12em] text-[#755746]">
+              {personalityIndex == null
+                ? 'NEUTRAL · DEFAULT'
+                : `TYPE ${String(personalityIndex).padStart(2, '0')} / 64`}
+            </div>
           </div>
         </div>
-        <p className="text-xl md:text-2xl font-serif mb-2">{nickname}</p>
-        <p className="text-sm opacity-90 leading-relaxed mb-4">{tagline}</p>
-
-        {Array.isArray(styleKeywords) && styleKeywords.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-4">
-            {styleKeywords.map((kw) => (
-              <span
-                key={kw}
-                className="text-xs px-3 py-1 rounded-full bg-white/20 backdrop-blur"
-              >
-                #{kw}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+      </section>
 
       {/* ── 4 場合 sub-personality 卡片 ── */}
       <section>

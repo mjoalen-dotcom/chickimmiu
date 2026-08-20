@@ -72,6 +72,7 @@ import { default as default_2d9516e76c36d74134ebee4f781829f6 } from '@/component
 import { default as default_ebf9d2025b92d97c921799c47cf282d1 } from '@/components/admin/CategoryTreeView'
 import { default as default_2155efc8584149395a6a7408e7342b75 } from '@/components/admin/MemberTreasureBoxPanel'
 import { default as default_f9f3bd50e8c71daeaf79c761e8047d29 } from '@/components/admin/ShoplineCustomerImporter'
+import { default as default_d2746e9e6f495518bc9065149bb91ef4 } from '@/components/admin/PersonalityAvatarField'
 import { default as default_35c860dac7cd35087c887518997aff75 } from '@/components/admin/PageTemplatePicker'
 import { default as default_2d3b6dcbebce75fc2ef5ac094f4218f0 } from '@/components/admin/ColorField'
 import { default as default_7daf04b168de0230737ba8fdd5db8d46 } from '@/components/admin/MediaUploadRulesNotice'
@@ -106,6 +107,7 @@ import { default as default_70bb89d83a8e0bf2bdeb649c1841fd43 } from '@/component
 import { default as default_12cd2f2c8c14674f532037fc5db9c3d8 } from '@/components/admin/APIDocsView'
 import { default as default_5b2e64f3344881910b17a69822852fd5 } from '@/components/admin/BulkDeleteProductsView'
 import { default as default_7fcb25c696b072da4804c19a49a00cf7 } from '@/components/admin/EmailTemplatePreviewView'
+import { default as default_1f5088ade160c51a8bdf9e95b593e24a } from '@/components/admin/OpsCopilotView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -184,6 +186,7 @@ export const importMap = {
   "@/components/admin/CategoryTreeView#default": default_ebf9d2025b92d97c921799c47cf282d1,
   "@/components/admin/MemberTreasureBoxPanel#default": default_2155efc8584149395a6a7408e7342b75,
   "@/components/admin/ShoplineCustomerImporter#default": default_f9f3bd50e8c71daeaf79c761e8047d29,
+  "@/components/admin/PersonalityAvatarField#default": default_d2746e9e6f495518bc9065149bb91ef4,
   "@/components/admin/PageTemplatePicker#default": default_35c860dac7cd35087c887518997aff75,
   "@/components/admin/ColorField#default": default_2d3b6dcbebce75fc2ef5ac094f4218f0,
   "@/components/admin/MediaUploadRulesNotice#default": default_7daf04b168de0230737ba8fdd5db8d46,
@@ -218,5 +221,6 @@ export const importMap = {
   "@/components/admin/APIDocsView#default": default_12cd2f2c8c14674f532037fc5db9c3d8,
   "@/components/admin/BulkDeleteProductsView#default": default_5b2e64f3344881910b17a69822852fd5,
   "@/components/admin/EmailTemplatePreviewView#default": default_7fcb25c696b072da4804c19a49a00cf7,
+  "@/components/admin/OpsCopilotView#default": default_1f5088ade160c51a8bdf9e95b593e24a,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

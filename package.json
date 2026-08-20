@@ -29,6 +29,8 @@
     "seed:campaign72h": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedCampaign72h.ts",
     "seed:campaign72h:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedCampaign72h.ts -- --dry-run",
     "test:promotions": "node --test src/lib/promotions/evaluator.test.mjs",
+    "generate:personality-avatars": "node scripts/generate-personality-avatars.mjs",
+    "test:personality": "node --test src/lib/personality/personalityAvatar.test.mjs",
     "migrate:media:r2": "cross-env NODE_OPTIONS=--no-deprecation payload run scripts/migrate-media-to-r2.ts",
     "migrate:media:r2:dry": "cross-env MIGRATE_DRY_RUN=1 NODE_OPTIONS=--no-deprecation payload run scripts/migrate-media-to-r2.ts",
     "import:kim-pixnet:directory": "node scripts/import-kim-pixnet-directory.mjs",
@@ -36,6 +38,7 @@
     "smoke:storefront": "node --import tsx/esm scripts/smoke-storefront.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@aws-sdk/client-s3": "^3.614.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",

@@ -756,6 +756,13 @@ export const Customers: CollectionConfig = {
                   admin: { description: '由測驗最後 4 題 lifestyle 場合題自動推算；與 mbtiType 組合 → 64 sub-personality 推薦' },
                 },
                 { name: 'occasionScores', label: '場合分數（JSON）', type: 'json', admin: { readOnly: true, description: '4 場合票數，系統自動記錄；用於分群與重新推薦' } },
+                {
+                  name: 'personalityAvatarPreview',
+                  type: 'ui',
+                  admin: {
+                    components: { Field: '@/components/admin/PersonalityAvatarField' },
+                  },
+                },
               ],
             },
             {

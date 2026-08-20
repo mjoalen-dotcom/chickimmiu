@@ -1,6 +1,11 @@
 # dependencies
 /node_modules
+# 巢狀 node_modules 也要擋（assets/personality-atlases/ 曾在子目錄跑過 npm install）
+node_modules/
 /data
+
+# AI 生成暫存輸出（325MB+，非版控素材；正式頭像成品在 public/images/personality-avatars/）
+/outputs/
 /.pnp
 .pnp.*
 .yarn/*

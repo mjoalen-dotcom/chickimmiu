@@ -22,7 +22,10 @@ export const OpsActions: CollectionConfig = {
   slug: 'ops-actions',
   labels: { singular: 'AI 行動提案', plural: 'AI 行動提案' },
   admin: {
-    group: '⑦ 系統與安全',
+    // 2026-08-15 步驟03分組整併後「⑦ 系統與安全」已拆散；比照
+    // CKMUSystemToolsNavGroup 的落點，掛在 ⑥（全站設定與工具的語意落腳處）。
+    // 主要操作介面是 /admin/ops-copilot 指揮艙，這裡的 list view 是稽核軌跡。
+    group: '⑥ 內容與頁面',
     useAsTitle: 'summary',
     defaultColumns: ['summary', 'actionType', 'risk', 'status', 'createdAt'],
     description:
