@@ -87,7 +87,7 @@ async function enrichDrafts(
 
     const userId = draft.input.userId
     const user = userId != null
-      ? await payload.findByID({ collection: 'users', id: userId as string | number, depth: 1 })
+      ? await payload.findByID({ collection: 'customers', id: userId as string | number, depth: 1 })
       : null
     if (!user) continue
 

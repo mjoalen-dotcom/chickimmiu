@@ -73,7 +73,6 @@ import { default as default_ebf9d2025b92d97c921799c47cf282d1 } from '@/component
 import { default as default_d2746e9e6f495518bc9065149bb91ef4 } from '@/components/admin/PersonalityAvatarField'
 import { default as default_2155efc8584149395a6a7408e7342b75 } from '@/components/admin/MemberTreasureBoxPanel'
 import { default as default_f9f3bd50e8c71daeaf79c761e8047d29 } from '@/components/admin/ShoplineCustomerImporter'
-import { default as default_d2746e9e6f495518bc9065149bb91ef4 } from '@/components/admin/PersonalityAvatarField'
 import { default as default_35c860dac7cd35087c887518997aff75 } from '@/components/admin/PageTemplatePicker'
 import { default as default_2d3b6dcbebce75fc2ef5ac094f4218f0 } from '@/components/admin/ColorField'
 import { default as default_7daf04b168de0230737ba8fdd5db8d46 } from '@/components/admin/MediaUploadRulesNotice'
@@ -188,7 +187,6 @@ export const importMap = {
   "@/components/admin/PersonalityAvatarField#default": default_d2746e9e6f495518bc9065149bb91ef4,
   "@/components/admin/MemberTreasureBoxPanel#default": default_2155efc8584149395a6a7408e7342b75,
   "@/components/admin/ShoplineCustomerImporter#default": default_f9f3bd50e8c71daeaf79c761e8047d29,
-  "@/components/admin/PersonalityAvatarField#default": default_d2746e9e6f495518bc9065149bb91ef4,
   "@/components/admin/PageTemplatePicker#default": default_35c860dac7cd35087c887518997aff75,
   "@/components/admin/ColorField#default": default_2d3b6dcbebce75fc2ef5ac094f4218f0,
   "@/components/admin/MediaUploadRulesNotice#default": default_7daf04b168de0230737ba8fdd5db8d46,

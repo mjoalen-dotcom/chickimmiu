@@ -8,8 +8,10 @@ const DEMO_CUSTOMER_EMAIL = 'wall-demo@ckmu.invalid'
 const DEMO_WIDGET_ID = 'kim-lafayette-demo'
 const DEMO_HOST = 'blog.kimlafayette.com'
 
-function idOf(value: { id: string | number }): string | number {
-  return value.id
+// merge 後 payload-types 對 customers 關聯是嚴格 number id —— 統一轉 number。
+// update-by-id 的回傳 union（doc | BulkOperationResult）也靠這裡 narrow。
+function idOf(value: unknown): number {
+  return Number((value as { id: string | number }).id)
 }
 
 async function seed() {

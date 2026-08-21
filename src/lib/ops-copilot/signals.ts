@@ -323,11 +323,11 @@ async function scanStuckFulfillment(payload: PayloadLike): Promise<OpsSignal[]> 
 // ── 掃描器 4：高價值會員沉睡 ────────────────────────────
 
 async function scanDormantVips(payload: PayloadLike): Promise<OpsSignal[]> {
+  // 步驟16-7 cutover：顧客資料已搬入 customers（無 role 欄位，不需篩選）
   const res = await payload.find({
-    collection: 'users',
+    collection: 'customers',
     where: {
       and: [
-        { role: { equals: 'customer' } },
         { orderCount: { greater_than: 1 } },
         { lastOrderDate: { less_than: daysAgo(DORMANT_MEMBER_DAYS) } },
         { isBlacklisted: { not_equals: true } },
@@ -358,7 +358,7 @@ async function scanDormantVips(payload: PayloadLike): Promise<OpsSignal[]> {
       entities: top.map((d) => {
         const tier = d.memberTier as Record<string, unknown> | null
         return {
-          collection: 'users',
+          collection: 'customers',
           id: d.id as string | number,
           label: `${str(d.name) || str(d.email)}｜${str(tier?.frontName as string) || '一般會員'}｜累計 $${Math.round(num(d.lifetimeSpend))}`,
         }
@@ -474,7 +474,7 @@ async function scanCreditRisk(payload: PayloadLike): Promise<OpsSignal[]> {
         觀察天數: 14,
       },
       entities: repeat.slice(0, MAX_ITEMS_PER_SIGNAL).map((u) => ({
-        collection: 'users',
+        collection: 'customers',
         id: u.id,
         label: `${u.label}｜${u.drops} 次扣分｜累計 -${u.total}`,
       })),

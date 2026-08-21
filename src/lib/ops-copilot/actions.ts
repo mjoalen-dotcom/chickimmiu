@@ -288,7 +288,7 @@ const sendMemberDm: ActionType = {
   },
   preview: async (payload, input) => {
     const user = await payload.findByID({
-      collection: 'users',
+      collection: 'customers',
       id: asId(input.userId)!,
       depth: 0,
     })
@@ -311,7 +311,7 @@ const sendMemberDm: ActionType = {
   },
   execute: async (payload, input): Promise<ActionResult> => {
     const userId = asId(input.userId)!
-    const user = await payload.findByID({ collection: 'users', id: userId, depth: 0 })
+    const user = await payload.findByID({ collection: 'customers', id: userId, depth: 0 })
     if (!user) return { ok: false, message: '會員已不存在' }
     if (user.emailSubscribed === false) return { ok: false, message: '會員已退訂行銷信，已攔截' }
     if (user.isBlacklisted === true) return { ok: false, message: '會員在黑名單中，已攔截' }
@@ -328,7 +328,7 @@ const sendMemberDm: ActionType = {
       message: result.success
         ? `已寄給 ${str(user.email)}`
         : `寄送失敗：${result.error ?? '未知錯誤'}`,
-      affected: [{ collection: 'users', id: userId }],
+      affected: [{ collection: 'customers', id: userId }],
     }
   },
 }
@@ -348,7 +348,7 @@ const flagCreditReview: ActionType = {
   },
   preview: async (payload, input) => {
     const user = await payload.findByID({
-      collection: 'users',
+      collection: 'customers',
       id: asId(input.userId)!,
       depth: 0,
     })
@@ -364,7 +364,7 @@ const flagCreditReview: ActionType = {
   },
   execute: async (payload, input): Promise<ActionResult> => {
     const userId = asId(input.userId)!
-    const user = await payload.findByID({ collection: 'users', id: userId, depth: 0 })
+    const user = await payload.findByID({ collection: 'customers', id: userId, depth: 0 })
     if (!user) return { ok: false, message: '會員已不存在' }
 
     const stamp = new Date().toISOString().slice(0, 10)
@@ -375,7 +375,7 @@ const flagCreditReview: ActionType = {
     const hasTag = tags.some((t) => str(t.tag) === '信用複查')
 
     await payload.update({
-      collection: 'users',
+      collection: 'customers',
       id: userId,
       data: {
         crmNote: existing ? `${existing}\n${line}` : line,
@@ -385,7 +385,7 @@ const flagCreditReview: ActionType = {
     return {
       ok: true,
       message: `已標記 ${str(user.name) || str(user.email)}`,
-      affected: [{ collection: 'users', id: userId }],
+      affected: [{ collection: 'customers', id: userId }],
     }
   },
 }

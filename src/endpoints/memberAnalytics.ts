@@ -116,18 +116,12 @@ export const memberAnalyticsEndpoint: Endpoint = {
       const thisMonth = now.getMonth() + 1
       const nextMonth = thisMonth === 12 ? 1 : thisMonth + 1
 
-      // ── 1. Users ────────────────────────────────────────────────────────
-      // 🔧 資料正確性修補（非 users→customers collection 遷移的一部分）：
-      // 本查詢暫時仍留在 'users'（見本檔案 Wave 2 遷移任務的特別交代 —
-      // customers collection 尚未有真實搬移資料，現在切過去 prod 會顯示
-      // 0 會員，比目前「員工污染但非零」更嚴重的 regression）。但沒有
-      // role 篩選會把 admin/operator/partner 也算進會員生日/年齡/性別/
-      // 等級分布，這是可以獨立、安全立即上線的修正，故先加 role 篩選，
-      // 等 customers 遷移真的上線後這裡再整段改成 collection: 'customers'
-      // 並拿掉這個 where（因為屆時 customers 裡每一筆本來就都是顧客）。
+      // ── 1. Customers ────────────────────────────────────────────────────
+      // 步驟16-7 cutover（2026-08-21）：顧客資料已實際搬入 customers，
+      // 依 Wave 2 當時的交代把本查詢從 users+role 篩選切成 customers 全量
+      // （customers 每一筆本來就是顧客，不需要 role 篩選）。
       const usersResp = await req.payload.find({
-        collection: 'users',
-        where: { role: { equals: 'customer' } },
+        collection: 'customers',
         limit: 10000,
         depth: 0,
         pagination: false,

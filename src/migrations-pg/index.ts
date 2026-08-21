@@ -8,6 +8,7 @@ import * as migration_20260817_170000_p0b_drop_enums from './20260817_170000_p0b
 import * as migration_20260817_170500_p0b_drop_schema from './20260817_170500_p0b_drop_schema';
 import * as migration_20260821_010000_add_ops_actions from './20260821_010000_add_ops_actions';
 import * as migration_20260821_150000_add_customer_nickname from './20260821_150000_add_customer_nickname';
+import * as migration_20260821_170000_users_customers_cutover from './20260821_170000_users_customers_cutover';
 
 export const migrations = [
   {
@@ -60,5 +61,10 @@ export const migrations = [
     up: migration_20260821_150000_add_customer_nickname.up,
     down: migration_20260821_150000_add_customer_nickname.down,
     name: '20260821_150000_add_customer_nickname',
+  },
+  {
+    up: migration_20260821_170000_users_customers_cutover.up,
+    down: migration_20260821_170000_users_customers_cutover.down,
+    name: '20260821_170000_users_customers_cutover',
   },
 ];
