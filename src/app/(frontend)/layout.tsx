@@ -6,7 +6,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import './globals.css'
 
-import { getMediaUrl } from '@/lib/media-url'
+import { getMediaUrl, getVersionedMediaUrl } from '@/lib/media-url'
 import { getCurrentUser } from '@/lib/auth/getCurrentUser'
 import { Providers } from '@/components/layout/Providers'
 import { BootBeaconCleanup } from '@/components/layout/BootBeaconCleanup'
@@ -80,8 +80,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const keywords = (seo.keywords as string) || '韓系女裝,質感穿搭,韓國女裝,名媛風洋裝,CHIC KIM & MIU'
   const author = (seo.author as string) || 'CHIC KIM & MIU｜靚秀國際有限公司'
 
-  const faviconUrl = getMediaUrl(site.favicon) || '/favicon.ico'
-  const appleTouchIconUrl = getMediaUrl(site.appleTouchIcon) || '/apple-touch-icon.png'
+  const faviconUrl = getVersionedMediaUrl(site.favicon) || '/favicon.ico'
+  const appleTouchIconUrl = getVersionedMediaUrl(site.appleTouchIcon) || '/apple-touch-icon.png'
   const ogImageUrl = getMediaUrl(site.ogImage) || `${siteUrl}/og-image.png`
 
   const googleVerification = (seo.googleSiteVerification as string) || undefined

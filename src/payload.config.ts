@@ -338,8 +338,8 @@ export default buildConfig({
       description: 'CHIC KIM & MIU 靚秀國際｜品牌管理後台',
       defaultOGImageType: 'off',
       icons: {
-        icon: '/favicon.ico',
-        shortcut: '/favicon.ico',
+        icon: '/api/site-brand/favicon',
+        shortcut: '/api/site-brand/favicon',
         apple: '/apple-touch-icon.png',
       },
       openGraph: {
