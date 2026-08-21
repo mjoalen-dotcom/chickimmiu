@@ -3,6 +3,7 @@ import * as migration_20260817_035151_p0b_rule_conditions from './20260817_03515
 import * as migration_20260817_042534_p0b_reward_type from './20260817_042534_p0b_reward_type';
 import * as migration_20260817_044059_cost_snapshot from './20260817_044059_cost_snapshot';
 import * as migration_20260817_051044_p0c_campaign_governance from './20260817_051044_p0c_campaign_governance';
+import * as migration_20260817_060801_social_wall_saas from './20260817_060801_social_wall_saas';
 import * as migration_20260817_170000_p0b_drop_enums from './20260817_170000_p0b_drop_enums';
 import * as migration_20260817_170500_p0b_drop_schema from './20260817_170500_p0b_drop_schema';
 import * as migration_20260821_010000_add_ops_actions from './20260821_010000_add_ops_actions';
@@ -32,7 +33,12 @@ export const migrations = [
   {
     up: migration_20260817_051044_p0c_campaign_governance.up,
     down: migration_20260817_051044_p0c_campaign_governance.down,
-    name: '20260817_051044_p0c_campaign_governance'
+    name: '20260817_051044_p0c_campaign_governance',
+  },
+  {
+    up: migration_20260817_060801_social_wall_saas.up,
+    down: migration_20260817_060801_social_wall_saas.down,
+    name: '20260817_060801_social_wall_saas',
   },
   // ⚠️ 順序不可對調：ADD VALUE 必須先單獨 commit，新值才能被下一支使用。
   {

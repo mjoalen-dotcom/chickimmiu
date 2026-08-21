@@ -30,6 +30,11 @@ const nextConfig = {
   },
   experimental: {
     reactCompiler: false,
+    // 正式機是 2 vCPU / 3.7GB。Next 預設用 CPU 數開 static generation worker，
+    // 兩個 worker 各長到 2.5-3.2GB 就會被 kernel OOM 砍掉（build 在
+    // 「Generating static pages」階段無錯誤訊息直接 ELIFECYCLE，dmesg 才看得到
+    // Out of memory）。限成 1 個 worker：build 慢一點，但不會隨機掛掉。
+    cpus: 1,
   },
   async headers() {
     // R2 圖床公開 URL（custom domain 或 pub-*.r2.dev）— 沒設就跳過。
@@ -81,7 +86,7 @@ const nextConfig = {
       "connect-src 'self' https://www.google-analytics.com https://*.ecpay.com.tw https://sandbox-api-pay.line.me https://api-pay.line.me https://ccore.newebpay.com https://*.facebook.com https://cdn.jsdelivr.net",
       "font-src 'self' data: https://cdn.jsdelivr.net",
       // Messenger chat plugin iframe 嵌入 www.facebook.com
-      "frame-src https://*.ecpay.com.tw https://www.facebook.com",
+      "frame-src 'self' https://*.ecpay.com.tw https://www.facebook.com",
       "frame-ancestors 'self'",
       "object-src 'none'",
       "base-uri 'self'",
@@ -93,7 +98,8 @@ const nextConfig = {
 
     return [
       {
-        source: '/:path*',
+        // 嵌入頁需允許授權網站 framing；其專用安全標頭在下方另設。
+        source: '/((?!embed/|embed\\.js).*)',
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
@@ -107,6 +113,27 @@ const nextConfig = {
           { key: 'Content-Security-Policy', value: csp },
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
           { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
+        ],
+      },
+      {
+        source: '/embed/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'geolocation=(), microphone=(), camera=()' },
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; img-src 'self' data: blob: https://pre.chickimmiu.com https://*.cdninstagram.com https://*.fbcdn.net; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-ancestors 'self' https: http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'none'",
+          },
+        ],
+      },
+      {
+        source: '/embed.js',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
         ],
       },
       {

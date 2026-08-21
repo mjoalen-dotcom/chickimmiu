@@ -1,6 +1,7 @@
 import React from 'react'
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { getVersionedMediaUrl } from '@/lib/media-url'
 
 /**
  * Admin sidebar icon (sidebar 收合時顯示)。
@@ -15,9 +16,19 @@ export default async function AdminIcon() {
   try {
     const payload = await getPayload({ config })
     const settings = await payload.findGlobal({ slug: 'global-settings', depth: 1 })
-    const site = (settings as { site?: { favicon?: { url?: string; alt?: string } | null } }).site
+    const site = (settings as {
+      site?: {
+        favicon?: {
+          alt?: string
+          createdAt?: string
+          id?: number | string
+          updatedAt?: string
+          url?: string
+        } | null
+      }
+    }).site
     if (site?.favicon && typeof site.favicon === 'object' && site.favicon.url) {
-      iconUrl = site.favicon.url
+      iconUrl = getVersionedMediaUrl(site.favicon) || null
       if (site.favicon.alt) iconAlt = site.favicon.alt
     }
   } catch {

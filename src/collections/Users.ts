@@ -1239,6 +1239,13 @@ export const Users: CollectionConfig = {
                       '4 場合票數（urban/vacation/party/cozy），系統自動記錄；用於分群與重新推薦',
                   },
                 },
+                {
+                  name: 'personalityAvatarPreview',
+                  type: 'ui',
+                  admin: {
+                    components: { Field: '@/components/admin/PersonalityAvatarField' },
+                  },
+                },
               ],
             },
             {

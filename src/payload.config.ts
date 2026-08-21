@@ -31,6 +31,11 @@ import { Pages } from './collections/Pages'
 import { CelebrityFeatures } from './collections/CelebrityFeatures'
 import { SubscriptionPlans } from './collections/SubscriptionPlans'
 import { UserSubscriptions } from './collections/UserSubscriptions'
+import { SocialWallConnections } from './collections/SocialWallConnections'
+import { SocialWallWidgets } from './collections/SocialWallWidgets'
+import { SocialWallSubscriptions } from './collections/SocialWallSubscriptions'
+import { SocialWallLicenses } from './collections/SocialWallLicenses'
+import { SocialWallUsageDaily } from './collections/SocialWallUsageDaily'
 import { ProductReviews } from './collections/ProductReviews'
 import { Returns } from './collections/Returns'
 import { Exchanges } from './collections/Exchanges'
@@ -334,8 +339,8 @@ export default buildConfig({
       description: 'CHIC KIM & MIU 靚秀國際｜品牌管理後台',
       defaultOGImageType: 'off',
       icons: {
-        icon: '/favicon.ico',
-        shortcut: '/favicon.ico',
+        icon: '/api/site-brand/favicon',
+        shortcut: '/api/site-brand/favicon',
         apple: '/apple-touch-icon.png',
       },
       openGraph: {
@@ -563,6 +568,13 @@ export default buildConfig({
     // 營運 AI 助理：行動提案稽核軌跡（AI 只能寫 pending，admin 核准後才執行）。
     // 群組落點比照 CKMUSystemToolsNavGroup 注入的系統工具連結（⑥ 底部）。
     OpsActions,
+    // Ⓦ 牆聚 WallGather — wall.ckmu.co 獨立 SaaS 資料域。
+    // 訂閱、授權與用量不與服飾會員方案混用；Meta token 只存祕密參照。
+    SocialWallConnections,
+    SocialWallWidgets,
+    SocialWallSubscriptions,
+    SocialWallLicenses,
+    SocialWallUsageDaily,
     // 2026-08-15 步驟03分組整併：原「⑦ 系統與安全」已拆散——LoginAttempts
     // 併入 ③ 會員與CRM、Currencies 併入 ① 訂單與物流（admin.group 已改，
     // 陣列位置維持不動，故在各自新群組內排序偏後，符合兩者「低頻使用」性質）。

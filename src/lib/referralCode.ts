@@ -28,7 +28,10 @@ export async function generateUniqueReferralCode(payload: BasePayload): Promise<
  * 舊版函式的呼叫點（理論上遷移完成後不會再有）。
  */
 export async function generateUniqueCustomerReferralCode(payload: BasePayload): Promise<string> {
-  return generateUniqueReferralCodeFor(payload, 'customers')
+  // pre 尚未執行顧客資料遷移（步驟 16-5/6/7 待 Alan 確認方案），顧客資料仍在
+  // users。對空的 customers 表檢查唯一性會永遠 0 命中，等於沒檢查、可能跟既有
+  // users.referralCode 撞號。遷移完成後改回 'customers'。
+  return generateUniqueReferralCodeFor(payload, 'users')
 }
 
 async function generateUniqueReferralCodeFor(

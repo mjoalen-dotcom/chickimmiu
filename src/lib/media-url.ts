@@ -38,3 +38,32 @@ export function getMediaUrl(field: unknown): string | undefined {
 
   return url
 }
+
+/**
+ * Return a cache-safe media URL for assets whose relationship can be replaced
+ * in Payload while keeping the same filename (favicon, Apple Touch icon, etc.).
+ *
+ * `/media/*` is intentionally immutable for one year. Appending the Media
+ * document's timestamp gives browsers a new URL whenever Payload updates the
+ * file, while preserving the long-cache policy for every historical version.
+ */
+export function getVersionedMediaUrl(field: unknown): string | undefined {
+  const url = getMediaUrl(field)
+  if (!url || typeof field !== 'object' || field === null) return url
+
+  const media = field as { createdAt?: unknown; id?: unknown; updatedAt?: unknown }
+  const versionCandidate = media.updatedAt ?? media.createdAt ?? media.id
+  if (typeof versionCandidate !== 'string' && typeof versionCandidate !== 'number') {
+    return url
+  }
+
+  const version = String(versionCandidate).trim()
+  if (!version) return url
+
+  const hashIndex = url.indexOf('#')
+  const base = hashIndex >= 0 ? url.slice(0, hashIndex) : url
+  const fragment = hashIndex >= 0 ? url.slice(hashIndex) : ''
+  const separator = base.includes('?') ? '&' : '?'
+
+  return `${base}${separator}v=${encodeURIComponent(version)}${fragment}`
+}

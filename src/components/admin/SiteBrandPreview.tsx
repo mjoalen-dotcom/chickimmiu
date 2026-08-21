@@ -1,6 +1,9 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import { useDocumentInfo } from '@payloadcms/ui'
+
+import { getVersionedMediaUrl } from '@/lib/media-url'
 
 /**
  * SiteBrandPreview
@@ -15,6 +18,8 @@ import React, { useEffect, useState } from 'react'
  */
 
 interface MediaShape {
+  createdAt?: string
+  id?: number | string
   url?: string
   filename?: string
   mimeType?: string
@@ -22,6 +27,7 @@ interface MediaShape {
   width?: number
   height?: number
   alt?: string
+  updatedAt?: string
 }
 
 interface BrandSlot {
@@ -70,12 +76,15 @@ function isMedia(v: unknown): v is MediaShape {
 }
 
 export default function SiteBrandPreview() {
+  const { lastUpdateTime } = useDocumentInfo()
   const [site, setSite] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
+    setLoading(true)
+    setErr(null)
     fetch('/api/globals/global-settings?depth=1', { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((data) => {
@@ -91,7 +100,7 @@ export default function SiteBrandPreview() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [lastUpdateTime])
 
   return (
     <div
@@ -172,7 +181,7 @@ export default function SiteBrandPreview() {
                   {media ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={media.url}
+                      src={getVersionedMediaUrl(media) || media.url}
                       alt={media.alt || slot.label}
                       style={{ maxHeight: 72, maxWidth: '90%', objectFit: 'contain' }}
                     />
