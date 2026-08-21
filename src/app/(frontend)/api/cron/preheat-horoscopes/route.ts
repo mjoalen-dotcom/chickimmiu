@@ -37,13 +37,23 @@ export async function POST(request: Request) {
   let skipped = 0
   const errors: Array<{ key: string; error: string }> = []
 
+  // 節流：Groq 免費層 RPM 有限，48 筆連發會 429 讓大半掉回 seed（2026-08-22
+  // 實測）。只在真的呼叫過 LLM（didCreate）後 pace；skip 不用等。
+  // 48 × 1.2s ≈ 58s + 生成時間，遠低於 maxDuration 300s。
+  const usesLLM = process.env.HOROSCOPE_LLM_PROVIDER === 'groq'
+  const PACE_MS = 1200
+
   for (const date of dates) {
     for (const sign of ZODIAC_SIGNS) {
       for (const gender of GENDERS) {
         try {
           const { created: didCreate } = await ensureHoroscope(payload, { sign, gender, date })
-          if (didCreate) created++
-          else skipped++
+          if (didCreate) {
+            created++
+            if (usesLLM) await new Promise((r) => setTimeout(r, PACE_MS))
+          } else {
+            skipped++
+          }
         } catch (err) {
           errors.push({
             key: `${date}/${sign}/${gender}`,

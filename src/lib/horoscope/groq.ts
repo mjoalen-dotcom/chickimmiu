@@ -87,28 +87,39 @@ ${STYLE_KEYWORDS_VOCAB.map((k) => `"${k}"`).join(', ')}
 
 回傳純 JSON，不要任何 markdown 圍欄或解釋文字。`
 
-  const res = await fetch(GROQ_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      response_format: { type: 'json_object' },
-      temperature: 0.7,
-      // reasoning 模型的思考鏈也算 completion tokens，800 會在 JSON 開始前被
-      // 截斷（json_validate_failed + 空 failed_generation）——給足餘量
-      max_tokens: 1500,
-      ...groqReasoningParams(model),
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt },
-      ],
-    }),
-    // timeout safety — Groq usually responds in <2s
-    signal: AbortSignal.timeout(15_000),
-  })
+  const doFetch = () =>
+    fetch(GROQ_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        response_format: { type: 'json_object' },
+        temperature: 0.7,
+        // reasoning 模型的思考鏈也算 completion tokens，800 會在 JSON 開始前被
+        // 截斷（json_validate_failed + 空 failed_generation）——給足餘量
+        max_tokens: 1500,
+        ...groqReasoningParams(model),
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userPrompt },
+        ],
+      }),
+      // timeout safety — Groq usually responds in <2s
+      signal: AbortSignal.timeout(15_000),
+    })
+
+  // 429 退避重試：預熱一次打 48 筆，免費層 RPM 撐不住（2026-08-22 實測 11 連
+  // 429 → 43/48 掉回 seed）。尊重 retry-after，最多重試 2 次。
+  let res = await doFetch()
+  for (let attempt = 0; res.status === 429 && attempt < 2; attempt++) {
+    const retryAfter = Number(res.headers.get('retry-after')) || 0
+    const waitMs = Math.min(Math.max(retryAfter * 1000, 2000 * (attempt + 1)), 20_000)
+    await new Promise((r) => setTimeout(r, waitMs))
+    res = await doFetch()
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => '')
