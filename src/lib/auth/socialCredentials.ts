@@ -41,6 +41,7 @@ export type ResolvedSocialAuth = {
   nativeAudiences: {
     google: string[]
     apple: string[]
+    line: string[]
   }
 }
 
@@ -180,6 +181,9 @@ export async function resolveSocialAuth(): Promise<ResolvedSocialAuth> {
         sl.appleAppBundleId,
         process.env.AUTH_APPLE_APP_BUNDLE_ID,
       ]),
+      // LINE 的 id_token aud = channel id。App 若用獨立的 LINE Login channel，
+      // 以 AUTH_LINE_NATIVE_CHANNEL_ID 補登記（後台 global 欄位需 migration，先走 .env）。
+      line: dedupe([line?.clientId, process.env.AUTH_LINE_NATIVE_CHANNEL_ID]),
     },
     enabled: {
       google: Boolean(google) && (sl.enableGoogle ?? true),

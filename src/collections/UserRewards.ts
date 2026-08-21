@@ -47,6 +47,10 @@ export const UserRewards: CollectionConfig = {
       relationTo: 'customers',
       required: true,
       index: true,
+      // D-4（2026-08-21）：預設 depth 會把完整 customer 物件（含 CRM 欄位）內嵌進
+      // 回應。寶物箱的 user 永遠是本人，呼叫端只需要 id —— 鎖 maxDepth 0，
+      // 任何 depth 參數下都只回 id（consume route 的 Number(reward.user) 判斷同時變穩）。
+      maxDepth: 0,
     },
     {
       name: 'sourceRecord',

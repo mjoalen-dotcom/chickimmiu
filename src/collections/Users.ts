@@ -534,6 +534,10 @@ export const Users: CollectionConfig = {
               name: 'adminPermissions',
               label: '管理員權限設定',
               type: 'group',
+              // D-1（2026-08-21）：權限旗標僅 admin 可改 —— update access 是
+              // isAdminOrSelf，少了這行 operator/partner/customer 都能 PATCH 自己的
+              // adminPermissions（權限提升面）
+              access: { update: isAdminFieldLevel },
               admin: {
                 description: '僅管理員角色適用的權限設定',
                 condition: (data) => data?.role === 'admin',
@@ -620,6 +624,9 @@ export const Users: CollectionConfig = {
               label: '會員等級',
               type: 'relationship',
               relationTo: 'membership-tiers',
+              // D-1（2026-08-21）：等級不可由本人自改（等級門檻兌換/倍率/折扣）；
+              // 系統升等走 local API（overrideAccess）不受此限
+              access: { update: isAdminFieldLevel },
               admin: {
                 description: '由系統根據累計消費自動升級，或由管理員手動調整。等級：T0 優雅初遇者 → T1 曦漾仙子 → T2 優漾女神 → T3 金曦女王 → T4 星耀皇后 → T5 璀璨天后',
               },
@@ -805,6 +812,8 @@ export const Users: CollectionConfig = {
                   label: '推薦碼',
                   type: 'text',
                   unique: true,
+                  // D-1（2026-08-21）：推薦碼不可由本人自改（碰撞/冒用）；產碼走 hooks
+                  access: { update: isAdminFieldLevel },
                   admin: { width: '50%', description: '此會員的專屬推薦碼（可分享給朋友）' },
                 },
                 {
@@ -812,6 +821,7 @@ export const Users: CollectionConfig = {
                   label: '推薦人',
                   type: 'relationship',
                   relationTo: 'users',
+                  access: { update: isAdminFieldLevel },
                   admin: { width: '50%', description: '註冊時使用的推薦碼所屬會員' },
                 },
               ],

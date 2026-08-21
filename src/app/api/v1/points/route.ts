@@ -7,6 +7,7 @@ import {
   dispatchRedemption,
   isSupportedRedemptionType,
 } from '@/lib/redemption/redemptionEngine'
+import { computeRedemptionBadge, scarcityFromSettings } from '@/lib/points/redemptionBadge'
 
 /**
  * Points Redemptions API
@@ -77,11 +78,25 @@ export async function GET(req: NextRequest) {
       sort: 'sortOrder',
     })
 
+    // B-6（APP 遷移需求 2026-08-20）：badge 由後端算好帶出（與 /account/points
+    // server component 同一套 computeRedemptionBadge 規則），App 不必自行推導。
+    let scarcity = { lowStockThreshold: 10, hotBadgeThreshold: 50 }
+    try {
+      const redemptionSettings = (await payload.findGlobal({
+        slug: 'point-redemption-settings',
+        depth: 0,
+      })) as unknown as Record<string, unknown>
+      scarcity = scarcityFromSettings(redemptionSettings)
+    } catch {
+      // global 讀取失敗時用預設門檻，不擋列表
+    }
+
     return NextResponse.json({
       success: true,
       data: result.docs.map((item) => ({
         ...item,
         remaining: ((item.stock as number) || 0) - ((item.redeemed as number) || 0),
+        badge: computeRedemptionBadge(item as unknown as Record<string, unknown>, scarcity),
       })),
       meta: {
         page: result.page,

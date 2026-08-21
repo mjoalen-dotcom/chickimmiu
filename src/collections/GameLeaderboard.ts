@@ -12,7 +12,11 @@ export const GameLeaderboard: CollectionConfig = {
     description: '遊戲排行榜與徽章紀錄（player + period + periodKey 為唯一組合）',
   },
   access: {
-    read: () => true,
+    // D-3 系（2026-08-21）：公開 REST read + depth populate 會曝光完整 customer
+    // 物件（未遮罩姓名 + CRM 欄位）。排行榜對外一律走 /games 頁與
+    // GET /api/app/leaderboard（伺服器端遮罩）；本表 REST 收斂 admin-only，
+    // server component / lib 走 local API（overrideAccess）不受影響。
+    read: isAdmin,
     create: isAdmin,
     update: isAdmin,
     delete: isAdmin,

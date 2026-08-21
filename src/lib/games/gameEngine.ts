@@ -41,6 +41,8 @@ export interface DrawnPrize {
   amount: number
   /** 若來自 PrizePool collection，記下 ID 讓呼叫端可扣 inventoryRemaining */
   sourcePoolId?: number
+  /** 若來自 game-settings prizes array，記下該列的 array row id（App 定位輪盤格用） */
+  sourceSettingsId?: string
   /** PrizePool.deliveryMethod，給後續 UserRewards 出貨流判斷用 */
   deliveryMethod?: 'instant_credit' | 'digital_coupon' | 'physical_shipping' | 'manual_contact'
   /** PrizePool.expiryDays，給 UserRewards expiresAt 計算用 */
@@ -144,6 +146,149 @@ export const GAME_CONFIGS: Record<string, GameConfig> = {
   },
 }
 
+// ── GameSettings（後台）→ 有效遊戲設定 ──
+//
+// B-1（APP 遷移需求 2026-08-20）：後台 game-settings 的 freePerTier /
+// pointsCostPerPlay / dailyLimit / prizes / dailyCheckin 一直沒被引擎讀取，
+// admin 改了數字實際不生效、API 回的是硬編碼值。這裡把後台設定接為權威：
+//   數值缺漏（null/undefined）時 fallback GAME_CONFIGS 硬編碼預設。
+// 獎池優先序：PrizePools collection > game-settings.{game}.prizes > GAME_CONFIGS。
+
+/** game-settings 內 prizes array 的一列（含 Payload array row id，App 定位輪盤格用） */
+export interface SettingsPrize {
+  rowId: string | null
+  prize: string
+  type: PrizeType
+  amount: number
+  weight: number
+  couponCode?: string
+}
+
+export interface CheckinConfig {
+  day1to6Points: number
+  day7BonusPoints: number
+  streakBonusMultiplier: number
+}
+
+export interface EffectiveGameConfig {
+  freePlaysPerDay: Record<string, number>
+  pointsCost: number
+  dailyLimit: number
+  /** 後台 prizes array（僅 spin_wheel / scratch_card；空 = 後台未設定） */
+  settingsPrizes: SettingsPrize[]
+  /** 僅 daily_checkin 有值 */
+  checkin: CheckinConfig | null
+}
+
+const SETTINGS_TTL_MS = 10_000
+let gameSettingsCache: { at: number; value: Record<string, unknown> } | null = null
+
+async function getGameSettingsSnapshot(): Promise<Record<string, unknown>> {
+  if (gameSettingsCache && Date.now() - gameSettingsCache.at < SETTINGS_TTL_MS) {
+    return gameSettingsCache.value
+  }
+  try {
+    const payload = await getPayload({ config })
+    const value = (await payload.findGlobal({ slug: 'game-settings', depth: 0 })) as unknown as Record<string, unknown>
+    gameSettingsCache = { at: Date.now(), value }
+    return value
+  } catch (err) {
+    console.error('[gameEngine] 讀取 game-settings 失敗，fallback 硬編碼預設：', err)
+    return gameSettingsCache?.value ?? {}
+  }
+}
+
+/** 測試用：清掉 10 秒快取 */
+export function __clearGameSettingsCache(): void {
+  gameSettingsCache = null
+}
+
+const num = (v: unknown): number | null =>
+  typeof v === 'number' && Number.isFinite(v) ? v : null
+
+/** prizesField 的 prizeType select 含 movie_ticket / free_shipping，引擎抽獎鏈
+ *  只支援 points / credit / coupon / none（mini-game-records.result.prizeType
+ *  enum 同組值，PG 嚴格驗證），其餘型別跳過並警告 admin 改用 PrizePools。 */
+const ENGINE_PRIZE_TYPES: ReadonlySet<string> = new Set(['points', 'credit', 'coupon', 'none'])
+
+function parseSettingsPrizes(group: Record<string, unknown> | undefined): SettingsPrize[] {
+  const raw = group?.prizes
+  if (!Array.isArray(raw)) return []
+  const out: SettingsPrize[] = []
+  for (const row of raw) {
+    const r = row as Record<string, unknown>
+    const weight = num(r.weight) ?? 0
+    const type = String(r.prizeType || 'none')
+    if (weight <= 0) continue
+    if (!ENGINE_PRIZE_TYPES.has(type)) {
+      console.warn(`[gameEngine] game-settings 獎品「${r.prizeName}」型別 ${type} 不支援，已跳過（請改用 PrizePools）`)
+      continue
+    }
+    out.push({
+      rowId: typeof r.id === 'string' ? r.id : r.id != null ? String(r.id) : null,
+      prize: String(r.prizeName || '獎品'),
+      type: type as PrizeType,
+      amount: num(r.prizeAmount) ?? 0,
+      weight,
+      couponCode: typeof r.couponCode === 'string' && r.couponCode ? r.couponCode : undefined,
+    })
+  }
+  return out
+}
+
+function parseFreePerTier(
+  group: Record<string, unknown> | undefined,
+  fallback: Record<string, number>,
+): Record<string, number> {
+  const raw = (group?.freePerTier as Record<string, unknown> | undefined) || {}
+  const out: Record<string, number> = { ...fallback }
+  for (const tier of Object.keys(fallback)) {
+    const v = num(raw[tier])
+    if (v !== null) out[tier] = v
+  }
+  return out
+}
+
+/** game-settings 各遊戲 group 名對照 */
+const SETTINGS_GROUP_KEY: Record<string, string> = {
+  spin_wheel: 'spinWheel',
+  scratch_card: 'scratchCard',
+  daily_checkin: 'dailyCheckin',
+  fashion_challenge: 'fashionChallenge',
+  movie_lottery: 'movieLottery',
+}
+
+export async function getEffectiveGameConfig(gameType: string): Promise<EffectiveGameConfig | null> {
+  const base = GAME_CONFIGS[gameType]
+  if (!base) return null
+
+  const settings = await getGameSettingsSnapshot()
+  const group = settings[SETTINGS_GROUP_KEY[gameType] ?? ''] as Record<string, unknown> | undefined
+
+  if (gameType === 'daily_checkin') {
+    return {
+      freePlaysPerDay: base.freePlaysPerDay,
+      pointsCost: 0,
+      dailyLimit: 1,
+      settingsPrizes: [],
+      checkin: {
+        day1to6Points: num(group?.day1to6Points) ?? 5,
+        day7BonusPoints: num(group?.day7BonusPoints) ?? 50,
+        streakBonusMultiplier: num(group?.streakBonusMultiplier) ?? 1,
+      },
+    }
+  }
+
+  const hasPerTier = gameType === 'spin_wheel' || gameType === 'scratch_card'
+  return {
+    freePlaysPerDay: hasPerTier ? parseFreePerTier(group, base.freePlaysPerDay) : base.freePlaysPerDay,
+    pointsCost: num(group?.pointsCostPerPlay) ?? base.pointsCost,
+    dailyLimit: num(group?.dailyLimit) ?? base.dailyLimit,
+    settingsPrizes: hasPerTier ? parseSettingsPrizes(group) : [],
+    checkin: null,
+  }
+}
+
 // ── Helpers ──
 
 /**
@@ -243,7 +388,8 @@ export async function checkDailyPlays(
   gameType: string,
 ): Promise<DailyPlaysResult> {
   const payload = await getPayload({ config })
-  const gameConfig = GAME_CONFIGS[gameType]
+  // B-1：免費次數 / 每日上限改讀後台 game-settings（缺漏時 fallback GAME_CONFIGS）
+  const gameConfig = await getEffectiveGameConfig(gameType)
 
   if (!gameConfig) {
     return { played: 0, remaining: 0, canPlay: false, freePlaysLeft: 0, requiresPoints: false }
@@ -509,12 +655,47 @@ export async function drawPrize(
     }
   }
 
-  // 2) Fallback: 用 GAME_CONFIGS 寫死的 prizeTable（admin 還沒 setup PrizePool 時的兜底）
+  // 2) 次優先：後台 game-settings.{game}.prizes（B-1：admin 設定的獎池要生效）。
+  //    行內帶 rowId → 回傳 sourceSettingsId，App / 前端可與 prizeTable 對位。
+  const excludeTypes = opts?.excludePrizeTypes ?? []
+  const effective = await getEffectiveGameConfig(gameType)
+  const settingsTable = (effective?.settingsPrizes ?? []).filter(
+    (e) => !excludeTypes.includes(e.type),
+  )
+  if (settingsTable.length > 0) {
+    const maxAmount = Math.max(...settingsTable.map((p) => p.amount), 1)
+    const adjusted = settingsTable.map((p) => {
+      if (p.type === 'none') return { ...p, adjustedWeight: p.weight }
+      const relativeValue = p.amount / maxAmount
+      const boost = 1 + relativeValue * (tierBonus + creditBonus)
+      return { ...p, adjustedWeight: p.weight * boost }
+    })
+    const total = adjusted.reduce((s, e) => s + e.adjustedWeight, 0)
+    if (total > 0) {
+      let r = Math.random() * total
+      let picked = adjusted[adjusted.length - 1]
+      for (const e of adjusted) {
+        r -= e.adjustedWeight
+        if (r <= 0) {
+          picked = e
+          break
+        }
+      }
+      return {
+        prize: picked.prize,
+        type: picked.type,
+        amount: picked.amount,
+        couponCode: picked.couponCode,
+        ...(picked.rowId ? { sourceSettingsId: picked.rowId } : {}),
+      }
+    }
+  }
+
+  // 3) Fallback: 用 GAME_CONFIGS 寫死的 prizeTable（admin 還沒 setup 任何獎池時的兜底）
   const gameConfig = GAME_CONFIGS[gameType]
   if (!gameConfig || gameConfig.prizeTable.length === 0) return null
 
   // 硬編碼獎表也要套同一組排除條件，否則「獎池不含 none」在 fallback 路徑會破功
-  const excludeTypes = opts?.excludePrizeTypes ?? []
   const fallbackTable = gameConfig.prizeTable.filter((e) => !excludeTypes.includes(e.type))
   if (fallbackTable.length === 0) return null
 
@@ -546,6 +727,48 @@ export async function drawPrize(
 
 /** 對外 export 給 API route 中獎後 fire-and-forget 扣庫存用 */
 export { decrementPoolInventory }
+
+// ── 2.6 getPrizeTableForDisplay ──
+
+/** GET /api/games 對外公示的獎表項目（strip weight — 機率是營運機密） */
+export interface DisplayPrizeEntry {
+  /** PrizePool doc id 或 game-settings prizes 的 array row id；硬編碼 fallback 為 null */
+  id: string | null
+  prize: string
+  type: PrizeType
+  amount: number
+}
+
+/**
+ * 與 drawPrize 同一優先序（PrizePools > game-settings.prizes > GAME_CONFIGS）
+ * 產生對外顯示的獎表。B-1 的病灶之一是 GET /api/games 永遠回硬編碼獎表、
+ * 抽獎卻走 admin 獎池 —— 顯示與實抽必須同一來源。
+ */
+export async function getPrizeTableForDisplay(gameType: string): Promise<DisplayPrizeEntry[]> {
+  const poolPrizes = await loadPoolPrizes(gameType)
+  if (poolPrizes.length > 0) {
+    return poolPrizes.map((p) => ({
+      id: String(p.id),
+      prize: p.name,
+      type: p.prizeType,
+      amount: p.amount,
+    }))
+  }
+
+  const effective = await getEffectiveGameConfig(gameType)
+  if (effective && effective.settingsPrizes.length > 0) {
+    return effective.settingsPrizes.map((p) => ({
+      id: p.rowId,
+      prize: p.prize,
+      type: p.type,
+      amount: p.amount,
+    }))
+  }
+
+  const base = GAME_CONFIGS[gameType]
+  if (!base) return []
+  return base.prizeTable.map((p) => ({ id: null, prize: p.prize, type: p.type, amount: p.amount }))
+}
 
 // ── 2.5 generateScratchCells ──
 /**
@@ -723,12 +946,20 @@ interface DailyCheckinResult {
 /**
  * Pure decision function — 給定 lastDate/prevTotal/prevConsec + todayTpe，
  * 計算 streak 新狀態與獎勵。無副作用，易於單元測試。
+ *
+ * B-1（2026-08-21）：點數改由後台 game-settings.dailyCheckin 帶入（cfg），
+ * 不再硬編碼 10/50。規則對齊後台三欄位 + 前台 7 格循環 UI：
+ *   - 連續第 1~6 天（循環位置 1~6）→ day1to6Points
+ *   - 每滿 7 天（循環位置 7：第 7、14、21…天）→ day7BonusPoints
+ *   - 連續超過 7 天起，各日點數 × streakBonusMultiplier（無條件捨去）
+ * 未帶 cfg 時使用後台 schema 預設值（5 / 50 / 1.5）。
  */
 export function computeCheckinOutcome(params: {
   lastDate: string
   prevTotal: number
   prevConsec: number
   todayTpe: string
+  cfg?: CheckinConfig
 }): {
   newTotal: number
   newConsec: number
@@ -738,6 +969,7 @@ export function computeCheckinOutcome(params: {
   prizeDescription: string
 } {
   const { lastDate, prevTotal, prevConsec, todayTpe } = params
+  const cfg = params.cfg ?? { day1to6Points: 5, day7BonusPoints: 50, streakBonusMultiplier: 1.5 }
 
   if (lastDate === todayTpe) {
     throw new Error('今日已簽到')
@@ -761,10 +993,13 @@ export function computeCheckinOutcome(params: {
   }
 
   const newTotal = prevTotal + 1
-  const streakBonus = newConsec === 7
-  const prizeAmount = streakBonus ? 50 : 10
+  const cyclePos = ((newConsec - 1) % 7) + 1
+  const streakBonus = cyclePos === 7
+  const basePoints = streakBonus ? cfg.day7BonusPoints : cfg.day1to6Points
+  const multiplier = newConsec > 7 && cfg.streakBonusMultiplier > 0 ? cfg.streakBonusMultiplier : 1
+  const prizeAmount = Math.max(0, Math.floor(basePoints * multiplier))
   const prizeDescription = streakBonus
-    ? `連續簽到 7 天獎勵 ${prizeAmount} 點`
+    ? `連續簽到 ${newConsec} 天獎勵 ${prizeAmount} 點`
     : `每日簽到 ${prizeAmount} 點`
 
   return { newTotal, newConsec, streakReset, streakBonus, prizeAmount, prizeDescription }
@@ -777,11 +1012,15 @@ export async function performDailyCheckin(userId: string): Promise<DailyCheckinR
   const user = await payload.findByID({ collection: 'customers', id: userId })
   const userData = user as unknown as Record<string, unknown>
 
+  // B-1：簽到點數以後台 game-settings.dailyCheckin 為準
+  const effective = await getEffectiveGameConfig('daily_checkin')
+
   const outcome = computeCheckinOutcome({
     lastDate: (userData.lastCheckInDate as string) || '',
     prevTotal: (userData.totalCheckIns as number) || 0,
     prevConsec: (userData.consecutiveCheckIns as number) || 0,
     todayTpe,
+    cfg: effective?.checkin ?? undefined,
   })
 
   const { newTotal, newConsec, streakReset, streakBonus, prizeAmount, prizeDescription } = outcome

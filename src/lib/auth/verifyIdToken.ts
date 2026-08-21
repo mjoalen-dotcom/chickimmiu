@@ -192,3 +192,87 @@ export async function verifyIdToken(input: {
     name,
   }
 }
+
+// ── LINE ──────────────────────────────────────────────────────
+//
+// LINE Login 的 id_token 簽章可能是 HS256（channel secret）或 ES256（LINE 金鑰），
+// 與 Google/Apple 的 RS256+JWKS 不同套。LINE 官方提供 server-side 驗證端點
+// POST https://api.line.me/oauth2/v2.1/verify（帶 id_token + client_id [+ nonce]），
+// 由 LINE 代驗簽章 / iss / aud / exp，直接回傳 claims 或錯誤 —— 走官方端點，
+// 不在本地重造兩套簽章驗證。
+//
+// email 語意（與 emailTrust.ts 同）：LINE 只在使用者 email 已通過 LINE 驗證時
+// 才回傳 email claim，回傳即等於已驗證。
+
+const LINE_VERIFY_URL = 'https://api.line.me/oauth2/v2.1/verify'
+
+export type LineVerifiedIdentity = {
+  provider: 'line'
+  /** LINE userId（U 開頭）—— 寫進 Users.socialLogins.lineId */
+  sub: string
+  email: string | null
+  emailVerified: boolean
+  name: string | null
+  picture: string | null
+}
+
+/**
+ * 驗證原生 App（LINE SDK）取得的 LINE id_token。驗不過丟 IdTokenError。
+ *
+ * @param allowedAudiences 允許的 LINE Login channel id 清單（web channel +
+ *        App 專用 channel）。逐一嘗試，全部失敗才拒絕。
+ */
+export async function verifyLineIdToken(input: {
+  idToken: string
+  allowedAudiences: string[]
+  nonce?: string | null
+}): Promise<LineVerifiedIdentity> {
+  const audiences = input.allowedAudiences.filter(Boolean)
+  if (audiences.length === 0) {
+    throw new IdTokenError('line 尚未設定 channel id（後台社群登入設定或 .env）')
+  }
+
+  let lastError = 'id_token 驗證失敗'
+  for (const clientId of audiences) {
+    const body = new URLSearchParams({ id_token: input.idToken, client_id: clientId })
+    if (input.nonce) body.set('nonce', input.nonce)
+
+    let res: Response
+    try {
+      res = await fetch(LINE_VERIFY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+        cache: 'no-store',
+      })
+    } catch {
+      throw new IdTokenError('無法連線 LINE 驗證服務，請稍後再試')
+    }
+
+    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>
+
+    if (res.ok) {
+      const sub = typeof json.sub === 'string' ? json.sub : ''
+      if (!sub) throw new IdTokenError('LINE id_token 缺 sub')
+      const email = typeof json.email === 'string' && json.email ? json.email.trim().toLowerCase() : null
+      return {
+        provider: 'line',
+        sub,
+        email,
+        // LINE 只回傳已驗證的 email（無 email_verified claim）
+        emailVerified: Boolean(email),
+        name: typeof json.name === 'string' && json.name.trim() ? json.name.trim() : null,
+        picture: typeof json.picture === 'string' && json.picture ? json.picture : null,
+      }
+    }
+
+    lastError =
+      typeof json.error_description === 'string' && json.error_description
+        ? `LINE id_token 驗證失敗：${json.error_description}`
+        : 'LINE id_token 驗證失敗'
+    // audience 不符時試下一組 channel id；其他錯誤（過期/簽章）換 channel 也不會過，
+    // 但 LINE 錯誤訊息格式不保證可判別，逐一嘗試成本低（清單至多 2-3 組）。
+  }
+
+  throw new IdTokenError(lastError)
+}

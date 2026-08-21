@@ -15,7 +15,10 @@ import { isAdmin } from '../access/isAdmin'
  *   - `conditions.productInclude/productExclude` 限定或排除商品
  *   - `conditions.tierRequired` / `firstOrderOnly` 暫留 schema，邏輯 v2 再接
  *
- * Access：admin 建 / 改 / 刪；`anyone` read（前台 apply 需要讀取驗證）
+ * Access：admin 全權；read 亦鎖 admin（D-2，2026-08-21）——
+ *   點數兌換發的「個人化優惠券」也寫進本表（description 帶對象會員 ID），
+ *   公開 read 等於任何登入會員可列出他人未用券號。前台 /checkout 的
+ *   apply-coupon 與所有引擎皆走 server 端 local API（overrideAccess），不受影響。
  */
 export const Coupons: CollectionConfig = {
   slug: 'coupons',
@@ -28,8 +31,8 @@ export const Coupons: CollectionConfig = {
     listSearchableFields: ['code', 'name'],
   },
   access: {
-    // 前台需要讀取才能驗證，admin 全權；對 inactive 曝光 code 可接受（前台仍驗 isActive）
-    read: () => true,
+    // D-2：read 收斂為 admin-only。券碼驗證一律在 server route 內用 local API 查。
+    read: isAdmin,
     create: isAdmin,
     update: isAdmin,
     delete: isAdmin,

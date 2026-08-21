@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Where } from 'payload'
+import { maskName } from '@/lib/games/leaderboardData'
 
 /**
  * Leaderboard API (public)
  * GET /api/games/leaderboard?period=daily|weekly|monthly|all_time&limit=20
+ *
+ * D-3（2026-08-21）：公開端點姓名一律伺服器端遮罩、不回傳 userId。
  */
 export async function GET(req: NextRequest) {
   try {
@@ -64,26 +67,23 @@ export async function GET(req: NextRequest) {
       const meta = (record.metadata as unknown as Record<string, unknown>) || {}
       const rawPlayer = record.player
 
-      let playerName = '匿名玩家'
-      let playerId = ''
+      let playerName: string | null = null
+      let playerEmail: string | null = null
       let avatar: string | null = null
 
       if (typeof rawPlayer === 'object' && rawPlayer !== null) {
         const playerObj = rawPlayer as unknown as Record<string, unknown>
-        playerName = (playerObj.name as string) || '匿名玩家'
-        playerId = playerObj.id as unknown as string
+        playerName = (playerObj.name as string) || null
+        playerEmail = (playerObj.email as string) || null
         if (playerObj.avatar && typeof playerObj.avatar === 'object') {
           const avatarObj = playerObj.avatar as unknown as Record<string, unknown>
           avatar = (avatarObj.url as string) || null
         }
-      } else if (typeof rawPlayer === 'string') {
-        playerId = rawPlayer
       }
 
       return {
         rank: index + 1,
-        userId: playerId,
-        name: playerName,
+        name: playerName || playerEmail ? maskName(playerName, playerEmail) : '匿名玩家',
         avatar,
         totalPoints: (meta.totalPoints as number) || 0,
         totalWins: (meta.totalWins as number) || 0,

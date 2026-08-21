@@ -6,9 +6,15 @@
  * 插入 / 加分）由現成 payload.update / recordGamePlay 機制處理，此處只驗
  * 核心決策分支。
  *
+ * 2026-08-21（APP 遷移需求 B-1）：點數改由後台 game-settings.dailyCheckin
+ * 帶入（cfg 參數），並改為 7 天循環 + 超過 7 天套 streakBonusMultiplier。
+ * Case 1~8 帶 cfg={10,50,1.5} 驗證新規則；Case 9~10 驗證循環獎勵與預設值。
+ *
  * 使用方式：npx tsx src/seed/verifyPhase56CheckIn.ts
  */
-import { computeCheckinOutcome, getTpeDateString } from '../lib/games/gameEngine'
+import { computeCheckinOutcome, getTpeDateString, type CheckinConfig } from '../lib/games/gameEngine'
+
+const CFG: CheckinConfig = { day1to6Points: 10, day7BonusPoints: 50, streakBonusMultiplier: 1.5 }
 
 function tpeDateMinusDays(days: number): string {
   const todayTpe = getTpeDateString()
@@ -33,7 +39,7 @@ const fail = (label: string, actual: unknown, expected: unknown) => {
 // === Case 1: first time ===
 console.log('[Case 1] first time（lastCheckInDate=""）')
 {
-  const r = computeCheckinOutcome({ lastDate: '', prevTotal: 0, prevConsec: 0, todayTpe })
+  const r = computeCheckinOutcome({ lastDate: '', prevTotal: 0, prevConsec: 0, todayTpe, cfg: CFG })
   r.newTotal === 1 ? pass('newTotal=1') : fail('newTotal', r.newTotal, 1)
   r.newConsec === 1 ? pass('newConsec=1') : fail('newConsec', r.newConsec, 1)
   !r.streakReset ? pass('streakReset=false') : fail('streakReset', r.streakReset, false)
@@ -45,7 +51,7 @@ console.log('')
 // === Case 2: same day ===
 console.log('[Case 2] same day（lastDate=todayTpe 應 throw）')
 try {
-  computeCheckinOutcome({ lastDate: todayTpe, prevTotal: 5, prevConsec: 3, todayTpe })
+  computeCheckinOutcome({ lastDate: todayTpe, prevTotal: 5, prevConsec: 3, todayTpe, cfg: CFG })
   fail('應該 throw', 'no-throw', '今日已簽到 error')
 } catch (e) {
   const msg = e instanceof Error ? e.message : ''
@@ -61,6 +67,7 @@ console.log('[Case 3] next day（lastDate=昨天, consec=1）→ consec=2, total
     prevTotal: 1,
     prevConsec: 1,
     todayTpe,
+    cfg: CFG,
   })
   r.newTotal === 2 ? pass('newTotal=2') : fail('newTotal', r.newTotal, 2)
   r.newConsec === 2 ? pass('newConsec=2') : fail('newConsec', r.newConsec, 2)
@@ -78,6 +85,7 @@ console.log('[Case 4] gap=3 days（lastDate=3天前, consec=5）→ newConsec=1 
     prevTotal: 5,
     prevConsec: 5,
     todayTpe,
+    cfg: CFG,
   })
   r.newTotal === 6 ? pass('newTotal=6 (累計不重設)') : fail('newTotal', r.newTotal, 6)
   r.newConsec === 1 ? pass('newConsec=1 (reset)') : fail('newConsec', r.newConsec, 1)
@@ -95,6 +103,7 @@ console.log('[Case 5] 連續 7 天（lastDate=昨天, consec=6）→ consec=7, s
     prevTotal: 6,
     prevConsec: 6,
     todayTpe,
+    cfg: CFG,
   })
   r.newConsec === 7 ? pass('newConsec=7') : fail('newConsec', r.newConsec, 7)
   r.streakBonus ? pass('streakBonus=true') : fail('streakBonus', r.streakBonus, true)
@@ -119,6 +128,7 @@ console.log('[Case 7] gap=2 days（lastDate=2天前, consec=4）→ reset, conse
     prevTotal: 4,
     prevConsec: 4,
     todayTpe,
+    cfg: CFG,
   })
   r.newConsec === 1 ? pass('gap=2 也 reset') : fail('gap=2 reset', r.newConsec, 1)
   r.streakReset ? pass('streakReset=true') : fail('streakReset', r.streakReset, true)
@@ -126,17 +136,42 @@ console.log('[Case 7] gap=2 days（lastDate=2天前, consec=4）→ reset, conse
 console.log('')
 
 // === Case 8: consec=8 (已過 7 天，一般獎勵) ===
-console.log('[Case 8] 連續 8 天（prevConsec=7, lastDate=昨天）→ newConsec=8, no bonus, prize=10')
+console.log('[Case 8] 連續 8 天（prevConsec=7, lastDate=昨天）→ newConsec=8, no bonus, prize=10*1.5=15')
 {
   const r = computeCheckinOutcome({
     lastDate: tpeDateMinusDays(1),
     prevTotal: 7,
     prevConsec: 7,
     todayTpe,
+    cfg: CFG,
   })
   r.newConsec === 8 ? pass('newConsec=8') : fail('newConsec', r.newConsec, 8)
-  !r.streakBonus ? pass('streakBonus=false (只在第 7 天觸發)') : fail('streakBonus', r.streakBonus, false)
-  r.prizeAmount === 10 ? pass('prizeAmount=10') : fail('prizeAmount', r.prizeAmount, 10)
+  !r.streakBonus ? pass('streakBonus=false (循環位置 1)') : fail('streakBonus', r.streakBonus, false)
+  r.prizeAmount === 15 ? pass('prizeAmount=15 (10×1.5 超過7天倍率)') : fail('prizeAmount', r.prizeAmount, 15)
+}
+console.log('')
+
+// === Case 9: 14th consecutive day（7 天循環：第 14 天再發大獎 × 倍率）===
+console.log('[Case 9] 連續 14 天（prevConsec=13, lastDate=昨天）→ streakBonus=true, prize=floor(50*1.5)=75')
+{
+  const r = computeCheckinOutcome({
+    lastDate: tpeDateMinusDays(1),
+    prevTotal: 13,
+    prevConsec: 13,
+    todayTpe,
+    cfg: CFG,
+  })
+  r.newConsec === 14 ? pass('newConsec=14') : fail('newConsec', r.newConsec, 14)
+  r.streakBonus ? pass('streakBonus=true (循環位置 7)') : fail('streakBonus', r.streakBonus, true)
+  r.prizeAmount === 75 ? pass('prizeAmount=75') : fail('prizeAmount', r.prizeAmount, 75)
+}
+console.log('')
+
+// === Case 10: 不帶 cfg → 後台 schema 預設值（5/50/1.5）===
+console.log('[Case 10] 不帶 cfg 首簽 → prizeAmount=5（schema 預設 day1to6Points）')
+{
+  const r = computeCheckinOutcome({ lastDate: '', prevTotal: 0, prevConsec: 0, todayTpe })
+  r.prizeAmount === 5 ? pass('prizeAmount=5') : fail('prizeAmount', r.prizeAmount, 5)
 }
 console.log('')
 

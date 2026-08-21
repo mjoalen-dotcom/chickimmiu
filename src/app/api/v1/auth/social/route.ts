@@ -2,25 +2,33 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { resolveSocialAuth } from '@/lib/auth/socialCredentials'
-import { verifyIdToken, IdTokenError, type IdTokenProvider } from '@/lib/auth/verifyIdToken'
+import {
+  verifyIdToken,
+  verifyLineIdToken,
+  IdTokenError,
+  type IdTokenProvider,
+} from '@/lib/auth/verifyIdToken'
 import { linkOrCreateSocialUser } from '@/lib/auth/socialIdentity'
 import { issuePayloadToken } from '@/lib/auth/issuePayloadToken'
 
 /**
  * POST /api/v1/auth/social
  * ────────────────────────
- * 原生 App 的 Google / Apple 登入 —— id_token 交換 Payload Bearer token。
+ * 原生 App 的 Google / Apple / LINE 登入 —— id_token 交換 Payload Bearer token。
+ * （A-3，APP 遷移需求 2026-08-20：補上 LINE，走 LINE 官方 verify API 驗 id_token。）
  *
  * 為什麼不共用網頁那條：網頁走 NextAuth authorization-code（瀏覽器轉址 + cookie），
- * 原生 App 該用系統 SDK（Google Sign-In / ASAuthorizationAppleIDProvider）取得 id_token
- * 再交換 —— 不必開瀏覽器、Apple 審核也要求 iOS App 用原生 Sign in with Apple。
+ * 原生 App 該用系統 SDK（Google Sign-In / ASAuthorizationAppleIDProvider / LINE SDK）
+ * 取得 id_token 再交換 —— 不必開瀏覽器、Apple 審核也要求 iOS App 用原生 Sign in with Apple。
  *
  * 會員資料與網頁 100% 同一份：走 socialIdentity.linkOrCreateSocialUser（socialId-first），
- * 同一個人先在網頁用 Google 登入、之後在 App 用 Google 登入，會對到同一個會員。
+ * 同一個人先在網頁用 LINE 登入、之後在 App 用 LINE 登入，會對到同一個會員。
+ * LINE 無 email 時的 placeholder 規則（noemail.invalid + 之後 bind-email 補綁）
+ * 也在同一份 helper 內，與網頁 NextAuth callback 完全一致。
  *
  * Request body:
  *   {
- *     "provider": "google" | "apple",
+ *     "provider": "google" | "apple" | "line",
  *     "idToken":  "<SDK 拿到的 id_token>",
  *     "nonce":    "<發起授權時用的 nonce 原文，可選但強烈建議>",
  *     "name":     "<Apple 首次登入才拿得到全名，可選>"
@@ -32,7 +40,8 @@ import { issuePayloadToken } from '@/lib/auth/issuePayloadToken'
  *    一起 POST 上來，否則會員名字只會是 email 前綴。
  */
 
-const SUPPORTED: IdTokenProvider[] = ['google', 'apple']
+const SUPPORTED = ['google', 'apple', 'line'] as const
+type SupportedProvider = (typeof SUPPORTED)[number]
 
 function fail(status: number, error: string, code: string) {
   return NextResponse.json({ success: false, error, code }, { status })
@@ -48,11 +57,11 @@ export async function POST(req: NextRequest) {
       name?: string
     }
 
-    const provider = (body.provider || '').trim().toLowerCase() as IdTokenProvider
+    const provider = (body.provider || '').trim().toLowerCase() as SupportedProvider
     const idToken = (body.idToken || body.id_token || '').trim()
 
     if (!SUPPORTED.includes(provider)) {
-      return fail(400, 'provider 必須是 google 或 apple', 'BAD_REQUEST')
+      return fail(400, 'provider 必須是 google、apple 或 line', 'BAD_REQUEST')
     }
     if (!idToken) {
       return fail(400, '缺少 idToken', 'BAD_REQUEST')
@@ -63,14 +72,26 @@ export async function POST(req: NextRequest) {
       return fail(403, `${provider} 登入目前未啟用`, 'PROVIDER_DISABLED')
     }
 
-    let identity
+    let identity: {
+      sub: string
+      email: string | null
+      emailVerified: boolean
+      name: string | null
+    }
     try {
-      identity = await verifyIdToken({
-        provider,
-        idToken,
-        allowedAudiences: nativeAudiences[provider],
-        nonce: body.nonce || null,
-      })
+      identity =
+        provider === 'line'
+          ? await verifyLineIdToken({
+              idToken,
+              allowedAudiences: nativeAudiences.line,
+              nonce: body.nonce || null,
+            })
+          : await verifyIdToken({
+              provider: provider as IdTokenProvider,
+              idToken,
+              allowedAudiences: nativeAudiences[provider],
+              nonce: body.nonce || null,
+            })
     } catch (err) {
       if (err instanceof IdTokenError) {
         console.warn(`[v1/auth/social] ${provider} id_token 驗證失敗：${err.message}`)
@@ -81,6 +102,7 @@ export async function POST(req: NextRequest) {
 
     // email_verified=false 的 email 不採信（拿來做 email 匹配會被人冒用既有會員），
     // 但仍可用 sub 建/找帳號 —— 走 placeholder email 路徑。
+    // LINE：只有已通過 LINE 驗證的 email 才會出現在 id_token（emailTrust.ts 同一語意）。
     const trustedEmail = identity.emailVerified ? identity.email : null
 
     const payload = await getPayload({ config })

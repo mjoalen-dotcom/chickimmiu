@@ -8,6 +8,7 @@ import PointsClient, {
   type TierLite, type ShopItemLite, type HistoryItem, type UserLite,
   type TestimonialItem,
 } from './PointsClient'
+import { computeRedemptionBadge } from '@/lib/points/redemptionBadge'
 
 export const metadata: Metadata = {
   title: '點數 / 購物金',
@@ -29,26 +30,6 @@ function pickTierName(tier: LooseRecord, gender: string | null): string {
   const male = tier.frontNameMale as string | null | undefined
   if (gender === 'male' && male) return male
   return (tier.frontName as string) ?? (tier.name as string) ?? '—'
-}
-
-function computeBadge(
-  item: LooseRecord,
-  scarcity: { lowStockThreshold: number; hotBadgeThreshold: number },
-): string | null {
-  const stock = (item.stock as number) ?? 0
-  const redeemed = (item.redeemed as number) ?? 0
-  const type = item.type as string
-  const limits = item.limits as LooseRecord | undefined
-  const remaining = stock > 0 ? stock - redeemed : null
-
-  if (remaining !== null && remaining <= scarcity.lowStockThreshold) return '即將售完'
-  if (redeemed >= scarcity.hotBadgeThreshold) return '熱門'
-  if (type === 'mystery') return '驚喜'
-  if (type === 'charity') return '愛心'
-  if (type === 'styling') return '專屬'
-  if (type === 'experience') return 'VIP'
-  if (limits?.subscriberOnly) return 'VIP'
-  return null
 }
 
 function formatDate(raw: unknown): string {
@@ -242,7 +223,7 @@ export default async function PointsPage() {
     stock: (it.stock as number) ?? 0,
     redeemed: (it.redeemed as number) ?? 0,
     description: (it.description as string) ?? '',
-    badge: computeBadge(it, { lowStockThreshold, hotBadgeThreshold }),
+    badge: computeRedemptionBadge(it, { lowStockThreshold, hotBadgeThreshold }),
   }))
 
   const history: HistoryItem[] = (historyResult.docs as unknown as LooseRecord[]).map((h) => {

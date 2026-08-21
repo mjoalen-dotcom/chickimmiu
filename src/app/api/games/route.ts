@@ -15,7 +15,10 @@ import {
   generateScratchCells,
   SCRATCH_PRIZE_ICONS,
   decrementPoolInventory,
+  getEffectiveGameConfig,
+  getPrizeTableForDisplay,
 } from '@/lib/games/gameEngine'
+import { maskName } from '@/lib/games/leaderboardData'
 import { checkMonthlyValueCap, detectAbuse, estimatePrizeValueTwd } from '@/lib/games/abuseDetection'
 import { startChallenge, submitChallenge } from '@/lib/games/fashionChallengeEngine'
 
@@ -89,32 +92,33 @@ export async function GET(req: NextRequest) {
       sort: '-metadata.totalPoints' as never,
     })
 
+    // D-3：姓名一律伺服器端遮罩、不回傳 userId（與網站 /games 排行榜同一標準）
     const topPlayers = await Promise.all(
       leaderboardSummary.docs.map(async (doc) => {
         const record = doc as unknown as Record<string, unknown>
         const meta = (record.metadata as unknown as Record<string, unknown>) || {}
         const rawPlayer = record.player
 
-        let playerName = '匿名玩家'
-        let playerId = ''
+        let playerName: string | null = null
+        let playerEmail: string | null = null
 
         if (typeof rawPlayer === 'object' && rawPlayer !== null) {
           const playerObj = rawPlayer as unknown as Record<string, unknown>
-          playerName = (playerObj.name as string) || '匿名玩家'
-          playerId = playerObj.id as unknown as string
-        } else if (typeof rawPlayer === 'string') {
-          playerId = rawPlayer
+          playerName = (playerObj.name as string) || null
+          playerEmail = (playerObj.email as string) || null
+        } else if (typeof rawPlayer === 'string' || typeof rawPlayer === 'number') {
           try {
             const playerDoc = await payload.findByID({ collection: 'customers', id: rawPlayer })
-            playerName = (playerDoc as unknown as Record<string, unknown>).name as string || '匿名玩家'
+            const playerObj = playerDoc as unknown as Record<string, unknown>
+            playerName = (playerObj.name as string) || null
+            playerEmail = (playerObj.email as string) || null
           } catch {
             // Player may have been deleted
           }
         }
 
         return {
-          userId: playerId,
-          name: playerName,
+          name: playerName || playerEmail ? maskName(playerName, playerEmail) : '匿名玩家',
           totalPoints: meta.totalPoints || 0,
           totalWins: meta.totalWins || 0,
           totalGames: meta.totalGames || 0,
@@ -122,30 +126,71 @@ export async function GET(req: NextRequest) {
       }),
     )
 
+    // B-1：configs 改讀後台有效設定（後台缺漏時 fallback 硬編碼），
+    // prizeTable 與實際抽獎同一優先序（PrizePools > game-settings.prizes > 硬編碼）
+    // 且每項帶 id（B-2，App 對位輪盤格用）。weight 仍然 strip — 機率是營運機密。
+    const configs: Record<string, unknown> = {}
+    for (const key of Object.keys(GAME_CONFIGS)) {
+      const eff = await getEffectiveGameConfig(key)
+      if (!eff) continue
+      configs[key] = {
+        pointsCost: eff.pointsCost,
+        dailyLimit: eff.dailyLimit,
+        freePerTier: eff.freePlaysPerDay,
+        prizeTable: await getPrizeTableForDisplay(key),
+        // B-1：daily_checkin 帶出後台三欄位，App 說明彈窗可顯示實際發放數字
+        ...(eff.checkin
+          ? {
+              day1to6Points: eff.checkin.day1to6Points,
+              day7BonusPoints: eff.checkin.day7BonusPoints,
+              streakBonusMultiplier: eff.checkin.streakBonusMultiplier,
+            }
+          : {}),
+      }
+    }
+
+    // B-5：每日全遊戲點數上限 + 今日已獲得（伺服器權威口徑：points-transactions
+    // source=game 的正數 earn，TPE 日界）
+    const dailyLimitCap = Number(gameSettings.globalDailyPointsLimit ?? 500) || 500
+    const tpeDayStart = new Date(`${todayTpe}T00:00:00+08:00`).toISOString()
+    let earnedToday = 0
+    try {
+      const todayEarns = await payload.find({
+        collection: 'points-transactions',
+        where: {
+          and: [
+            { user: { equals: userId } },
+            { source: { equals: 'game' } },
+            { amount: { greater_than: 0 } },
+            { createdAt: { greater_than_equal: tpeDayStart } },
+          ],
+        } as Where,
+        limit: 500,
+        depth: 0,
+        overrideAccess: true,
+      })
+      earnedToday = todayEarns.docs.reduce(
+        (sum, d) => sum + (((d as unknown as Record<string, unknown>).amount as number) || 0),
+        0,
+      )
+    } catch (err) {
+      console.error('[games GET] dailyPointsCap 統計失敗:', err)
+    }
+
     return NextResponse.json({
       success: true,
       data: {
-        configs: Object.fromEntries(
-          Object.entries(GAME_CONFIGS).map(([key, cfg]) => [
-            key,
-            {
-              pointsCost: cfg.pointsCost,
-              dailyLimit: cfg.dailyLimit,
-              // 把 prizeTable 曝給 client 讓 wheel / scratch UI 能 render 真正的獎項名稱；
-              // 刻意 strip `weight` — 機率是營運機密，不要透過 API 洩漏。
-              prizeTable: cfg.prizeTable.map((p) => ({
-                prize: p.prize,
-                type: p.type,
-                amount: p.amount,
-              })),
-            },
-          ]),
-        ),
+        configs,
         dailyStatus,
         playerStats: stats,
         leaderboard: topPlayers,
         checkinState,
         termsState,
+        dailyPointsCap: {
+          limit: dailyLimitCap,
+          earnedToday,
+          remaining: Math.max(0, dailyLimitCap - earnedToday),
+        },
       },
     })
   } catch (error) {
@@ -269,7 +314,7 @@ export async function POST(req: NextRequest) {
 
         // Charge points if free plays exhausted
         if (dailyPlays.requiresPoints) {
-          const gameConfig = GAME_CONFIGS[gameType]
+          const gameConfig = (await getEffectiveGameConfig(gameType)) ?? GAME_CONFIGS[gameType]
           const userPoints = (userData.points as number) || 0
           if (userPoints < gameConfig.pointsCost) {
             return NextResponse.json(
@@ -323,7 +368,8 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      const gameConfig = GAME_CONFIGS[gameType]
+      // B-1：計費 / 上限改讀後台有效設定
+      const gameConfig = await getEffectiveGameConfig(gameType)
       if (!gameConfig) {
         return NextResponse.json(
           { success: false, error: 'Invalid game configuration' },
@@ -435,7 +481,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         data: {
-          prize,
+          // B-2：附上中獎項目 id（對齊 GET configs.prizeTable 的 id；
+          // 硬編碼 fallback 獎表無 id 時為 null，App 退回名稱/type+amount 比對）
+          prize: {
+            ...prize,
+            id:
+              prize.sourcePoolId != null
+                ? String(prize.sourcePoolId)
+                : (prize.sourceSettingsId ?? null),
+          },
           pointsSpent,
           record,
           newBadges,

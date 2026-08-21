@@ -407,6 +407,9 @@ export const Customers: CollectionConfig = {
               label: '會員等級',
               type: 'relationship',
               relationTo: 'membership-tiers',
+              // D-1（2026-08-21）：等級決定免費抽獎次數/點數倍率/折扣，顧客不可自改；
+              // 系統升等走 local API（overrideAccess）不受此限
+              access: { update: isAdminFieldLevel },
               admin: { description: '由系統根據累計消費自動升級，或由管理員手動調整。' },
             },
             {
@@ -476,12 +479,15 @@ export const Customers: CollectionConfig = {
             {
               type: 'row',
               fields: [
-                { name: 'referralCode', label: '推薦碼', type: 'text', unique: true, admin: { width: '50%', description: '此會員的專屬推薦碼（可分享給朋友）' } },
+                // D-1（2026-08-21）：推薦碼 / 推薦人不可由顧客自改（碰撞/冒用/自導推薦獎勵）；
+                // 註冊產碼與綁定推薦人走 hooks / local API，不受欄位權限限制
+                { name: 'referralCode', label: '推薦碼', type: 'text', unique: true, access: { update: isAdminFieldLevel }, admin: { width: '50%', description: '此會員的專屬推薦碼（可分享給朋友）' } },
                 {
                   name: 'referredBy',
                   label: '推薦人',
                   type: 'relationship',
                   relationTo: 'customers',
+                  access: { update: isAdminFieldLevel },
                   admin: { width: '50%', description: '註冊時使用的推薦碼所屬會員' },
                 },
               ],

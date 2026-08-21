@@ -3,35 +3,13 @@ import { getPayload } from 'payload'
 import type { Where } from 'payload'
 import config from '@payload-config'
 import { getEnabledGames } from '@/lib/games/getEnabledGames'
+import { getPublicLeaderboard } from '@/lib/games/leaderboardData'
 import { GamesHub } from '@/components/games/GamesHub'
 import type { LeaderboardEntry, UserBadgeLite } from '@/components/games/GamesHub'
 
 export const dynamic = 'force-dynamic'
 
 type LooseRecord = Record<string, unknown>
-
-// ── 工具函式 ──────────────────────────────────────────────────
-
-function maskName(name: string | null, email: string | null): string {
-  if (name && name.length >= 2) {
-    return name[0] + '*'.repeat(Math.max(1, name.length - 2)) + name[name.length - 1]
-  }
-  if (name) return name + '**'
-  if (email) {
-    const local = email.split('@')[0]
-    return local.length >= 2 ? local[0] + '*'.repeat(local.length - 1) : local + '**'
-  }
-  return '會員'
-}
-
-function tierToBadge(tier: string): string {
-  if (tier.includes('璀璨') || tier.includes('天后')) return '👑'
-  if (tier.includes('星耀') || tier.includes('皇后')) return '🌟'
-  if (tier.includes('金曦') || tier.includes('女王')) return '💎'
-  if (tier.includes('優漾') || tier.includes('女神')) return '🌹'
-  if (tier.includes('曦漾') || tier.includes('仙子')) return '🦋'
-  return '✨'
-}
 
 // ── Server 查詢 ──────────────────────────────────────────────
 
@@ -82,71 +60,12 @@ async function getHubStats(payload: Awaited<ReturnType<typeof import('payload').
   }
 }
 
+// A-1 refactor：排行榜查詢抽到 lib/games/leaderboardData.ts，
+// 與 App 端點 GET /api/app/leaderboard 共用同一份資料與遮罩。
 async function getLeaderboardData(
   payload: Awaited<ReturnType<typeof import('payload').getPayload>>,
 ): Promise<LeaderboardEntry[]> {
-  try {
-    // 優先查 game-leaderboard（累計 all_time）
-    const lbRes = await payload.find({
-      collection: 'game-leaderboard',
-      where: { period: { equals: 'all_time' } } as Where,
-      sort: '-totalPoints',
-      limit: 10,
-      depth: 1,
-    })
-
-    if (lbRes.docs.length > 0) {
-      return lbRes.docs.map((doc, i) => {
-        const d = doc as unknown as LooseRecord
-        const player = d.player as LooseRecord | null
-        const name = maskName(
-          (player?.name as string | null) ?? null,
-          (player?.email as string | null) ?? null,
-        )
-        const tier = (d.playerTier as string | null) ?? '會員'
-        return {
-          rank: (d.rank as number) ?? i + 1,
-          name,
-          points: (d.totalPoints as number) ?? 0,
-          tier,
-          badge: tierToBadge(tier),
-          gamesPlayed: (d.gamesPlayed as number) ?? 0,
-        }
-      })
-    }
-
-    // Fallback：以 customers.points 排序（會員積分排行）
-    const usersRes = await payload.find({
-      collection: 'customers',
-      sort: '-points',
-      limit: 10,
-      depth: 1,
-      where: { points: { greater_than: 0 } } as Where,
-    })
-
-    return usersRes.docs.map((doc, i) => {
-      const d = doc as unknown as LooseRecord
-      const name = maskName(
-        (d.name as string | null) ?? null,
-        (d.email as string | null) ?? null,
-      )
-      const tierDoc = (d.memberTier as LooseRecord | null) ?? null
-      const tier =
-        (tierDoc?.frontName as string | null) ??
-        (tierDoc?.name as string | null) ??
-        '會員'
-      return {
-        rank: i + 1,
-        name,
-        points: (d.points as number) ?? 0,
-        tier,
-        badge: tierToBadge(tier),
-        gamesPlayed: 0,
-      }
-    })
-  } catch {
-    return []
-  }
+  return getPublicLeaderboard(payload, 10)
 }
 
 async function getUserBadges(
