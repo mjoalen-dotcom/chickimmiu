@@ -23,10 +23,13 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 
+import { GROQ_DEFAULT_MODEL as GROQ_COMPAT_DEFAULT, groqReasoningParams } from '../ai/groqCompat'
+
 const DEFAULT_MODEL = 'claude-opus-5'
 const DEFAULT_EFFORT = 'medium'
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_DEFAULT_MODEL = 'llama-3.3-70b-versatile'
+// 2026-08-22：llama-3.3-70b-versatile 已被 Groq 退役，統一改用共用預設
+const GROQ_DEFAULT_MODEL = GROQ_COMPAT_DEFAULT
 
 let cachedClient: Anthropic | null = null
 
@@ -225,6 +228,7 @@ export async function generateBulkText(args: {
       model: process.env.GROQ_OPS_MODEL || GROQ_DEFAULT_MODEL,
       max_tokens: args.maxTokens ?? 1500,
       temperature: 0.7,
+      ...groqReasoningParams(process.env.GROQ_OPS_MODEL || GROQ_DEFAULT_MODEL),
       messages: [
         { role: 'system', content: args.system },
         { role: 'user', content: args.prompt },

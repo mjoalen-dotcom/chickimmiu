@@ -1,5 +1,8 @@
+import { GROQ_DEFAULT_MODEL, groqReasoningParams } from '../ai/groqCompat'
+
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
-const DEFAULT_MODEL = 'llama-3.3-70b-versatile'
+// 2026-08-22：llama-3.3-70b-versatile 已被 Groq 退役，統一改用共用預設
+const DEFAULT_MODEL = GROQ_DEFAULT_MODEL
 const BRAND_SUFFIX = '｜金老佛爺'
 
 export interface BlogSeoInput {
@@ -166,6 +169,8 @@ export async function generateBlogSeo(input: BlogSeoInput): Promise<BlogSeoOutpu
   }
 
   const request = buildBlogSeoRequest(input)
+  const model =
+    process.env.GROQ_BLOG_SEO_MODEL || process.env.GROQ_BLOG_MODEL || DEFAULT_MODEL
   try {
     const response = await fetch(GROQ_ENDPOINT, {
       method: 'POST',
@@ -174,13 +179,12 @@ export async function generateBlogSeo(input: BlogSeoInput): Promise<BlogSeoOutpu
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model:
-          process.env.GROQ_BLOG_SEO_MODEL ||
-          process.env.GROQ_BLOG_MODEL ||
-          DEFAULT_MODEL,
+        model,
         response_format: { type: 'json_object' },
         temperature: 0.25,
-        max_tokens: 700,
+        // reasoning 模型的思考鏈算 completion tokens，700 不夠 → 1500
+        max_tokens: 1500,
+        ...groqReasoningParams(model),
         messages: [
           { role: 'system', content: request.systemPrompt },
           { role: 'user', content: request.userPrompt },

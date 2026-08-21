@@ -1,12 +1,10 @@
 /**
- * Blog AI Draft — Groq Llama 3.3 70B integration for fashion blog post generation.
+ * Blog AI Draft — Groq integration for fashion blog post generation.
  *
  * - Provider: Groq cloud (https://api.groq.com/openai/v1) — OpenAI-compatible
- * - Default model: `llama-3.3-70b-versatile`（覆寫用 GROQ_BLOG_MODEL）
- *   ‧ 比 horoscope 用的 8B-instant 質量大幅提升，價錢仍便宜（每篇文章 < $0.01 USD）
- *   ‧ 之所以另外定 BLOG_MODEL 而不直接複用 horoscope/groq.ts，是因為運勢用 8B 速度
- *     優先，部落格要長文 + 品牌語氣，70B 比較不會掉鏈子
- * - Cost: 每篇預估 ~3000 tokens in + 2000 tokens out ≈ $0.001 USD（Groq 70B 定價）
+ * - Default model：見 lib/ai/groqCompat.ts（2026-08-22 llama 系全退役後統一
+ *   qwen/qwen3.6-27b；覆寫用 GROQ_BLOG_MODEL）
+ * - Cost: 每篇預估 ~3000 tokens in + 2000 tokens out，Groq 定價下 < $0.01 USD
  * - 失敗會 throw → 呼叫端 catch 後可 retry 或回 fallback
  *
  * 啟用條件：
@@ -15,11 +13,13 @@
  * 取 API key：https://console.groq.com/keys（免費）
  *
  * 將來升級：multimodal（看商品照產出更具體的面料 / 版型描述）需切到 Anthropic
- * Claude 4.6 Sonnet（vision-capable），Groq 目前沒提供 70B vision。
+ * Claude vision-capable 模型，Groq 目前陣容無 vision 聊天模型。
  */
+import { GROQ_DEFAULT_MODEL, groqReasoningParams } from '../ai/groqCompat'
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
-const DEFAULT_MODEL = 'llama-3.3-70b-versatile'
+// 2026-08-22：llama-3.3-70b-versatile 已被 Groq 退役，統一改用共用預設
+const DEFAULT_MODEL = GROQ_DEFAULT_MODEL
 
 const FASHION_SYSTEM_PROMPT = `你是 CHIC KIM & MIU（CKMU、靚秀國際）的時尚部落格寫手。
 品牌定位：韓國設計師款女裝，目標客群 25-45 歲台灣女性，客單 NT$1500-3500，
@@ -198,13 +198,15 @@ export async function generateBlogDraft(input: BlogAIDraftInput): Promise<BlogAI
       model,
       response_format: { type: 'json_object' },
       temperature: 0.75,
-      max_tokens: 4000,
+      // reasoning 模型的思考鏈算 completion tokens → 長文草稿多留餘量
+      max_tokens: 5000,
+      ...groqReasoningParams(model),
       messages: [
         { role: 'system', content: request.systemPrompt },
         { role: 'user', content: request.userPrompt },
       ],
     }),
-    // 70B + 4K tokens 通常 5-15 秒；給 60s 緩衝避免短期延遲被誤殺
+    // 長文生成通常 5-15 秒；給 60s 緩衝避免短期延遲被誤殺
     signal: AbortSignal.timeout(60_000),
   })
 

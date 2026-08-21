@@ -1,12 +1,14 @@
 import type { HoroscopeContent, HoroscopeGenInput } from './types'
 import { STYLE_KEYWORDS_VOCAB } from './types'
 import { ZODIAC_LABELS } from './zodiac'
+import { GROQ_DEFAULT_MODEL, groqReasoningParams } from '../ai/groqCompat'
 
 /**
- * Groq Llama 3.1 8B integration for daily horoscope generation.
+ * Groq integration for daily horoscope generation.
  *
  * - API：Groq cloud (https://api.groq.com/openai/v1) — OpenAI-compatible
- * - Default model: `llama-3.1-8b-instant`（覆寫用 GROQ_MODEL）
+ * - Default model：見 lib/ai/groqCompat.ts（2026-08-22 llama 系全退役後改
+ *   qwen/qwen3.6-27b；覆寫用 GROQ_MODEL）
  * - Cost: < $1 USD/year for 12 signs × 2 genders × 365 days at封測 traffic
  * - 失敗會 throw → 呼叫端 catch 後 fallback 到 seed
  *
@@ -17,7 +19,7 @@ import { ZODIAC_LABELS } from './zodiac'
  */
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
-const DEFAULT_MODEL = 'llama-3.1-8b-instant'
+const DEFAULT_MODEL = GROQ_DEFAULT_MODEL
 
 const SYSTEM_PROMPT = `你是 CHIC KIM & MIU 品牌的星座運勢生成器。
 你的任務是為「指定星座 × 指定性別 × 指定日期」生成一份運勢內容，回傳純 JSON。
@@ -95,7 +97,10 @@ ${STYLE_KEYWORDS_VOCAB.map((k) => `"${k}"`).join(', ')}
       model,
       response_format: { type: 'json_object' },
       temperature: 0.7,
-      max_tokens: 800,
+      // reasoning 模型的思考鏈也算 completion tokens，800 會在 JSON 開始前被
+      // 截斷（json_validate_failed + 空 failed_generation）——給足餘量
+      max_tokens: 1500,
+      ...groqReasoningParams(model),
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: userPrompt },
