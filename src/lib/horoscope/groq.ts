@@ -160,9 +160,11 @@ function validateAndNormalize(raw: unknown): HoroscopeContent {
     }
   }
 
-  const luckyColors = Array.isArray(r.luckyColors)
-    ? r.luckyColors.filter((c): c is string => typeof c === 'string').slice(0, 3)
+  const luckyColorsRaw = Array.isArray(r.luckyColors)
+    ? r.luckyColors.filter((c): c is string => typeof c === 'string' && c.trim() !== '').slice(0, 3)
     : []
+  // 模型偶發回空陣列（2026-08-22 實測 1/48）→ 補品牌中性色，UI 不留空格
+  const luckyColors = luckyColorsRaw.length > 0 ? luckyColorsRaw : ['象牙白', '霧灰']
 
   const styleRaw = Array.isArray(r.styleKeywords)
     ? r.styleKeywords.filter((s): s is string => typeof s === 'string')
