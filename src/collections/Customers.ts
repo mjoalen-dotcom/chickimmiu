@@ -236,6 +236,23 @@ export const Customers: CollectionConfig = {
               ],
             },
             {
+              // C-2（Alan 2026-08-21 拍板）：排行榜等公開互動場合的顯示名稱。
+              // 顧客可自行修改（PATCH 白名單由 App/前端各自納入）；未設定時
+              // 公開場合一律顯示遮罩後的真名（lib/games/leaderboardData.ts）。
+              name: 'nickname',
+              label: '公開暱稱',
+              type: 'text',
+              maxLength: 20,
+              hooks: {
+                beforeValidate: [
+                  ({ value }) => (typeof value === 'string' ? value.trim() : value),
+                ],
+              },
+              admin: {
+                description: '排行榜等公開場合顯示；未設定時顯示遮罩姓名（如 王*明）。上限 20 字',
+              },
+            },
+            {
               type: 'row',
               fields: [
                 {

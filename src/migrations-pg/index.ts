@@ -6,6 +6,7 @@ import * as migration_20260817_051044_p0c_campaign_governance from './20260817_0
 import * as migration_20260817_170000_p0b_drop_enums from './20260817_170000_p0b_drop_enums';
 import * as migration_20260817_170500_p0b_drop_schema from './20260817_170500_p0b_drop_schema';
 import * as migration_20260821_010000_add_ops_actions from './20260821_010000_add_ops_actions';
+import * as migration_20260821_150000_add_customer_nickname from './20260821_150000_add_customer_nickname';
 
 export const migrations = [
   {
@@ -48,5 +49,10 @@ export const migrations = [
     up: migration_20260821_010000_add_ops_actions.up,
     down: migration_20260821_010000_add_ops_actions.down,
     name: '20260821_010000_add_ops_actions',
+  },
+  {
+    up: migration_20260821_150000_add_customer_nickname.up,
+    down: migration_20260821_150000_add_customer_nickname.down,
+    name: '20260821_150000_add_customer_nickname',
   },
 ];

@@ -143,6 +143,7 @@ export async function POST(req: NextRequest) {
           id: fresh.id,
           email: fresh.email,
           name: fresh.name,
+          nickname: fresh.nickname || null,
           phone: fresh.phone,
           points: fresh.points || 0,
           shoppingCredit: fresh.shoppingCredit || 0,

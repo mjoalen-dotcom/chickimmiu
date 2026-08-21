@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
           id: u.id,
           email: u.email,
           name: u.name,
+          nickname: u.nickname || null,
           phone: u.phone,
           points: u.points || 0,
           shoppingCredit: u.shoppingCredit || 0,

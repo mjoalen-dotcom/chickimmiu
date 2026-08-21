@@ -16,7 +16,7 @@ type LooseRecord = Record<string, unknown>
 
 export interface PublicLeaderboardEntry {
   rank: number
-  /** 已遮罩姓名（如 王○明 → 王*明 格式 N*****i） */
+  /** 公開暱稱（會員自訂，原樣顯示）；未設定時為已遮罩姓名（如 王*明 / N*****i） */
   name: string
   /** 前台等級稱號（如 曦漾仙子）；資料缺漏時為「會員」 */
   tier: string
@@ -35,6 +35,16 @@ export function maskName(name: string | null, email: string | null): string {
     return local.length >= 2 ? local[0] + '*'.repeat(local.length - 1) : local + '**'
   }
   return '會員'
+}
+
+/** C-2：有公開暱稱顯示暱稱（本人自訂即公開），否則遮罩真名 */
+export function publicDisplayName(
+  nickname: string | null | undefined,
+  name: string | null,
+  email: string | null,
+): string {
+  const nick = typeof nickname === 'string' ? nickname.trim() : ''
+  return nick || maskName(name, email)
 }
 
 export function tierToBadge(tier: string): string {
@@ -65,7 +75,8 @@ export async function getPublicLeaderboard(
       return lbRes.docs.map((doc, i) => {
         const d = doc as unknown as LooseRecord
         const player = d.player as LooseRecord | null
-        const name = maskName(
+        const name = publicDisplayName(
+          player?.nickname as string | null | undefined,
           (player?.name as string | null) ?? null,
           (player?.email as string | null) ?? null,
         )
@@ -93,7 +104,8 @@ export async function getPublicLeaderboard(
 
     return usersRes.docs.map((doc, i) => {
       const d = doc as unknown as LooseRecord
-      const name = maskName(
+      const name = publicDisplayName(
+        d.nickname as string | null | undefined,
         (d.name as string | null) ?? null,
         (d.email as string | null) ?? null,
       )

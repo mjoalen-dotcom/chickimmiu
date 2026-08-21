@@ -3,7 +3,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 import { verifyCronAuth } from '@/lib/cron/auth'
-import { calculateTier, TIER_LEVELS } from '@/lib/crm/tierEngine'
+import { calculateTier, loadTierThresholds, TIER_LEVELS } from '@/lib/crm/tierEngine'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -41,13 +41,18 @@ export async function POST(request: Request) {
     depth: 0,
   })
   const tierSlugToId = new Map<string, string | number>()
+  const tierIdToSlug = new Map<string, string>()
   for (const t of tiersResult.docs) {
     const slug = (t as unknown as LooseRecord).slug
     const id = (t as unknown as LooseRecord).id
     if (typeof slug === 'string' && (typeof id === 'string' || typeof id === 'number')) {
       tierSlugToId.set(slug, id)
+      tierIdToSlug.set(String(id), slug)
     }
   }
+
+  // 門檻以 membership-tiers 後台值為權威（Alan 2026-08-21 拍板）
+  const thresholds = await loadTierThresholds(payload)
 
   let scanned = 0
   let reset = 0
@@ -76,12 +81,20 @@ export async function POST(request: Request) {
         const annualSpend = Number(u.annualSpend ?? 0) || 0
 
         // 歸零後用 annual=0 重算
-        const newTierSlug = calculateTier(lifetimeSpend, 0)
+        const newTierSlug = calculateTier(lifetimeSpend, 0, thresholds)
+        // depth:0 下 memberTier 是關聯 id（number/string），不是 slug —— 舊寫法
+        // 永遠 fallback 'ordinary'，降等判斷從未生效。以 id→slug 對照表解析，
+        // 兼容 populated 物件與（理論上不該出現的）slug 字串。
         const rawOld = u.memberTier
-        const oldTierSlug =
-          typeof rawOld === 'string'
-            ? rawOld
-            : ((rawOld as unknown as LooseRecord)?.slug as string) || 'ordinary'
+        const oldTierSlug = (() => {
+          if (rawOld == null) return 'ordinary'
+          if (typeof rawOld === 'object') {
+            return ((rawOld as unknown as LooseRecord).slug as string) || 'ordinary'
+          }
+          const asSlug =
+            typeof rawOld === 'string' && TIER_LEVELS[rawOld] !== undefined ? rawOld : null
+          return tierIdToSlug.get(String(rawOld)) || asSlug || 'ordinary'
+        })()
         const oldLevel = TIER_LEVELS[oldTierSlug] ?? 0
         const newLevel = TIER_LEVELS[newTierSlug] ?? 0
 

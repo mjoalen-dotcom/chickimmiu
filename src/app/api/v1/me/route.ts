@@ -102,6 +102,7 @@ export async function GET(req: NextRequest) {
         id: user.id,
         email: userData.email,
         name: userData.name,
+        nickname: userData.nickname || null,
         phone: userData.phone,
         points: userData.points || 0,
         shoppingCredit: userData.shoppingCredit || 0,

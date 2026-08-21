@@ -35,14 +35,67 @@ export const TIER_LEVELS: Record<string, number> = {
 /** 等級排序陣列（由低到高） */
 const TIER_ORDER: string[] = ['ordinary', 'bronze', 'silver', 'gold', 'platinum', 'diamond']
 
-/** 預設升級門檻（可由 MembershipTiers collection 覆蓋） */
-export const DEFAULT_TIER_THRESHOLDS: Record<string, { lifetime: number; annual: number }> = {
+export type TierThresholds = Record<string, { lifetime: number; annual: number }>
+
+/** 硬編碼兜底門檻（membership-tiers 讀不到時用；正常路徑請走 loadTierThresholds） */
+export const DEFAULT_TIER_THRESHOLDS: TierThresholds = {
   ordinary: { lifetime: 0, annual: 0 },
   bronze: { lifetime: 3000, annual: 1500 },
   silver: { lifetime: 10000, annual: 5000 },
   gold: { lifetime: 30000, annual: 15000 },
   platinum: { lifetime: 80000, annual: 40000 },
   diamond: { lifetime: 200000, annual: 100000 },
+}
+
+/**
+ * 從 membership-tiers collection 載入升級門檻（Alan 2026-08-21 拍板：後台為權威）。
+ *   - lifetime = minSpent（升級門檻 — 累計消費）
+ *   - annual   = annualSpentThreshold > 0 ? 該值 : Infinity（未設定 = 該級不開年度快速通道，
+ *                不 fallback 硬編碼的假想數字）
+ * collection 查詢失敗或整張表為空 → 整組 fallback DEFAULT_TIER_THRESHOLDS。
+ *
+ * payload 型別放寬為 minimal find 介面，讓 cron / hook / script 都能直接傳。
+ */
+export async function loadTierThresholds(payload: {
+  find: (args: {
+    collection: 'membership-tiers'
+    limit: number
+    depth: number
+    overrideAccess?: boolean
+  }) => Promise<{ docs: unknown[] }>
+}): Promise<TierThresholds> {
+  try {
+    const res = await payload.find({
+      collection: 'membership-tiers',
+      limit: 20,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (res.docs.length === 0) return DEFAULT_TIER_THRESHOLDS
+
+    const out: TierThresholds = {}
+    for (const doc of res.docs) {
+      const d = doc as Record<string, unknown>
+      const slug = typeof d.slug === 'string' ? d.slug : ''
+      if (!slug) continue
+      const lifetime =
+        typeof d.minSpent === 'number' && Number.isFinite(d.minSpent)
+          ? d.minSpent
+          : (DEFAULT_TIER_THRESHOLDS[slug]?.lifetime ?? 0)
+      const annualRaw = typeof d.annualSpentThreshold === 'number' ? d.annualSpentThreshold : 0
+      out[slug] = {
+        lifetime,
+        annual: slug === 'ordinary' ? 0 : annualRaw > 0 ? annualRaw : Infinity,
+      }
+    }
+    // 表內缺某級（資料不完整）時補 DEFAULT，避免 calculateTier 跳級誤判
+    for (const slug of Object.keys(DEFAULT_TIER_THRESHOLDS)) {
+      if (!out[slug]) out[slug] = DEFAULT_TIER_THRESHOLDS[slug]
+    }
+    return out
+  } catch {
+    return DEFAULT_TIER_THRESHOLDS
+  }
 }
 
 // ── Core Functions ─────────────────────────────────────
@@ -92,12 +145,16 @@ export function getNextTier(
  * @param annualSpend - 本年度消費金額（TWD）
  * @returns 應得等級的後台分級碼
  */
-export function calculateTier(lifetimeSpend: number, annualSpend: number): string {
+export function calculateTier(
+  lifetimeSpend: number,
+  annualSpend: number,
+  thresholds: TierThresholds = DEFAULT_TIER_THRESHOLDS,
+): string {
   // 由最高等級往下比對
   for (let i = TIER_ORDER.length - 1; i >= 0; i--) {
     const tierCode = TIER_ORDER[i]
     if (!tierCode) continue
-    const threshold = DEFAULT_TIER_THRESHOLDS[tierCode]
+    const threshold = thresholds[tierCode] ?? DEFAULT_TIER_THRESHOLDS[tierCode]
     if (!threshold) continue
 
     if (lifetimeSpend >= threshold.lifetime || annualSpend >= threshold.annual) {

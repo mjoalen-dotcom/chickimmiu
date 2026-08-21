@@ -213,6 +213,60 @@ async function main() {
     after: aliceFinal.referralCode,
   })
 
+  console.log('── C-2：公開暱稱 ──')
+  await update({
+    collection: 'customers',
+    id: alice.id,
+    data: { nickname: '  小美醬  ' },
+    overrideAccess: false,
+    user: { ...aliceFinal, collection: 'customers' },
+  }).catch((e: unknown) => {
+    fail('本人應可自改 nickname', e instanceof Error ? e.message : e)
+    return null
+  })
+  const aliceNick = (await payload.findByID({
+    collection: 'customers',
+    id: alice.id as string | number,
+    depth: 0,
+  })) as unknown as Loose
+  expect(aliceNick.nickname === '小美醬', 'nickname 寫入成功且已 trim', aliceNick.nickname)
+  const lb2 = await getPublicLeaderboard(payload, 10)
+  expect(
+    lb2.some((e) => e.name === '小美醬'),
+    '排行榜顯示暱稱（原樣、不遮罩）',
+    lb2.map((e) => e.name),
+  )
+  expect(
+    lb2.some((e) => e.name.includes('*')),
+    '未設暱稱者仍遮罩',
+    lb2.map((e) => e.name),
+  )
+
+  console.log('── B-4：等級門檻改讀 membership-tiers ──')
+  {
+    const { loadTierThresholds, calculateTier } = await import('../src/lib/crm/tierEngine')
+    await create({
+      collection: 'membership-tiers',
+      data: {
+        name: '測試銅牌',
+        slug: 'bronze',
+        level: 1,
+        minSpent: 5000,
+        annualSpentThreshold: 3000,
+        frontName: '曦漾仙子',
+      },
+      overrideAccess: true,
+    }).catch((e: unknown) => {
+      console.log(`  （bronze tier 建立失敗：${(e as Error).message}）`)
+      return null
+    })
+    const thresholds = await loadTierThresholds(payload)
+    expect(thresholds.bronze?.lifetime === 5000, 'bronze lifetime 門檻 = 後台 minSpent 5000', thresholds.bronze)
+    expect(calculateTier(3680, 0, thresholds) === 'ordinary', '3,680 未達 5,000 → ordinary（文件 id 8 案例修正）')
+    expect(calculateTier(5000, 0, thresholds) === 'bronze', '5,000 → bronze')
+    expect(calculateTier(0, 3000, thresholds) === 'bronze', '年度 3,000（annualSpentThreshold）→ bronze 快速通道')
+  }
+
   console.log('── D-2：coupons read 非 admin 被拒 ──')
   await create({
     collection: 'coupons',

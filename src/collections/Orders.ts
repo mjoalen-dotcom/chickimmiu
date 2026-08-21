@@ -23,7 +23,7 @@ import { sendOrderDeliveredEmail } from '../lib/email/orderDelivered'
 import { sendOrderCancelledEmail } from '../lib/email/orderCancelled'
 import { sendOrderRefundedEmail } from '../lib/email/orderRefunded'
 import { sendAdminNewOrderAlert } from '../lib/email/adminNewOrderAlert'
-import { calculateTier, TIER_LEVELS } from '../lib/crm/tierEngine'
+import { calculateTier, loadTierThresholds, TIER_LEVELS } from '../lib/crm/tierEngine'
 import {
   beforeChangeServerPricing,
   afterChangeWritePromotionRecords,
@@ -1223,7 +1223,9 @@ export const Orders: CollectionConfig = {
               try {
                 const newLifetime = currentLifetimeSpend + orderTotal
                 const newAnnual = currentAnnualSpend + orderTotal
-                const newTierSlug = calculateTier(newLifetime, newAnnual)
+                // 門檻以 membership-tiers 後台值為權威（Alan 2026-08-21 拍板）
+                const thresholds = await loadTierThresholds(payload)
+                const newTierSlug = calculateTier(newLifetime, newAnnual, thresholds)
                 const rawOldTier = customerData.memberTier
                 const oldTierSlug =
                   typeof rawOldTier === 'string'
