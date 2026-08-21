@@ -159,11 +159,30 @@ App 不必自行加總。
 
 ## E. App 現用端點
 
-未動任何 E 表列端點的路徑與回應形狀；本次只有**新增**欄位（`configs.*` 加 `id`/`freePerTier`/
-簽到三欄位、`dailyPointsCap`、`/api/v1/points` 加 `badge`）。
+遊戲/點數/兌換/寶物箱等業務端點路徑與回應形狀全部不變；本次只有**新增**欄位
+（`configs.*` 加 `id`/`freePerTier`/簽到三欄位、`dailyPointsCap`、`/api/v1/points` 加
+`badge`、user 物件加 `nickname`）。
 
-⚠️ 預告（非本次）：customers 已從 users 拆成獨立 collection（APP-API-001 步驟16）。
-部署時 `/api/users/login` 等端點的路徑遷移方案會另行公告，切換前會先通知 App 團隊。
+⚠️ **確定事項（部署同批生效）**：顧客帳號已從 users 拆成獨立的 customers collection。
+部署後 `/api/users/*` 只服務後台人員，App 的會員認證端點請改為：
+
+| 原（E 表） | 改為 | 備註 |
+|---|---|---|
+| POST /api/users/login | **POST /api/customers/login**（或建議 POST /api/v1/auth/login） | 回應格式相同 |
+| /api/users/register、/forgot-password、/logout | /api/customers/同名 | 格式相同 |
+| GET /api/users/me | GET /api/customers/me（或 GET /api/v1/me） | |
+| POST /api/users/refresh-token | POST /api/customers/refresh-token | |
+| PATCH /api/users/{id} | PATCH /api/customers/{id} | 白名單欄位可加 `nickname` |
+| POST /api/users/bind-email | POST /api/customers/bind-email | |
+
+既有 token 於部署當下全數失效（session 不搬），所有會員（網頁+App）需重新登入。
+切換日會提前通知。
+
+## C-2 補充（已實作）
+
+`customers.nickname`（公開暱稱，上限 20 字，本人可自行 PATCH）已上線同批：
+排行榜有暱稱顯示暱稱原文、未設定仍顯示遮罩姓名；`/api/v1/auth/login`、`/api/v1/auth/social`、
+`/api/v1/me` 的 user 物件均新增 `nickname` 欄位（null = 未設定）。
 
 ---
 
