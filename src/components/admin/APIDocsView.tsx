@@ -19,7 +19,7 @@ import type { AdminViewServerProps, SanitizedCollectionConfig, SanitizedGlobalCo
  *
  * Auth 方式（兩條都列出來給工程師選）：
  *   - Cookie session（瀏覽器 / 已登入後台後叫 fetch）
- *   - Bearer JWT (`Authorization: JWT <token>`，從 /api/users/login 取得)
+ *   - Bearer JWT (`Authorization: JWT <token>`，從 /api/customers/login 取得)
  *
  * 入口：
  *   - URL: /admin/api-docs（直連）
@@ -158,7 +158,7 @@ const APIDocsView: React.FC<AdminViewServerProps> = async ({
           </h3>
           <pre style={codeBlock}>
 {`# 1. 登入取 token
-curl -X POST '${baseUrl}/api/users/login' \\
+curl -X POST '${baseUrl}/api/customers/login' \\
   -H 'Content-Type: application/json' \\
   -d '{"email":"user@example.com","password":"<PASSWORD>"}'
 # 回應：{ "user": {...}, "token": "<JWT>", "exp": ... }
@@ -364,7 +364,7 @@ curl '${baseUrl}/api/products?limit=10' \\
 
           <h3 style={{ fontSize: 14, fontWeight: 600, margin: '12px 0 4px' }}>取目前使用者（需 cookie / JWT）</h3>
           <pre style={codeBlock}>
-{`curl '${baseUrl}/api/users/me' \\
+{`curl '${baseUrl}/api/customers/me' \\
   -H 'Authorization: JWT <JWT>'`}
           </pre>
 

@@ -8,7 +8,7 @@ import { useState, type FormEvent } from 'react'
  * 重設密碼頁
  * ---------
  * 從 `/forgot-password` 寄出的 email 連結點進來，URL 帶 `?token=...`
- * POST `/api/users/reset-password`（Payload 內建）
+ * POST `/api/customers/reset-password`（Payload 內建；會員在 customers collection）
  *   body: { token, password }
  *   成功 → Payload 會一併 login + 下 cookie → redirect /account
  */
@@ -41,7 +41,7 @@ export default function ResetPasswordPage() {
     }
     setSubmitting(true)
     try {
-      const res = await fetch('/api/users/reset-password', {
+      const res = await fetch('/api/customers/reset-password', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

@@ -138,7 +138,7 @@ async function fetchTodayStats(): Promise<TodayStats> {
 
   const [ordersData, usersRes, ticketsRes, returnsRes] = await Promise.all([
     fetchOrdersInRange(today, tomorrow),
-    safeJson(`/api/users?limit=0&depth=0&where[createdAt][greater_than_equal]=${encodeURIComponent(today.toISOString())}&where[role][equals]=customer`),
+    safeJson(`/api/customers?limit=0&depth=0&where[createdAt][greater_than_equal]=${encodeURIComponent(today.toISOString())}`),
     safeJson('/api/customer-service-tickets?limit=0&depth=0&where[status][in][0]=open&where[status][in][1]=pending_human'),
     safeJson('/api/returns?limit=0&depth=0&where[createdAt][greater_than_equal]=' + encodeURIComponent(today.toISOString())),
   ])
@@ -163,7 +163,7 @@ async function fetchMonthStats(year: number, month: number): Promise<MonthStats>
   const end = getMonthEnd(year, month)
   const [ordersData, usersRes] = await Promise.all([
     fetchOrdersInRange(start, end),
-    safeJson(`/api/users?limit=0&depth=0&where[createdAt][greater_than_equal]=${encodeURIComponent(start.toISOString())}&where[createdAt][less_than]=${encodeURIComponent(end.toISOString())}&where[role][equals]=customer`),
+    safeJson(`/api/customers?limit=0&depth=0&where[createdAt][greater_than_equal]=${encodeURIComponent(start.toISOString())}&where[createdAt][less_than]=${encodeURIComponent(end.toISOString())}`),
   ])
   return {
     revenue: ordersData.revenue,

@@ -6,7 +6,7 @@ import { useState, type FormEvent } from 'react'
 /**
  * 忘記密碼頁
  * ---------
- * POST `/api/users/forgot-password`（Payload 內建）
+ * POST `/api/customers/forgot-password`（Payload 內建；會員在 customers collection）
  * 成功不論 email 是否存在都回傳同樣訊息，避免 email enumeration。
  *
  * ⚠️ Prod 未設 email adapter — token 會 log 到 systemd journal，
@@ -23,7 +23,7 @@ export default function ForgotPasswordPage() {
     setError(null)
     setSubmitting(true)
     try {
-      const res = await fetch('/api/users/forgot-password', {
+      const res = await fetch('/api/customers/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim().toLowerCase() }),

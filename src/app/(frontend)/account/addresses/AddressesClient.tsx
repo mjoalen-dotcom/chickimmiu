@@ -52,7 +52,7 @@ export default function AddressesClient({
 
   async function patchAddresses(next: AddressLite[]) {
     setError(null)
-    const res = await fetch(`/api/users/${userId}`, {
+    const res = await fetch(`/api/customers/${userId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

@@ -465,7 +465,7 @@ export default function CheckoutPage() {
   }, [])
 
   // Full profile fetch (name / phone / addresses) — useCurrentUser only exposes
-  // id/email/name so we re-pull /api/users/me here to back the "同訂購人資料"
+  // id/email/name so we re-pull /api/customers/me here to back the "同訂購人資料"
   // autofill + "記錄此收件資料到地址簿" address-book append flow.
   type SavedAddress = {
     recipientName?: string
@@ -494,7 +494,7 @@ export default function CheckoutPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const r = await fetch('/api/users/me', { credentials: 'include' })
+        const r = await fetch('/api/customers/me', { credentials: 'include' })
         if (!r.ok) return
         const body = (await r.json()) as { user?: Record<string, unknown> | null }
         const u = body?.user
@@ -1237,14 +1237,14 @@ export default function CheckoutPage() {
         isDefault: userProfile.addresses.length === 0,
       }
       try {
-        const meRes = await fetch('/api/users/me', { credentials: 'include' })
+        const meRes = await fetch('/api/customers/me', { credentials: 'include' })
         const meBody = meRes.ok ? await meRes.json() : null
         const latest: SavedAddress[] =
           Array.isArray(meBody?.user?.addresses) ? meBody.user.addresses : []
         const newFp = fp(newAddr)
         const exists = latest.some((a) => fp(a) === newFp)
         if (!exists) {
-          await fetch(`/api/users/${user.id}`, {
+          await fetch(`/api/customers/${user.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',

@@ -8,7 +8,7 @@ import { Suspense, useEffect, useRef, useState } from 'react'
  * Email 驗證頁
  * -----------
  * 從驗證信連結點進來，URL 帶 `?token=...`
- * POST `/api/users/verify/<token>`（Payload 內建 verifyEmail endpoint）
+ * POST `/api/customers/verify/<token>`（Payload 內建 verifyEmail endpoint；會員在 customers collection）
  *   成功 → 顯示驗證完成訊息 + 導去 /login?verified=1 按鈕
  *   失敗 → token 過期 / 無效提示（不提供自動重寄，避免 enumeration；可重新註冊或聯絡客服）
  *
@@ -39,7 +39,7 @@ function VerifyEmailInner() {
     }
     ;(async () => {
       try {
-        const res = await fetch(`/api/users/verify/${encodeURIComponent(token)}`, {
+        const res = await fetch(`/api/customers/verify/${encodeURIComponent(token)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         })

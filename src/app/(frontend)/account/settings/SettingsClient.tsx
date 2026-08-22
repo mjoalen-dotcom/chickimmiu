@@ -120,7 +120,7 @@ export default function SettingsClient({ initial }: { initial: SettingsInitial }
         invoicePhone: strOrNull(invoice.invoicePhone),
       },
     }
-    const res = await fetch(`/api/users/${initial.userId}`, {
+    const res = await fetch(`/api/customers/${initial.userId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

@@ -7,7 +7,7 @@ import { useSession } from 'next-auth/react'
  * Client-side 當前使用者 hook
  * ---------------------------
  * SSR 端用 `getCurrentUser()`（讀 Payload session cookie → fallback NextAuth），
- * 這支 hook 是 client-side 版本：拉 `/api/users/me` 拿 Payload session，fallback
+ * 這支 hook 是 client-side 版本：拉 `/api/customers/me` 拿會員 session，fallback
  * 到 `useSession()` 蓋 OAuth 剛登入但 `/api/auth/bridge` 還沒寫 `payload-token`
  * 的短暫視窗。
  *
@@ -38,7 +38,7 @@ export function useCurrentUser() {
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch('/api/users/me', { credentials: 'include' })
+        const res = await fetch('/api/customers/me', { credentials: 'include' })
         if (!res.ok) {
           if (!cancelled) setPayloadUser(null)
           return
