@@ -13,7 +13,8 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
 
-const VALID = ['inherit', 'split', 'editorial', 'cinematic', 'magazine']
+const VALID = ['inherit', 'split', 'editorial', 'cinematic', 'magazine'] as const
+type HeroLayout = (typeof VALID)[number]
 
 function log(msg: string) {
   // eslint-disable-next-line no-console
@@ -21,7 +22,7 @@ function log(msg: string) {
 }
 
 async function main() {
-  const variant = process.argv[process.argv.length - 1]
+  const variant = process.argv[process.argv.length - 1] as HeroLayout
   if (!VALID.includes(variant)) {
     throw new Error(`需要指定版型參數（${VALID.join(' | ')}），收到：${variant}`)
   }

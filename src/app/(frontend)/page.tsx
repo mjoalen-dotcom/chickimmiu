@@ -1,8 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
-import { HeroCarousel } from '@/components/home/HeroCarousel'
-import type { HeroSlide, HeroVariant } from '@/components/home/HeroCarousel'
+import { HeroVideo } from '@/components/home/HeroVideo'
 import { CampaignBanner } from '@/components/campaign/CampaignBanner'
 import { UGCGallery } from '@/components/ugc/UGCGallery'
 import { Price } from '@/components/common/Price'
@@ -147,7 +146,6 @@ async function fetchHomeData() {
 export default async function HomePage() {
   const {
     homepage,
-    activeTheme,
     newProducts,
     hotProducts,
     heroBanners,
@@ -155,34 +153,6 @@ export default async function HomePage() {
     blogCategoryLabels,
     ugcDocs,
   } = await fetchHomeData()
-
-  // ── CMS Hero Slides ──
-  const cmsBanners = homepage?.heroBanners as Array<Record<string, unknown>> | undefined
-  const heroSlides: HeroSlide[] | undefined = cmsBanners?.length
-    ? cmsBanners.map((b) => ({
-        image: getMediaUrl(b.image) || '',
-        title: b.title as string | undefined,
-        subtitle: b.subtitle as string | undefined,
-        link: b.link as string | undefined,
-        ctaText: b.ctaText as string | undefined,
-      })).filter((s) => s.image)
-    : undefined
-
-  // ── Hero variant resolution ──
-  // 優先序：HomepageSettings.heroLayoutOverride > activeTheme.heroLayout > 'editorial'
-  // （chuu 化改版：預設 fallback 從 'split' 改 'editorial'，CMS 明示設定仍優先）
-  const validVariants: HeroVariant[] = ['split', 'editorial', 'cinematic', 'magazine']
-  const overrideRaw = homepage?.heroLayoutOverride as string | undefined
-  const themeLayout = activeTheme?.heroLayout as string | undefined
-  const heroVariant: HeroVariant =
-    overrideRaw && overrideRaw !== 'inherit' && validVariants.includes(overrideRaw as HeroVariant)
-      ? (overrideRaw as HeroVariant)
-      : themeLayout && validVariants.includes(themeLayout as HeroVariant)
-        ? (themeLayout as HeroVariant)
-        : 'editorial'
-
-  const heroMinDesktop = (activeTheme?.heroMinHeightDesktop as number | undefined)
-  const heroMinMobile = (activeTheme?.heroMinHeightMobile as number | undefined)
 
   // ── Quick Menu ──
   // chuu 化改版：icon/color 欄位不再渲染（保留在 CMS schema 不動），
@@ -276,21 +246,26 @@ export default async function HomePage() {
   const ugcSection = (homepage?.ugcSection as Record<string, unknown>) || {}
   const newsletterSection = (homepage?.newsletterSection as Record<string, unknown>) || {}
 
-  // chuu 化：新品前 2 件抽出來做 2 欄大圖 LOOK 卡，其餘走扁平格
+  // 展示牆（v2）：首頁只留大圖入口，不擺價格商品格 — 新品前 2 件做
+  // 2 欄 LOOK 大卡，熱銷前 6 件做 six-grid 圖牆，其餘點 VIEW ALL 進列表
   const lookProducts = newProducts.slice(0, 2)
-  const gridNewProducts = newProducts.slice(2)
+  const showcaseProducts = hotProducts.slice(0, 6)
 
   return (
     <main className="bg-white">
       {/* Campaign Engine：活動主張 + server 倒數（promotion-settings.storefrontEnabled 開才顯示） */}
       <CampaignBanner surface="home" />
-      {/* ── Hero Carousel ── */}
-      <HeroCarousel
-        banners={heroBanners}
-        slides={heroSlides}
-        variant={heroVariant}
-        minHeightDesktop={heroMinDesktop}
-        minHeightMobile={heroMinMobile}
+      {/* ── Hero 影片（cn.chuu 式：整塊可點，直接進新品購物頁） ──
+          素材：.minimax-agent/projects/ckmu-new-hero-video（15.5s montage，
+          桌機 16:9 / 手機 9:16，重製跑該包 compose.py 後換 public/media 檔案） */}
+      <HeroVideo
+        desktopSrc="/videos/home-hero-16x9.mp4"
+        mobileSrc="/videos/home-hero-9x16.mp4"
+        desktopPoster="/videos/home-hero-16x9-poster.jpg"
+        mobilePoster="/videos/home-hero-9x16-poster.jpg"
+        href="/products?tag=new"
+        tag="NEW IN · 2026"
+        ctaText="SHOP NEW ARRIVALS"
       />
 
       {/* ── 極簡文字捷徑列（原 icon 快速選單 chuu 化） ── */}
@@ -319,7 +294,7 @@ export default async function HomePage() {
             />
 
             {lookProducts.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-10 md:mb-14">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {lookProducts.map((product, i) => {
                   const slug = product.slug as string
                   const name = product.name as string
@@ -349,40 +324,6 @@ export default async function HomePage() {
               </div>
             )}
 
-            {gridNewProducts.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-10">
-                {gridNewProducts.map((product) => {
-                  const slug = product.slug as string
-                  const name = product.name as string
-                  const price = product.price as number
-                  const image = getProductImage(product)
-                  return (
-                    <Link key={slug} href={`/products/${slug}`} className="group">
-                      <div className="aspect-[3/4] mb-3 overflow-hidden relative bg-cream-100">
-                        {Boolean(image) && (
-                          <Image
-                            src={image!}
-                            alt={name}
-                            fill
-                            className="object-cover group-hover:scale-[1.04] transition-transform duration-700"
-                            sizes="(max-width: 768px) 50vw, 25vw"
-                          />
-                        )}
-                        <span className="absolute top-3 left-3 px-2 py-0.5 bg-white/90 text-neutral-900 text-[10px] tracking-[0.18em]">
-                          NEW
-                        </span>
-                      </div>
-                      <p className="text-[13px] leading-snug truncate group-hover:text-neutral-500 transition-colors">
-                        {name}
-                      </p>
-                      <p className="text-[13px] text-neutral-500 mt-1">
-                        <Price twd={price} />
-                      </p>
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
           </div>
         </section>
       )}
@@ -434,47 +375,38 @@ export default async function HomePage() {
               title={(hotSection.title as string) || '熱銷推薦'}
               href={(hotSection.href as string) || '/products?tag=hot'}
             />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-10">
-              {hotProducts.map((product) => {
+            {/* six-grid 圖牆（cn.chuu 手法）：純影像 + LOOK 編號，資訊 hover 才浮出 */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {showcaseProducts.map((product, i) => {
                 const slug = product.slug as string
                 const name = product.name as string
                 const price = product.price as number
                 const salePrice = product.salePrice as number | null | undefined
                 const image = getProductImage(product)
                 return (
-                  <Link key={slug} href={`/products/${slug}`} className="group">
-                    <div className="aspect-[3/4] mb-3 overflow-hidden relative bg-cream-100">
-                      {Boolean(image) && (
-                        <Image
-                          src={image!}
-                          alt={name}
-                          fill
-                          className="object-cover group-hover:scale-[1.04] transition-transform duration-700"
-                          sizes="(max-width: 768px) 50vw, 25vw"
-                        />
-                      )}
-                      {Boolean(salePrice) ? (
-                        <span className="absolute top-3 left-3 px-2 py-0.5 bg-neutral-900 text-white text-[10px] tracking-[0.18em]">
-                          -{Math.round(((price - salePrice!) / price) * 100)}%
-                        </span>
-                      ) : (
-                        <span className="absolute top-3 left-3 px-2 py-0.5 bg-white/90 text-neutral-900 text-[10px] tracking-[0.18em]">
-                          BEST
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[13px] leading-snug truncate group-hover:text-neutral-500 transition-colors">
-                      {name}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[13px] text-foreground">
-                        <Price twd={salePrice ?? price} />
-                      </span>
-                      {Boolean(salePrice) && (
-                        <span className="text-xs text-neutral-400 line-through">
-                          <Price twd={price} />
-                        </span>
-                      )}
+                  <Link key={slug} href={`/products/${slug}`} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
+                    {Boolean(image) && (
+                      <Image
+                        src={image!}
+                        alt={name}
+                        fill
+                        className="object-cover object-top group-hover:scale-[1.04] transition-transform duration-700"
+                        sizes="(max-width: 768px) 50vw, 33vw"
+                      />
+                    )}
+                    <span className="absolute top-3 left-3 px-2 py-0.5 bg-white/90 text-neutral-900 text-[10px] tracking-[0.18em]">
+                      {Boolean(salePrice)
+                        ? `-${Math.round(((price - salePrice!) / price) * 100)}%`
+                        : `LOOK ${String(i + 1).padStart(2, '0')}`}
+                    </span>
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 to-transparent pt-14 pb-4 px-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <p className="text-xs md:text-sm text-white font-medium truncate">{name}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-white/90"><Price twd={salePrice ?? price} /></span>
+                        {Boolean(salePrice) && (
+                          <span className="text-[11px] text-white/60 line-through"><Price twd={price} /></span>
+                        )}
+                      </div>
                     </div>
                   </Link>
                 )
@@ -483,6 +415,26 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      {/* ── 品牌故事（cn.chuu editorial-text 手法：純文字編輯塊） ── */}
+      <section className="py-16 md:py-24 border-t border-cream-200">
+        <div className="container max-w-3xl text-center">
+          <p className="text-[11px] tracking-[0.35em] text-neutral-400 mb-4 uppercase">Brand Introduction</p>
+          <h2 className="text-2xl md:text-3xl font-serif leading-snug mb-6">
+            CHIC KIM &amp; MIU — 優雅，是妳本來的樣子。
+          </h2>
+          <p className="text-sm leading-7 text-neutral-500 mb-3">
+            首爾東大門直送，金老佛爺與 MIU 親自選版。從日常通勤到正式場合，
+            每一件都以韓國當季版型與包容性尺碼，讓妳穿出自己的風格。
+          </p>
+          <Link
+            href="/about"
+            className="inline-flex items-center gap-1.5 mt-4 text-[11px] tracking-[0.25em] uppercase text-neutral-500 hover:text-foreground pb-0.5 border-b border-transparent hover:border-foreground transition-colors"
+          >
+            About Us <ArrowRight size={12} />
+          </Link>
+        </div>
+      </section>
 
       <ConversionRescueBand />
 
