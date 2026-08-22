@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Share2, Info } from 'lucide-react'
 import type { GameDef } from '@/lib/games/gameConfig'
+import { PointsPrecheckBanner, type GamePrecheck } from './PointsPrecheckBanner'
 
 import { DailyCheckinGame } from './DailyCheckinGame'
 import { SpinWheelGame } from './SpinWheelGame'
@@ -22,6 +23,7 @@ import { MBTIStyleGame } from './MBTIStyleGame'
 
 interface Props {
   game: GameDef & { settings: Record<string, unknown> }
+  precheck?: GamePrecheck
 }
 
 const GAME_COMPONENTS: Record<string, React.ComponentType<{ settings: Record<string, unknown> }>> = {
@@ -41,7 +43,7 @@ const GAME_COMPONENTS: Record<string, React.ComponentType<{ settings: Record<str
   'mbti-style': MBTIStyleGame,
 }
 
-export function GamePageClient({ game }: Props) {
+export function GamePageClient({ game, precheck }: Props) {
   const [showRules, setShowRules] = useState(false)
   const GameComponent = GAME_COMPONENTS[game.id]
 
@@ -111,6 +113,9 @@ export function GamePageClient({ game }: Props) {
           </div>
         </div>
       )}
+
+      {/* ── 遊玩前點數預檢（餘額 / 本次消耗 / 免費次數） ── */}
+      {precheck && <PointsPrecheckBanner precheck={precheck} />}
 
       {/* ── Game Content ── */}
       <div className="container py-8 md:py-12">

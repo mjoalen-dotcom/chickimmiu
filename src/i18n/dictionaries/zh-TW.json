@@ -71,7 +71,8 @@
     "shoppingOrders": "訂單查詢",
     "shoppingSubscription": "訂閱方案",
     "shoppingReferrals": "推薦好友",
-    "rightsReserved": "All Rights Reserved"
+    "rightsReserved": "All Rights Reserved",
+    "helpGuide": "新手教學"
   },
   "product": {
     "badgeNew": "NEW",
@@ -226,7 +227,9 @@
       "emptyDesc": "完成遊戲挑戰即可解鎖專屬徽章！",
       "goPlay": "去玩遊戲",
       "earned": "已獲得"
-    }
+    },
+    "myPoints": "目前點數",
+    "earnGuide": "怎麼賺點數"
   },
   "cart": {
     "title": "購物車",

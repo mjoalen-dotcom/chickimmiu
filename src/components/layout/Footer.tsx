@@ -39,6 +39,7 @@ export function Footer({ businessInfo, socialLinks, footerSections }: FooterProp
 
   // CMS 沒設 footerSections 時用 i18n fallback
   const defaultHelpLinks = [
+    { href: '/guide', label: t('helpGuide') },
     { href: '/shopping-guide', label: t('helpShoppingGuide') },
     { href: '/about', label: t('helpAbout') },
     { href: '/packaging', label: t('helpPackaging') },

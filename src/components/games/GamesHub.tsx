@@ -29,6 +29,7 @@ interface Props {
   enabledGames: EnabledGame[]
   todayGamePoints?: number | null
   badgeCount?: number | null
+  userPoints?: number | null
   leaderboard: LeaderboardEntry[]
   userBadges: UserBadgeLite[]
   isLoggedIn: boolean
@@ -41,6 +42,7 @@ export function GamesHub({
   enabledGames,
   todayGamePoints = null,
   badgeCount = null,
+  userPoints = null,
   leaderboard,
   userBadges,
   isLoggedIn,
@@ -70,7 +72,14 @@ export function GamesHub({
             {t('subtitle')}
           </p>
 
-          <div className="flex items-center justify-center gap-6 mt-6">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 mt-6">
+            <div className="text-center">
+              <p className="text-lg font-serif text-gold-600">
+                {userPoints === null ? '—' : userPoints.toLocaleString()}
+              </p>
+              <p className="text-[10px] text-muted-foreground">{t('myPoints')}</p>
+            </div>
+            <div className="w-px h-8 bg-cream-200" />
             <div className="text-center">
               <p className="text-lg font-serif text-gold-600">
                 {todayGamePoints === null ? '—' : todayGamePoints.toLocaleString()}
@@ -90,6 +99,13 @@ export function GamesHub({
               <p className="text-[10px] text-muted-foreground">{t('myBadges')}</p>
             </div>
           </div>
+
+          <Link
+            href="/guide#points"
+            className="inline-flex items-center gap-1 mt-5 text-[11px] text-neutral-500 underline underline-offset-4 hover:text-foreground transition-colors"
+          >
+            {t('earnGuide')}
+          </Link>
         </div>
       </div>
 

@@ -71,7 +71,8 @@
     "shoppingOrders": "주문 조회",
     "shoppingSubscription": "구독 플랜",
     "shoppingReferrals": "친구 추천",
-    "rightsReserved": "All Rights Reserved"
+    "rightsReserved": "All Rights Reserved",
+    "helpGuide": "초보자 가이드"
   },
   "product": {
     "badgeNew": "NEW",
@@ -226,7 +227,9 @@
       "emptyDesc": "게임 챌린지를 완료하면 전용 배지를 해금할 수 있어요!",
       "goPlay": "게임하러 가기",
       "earned": "획득 완료"
-    }
+    },
+    "myPoints": "보유 포인트",
+    "earnGuide": "포인트 모으는 법"
   },
   "cart": {
     "title": "장바구니",

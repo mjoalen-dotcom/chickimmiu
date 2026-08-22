@@ -116,11 +116,16 @@ export default async function GamesPage() {
     getUserBadges(payload, user?.id ? String(user.id) : null),
   ])
 
+  const userPoints = user
+    ? (((user as unknown as LooseRecord).points as number) ?? 0)
+    : null
+
   return (
     <GamesHub
       enabledGames={enabledGames}
       todayGamePoints={stats.todayGamePoints}
       badgeCount={stats.badgeCount}
+      userPoints={userPoints}
       leaderboard={leaderboard}
       userBadges={userBadges}
       isLoggedIn={Boolean(user)}

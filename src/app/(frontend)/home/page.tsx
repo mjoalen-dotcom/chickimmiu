@@ -5,6 +5,7 @@ import {
   ShoppingBag, Heart, Tag, Flame, Star, Package, Clock, Globe, MessageCircle,
 } from 'lucide-react'
 import { HeroCarousel } from '@/components/home/HeroCarousel'
+import { WelcomeTour } from '@/components/home/WelcomeTour'
 import type { HeroSlide, HeroVariant } from '@/components/home/HeroCarousel'
 import { CampaignBanner } from '@/components/campaign/CampaignBanner'
 import { UGCGallery } from '@/components/ugc/UGCGallery'
@@ -287,6 +288,8 @@ export default async function HomePage() {
 
   return (
     <main>
+      {/* 首訪任務式導覽（拿點數→測驗個性→升等→兌換，localStorage 一次性） */}
+      <WelcomeTour />
       {/* Campaign Engine：活動主張 + server 倒數（promotion-settings.storefrontEnabled 開才顯示） */}
       <CampaignBanner surface="home" />
       {/* ── Hero Carousel ── */}

@@ -71,7 +71,8 @@
     "shoppingOrders": "订单查询",
     "shoppingSubscription": "订阅方案",
     "shoppingReferrals": "推荐好友",
-    "rightsReserved": "All Rights Reserved"
+    "rightsReserved": "All Rights Reserved",
+    "helpGuide": "新手教学"
   },
   "product": {
     "badgeNew": "NEW",
@@ -226,7 +227,9 @@
       "emptyDesc": "完成游戏挑战即可解锁专属徽章！",
       "goPlay": "去玩游戏",
       "earned": "已获得"
-    }
+    },
+    "myPoints": "当前点数",
+    "earnGuide": "怎么赚点数"
   },
   "cart": {
     "title": "购物车",

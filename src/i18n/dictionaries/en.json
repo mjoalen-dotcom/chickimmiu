@@ -71,7 +71,8 @@
     "shoppingOrders": "Order tracking",
     "shoppingSubscription": "Subscription plans",
     "shoppingReferrals": "Refer a friend",
-    "rightsReserved": "All Rights Reserved"
+    "rightsReserved": "All Rights Reserved",
+    "helpGuide": "Beginner's guide"
   },
   "product": {
     "badgeNew": "NEW",
@@ -226,7 +227,9 @@
       "emptyDesc": "Complete game challenges to unlock exclusive badges!",
       "goPlay": "Play games",
       "earned": "Earned"
-    }
+    },
+    "myPoints": "My points",
+    "earnGuide": "How to earn points"
   },
   "cart": {
     "title": "Shopping bag",

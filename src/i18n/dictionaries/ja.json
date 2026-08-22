@@ -71,7 +71,8 @@
     "shoppingOrders": "注文照会",
     "shoppingSubscription": "サブスク",
     "shoppingReferrals": "友達紹介",
-    "rightsReserved": "All Rights Reserved"
+    "rightsReserved": "All Rights Reserved",
+    "helpGuide": "初心者ガイド"
   },
   "product": {
     "badgeNew": "NEW",
@@ -226,7 +227,9 @@
       "emptyDesc": "ゲームチャレンジをクリアして限定バッジを解放しよう！",
       "goPlay": "ゲームをプレイ",
       "earned": "取得済み"
-    }
+    },
+    "myPoints": "保有ポイント",
+    "earnGuide": "ポイントの貯め方"
   },
   "cart": {
     "title": "ショッピングバッグ",
