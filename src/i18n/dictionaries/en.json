@@ -178,7 +178,13 @@
       "wallet": "My Wallet",
       "settings": "Account Settings"
     },
-    "logout": "Log out"
+    "logout": "Log out",
+    "navGroups": {
+      "shopping": "Shopping & Orders",
+      "rewards": "Points & Rewards",
+      "style": "My Style",
+      "account": "Account"
+    }
   },
   "games": {
     "headerTag": "REWARDS & GAMES",

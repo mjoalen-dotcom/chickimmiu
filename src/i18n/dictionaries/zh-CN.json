@@ -178,7 +178,13 @@
       "wallet": "我的钱包",
       "settings": "账号设置"
     },
-    "logout": "退出登录"
+    "logout": "退出登录",
+    "navGroups": {
+      "shopping": "购物与订单",
+      "rewards": "点数与奖励",
+      "style": "个人风格",
+      "account": "账号"
+    }
   },
   "games": {
     "headerTag": "REWARDS & GAMES",

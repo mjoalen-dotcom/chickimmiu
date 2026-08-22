@@ -178,7 +178,13 @@
       "wallet": "我的錢包",
       "settings": "帳號設定"
     },
-    "logout": "登出"
+    "logout": "登出",
+    "navGroups": {
+      "shopping": "購物與訂單",
+      "rewards": "點數與獎勵",
+      "style": "個人風格",
+      "account": "帳號"
+    }
   },
   "games": {
     "headerTag": "REWARDS & GAMES",

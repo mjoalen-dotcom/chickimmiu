@@ -178,7 +178,13 @@
       "wallet": "ウォレット",
       "settings": "アカウント設定"
     },
-    "logout": "ログアウト"
+    "logout": "ログアウト",
+    "navGroups": {
+      "shopping": "買い物と注文",
+      "rewards": "ポイントと特典",
+      "style": "マイスタイル",
+      "account": "アカウント"
+    }
   },
   "games": {
     "headerTag": "REWARDS & GAMES",

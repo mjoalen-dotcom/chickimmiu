@@ -1,14 +1,13 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { headers as nextHeaders } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { auth as nextAuth } from '@/auth'
 import { PROVIDER_SOCIAL_FIELD } from '@/lib/auth/social'
-import { User, ShoppingBag, Heart, MapPin, Gift, Settings, Crown, Share2, RotateCcw, Star, FileText, Gamepad2, Sparkles, Brain, Wallet } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { LogoutButton } from './LogoutButton'
+import { AccountSidebar, type SidebarGroup } from './AccountSidebar'
 
 export const metadata: Metadata = {
   title: '我的帳號',
@@ -16,22 +15,44 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-const SIDEBAR_LINK_DEFS = [
-  { href: '/account', key: 'overview', icon: User },
-  { href: '/account/orders', key: 'orders', icon: ShoppingBag },
-  { href: '/account/subscription', key: 'subscription', icon: Crown },
-  { href: '/account/wishlist', key: 'wishlist', icon: Heart },
-  { href: '/account/referrals', key: 'referrals', icon: Share2 },
-  { href: '/games', key: 'games', icon: Gamepad2 },
-  { href: '/account/personality', key: 'personality', icon: Brain },
-  { href: '/account/treasure', key: 'treasure', icon: Sparkles },
-  { href: '/account/invoices', key: 'invoices', icon: FileText },
-  { href: '/account/returns', key: 'returns', icon: RotateCcw },
-  { href: '/account/reviews', key: 'reviews', icon: Star },
-  { href: '/account/addresses', key: 'addresses', icon: MapPin },
-  { href: '/account/points', key: 'points', icon: Gift },
-  { href: '/account/wallet', key: 'wallet', icon: Wallet },
-  { href: '/account/settings', key: 'settings', icon: Settings },
+// 需求 ②（2026-08-22）：15 條平鋪連結收斂成 4+1 組 — 依顧客心智模型分
+// （訂單物流 / 點數獎勵 / 個人風格 / 帳號），icon 用名稱字串傳 client。
+const SIDEBAR_GROUP_DEFS = [
+  { titleKey: null, items: [{ href: '/account', key: 'overview', icon: 'User' }] },
+  {
+    titleKey: 'shopping',
+    items: [
+      { href: '/account/orders', key: 'orders', icon: 'ShoppingBag' },
+      { href: '/account/returns', key: 'returns', icon: 'RotateCcw' },
+      { href: '/account/invoices', key: 'invoices', icon: 'FileText' },
+      { href: '/account/addresses', key: 'addresses', icon: 'MapPin' },
+    ],
+  },
+  {
+    titleKey: 'rewards',
+    items: [
+      { href: '/account/points', key: 'points', icon: 'Gift' },
+      { href: '/account/wallet', key: 'wallet', icon: 'Wallet' },
+      { href: '/account/treasure', key: 'treasure', icon: 'Sparkles' },
+      { href: '/account/referrals', key: 'referrals', icon: 'Share2' },
+      { href: '/games', key: 'games', icon: 'Gamepad2' },
+    ],
+  },
+  {
+    titleKey: 'style',
+    items: [
+      { href: '/account/wishlist', key: 'wishlist', icon: 'Heart' },
+      { href: '/account/personality', key: 'personality', icon: 'Brain' },
+      { href: '/account/reviews', key: 'reviews', icon: 'Star' },
+    ],
+  },
+  {
+    titleKey: 'account',
+    items: [
+      { href: '/account/subscription', key: 'subscription', icon: 'Crown' },
+      { href: '/account/settings', key: 'settings', icon: 'Settings' },
+    ],
+  },
 ] as const
 
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {
@@ -83,24 +104,26 @@ export default async function AccountLayout({ children }: { children: React.Reac
     }
   }
 
+  const sidebarGroups: SidebarGroup[] = SIDEBAR_GROUP_DEFS.map((group) => ({
+    title: group.titleKey ? t(`navGroups.${group.titleKey}`) : null,
+    items: group.items.map((item) => ({
+      href: item.href,
+      label: t(`nav.${item.key}`),
+      icon: item.icon,
+    })),
+  }))
+
   return (
     <div className="bg-cream-50 min-h-screen">
       <div className="container py-8 md:py-12">
-        <h1 className="text-2xl font-serif mb-8">{t('pageTitle')}</h1>
-        <div className="grid md:grid-cols-[240px_1fr] gap-8">
-          {/* Sidebar */}
-          <aside className="space-y-1">
-            {SIDEBAR_LINK_DEFS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-foreground/70 hover:text-gold-600 hover:bg-cream-100 transition-colors"
-              >
-                <link.icon size={18} />
-                {t(`nav.${link.key}`)}
-              </Link>
-            ))}
-            <LogoutButton />
+        <h1 className="text-2xl font-serif mb-6 md:mb-8">{t('pageTitle')}</h1>
+        <div className="grid md:grid-cols-[240px_1fr] gap-4 md:gap-8">
+          {/* Sidebar：桌機分組直欄 / 手機橫向 chips */}
+          <aside>
+            <AccountSidebar groups={sidebarGroups} />
+            <div className="hidden md:block mt-5 pt-4 border-t border-cream-200">
+              <LogoutButton />
+            </div>
           </aside>
 
           {/* Content */}

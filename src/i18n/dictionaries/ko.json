@@ -178,7 +178,13 @@
       "wallet": "내 지갑",
       "settings": "계정 설정"
     },
-    "logout": "로그아웃"
+    "logout": "로그아웃",
+    "navGroups": {
+      "shopping": "쇼핑·주문",
+      "rewards": "포인트·리워드",
+      "style": "마이 스타일",
+      "account": "계정"
+    }
   },
   "games": {
     "headerTag": "REWARDS & GAMES",
