@@ -1,9 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import {
-  ArrowRight, Sparkles, Truck, RefreshCw, Shield, Crown, Gamepad2, Gift, Users,
-  ShoppingBag, Heart, Tag, Flame, Star, Package, Clock, Globe, MessageCircle,
-} from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { HeroCarousel } from '@/components/home/HeroCarousel'
 import type { HeroSlide, HeroVariant } from '@/components/home/HeroCarousel'
 import { CampaignBanner } from '@/components/campaign/CampaignBanner'
@@ -19,12 +16,6 @@ import config from '@payload-config'
 // request 都重新查 9 個 collection。300 秒＝後台改商品/活動後最多 5
 // 分鐘內在首頁反映，換來絕大多數請求直接吃快取、不再等資料庫。
 export const revalidate = 300
-
-/* ── Icon Map ── */
-const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
-  Sparkles, Truck, RefreshCw, Shield, Crown, Gamepad2, Gift, Users,
-  ShoppingBag, Heart, Tag, Flame, Star, Package, Clock, Globe, MessageCircle,
-}
 
 /* ── Helper: extract first image URL from a product ── */
 function getProductImage(product: Record<string, unknown>): string | undefined {
@@ -178,7 +169,8 @@ export default async function HomePage() {
     : undefined
 
   // ── Hero variant resolution ──
-  // 優先序：HomepageSettings.heroLayoutOverride > activeTheme.heroLayout > 'split'
+  // 優先序：HomepageSettings.heroLayoutOverride > activeTheme.heroLayout > 'editorial'
+  // （chuu 化改版：預設 fallback 從 'split' 改 'editorial'，CMS 明示設定仍優先）
   const validVariants: HeroVariant[] = ['split', 'editorial', 'cinematic', 'magazine']
   const overrideRaw = homepage?.heroLayoutOverride as string | undefined
   const themeLayout = activeTheme?.heroLayout as string | undefined
@@ -187,40 +179,39 @@ export default async function HomePage() {
       ? (overrideRaw as HeroVariant)
       : themeLayout && validVariants.includes(themeLayout as HeroVariant)
         ? (themeLayout as HeroVariant)
-        : 'split'
+        : 'editorial'
 
   const heroMinDesktop = (activeTheme?.heroMinHeightDesktop as number | undefined)
   const heroMinMobile = (activeTheme?.heroMinHeightMobile as number | undefined)
 
   // ── Quick Menu ──
+  // chuu 化改版：icon/color 欄位不再渲染（保留在 CMS schema 不動），
+  // 首頁改為極簡文字捷徑列 — 大量 icon 圓圈是「功能牆」感的主因之一。
   const cmsQuickMenu = homepage?.quickMenu as Array<Record<string, unknown>> | undefined
   const quickMenuItems = cmsQuickMenu?.length
     ? cmsQuickMenu.map((item) => ({
         label: item.label as string,
         href: item.href as string,
-        icon: item.icon as string || 'Sparkles',
-        color: item.color as string || 'text-gold-500',
       }))
     : [
-        { icon: 'Clock', label: '新品現貨', href: '/products?tag=new', color: 'text-gold-500' },
-        { icon: 'Sparkles', label: '正式洋裝', href: '/category/formal-dresses', color: 'text-rose-500' },
-        { icon: 'Flame', label: '熱銷推薦', href: '/products?tag=hot', color: 'text-red-500' },
-        { icon: 'MessageCircle', label: 'LINE 尺寸', href: 'https://page.line.me/nqo0262k', color: 'text-green-600' },
+        { label: '新品現貨', href: '/products?tag=new' },
+        { label: '正式洋裝', href: '/category/formal-dresses' },
+        { label: '熱銷推薦', href: '/products?tag=hot' },
+        { label: 'LINE 尺寸', href: 'https://page.line.me/nqo0262k' },
       ]
 
-  // ── Service Highlights ──
+  // ── Service Highlights ──（同上：icon 欄位不再渲染，移至頁尾前細帶）
   const cmsHighlights = homepage?.serviceHighlights as Array<Record<string, unknown>> | undefined
   const serviceItems = cmsHighlights?.length
     ? cmsHighlights.map((item) => ({
-        icon: item.icon as string || 'Truck',
         label: item.label as string,
         desc: item.desc as string || '',
       }))
     : [
-        { icon: 'Truck', label: '滿額免運', desc: '依物流方式自動顯示門檻' },
-        { icon: 'Clock', label: '現貨快出', desc: '現貨付款後 1-3 個工作天出貨' },
-        { icon: 'Shield', label: '安全付款', desc: '信用卡、LINE Pay、貨到付款' },
-        { icon: 'MessageCircle', label: '尺寸協助', desc: 'LINE 提供身高體重可協助抓版' },
+        { label: '滿額免運', desc: '依物流方式自動顯示門檻' },
+        { label: '現貨快出', desc: '現貨付款後 1-3 個工作天出貨' },
+        { label: '安全付款', desc: '信用卡、LINE Pay、貨到付款' },
+        { label: '尺寸協助', desc: 'LINE 提供身高體重可協助抓版' },
       ]
 
   // ── Real UGC posts from Payload ──
@@ -285,8 +276,12 @@ export default async function HomePage() {
   const ugcSection = (homepage?.ugcSection as Record<string, unknown>) || {}
   const newsletterSection = (homepage?.newsletterSection as Record<string, unknown>) || {}
 
+  // chuu 化：新品前 2 件抽出來做 2 欄大圖 LOOK 卡，其餘走扁平格
+  const lookProducts = newProducts.slice(0, 2)
+  const gridNewProducts = newProducts.slice(2)
+
   return (
-    <main>
+    <main className="bg-white">
       {/* Campaign Engine：活動主張 + server 倒數（promotion-settings.storefrontEnabled 開才顯示） */}
       <CampaignBanner surface="home" />
       {/* ── Hero Carousel ── */}
@@ -298,48 +293,22 @@ export default async function HomePage() {
         minHeightMobile={heroMinMobile}
       />
 
-      {/* ── 快速選單 ── */}
-      <section className="bg-white border-b border-cream-200">
-        <div className="container py-6 grid grid-cols-4 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
-          {quickMenuItems.map((item) => {
-            const IconComp = ICON_MAP[item.icon] || Sparkles
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="flex flex-col items-center gap-2 py-3 rounded-xl hover:bg-cream-50 transition-colors"
-              >
-                <div className={`w-10 h-10 rounded-full bg-cream-50 flex items-center justify-center ${item.color}`}>
-                  <IconComp size={20} />
-                </div>
-                <span className="text-xs font-medium">{item.label}</span>
-              </Link>
-            )
-          })}
+      {/* ── 極簡文字捷徑列（原 icon 快速選單 chuu 化） ── */}
+      <nav className="bg-white border-b border-cream-200">
+        <div className="container py-4 flex items-center justify-center gap-7 md:gap-12 overflow-x-auto">
+          {quickMenuItems.map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              className="shrink-0 text-xs md:text-[13px] tracking-[0.22em] text-neutral-600 hover:text-foreground transition-colors"
+            >
+              {item.label}
+            </Link>
+          ))}
         </div>
-      </section>
+      </nav>
 
-      {/* ── 服務亮點 ── */}
-      <section className="bg-white border-y border-cream-200">
-        <div className="container py-6 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-          {serviceItems.map((feat) => {
-            const IconComp = ICON_MAP[feat.icon] || Truck
-            return (
-              <div key={feat.label} className="flex items-center gap-3 justify-center md:justify-start">
-                <IconComp size={20} className="text-gold-500 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium">{feat.label}</p>
-                  {feat.desc && <p className="text-xs text-muted-foreground hidden md:block">{feat.desc}</p>}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </section>
-
-      <ConversionRescueBand />
-
-      {/* ── 新品上市 ── */}
+      {/* ── 新品上市：LOOK 2 欄大圖 + 扁平商品格 ── */}
       {(newSection.visible !== false) && (
         <section className="py-16 md:py-24">
           <div className="container">
@@ -348,52 +317,124 @@ export default async function HomePage() {
               title={(newSection.title as string) || '新品上市'}
               href={(newSection.href as string) || '/products?tag=new'}
             />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-              {newProducts.map((product) => {
-                const slug = product.slug as string
-                const name = product.name as string
-                const price = product.price as number
-                const image = getProductImage(product)
-                return (
-                  <Link key={slug} href={`/products/${slug}`} className="group">
-                    <div className="aspect-[3/4] rounded-2xl mb-3 overflow-hidden relative border border-cream-200">
+
+            {lookProducts.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-10 md:mb-14">
+                {lookProducts.map((product, i) => {
+                  const slug = product.slug as string
+                  const name = product.name as string
+                  const price = product.price as number
+                  const image = getProductImage(product)
+                  return (
+                    <Link key={slug} href={`/products/${slug}`} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
                       {Boolean(image) && (
                         <Image
                           src={image!}
                           alt={name}
                           fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
-                          sizes="(max-width: 768px) 50vw, 25vw"
+                          className="object-cover object-top group-hover:scale-[1.04] transition-transform duration-700"
+                          sizes="(max-width: 768px) 100vw, 50vw"
                         />
                       )}
-                      <span className="absolute top-3 left-3 px-2.5 py-1 bg-gold-500 text-white text-[10px] rounded-full tracking-wider font-medium">
-                        NEW
-                      </span>
-                    </div>
-                    <p className="text-sm font-medium truncate group-hover:text-gold-600 transition-colors">
-                      {name}
-                    </p>
-                    <p className="text-sm text-gold-600 mt-1">
-                      <Price twd={price} />
-                    </p>
-                  </Link>
-                )
-              })}
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/45 to-transparent pt-20 pb-6 px-6">
+                        <p className="text-[10px] tracking-[0.3em] text-white/85 mb-2">
+                          NEW IN · LOOK {String(i + 1).padStart(2, '0')}
+                        </p>
+                        <p className="text-sm md:text-base text-white font-medium truncate">{name}</p>
+                        <p className="text-sm text-white/85 mt-1"><Price twd={price} /></p>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+
+            {gridNewProducts.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-10">
+                {gridNewProducts.map((product) => {
+                  const slug = product.slug as string
+                  const name = product.name as string
+                  const price = product.price as number
+                  const image = getProductImage(product)
+                  return (
+                    <Link key={slug} href={`/products/${slug}`} className="group">
+                      <div className="aspect-[3/4] mb-3 overflow-hidden relative bg-cream-100">
+                        {Boolean(image) && (
+                          <Image
+                            src={image!}
+                            alt={name}
+                            fill
+                            className="object-cover group-hover:scale-[1.04] transition-transform duration-700"
+                            sizes="(max-width: 768px) 50vw, 25vw"
+                          />
+                        )}
+                        <span className="absolute top-3 left-3 px-2 py-0.5 bg-white/90 text-neutral-900 text-[10px] tracking-[0.18em]">
+                          NEW
+                        </span>
+                      </div>
+                      <p className="text-[13px] leading-snug truncate group-hover:text-neutral-500 transition-colors">
+                        {name}
+                      </p>
+                      <p className="text-[13px] text-neutral-500 mt-1">
+                        <Price twd={price} />
+                      </p>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ── 形象 Banner：全幅出血編輯圖（原圓角容器 chuu 化） ── */}
+      {(brandBanner.visible !== false) && (
+        <section className="relative h-[55vh] md:h-[78vh] overflow-hidden bg-cream-100">
+          {(() => {
+            const bannerImage = getMediaUrl(brandBanner.image) || heroBanners[2] || heroBanners[0]
+            return bannerImage ? (
+              <Image
+                src={bannerImage}
+                alt="CHIC KIM & MIU 品牌形象"
+                fill
+                className="object-cover object-top"
+                unoptimized
+              />
+            ) : null
+          })()}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/20 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 pb-12 md:pb-20">
+            <div className="container">
+              <p className="text-[11px] tracking-[0.35em] text-white/80 mb-4">
+                {(brandBanner.tagline as string) || 'SPECIAL EVENT'}
+              </p>
+              <h2 className="text-3xl md:text-5xl font-serif mb-5 text-white whitespace-pre-line leading-tight">
+                {(brandBanner.title as string) || '專屬你美好的\n時尚優雅'}
+              </h2>
+              <p className="text-sm text-white/80 mb-8 max-w-md">
+                {(brandBanner.subtitle as string) || '精選百件春夏商品限時特惠，搶購你的命定單品！'}
+              </p>
+              <Link
+                href={(brandBanner.ctaLink as string) || '/products?tag=sale'}
+                className="inline-flex items-center gap-2 border border-white/70 px-8 py-3.5 text-xs tracking-[0.3em] uppercase text-white hover:bg-white hover:text-neutral-900 transition-colors"
+              >
+                {(brandBanner.ctaText as string) || '立即搶購'} <ArrowRight size={14} />
+              </Link>
             </div>
           </div>
         </section>
       )}
 
-      {/* ── 熱銷推薦 ── */}
+      {/* ── 熱銷推薦：扁平商品格 ── */}
       {(hotSection.visible !== false) && (
-        <section className="py-16 md:py-24 bg-cream-50">
+        <section className="py-16 md:py-24">
           <div className="container">
             <SectionHeader
               tag={(hotSection.tag as string) || 'BEST SELLERS'}
               title={(hotSection.title as string) || '熱銷推薦'}
               href={(hotSection.href as string) || '/products?tag=hot'}
             />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-10">
               {hotProducts.map((product) => {
                 const slug = product.slug as string
                 const name = product.name as string
@@ -402,34 +443,35 @@ export default async function HomePage() {
                 const image = getProductImage(product)
                 return (
                   <Link key={slug} href={`/products/${slug}`} className="group">
-                    <div className="aspect-[3/4] rounded-2xl mb-3 overflow-hidden relative border border-cream-200">
+                    <div className="aspect-[3/4] mb-3 overflow-hidden relative bg-cream-100">
                       {Boolean(image) && (
                         <Image
                           src={image!}
                           alt={name}
                           fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          className="object-cover group-hover:scale-[1.04] transition-transform duration-700"
                           sizes="(max-width: 768px) 50vw, 25vw"
                         />
                       )}
-                      <span className="absolute top-3 left-3 px-2.5 py-1 bg-red-500 text-white text-[10px] rounded-full tracking-wider font-medium">
-                        HOT
-                      </span>
-                      {Boolean(salePrice) && (
-                        <span className="absolute top-3 right-3 px-2.5 py-1 bg-blush-200 text-red-600 text-[10px] rounded-full tracking-wider font-medium">
+                      {Boolean(salePrice) ? (
+                        <span className="absolute top-3 left-3 px-2 py-0.5 bg-neutral-900 text-white text-[10px] tracking-[0.18em]">
                           -{Math.round(((price - salePrice!) / price) * 100)}%
+                        </span>
+                      ) : (
+                        <span className="absolute top-3 left-3 px-2 py-0.5 bg-white/90 text-neutral-900 text-[10px] tracking-[0.18em]">
+                          BEST
                         </span>
                       )}
                     </div>
-                    <p className="text-sm font-medium truncate group-hover:text-gold-600 transition-colors">
+                    <p className="text-[13px] leading-snug truncate group-hover:text-neutral-500 transition-colors">
                       {name}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm text-gold-600">
+                      <span className="text-[13px] text-foreground">
                         <Price twd={salePrice ?? price} />
                       </span>
                       {Boolean(salePrice) && (
-                        <span className="text-xs text-muted-foreground line-through">
+                        <span className="text-xs text-neutral-400 line-through">
                           <Price twd={price} />
                         </span>
                       )}
@@ -442,58 +484,18 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* ── 形象 Banner ── */}
-      {(brandBanner.visible !== false) && (
-        <section className="py-16 md:py-24">
-          <div className="container">
-            <div className="relative rounded-3xl overflow-hidden h-64 md:h-96 bg-cream-100">
-              {(() => {
-                const bannerImage = getMediaUrl(brandBanner.image) || heroBanners[2] || heroBanners[0]
-                return bannerImage ? (
-                  <Image
-                    src={bannerImage}
-                    alt="CHIC KIM & MIU 品牌形象"
-                    fill
-                    className="object-cover object-top"
-                    unoptimized
-                  />
-                ) : null
-              })()}
-              <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent" />
-              <div className="absolute inset-0 flex flex-col justify-center px-8 md:px-16">
-                <p className="text-xs tracking-[0.3em] text-gold-400 mb-3">
-                  {(brandBanner.tagline as string) || 'SPECIAL EVENT'}
-                </p>
-                <h2 className="text-2xl md:text-4xl font-serif mb-4 text-white whitespace-pre-line">
-                  {(brandBanner.title as string) || '專屬你美好的\n時尚優雅'}
-                </h2>
-                <p className="text-sm text-white/80 mb-8 max-w-md">
-                  {(brandBanner.subtitle as string) || '精選百件春夏商品限時特惠，搶購你的命定單品！'}
-                </p>
-                <div>
-                  <Link
-                    href={(brandBanner.ctaLink as string) || '/products?tag=sale'}
-                    className="inline-flex items-center gap-2 px-8 py-3.5 bg-gold-500 text-white rounded-full text-sm tracking-wide hover:bg-gold-600 transition-colors"
-                  >
-                    {(brandBanner.ctaText as string) || '立即搶購'} <ArrowRight size={16} />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
+      <ConversionRescueBand />
 
-      {/* ── 穿搭誌 ── */}
+      {/* ── 穿搭誌：扁平編輯卡 ── */}
       {(journalSection.visible !== false) && (
-        <section className="py-16 md:py-24 bg-cream-50">
+        <section className="py-16 md:py-24">
           <div className="container">
             <SectionHeader
               tag={(journalSection.tag as string) || 'STYLE JOURNAL'}
               title={(journalSection.title as string) || '穿搭誌'}
               href={(journalSection.href as string) || '/blog'}
             />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-10">
               {blogPosts.length > 0 ? (
                 blogPosts.map((post) => {
                   const slug = post.slug as string
@@ -511,30 +513,28 @@ export default async function HomePage() {
                   const featuredImage = getMediaUrl(post.featuredImage)
                   const date = publishedAt ? new Date(publishedAt).toLocaleDateString('zh-TW') : ''
                   return (
-                    <Link key={slug} href={`/blog/${slug}`} className="group bg-white rounded-2xl overflow-hidden border border-cream-200">
-                      <div className="aspect-[16/10] relative overflow-hidden bg-cream-100">
+                    <Link key={slug} href={`/blog/${slug}`} className="group">
+                      <div className="aspect-[16/10] relative overflow-hidden bg-cream-100 mb-4">
                         {featuredImage && (
                           <Image
                             src={featuredImage}
                             alt={title}
                             fill
-                            className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                            className="object-cover object-top group-hover:scale-[1.04] transition-transform duration-700"
                             sizes="(max-width: 768px) 100vw, 33vw"
                             unoptimized
                           />
                         )}
                       </div>
-                      <div className="p-5">
-                        {categoryValue && (
-                          <p className="text-[10px] tracking-widest text-gold-500 mb-2">
-                            {categoryName}
-                          </p>
-                        )}
-                        <h3 className="text-sm font-medium mb-2 group-hover:text-gold-600 transition-colors">
-                          {title}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">{date}</p>
-                      </div>
+                      {categoryValue && (
+                        <p className="text-[10px] tracking-[0.3em] text-neutral-400 mb-2 uppercase">
+                          {categoryName}
+                        </p>
+                      )}
+                      <h3 className="text-sm font-medium mb-1.5 group-hover:text-neutral-500 transition-colors">
+                        {title}
+                      </h3>
+                      <p className="text-xs text-neutral-400">{date}</p>
                     </Link>
                   )
                 })
@@ -547,26 +547,24 @@ export default async function HomePage() {
                 ].map((post, i) => {
                   const fallbackImage = heroBanners[i] || heroBanners[0] || null
                   return (
-                    <Link key={i} href="/blog" className="group bg-white rounded-2xl overflow-hidden border border-cream-200">
-                      <div className="aspect-[16/10] relative overflow-hidden bg-cream-100">
+                    <Link key={i} href="/blog" className="group">
+                      <div className="aspect-[16/10] relative overflow-hidden bg-cream-100 mb-4">
                         {fallbackImage && (
                           <Image
                             src={fallbackImage}
                             alt={post.title}
                             fill
-                            className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                            className="object-cover object-top group-hover:scale-[1.04] transition-transform duration-700"
                             sizes="(max-width: 768px) 100vw, 33vw"
                             unoptimized
                           />
                         )}
                       </div>
-                      <div className="p-5">
-                        <p className="text-[10px] tracking-widest text-gold-500 mb-2">{post.category}</p>
-                        <h3 className="text-sm font-medium mb-2 group-hover:text-gold-600 transition-colors">
-                          {post.title}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">{post.date}</p>
-                      </div>
+                      <p className="text-[10px] tracking-[0.3em] text-neutral-400 mb-2 uppercase">{post.category}</p>
+                      <h3 className="text-sm font-medium mb-1.5 group-hover:text-neutral-500 transition-colors">
+                        {post.title}
+                      </h3>
+                      <p className="text-xs text-neutral-400">{post.date}</p>
                     </Link>
                   )
                 })
@@ -580,7 +578,7 @@ export default async function HomePage() {
           LB-07：只在有「真實」ugc-posts 時渲染。空集合不再 fallback 到
           內建 demo 假網紅/假讚數（公平交易法不實廣告曝險）。 */}
       {(ugcSection.visible !== false) && ugcPosts.length > 0 && (
-        <section className="py-16 md:py-24">
+        <section className="py-16 md:py-24 border-t border-cream-200">
           <div className="container">
             <UGCGallery
               layout="shoppable_gallery"
@@ -593,15 +591,15 @@ export default async function HomePage() {
 
       {/* ── 訂閱電子報 ── */}
       {(newsletterSection.visible !== false) && (
-        <section className="py-16 md:py-24">
+        <section className="py-16 md:py-24 border-t border-cream-200">
           <div className="container max-w-2xl text-center">
-            <p className="text-xs tracking-[0.3em] text-gold-500 mb-3">
+            <p className="text-[11px] tracking-[0.35em] text-neutral-400 mb-3 uppercase">
               {(newsletterSection.tag as string) || 'STAY CONNECTED'}
             </p>
             <h2 className="text-2xl md:text-3xl font-serif mb-4">
               {(newsletterSection.title as string) || '訂閱最新消息'}
             </h2>
-            <p className="text-sm text-muted-foreground mb-8">
+            <p className="text-sm text-neutral-500 mb-8">
               {(newsletterSection.subtitle as string) || '搶先收到新品上市、限時優惠與專屬會員好禮通知'}
             </p>
             <NewsletterForm
@@ -612,6 +610,18 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      {/* ── 服務亮點細帶（原 icon 亮點列 chuu 化，移到頁尾前） ── */}
+      <section className="border-t border-cream-200">
+        <div className="container py-8 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          {serviceItems.map((feat) => (
+            <div key={feat.label}>
+              <p className="text-xs tracking-[0.18em] font-medium">{feat.label}</p>
+              {feat.desc && <p className="text-xs text-neutral-400 mt-1.5 hidden md:block">{feat.desc}</p>}
+            </div>
+          ))}
+        </div>
+      </section>
     </main>
   )
 }
@@ -644,27 +654,27 @@ function ConversionRescueBand() {
   ]
 
   return (
-    <section className="bg-foreground text-cream-50">
-      <div className="container py-8 md:py-10">
-        <div className="grid gap-6 md:grid-cols-[0.85fr_2fr] md:items-center">
+    <section className="border-y border-cream-200 bg-white">
+      <div className="container py-10 md:py-14">
+        <div className="grid gap-8 md:grid-cols-[0.85fr_2fr] md:items-center">
           <div>
-            <p className="text-[11px] tracking-[0.32em] text-gold-300 mb-2">72H STYLE EDIT</p>
+            <p className="text-[11px] tracking-[0.32em] text-neutral-400 mb-3">STYLE EDIT</p>
             <h2 className="text-2xl md:text-3xl font-serif">今天先從好下手的款開始</h2>
-            <p className="mt-3 text-sm leading-6 text-cream-50/70">
+            <p className="mt-3 text-sm leading-6 text-neutral-500">
               現貨、正式場合、熱銷款先整理好；尺寸不確定可直接找 LINE 客服。
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-3">
             {entries.map((entry) => (
               <Link
                 key={entry.title}
                 href={entry.href}
-                className="group rounded-lg border border-cream-50/15 bg-white/[0.06] p-4 transition-colors hover:border-gold-300/70 hover:bg-white/[0.1]"
+                className="group border-l border-cream-200 pl-5 transition-colors hover:border-neutral-400"
               >
-                <p className="text-[10px] tracking-[0.24em] text-gold-300 mb-2">{entry.eyebrow}</p>
+                <p className="text-[10px] tracking-[0.24em] text-neutral-400 mb-2">{entry.eyebrow}</p>
                 <h3 className="text-sm font-medium">{entry.title}</h3>
-                <p className="mt-2 min-h-10 text-xs leading-5 text-cream-50/65">{entry.desc}</p>
-                <span className="mt-4 inline-flex items-center gap-1 text-xs text-gold-200 group-hover:text-gold-100">
+                <p className="mt-2 min-h-10 text-xs leading-5 text-neutral-500">{entry.desc}</p>
+                <span className="mt-3 inline-flex items-center gap-1 text-[11px] tracking-[0.2em] uppercase text-neutral-600 group-hover:text-foreground transition-colors">
                   {entry.cta} <ArrowRight size={12} />
                 </span>
               </Link>
@@ -680,14 +690,14 @@ function SectionHeader({ tag, title, href }: { tag: string; title: string; href:
   return (
     <div className="flex items-end justify-between mb-8 md:mb-12">
       <div>
-        <p className="text-xs tracking-[0.3em] text-gold-500 mb-2">{tag}</p>
-        <h2 className="text-2xl md:text-3xl font-serif">{title}</h2>
+        <p className="text-[11px] tracking-[0.35em] text-neutral-400 mb-3 uppercase">{tag}</p>
+        <h2 className="text-3xl md:text-4xl font-serif leading-tight">{title}</h2>
       </div>
       <Link
         href={href}
-        className="text-sm text-foreground/60 hover:text-gold-600 flex items-center gap-1 transition-colors"
+        className="inline-flex items-center gap-1.5 text-[11px] tracking-[0.25em] uppercase text-neutral-500 hover:text-foreground pb-0.5 border-b border-transparent hover:border-foreground transition-colors"
       >
-        查看全部 <ArrowRight size={14} />
+        VIEW ALL <ArrowRight size={12} />
       </Link>
     </div>
   )

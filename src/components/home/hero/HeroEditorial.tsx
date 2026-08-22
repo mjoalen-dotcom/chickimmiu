@@ -84,10 +84,10 @@ export function HeroEditorial({ slides, current, total, setCurrent, prev, next, 
               <div className="pt-2">
                 <Link
                   href={slide.link}
-                  className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-brand-ink rounded-full text-sm tracking-wide hover:bg-white/90 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-3.5 border border-white/70 text-white rounded-none text-xs tracking-[0.3em] uppercase hover:bg-white hover:text-brand-ink transition-colors"
                 >
                   {slide.ctaText}
-                  <ArrowRight size={16} />
+                  <ArrowRight size={14} />
                 </Link>
               </div>
             )}
