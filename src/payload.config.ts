@@ -119,6 +119,7 @@ import { DailyHoroscopes } from './collections/DailyHoroscopes'
 // 客服中心 v1 Phase 1A
 import { Conversations } from './collections/Conversations'
 import { Messages } from './collections/Messages'
+import { Notifications } from './collections/Notifications'
 import { MessageTags } from './collections/MessageTags'
 import { ConversationActivities } from './collections/ConversationActivities'
 import { CustomerServiceSettings } from './globals/CustomerServiceSettings'
@@ -505,6 +506,7 @@ export default buildConfig({
     WalletTransactions, // Phase 2 C：購物金/儲值金帳本
     WalletWithdrawals, // Phase 2 C：儲值金退現申請
     WishlistItems, // Phase 2 B：會員收藏清單 DB 持久化（跨裝置）
+    Notifications, // 會員訊息信箱 v1（2026-08-22 需求 ③）：站內通知 feed，web 信箱 + App 推播共用
     // 客服中心 v1 Phase 1A — Conversations + Messages 是 ③ 會員 CRM 的延伸
     Conversations,
     Messages,

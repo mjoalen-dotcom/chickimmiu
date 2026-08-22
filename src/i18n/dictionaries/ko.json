@@ -163,6 +163,7 @@
     "pageTitle": "내 계정",
     "nav": {
       "overview": "계정 개요",
+      "messages": "메시지함",
       "orders": "주문 내역",
       "subscription": "구독 관리",
       "wishlist": "찜 목록",

@@ -36,6 +36,7 @@ import {
 } from '../lib/commerce/orderReversal'
 import { triggerJourney } from '../lib/crm/automationEngine'
 import { generateOrderNumber, type OrderNumberingSettings } from '../lib/commerce/orderNumbering'
+import { createNotification, pickRelationId } from '../lib/notifications/notify'
 import { calculateOrderTax, type TaxSettingsLike } from '../lib/commerce/calculateTax'
 import {
   mintCardsForPaidOrder,
@@ -1392,6 +1393,20 @@ export const Orders: CollectionConfig = {
             sendOrderConfirmationLine(req.payload, doc as unknown as Record<string, unknown>),
           )
           .catch((err) => console.error('[Orders Hook] 訂單確認 LINE 推播失敗:', err))
+        // 站內信箱通知（需求 ③；createNotification 內部吞錯不擋主流程）
+        {
+          const recipient = pickRelationId(doc.customer)
+          if (recipient != null) {
+            void createNotification(req.payload, {
+              recipient,
+              category: 'order',
+              title: `訂單 ${String(doc.orderNumber ?? '')} 已成立`,
+              body: '我們已收到您的訂單，付款完成後將盡快為您安排出貨。',
+              link: '/account/orders',
+              meta: { orderNumber: doc.orderNumber ?? null, event: 'created' },
+            })
+          }
+        }
       },
       // ── paymentStatus unpaid→paid：寄付款完成信給顧客 ──
       // 線上金流 callback 回填與 admin 手動標 paid 都會觸發。與 create 時的
@@ -1427,6 +1442,20 @@ export const Orders: CollectionConfig = {
             sendOrderShippedLine(req.payload, doc as unknown as Record<string, unknown>),
           )
           .catch((err) => console.error('[Orders Hook] 出貨 LINE 推播失敗:', err))
+        // 站內信箱通知（需求 ③）
+        {
+          const recipient = pickRelationId(doc.customer)
+          if (recipient != null) {
+            void createNotification(req.payload, {
+              recipient,
+              category: 'order',
+              title: `訂單 ${String(doc.orderNumber ?? '')} 已出貨`,
+              body: '包裹已交給物流，可在訂單頁追蹤配送進度。',
+              link: '/account/orders',
+              meta: { orderNumber: doc.orderNumber ?? null, event: 'shipped' },
+            })
+          }
+        }
       },
       // ── status → delivered：寄送達通知信（OrderSettings.sendDeliveredEmail，預設寄） ──
       async ({ doc, previousDoc, req }) => {
@@ -1444,6 +1473,20 @@ export const Orders: CollectionConfig = {
         sendOrderDeliveredEmail(req.payload, doc as unknown as Record<string, unknown>).catch(
           (err) => console.error('[Orders Hook] 送達通知信寄送失敗:', err),
         )
+        // 站內信箱通知（需求 ③）
+        {
+          const recipient = pickRelationId(doc.customer)
+          if (recipient != null) {
+            void createNotification(req.payload, {
+              recipient,
+              category: 'order',
+              title: `訂單 ${String(doc.orderNumber ?? '')} 已送達`,
+              body: '包裹已送達，喜歡的話歡迎回來留下評價！',
+              link: '/account/reviews',
+              meta: { orderNumber: doc.orderNumber ?? null, event: 'delivered' },
+            })
+          }
+        }
       },
       // ── status → cancelled：寄取消通知信（無 toggle，一律寄） ──
       async ({ doc, previousDoc, req }) => {

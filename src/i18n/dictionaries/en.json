@@ -163,6 +163,7 @@
     "pageTitle": "My Account",
     "nav": {
       "overview": "Account Overview",
+      "messages": "Inbox",
       "orders": "My Orders",
       "subscription": "My Subscription",
       "wishlist": "Wishlist",

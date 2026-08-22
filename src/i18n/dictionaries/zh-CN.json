@@ -163,6 +163,7 @@
     "pageTitle": "我的账号",
     "nav": {
       "overview": "会员总览",
+      "messages": "消息信箱",
       "orders": "我的订单",
       "subscription": "我的订阅",
       "wishlist": "收藏清单",

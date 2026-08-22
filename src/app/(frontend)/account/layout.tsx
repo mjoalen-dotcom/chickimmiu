@@ -18,7 +18,13 @@ export const metadata: Metadata = {
 // 需求 ②（2026-08-22）：15 條平鋪連結收斂成 4+1 組 — 依顧客心智模型分
 // （訂單物流 / 點數獎勵 / 個人風格 / 帳號），icon 用名稱字串傳 client。
 const SIDEBAR_GROUP_DEFS = [
-  { titleKey: null, items: [{ href: '/account', key: 'overview', icon: 'User' }] },
+  {
+    titleKey: null,
+    items: [
+      { href: '/account', key: 'overview', icon: 'User' },
+      { href: '/account/messages', key: 'messages', icon: 'Bell' },
+    ],
+  },
   {
     titleKey: 'shopping',
     items: [
@@ -104,12 +110,29 @@ export default async function AccountLayout({ children }: { children: React.Reac
     }
   }
 
+  // 訊息信箱未讀數（indexed 查詢；失敗回 0 不擋整層 layout）
+  const unreadMessages = await payload
+    .find({
+      collection: 'notifications',
+      where: {
+        and: [{ recipient: { equals: user.id } }, { readAt: { exists: false } }],
+      },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    })
+    .then((r) => r.totalDocs)
+    .catch(() => 0)
+
   const sidebarGroups: SidebarGroup[] = SIDEBAR_GROUP_DEFS.map((group) => ({
     title: group.titleKey ? t(`navGroups.${group.titleKey}`) : null,
     items: group.items.map((item) => ({
       href: item.href,
       label: t(`nav.${item.key}`),
       icon: item.icon,
+      ...(item.href === '/account/messages' && unreadMessages > 0
+        ? { badge: unreadMessages }
+        : {}),
     })),
   }))
 

@@ -163,6 +163,7 @@
     "pageTitle": "我的帳號",
     "nav": {
       "overview": "會員總覽",
+      "messages": "訊息信箱",
       "orders": "我的訂單",
       "subscription": "我的訂閱",
       "wishlist": "收藏清單",

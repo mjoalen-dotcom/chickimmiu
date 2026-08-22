@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   User, ShoppingBag, Heart, MapPin, Gift, Settings, Crown, Share2, RotateCcw,
-  Star, FileText, Gamepad2, Sparkles, Brain, Wallet,
+  Star, FileText, Gamepad2, Sparkles, Brain, Wallet, Bell,
 } from 'lucide-react'
 
 /**
@@ -20,12 +20,25 @@ import {
 
 const ICONS = {
   User, ShoppingBag, Heart, MapPin, Gift, Settings, Crown, Share2, RotateCcw,
-  Star, FileText, Gamepad2, Sparkles, Brain, Wallet,
+  Star, FileText, Gamepad2, Sparkles, Brain, Wallet, Bell,
 } as const
 
 export type SidebarGroup = {
   title: string | null
-  items: Array<{ href: string; label: string; icon: keyof typeof ICONS }>
+  items: Array<{ href: string; label: string; icon: keyof typeof ICONS; badge?: number }>
+}
+
+function Badge({ count, activeOnDark }: { count: number; activeOnDark: boolean }) {
+  if (count <= 0) return null
+  return (
+    <span
+      className={`ml-auto shrink-0 min-w-5 h-5 px-1.5 rounded-full text-[10px] font-medium inline-flex items-center justify-center ${
+        activeOnDark ? 'bg-white text-neutral-900' : 'bg-neutral-900 text-white'
+      }`}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  )
 }
 
 function useIsActive() {
@@ -60,6 +73,7 @@ export function AccountSidebar({ groups }: { groups: SidebarGroup[] }) {
             >
               <IconComp size={13} />
               {item.label}
+              {(item.badge ?? 0) > 0 && <Badge count={item.badge!} activeOnDark={active} />}
             </Link>
           )
         })}
@@ -91,6 +105,7 @@ export function AccountSidebar({ groups }: { groups: SidebarGroup[] }) {
                   >
                     <IconComp size={17} />
                     {item.label}
+                    {(item.badge ?? 0) > 0 && <Badge count={item.badge!} activeOnDark={false} />}
                   </Link>
                 )
               })}

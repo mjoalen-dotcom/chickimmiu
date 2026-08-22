@@ -129,5 +129,17 @@ export async function awardKimBlogReadReward(
     return { status: 500, body: { error: 'Reward could not be recorded' } }
   }
 
+  // 站內信箱通知（需求 ③「部落格互動」；fire-and-forget 不擋回應）
+  void import('../notifications/notify').then(({ createNotification }) =>
+    createNotification(payload, {
+      recipient: user.id as string | number,
+      category: 'blog',
+      title: `閱讀獎勵 +${awardedPoints} 點已入帳`,
+      body: `感謝閱讀穿搭誌！目前點數餘額 ${newBalance} 點。`,
+      link: '/account/points',
+      meta: { blogSlug: slug, awarded: awardedPoints },
+    }),
+  ).catch((err) => console.error('[readRewardAward] notification failed:', err))
+
   return { status: 200, body: { awarded: awardedPoints, points: newBalance, reason: null } }
 }
