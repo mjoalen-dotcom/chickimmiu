@@ -132,8 +132,18 @@ export function ProductListClient({
   )
 
   // Build hierarchical category tree
+  const collectionCats = useMemo(
+    () =>
+      (categories as unknown as (CategoryItem & { isCollection?: boolean })[]).filter(
+        (c) => c.isCollection,
+      ),
+    [categories],
+  )
+
   const categoryTree = useMemo(() => {
-    const cats = categories as unknown as CategoryItem[]
+    // 精選企劃（isCollection）不進主分類樹，另列一排
+    const cats = (categories as unknown as (CategoryItem & { isCollection?: boolean })[])
+      .filter((c) => !c.isCollection)
     const topLevel: CategoryItem[] = []
     const childrenMap = new Map<string | number, CategoryItem[]>()
     for (const cat of cats) {
@@ -214,6 +224,8 @@ export function ProductListClient({
   // LV/Dior 式頁首：大標直接顯示目前所在分類/標籤，而非固定「全部商品」
   const activeCategoryName = (() => {
     if (!activeCategory) return null
+    const coll = collectionCats.find((c) => String(c.id) === activeCategory)
+    if (coll) return coll.name
     for (const parent of categoryTree.topLevel) {
       if (String(parent.id) === activeCategory) return parent.name
       const kids = categoryTree.childrenMap.get(String(parent.id)) || []
@@ -362,6 +374,28 @@ export function ProductListClient({
               </motion.div>
             )
           })()}
+
+          {/* ── 精選企劃（策展層：isCollection 分類；同 category 參數篩選） ── */}
+          {collectionCats.length > 0 && (
+            <div className="flex items-center gap-5 pb-3 overflow-x-auto scrollbar-hide">
+              <span className="shrink-0 text-[10px] tracking-[0.3em] text-neutral-400 uppercase">
+                Collections
+              </span>
+              {collectionCats.map((c) => (
+                <button
+                  key={String(c.id)}
+                  onClick={() => updateParams({ category: String(c.id) })}
+                  className={`text-xs whitespace-nowrap transition-colors ${
+                    activeCategory === String(c.id)
+                      ? 'text-foreground font-medium underline underline-offset-4'
+                      : 'text-foreground/50 hover:text-foreground'
+                  }`}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Toolbar */}

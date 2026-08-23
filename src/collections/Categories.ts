@@ -144,6 +144,18 @@ export const Categories: CollectionConfig = {
     },
     // Display helpers
     {
+      name: 'isCollection',
+      label: '精選企劃（策展）',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        description:
+          '勾選 = 主題企劃（如 金老佛爺推薦/韓劇同款/婚宴場合）。不進主分類導覽，' +
+          '顯示在商品列表的「精選企劃」列；商品掛入方式 = 商品編輯頁的「更多分類」' +
+          '（additionalCategories），canonical 主分類不受影響。',
+      },
+    },
+    {
       name: 'isActive',
       label: '啟用',
       type: 'checkbox',
