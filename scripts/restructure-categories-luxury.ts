@@ -133,13 +133,16 @@ function classify(rawName: string): string | null {
   if (RE.jumpsuit.test(n)) return 'dresses'
   if (RE.overallPants.test(n)) return 'pants'
   // Step 5+6 rightmost 中心語
-  let best: { slug: string; pos: number; len: number } | null = null
+  // 比「結束位置」而非起始位置：襯衫 vs 衫、短褲 vs 褲 的結尾相同時
+  // 長詞才是真正的中心語（起始位置比較會讓單字 衫/褲 永遠劫走長詞）
+  let best: { slug: string; end: number; len: number } | null = null
   for (const group of RIGHTMOST) {
     for (const w of group.words) {
       const idx = n.toLowerCase().lastIndexOf(w.toLowerCase())
       if (idx >= 0) {
-        if (!best || idx > best.pos || (idx === best.pos && w.length > best.len)) {
-          best = { slug: group.slug, pos: idx, len: w.length }
+        const end = idx + w.length
+        if (!best || end > best.end || (end === best.end && w.length > best.len)) {
+          best = { slug: group.slug, end, len: w.length }
         }
       }
     }
