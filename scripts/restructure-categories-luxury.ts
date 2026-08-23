@@ -145,7 +145,9 @@ function classify(rawName: string): string | null {
     }
   }
   if (best) return best.slug
-  // 純飾品件（925/純銀/手鍊）最後補撈
+  // 純飾品件最後補撈：韓劇 IP 戒款常以「XX戒」結尾（五指戒/組合戒/圓圈戒）
+  if (/戒(?:$|[\s([（])/.test(n)) return 'rings'
+  if (/[鍊鏈](?:$|[\s([（])/.test(n)) return 'jewelry'
   if (RE.jewelryRoot.test(n)) return 'jewelry'
   if (RE.hatStandalone.test(n)) return 'accessories'
   return null
