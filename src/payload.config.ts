@@ -90,6 +90,7 @@ import { TaxSettings } from './globals/TaxSettings'
 import { GameSettings } from './globals/GameSettings'
 import { HomepageSettings } from './globals/HomepageSettings'
 import { ProductListSettings } from './globals/ProductListSettings'
+import { BlogPageSettings } from './globals/BlogPageSettings'
 import { AboutPageSettings } from './globals/AboutPageSettings'
 import { FAQPageSettings } from './globals/FAQPageSettings'
 import { PolicyPagesSettings } from './globals/PolicyPagesSettings'
@@ -351,6 +352,7 @@ export default buildConfig({
             'packaging-page-settings': '/packaging',
             'policy-pages-settings': '/return-policy',
             'product-list-settings': '/products',
+            'blog-page-settings': '/blog',
             'navigation-settings': '/home',
             'global-settings': '/home',
           }
@@ -393,6 +395,7 @@ export default buildConfig({
         'packaging-page-settings',
         'policy-pages-settings',
         'product-list-settings',
+        'blog-page-settings',
         'navigation-settings',
         'global-settings',
       ],
@@ -682,6 +685,7 @@ export default buildConfig({
     withOperatorGlobalUpdate(HomepageSettings),
     withOperatorGlobalUpdate(CollectionsPageSettings),
     withOperatorGlobalUpdate(ProductListSettings),
+    withOperatorGlobalUpdate(BlogPageSettings),
     withOperatorGlobalUpdate(AboutPageSettings),
     withOperatorGlobalUpdate(FAQPageSettings),
     withOperatorGlobalUpdate(PolicyPagesSettings),
