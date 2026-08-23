@@ -24,11 +24,70 @@ export const HomepageSettings: GlobalConfig = {
     afterChange: [
       () => {
         // 首頁所有區塊由 HomepageSettings 驅動，存檔後失效首頁快取
-        safeRevalidate(['/'])
+        // （/ 封面與 /home 都吃這份 global）
+        safeRevalidate(['/', '/home'])
       },
     ],
   },
   fields: [
+    // ── 歡迎頁（/ 封面）──（2026-08-23 需求：後台可自行設定大圖/大影片）
+    {
+      name: 'coverPage',
+      label: '歡迎頁（/ 封面）',
+      type: 'group',
+      admin: {
+        description:
+          '進站第一眼的展示封面（cn.chuu 式）：極簡 header + 大圖或大影片，點任何區域進 /home 賣場首頁。素材未設定時自動用內建品牌影片與輪播圖，不會開天窗。',
+      },
+      fields: [
+        {
+          name: 'heroMode',
+          label: '主視覺型式',
+          type: 'select',
+          defaultValue: 'video',
+          options: [
+            { label: '大影片', value: 'video' },
+            { label: '大圖', value: 'image' },
+          ],
+        },
+        {
+          name: 'heroVideo',
+          label: '主視覺影片（桌機建議 16:9）',
+          type: 'upload',
+          relationTo: 'media',
+          admin: { description: '型式選「大影片」時使用；未設定用內建品牌影片' },
+        },
+        {
+          name: 'heroVideoMobile',
+          label: '主視覺影片（手機建議 9:16）',
+          type: 'upload',
+          relationTo: 'media',
+          admin: { description: '未設定用內建手機版品牌影片' },
+        },
+        {
+          name: 'heroImage',
+          label: '主視覺大圖',
+          type: 'upload',
+          relationTo: 'media',
+          admin: { description: '型式選「大圖」時使用；未設定 fallback 下方輪播橫幅第一張' },
+        },
+        {
+          name: 'sideImage',
+          label: '下方雙欄：照片（左）',
+          type: 'upload',
+          relationTo: 'media',
+          admin: { description: '「一邊照片一邊影片」區塊；未設定用輪播第二張或新品圖' },
+        },
+        {
+          name: 'sideVideo',
+          label: '下方雙欄：影片（右）',
+          type: 'upload',
+          relationTo: 'media',
+          admin: { description: '未設定用內建 ckmu_hero_v4 影片' },
+        },
+      ],
+    },
+
     // ── Hero 版型覆寫 ──
     {
       name: 'heroLayoutOverride',

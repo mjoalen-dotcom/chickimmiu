@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useSession, signOut as nextAuthSignOut } from 'next-auth/react'
 import { useTranslations } from 'next-intl'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -105,6 +105,10 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
   ]
   const navLinks = menuItems && menuItems.length > 0 ? menuItems : defaultNavLinks
   const logo = logoUrl && logoUrl !== '/images/logo-ckmu.svg' ? logoUrl : DEFAULT_LOGO
+  // 歡迎頁（/ 封面）走極簡 header：只留 logo 列與功能 icon，
+  // 公告帶 / 功能導覽列 / 手機漢堡選單全部收掉（cn.chuu 式，2026-08-23 拍板）
+  const pathname = usePathname()
+  const isCoverPage = pathname === '/'
   const [isOpen, setIsOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   // 用 label 當 key 避免多 dropdown 共用同一 state（2026-05-11 修：原本 `isCollectionsOpen`
@@ -156,7 +160,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
   return (
     <div data-component="navbar">
       {/* 公告列 */}
-      {(announcementText || !menuItems) && (
+      {!isCoverPage && (announcementText || !menuItems) && (
         <div className={`text-white text-center text-sm py-1.5 tracking-wider ${
           announcementStyle === 'festive' ? 'bg-red-600' :
           announcementStyle === 'promo' ? 'bg-[#2C2C2C]' :
@@ -179,7 +183,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
           <div className="absolute left-4 md:left-6 flex items-center gap-1">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="md:hidden p-2 -ml-2 text-foreground"
+              className={isCoverPage ? 'hidden' : 'md:hidden p-2 -ml-2 text-foreground'}
               aria-label={t('menu')}
             >
               {isOpen ? <X size={22} /> : <Menu size={22} />}
@@ -321,8 +325,8 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
           </div>
         </div>
 
-        {/* Desktop nav links — below logo */}
-        <nav className="hidden md:block border-t border-cream-200/50">
+        {/* Desktop nav links — below logo（歡迎頁不顯示） */}
+        <nav className={isCoverPage ? 'hidden' : 'hidden md:block border-t border-cream-200/50'}>
           <ul className="container flex items-center justify-center gap-8 h-10">
             {navLinks.map((link) => {
               const hasGroups = Boolean(link.groups && link.groups.length > 0)

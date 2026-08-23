@@ -10,6 +10,7 @@ import * as migration_20260821_010000_add_ops_actions from './20260821_010000_ad
 import * as migration_20260821_150000_add_customer_nickname from './20260821_150000_add_customer_nickname';
 import * as migration_20260821_170000_users_customers_cutover from './20260821_170000_users_customers_cutover';
 import * as migration_20260822_150000_add_notifications from './20260822_150000_add_notifications';
+import * as migration_20260823_120000_add_cover_page_settings from './20260823_120000_add_cover_page_settings';
 
 export const migrations = [
   {
@@ -72,5 +73,10 @@ export const migrations = [
     up: migration_20260822_150000_add_notifications.up,
     down: migration_20260822_150000_add_notifications.down,
     name: '20260822_150000_add_notifications',
+  },
+  {
+    up: migration_20260823_120000_add_cover_page_settings.up,
+    down: migration_20260823_120000_add_cover_page_settings.down,
+    name: '20260823_120000_add_cover_page_settings',
   },
 ];
