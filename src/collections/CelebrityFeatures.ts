@@ -32,7 +32,10 @@ export const CelebrityFeatures: CollectionConfig = {
   admin: {
     group: '⑥ 內容與頁面',
     useAsTitle: 'name',
-    defaultColumns: ['photo', 'name', 'program', 'sortOrder', 'status'],
+    // 2026-08-24：photo 欄在 list 只會渲染成檔名連結（Alan 反映「只顯示圖片
+    // 連結」）— name 提到第一欄當主識別，photo 移除；內容照舊在編輯頁維護，
+    // 對應前台頁 /pages/ckmu-on-show（livePreview 已指向該頁）
+    defaultColumns: ['name', 'program', 'sortOrder', 'status', 'updatedAt'],
     description:
       'CKMU ON SHOW 媒體曝光牆 — 後台新增/編輯/刪除藝人卡片；status=published 才會顯示在前台',
     listSearchableFields: ['name', 'program'],

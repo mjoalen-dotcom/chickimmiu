@@ -1,14 +1,33 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, Home, RefreshCw } from 'lucide-react'
 
 export default function Error({
+  error,
   reset,
 }: {
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  // 部署頻繁時舊分頁會打到新 build（chunk 404 / Failed to find Server
+  // Action），使用者看到 Application error。這類錯誤自動硬重載一次即癒；
+  // sessionStorage 防重載迴圈（真 bug 只重載一次就停，照常顯示錯誤頁）。
+  useEffect(() => {
+    const msg = `${error?.message || ''} ${error?.name || ''}`
+    const isStaleDeploy =
+      /ChunkLoadError|Loading chunk|Failed to find Server Action|dynamically imported module/i.test(msg)
+    if (!isStaleDeploy) return
+    try {
+      if (sessionStorage.getItem('ckmu_stale_reload')) return
+      sessionStorage.setItem('ckmu_stale_reload', String(Date.now()))
+    } catch {
+      return
+    }
+    window.location.reload()
+  }, [error])
+
   return (
     <main className="bg-cream-50 min-h-screen flex items-center justify-center px-4">
       <div className="max-w-md text-center">

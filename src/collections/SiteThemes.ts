@@ -76,12 +76,14 @@ export const SiteThemes: CollectionConfig = {
             /* best-effort; admin 重存一次即可重新平衡 */
           }
         }
-        safeRevalidate(['/'])
+        // 2026-08-24 修：原首頁已搬 /home（v3 封面拆分），主題效果主要在 /home
+        safeRevalidate(['/', '/home'])
       },
     ],
     afterDelete: [
       () => {
-        safeRevalidate(['/'])
+        // 2026-08-24 修：原首頁已搬 /home（v3 封面拆分），主題效果主要在 /home
+        safeRevalidate(['/', '/home'])
       },
     ],
   },
