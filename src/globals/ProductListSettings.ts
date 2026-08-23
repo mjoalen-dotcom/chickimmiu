@@ -29,6 +29,17 @@ export const ProductListSettings: GlobalConfig = {
   },
   fields: [
     {
+      name: 'cardStyle',
+      label: '商品卡風格',
+      type: 'select',
+      defaultValue: 'classic',
+      options: [
+        { label: '經典（圓角＋彩色標籤，預設）', value: 'classic' },
+        { label: '精品極簡（LV/Dior 式：直角、黑白標籤）', value: 'minimal' },
+      ],
+      admin: { description: '切換商品列表頁的卡片外觀，存檔即生效' },
+    },
+    {
       name: 'pageSize',
       label: '每頁商品數',
       type: 'number',

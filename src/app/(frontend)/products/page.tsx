@@ -248,6 +248,7 @@ export default async function ProductsPage({
 
   return (
     <ProductListClient
+      cardStyle={((settings as unknown as { cardStyle?: string }).cardStyle === 'minimal' ? 'minimal' : 'classic')}
       products={products}
       categories={categories}
       colorOptions={colorOptions}

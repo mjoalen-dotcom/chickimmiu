@@ -20,6 +20,8 @@ interface CategoryItem {
 type ColorOption = { name: string; code: string }
 
 interface Props {
+  /** 商品卡風格（後台「商品列表設定 → 商品卡風格」控制） */
+  cardStyle?: 'classic' | 'minimal'
   /** 當前頁的商品（server 已分頁/篩選/排序） */
   products: Record<string, unknown>[]
   categories: Record<string, unknown>[]
@@ -67,6 +69,7 @@ function getSortOptions(t: (key: string) => string) {
 }
 
 export function ProductListClient({
+  cardStyle = 'classic',
   products,
   categories,
   colorOptions,
@@ -507,6 +510,7 @@ export function ProductListClient({
 
               return (
                 <ProductCard
+                  variant={cardStyle}
                   key={p.id as unknown as string}
                   id={p.id as unknown as string}
                   slug={p.slug as string}
