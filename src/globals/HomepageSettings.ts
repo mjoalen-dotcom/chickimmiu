@@ -14,7 +14,18 @@ export const HomepageSettings: GlobalConfig = {
   label: '首頁設定',
   admin: {
     group: '⑥ 內容與頁面',
-    description: '管理首頁所有區塊的內容與顯示設定',
+    description: '管理首頁所有區塊的內容與顯示設定。「即時預覽」分頁 = 左邊改、右邊立刻看到歡迎頁效果。',
+    // 所改即所見（2026-08-23 Alan 需求）：admin 開「即時預覽」分頁，
+    // 右側 iframe 載入 / 封面，欄位一改畫面即時更新（前台 CoverView 的
+    // useLivePreview 收 postMessage）。支援手機/桌機斷點切換。
+    livePreview: {
+      url: () => `${process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com'}/`,
+      breakpoints: [
+        { label: '手機', name: 'mobile', width: 390, height: 844 },
+        { label: '平板', name: 'tablet', width: 768, height: 1024 },
+        { label: '桌機', name: 'desktop', width: 1440, height: 900 },
+      ],
+    },
   },
   access: {
     read: () => true,

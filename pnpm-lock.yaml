@@ -40,6 +40,9 @@ importers:
       '@payloadcms/email-resend':
         specifier: ^3.83.0
         version: 3.83.0(payload@3.83.0(patch_hash=94bc81749e9aa4e1831189b4bbacc0ab8845594a5fa8ba9eb3a4ddc83a30f351)(graphql@16.13.2)(typescript@5.9.3))
+      '@payloadcms/live-preview-react':
+        specifier: 3.83.0
+        version: 3.83.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@payloadcms/next':
         specifier: ^3.83.0
         version: 3.83.0(@types/react@19.2.14)(graphql@16.13.2)(monaco-editor@0.55.1)(next@15.5.15(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.77.4))(payload@3.83.0(patch_hash=94bc81749e9aa4e1831189b4bbacc0ab8845594a5fa8ba9eb3a4ddc83a30f351)(graphql@16.13.2)(typescript@5.9.3))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)
@@ -1648,6 +1651,15 @@ packages:
     peerDependencies:
       graphql: ^16.8.1
       payload: 3.83.0
+
+  '@payloadcms/live-preview-react@3.83.0':
+    resolution: {integrity: sha512-gbYtfgoMUKgGngecCP92M/kLKu/qzlCImG2JEuaL85gi852xYQw8CC8oUV/YCXLEAMdr71+UVGyj4lK3rOD9ZQ==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.1 || ^19.1.2 || ^19.2.1
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.1 || ^19.1.2 || ^19.2.1
+
+  '@payloadcms/live-preview@3.83.0':
+    resolution: {integrity: sha512-dzGQxUhEZ9SjQ0L3aZkWNsV0o8vHyBOcS3Qk/ULMf8Fuc7jOzKJfvXyjE0vNxWVKNrpuZOekUhXouPOY/XXX1w==}
 
   '@payloadcms/next@3.83.0':
     resolution: {integrity: sha512-N4pmZSfVEylajGxTXc/69EGJT4tZWgVIA4U6rV9rGqD7FkHTXVut4tz/WyR2gZuSryHsFP0OobMEACCPs5YLIA==}
@@ -6635,6 +6647,14 @@ snapshots:
       tsx: 4.21.0
     transitivePeerDependencies:
       - typescript
+
+  '@payloadcms/live-preview-react@3.83.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
+    dependencies:
+      '@payloadcms/live-preview': 3.83.0
+      react: 19.2.5
+      react-dom: 19.2.5(react@19.2.5)
+
+  '@payloadcms/live-preview@3.83.0': {}
 
   '@payloadcms/next@3.83.0(@types/react@19.2.14)(graphql@16.13.2)(monaco-editor@0.55.1)(next@15.5.15(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.77.4))(payload@3.83.0(patch_hash=94bc81749e9aa4e1831189b4bbacc0ab8845594a5fa8ba9eb3a4ddc83a30f351)(graphql@16.13.2)(typescript@5.9.3))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)':
     dependencies:
