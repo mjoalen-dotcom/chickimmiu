@@ -225,18 +225,47 @@ export function ProductListClient({
   const activeTagLabel = TAG_OPTIONS.find((o) => o.value && o.value === activeTag)?.label || null
   const pageTitle = activeCategoryName || activeTagLabel || t('title')
 
+  // 分類形象圖（LV/Dior 系列頁手法）：後台 Categories 設定 image/description，
+  // 有圖走全幅 banner、沒圖走白底標題列
+  const activeCatDoc = categories.find((c) => String((c as Record<string, unknown>).id) === activeCategory) as
+    | Record<string, unknown>
+    | undefined
+  const catImageUrl = normalizeMediaUrl(
+    ((activeCatDoc?.image as Record<string, unknown> | null | undefined)?.url as string | undefined) ?? undefined,
+  )
+  const catDescription = (activeCatDoc?.description as string | null | undefined) || null
+
   return (
     <main className="bg-white min-h-screen">
-      {/* Header — 大標=所在分類（LV/Dior 系列頁手法），白底 hairline */}
-      <div className="bg-white border-b border-cream-200">
-        <div className="container py-10 md:py-14">
-          <p className="text-[11px] tracking-[0.35em] text-neutral-400 uppercase mb-3">{t('eyebrow')}</p>
-          <h1 className="text-3xl md:text-4xl font-serif leading-tight">{pageTitle}</h1>
-          <p className="text-xs text-neutral-400 mt-3">
-            {totalDocs.toLocaleString()} ITEMS
-          </p>
+      {/* Header — 大標=所在分類（LV/Dior 系列頁手法） */}
+      {catImageUrl ? (
+        <div className="relative h-60 md:h-[340px] overflow-hidden bg-cream-100">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={catImageUrl} alt={pageTitle} className="absolute inset-0 w-full h-full object-cover object-top" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 pb-8 md:pb-10">
+            <div className="container">
+              <p className="text-[11px] tracking-[0.35em] text-white/80 uppercase mb-2">{t('eyebrow')}</p>
+              <h1 className="text-3xl md:text-4xl font-serif leading-tight text-white">{pageTitle}</h1>
+              {catDescription && (
+                <p className="text-sm text-white/85 mt-2 max-w-xl">{catDescription}</p>
+              )}
+              <p className="text-xs text-white/60 mt-2">{totalDocs.toLocaleString()} ITEMS</p>
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-white border-b border-cream-200">
+          <div className="container py-10 md:py-14">
+            <p className="text-[11px] tracking-[0.35em] text-neutral-400 uppercase mb-3">{t('eyebrow')}</p>
+            <h1 className="text-3xl md:text-4xl font-serif leading-tight">{pageTitle}</h1>
+            {catDescription && <p className="text-sm text-neutral-500 mt-3 max-w-xl">{catDescription}</p>}
+            <p className="text-xs text-neutral-400 mt-3">
+              {totalDocs.toLocaleString()} ITEMS
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="container py-6 md:py-10">
         {/* Tag tabs — 極簡文字列（underline active，去 pill） */}

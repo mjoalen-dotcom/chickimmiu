@@ -73,6 +73,12 @@ export const HomepageSettings: GlobalConfig = {
           relationTo: 'media',
           admin: { description: '型式選「大圖」時使用；未設定 fallback 下方輪播橫幅第一張' },
         },
+        {
+          name: 'heroLink',
+          label: '主視覺連結',
+          type: 'text',
+          admin: { description: '點主視覺的導向；留空 = 進入賣場 /home' },
+        },
         // ── 展示媒體牆（LV collection 式，2026-08-23 需求）──
         {
           name: 'sections',
@@ -136,6 +142,12 @@ export const HomepageSettings: GlobalConfig = {
               label: '疊字（選填）',
               type: 'text',
               admin: { description: '顯示在該列左下角的小字，例如系列名稱' },
+            },
+            {
+              name: 'link',
+              label: '連結（選填）',
+              type: 'text',
+              admin: { description: '點此列的導向（如 /products?category=1 或 /pages/xxx）；留空 = 進入賣場 /home' },
             },
           ],
         },

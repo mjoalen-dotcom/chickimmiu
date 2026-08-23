@@ -15,6 +15,7 @@ import * as migration_20260823_140000_add_cover_wall_sections from './20260823_1
 import * as migration_20260823_180000_add_cover_section_heading from './20260823_180000_add_cover_section_heading';
 import * as migration_20260824_100000_add_cover_grid3 from './20260824_100000_add_cover_grid3';
 import * as migration_20260824_120000_add_card_style from './20260824_120000_add_card_style';
+import * as migration_20260824_150000_add_cover_links from './20260824_150000_add_cover_links';
 
 export const migrations = [
   {
@@ -102,5 +103,10 @@ export const migrations = [
     up: migration_20260824_120000_add_card_style.up,
     down: migration_20260824_120000_add_card_style.down,
     name: '20260824_120000_add_card_style',
+  },
+  {
+    up: migration_20260824_150000_add_cover_links.up,
+    down: migration_20260824_150000_add_cover_links.down,
+    name: '20260824_150000_add_cover_links',
   },
 ];

@@ -33,6 +33,7 @@ type Row = {
   mediaThird: MediaDoc | null
   heading: string
   caption: string
+  link: string
 }
 
 const LAYOUT_CYCLE: Row['layout'][] = ['full', 'split', 'grid3']
@@ -47,6 +48,7 @@ type CoverState = {
   heroVideo: MediaDoc | null
   heroVideoMobile: MediaDoc | null
   heroImage: MediaDoc | null
+  heroLink: string
   sideImage: MediaDoc | null
   sideVideo: MediaDoc | null
   rows: Row[]
@@ -302,6 +304,7 @@ export function CoverEditorClient() {
         heroVideo: asMediaDoc(cp.heroVideo),
         heroVideoMobile: asMediaDoc(cp.heroVideoMobile),
         heroImage: asMediaDoc(cp.heroImage),
+        heroLink: (cp.heroLink as string) || '',
         sideImage: asMediaDoc(cp.sideImage),
         sideVideo: asMediaDoc(cp.sideVideo),
         rows: rawSections.map((s) => ({
@@ -311,6 +314,7 @@ export function CoverEditorClient() {
           mediaThird: asMediaDoc(s.mediaThird),
           heading: (s.heading as string) || '',
           caption: (s.caption as string) || '',
+          link: (s.link as string) || '',
         })),
       })
       setDirty(false)
@@ -348,6 +352,7 @@ export function CoverEditorClient() {
           heroVideo: state.heroVideo?.id ?? null,
           heroVideoMobile: state.heroVideoMobile?.id ?? null,
           heroImage: state.heroImage?.id ?? null,
+          heroLink: state.heroLink || null,
           sideImage: state.sideImage?.id ?? null,
           sideVideo: state.sideVideo?.id ?? null,
           sections: state.rows
@@ -359,6 +364,7 @@ export function CoverEditorClient() {
               mediaThird: r.layout === 'grid3' ? (r.mediaThird?.id ?? null) : null,
               heading: r.heading || null,
               caption: r.caption || null,
+              link: r.link || null,
             })),
         },
       }
@@ -488,6 +494,14 @@ export function CoverEditorClient() {
               </button>
             )}
           </div>
+          <div className="px-4 py-2 border-b border-cream-200">
+            <input
+              value={state.heroLink}
+              onChange={(e) => mutate((s) => ({ ...s, heroLink: e.target.value }))}
+              placeholder="主視覺連結（留空 = 進入賣場 /home）"
+              className="w-full text-xs border border-cream-200 px-3 py-2 focus:outline-none focus:border-neutral-500"
+            />
+          </div>
           <div className="relative aspect-video bg-neutral-950">
             <CellPreview
               doc={heroPreview}
@@ -571,7 +585,7 @@ export function CoverEditorClient() {
               </div>
             )}
 
-            <div className="px-4 py-2.5 border-t border-cream-200 grid gap-2 sm:grid-cols-2">
+            <div className="px-4 py-2.5 border-t border-cream-200 grid gap-2 sm:grid-cols-3">
               <input
                 value={row.heading}
                 onChange={(e) =>
@@ -596,6 +610,18 @@ export function CoverEditorClient() {
                 placeholder="疊字（選填，顯示在該列左下角）"
                 className="w-full text-xs border border-cream-200 px-3 py-2 focus:outline-none focus:border-neutral-500"
               />
+              <input
+                value={row.link}
+                onChange={(e) =>
+                  mutate((s) => {
+                    const rows = [...s.rows]
+                    rows[i] = { ...rows[i], link: e.target.value }
+                    return { ...s, rows }
+                  })
+                }
+                placeholder="連結（留空 = 進入賣場 /home）"
+                className="w-full text-xs border border-cream-200 px-3 py-2 focus:outline-none focus:border-neutral-500"
+              />
             </div>
           </section>
         ))}
@@ -605,7 +631,7 @@ export function CoverEditorClient() {
           onClick={() =>
             mutate((s) => ({
               ...s,
-              rows: [...s.rows, { layout: 'full', media: null, mediaRight: null, mediaThird: null, heading: '', caption: '' }],
+              rows: [...s.rows, { layout: 'full', media: null, mediaRight: null, mediaThird: null, heading: '', caption: '', link: '' }],
             }))
           }
           className="w-full border-2 border-dashed border-neutral-300 py-5 text-xs text-neutral-500 hover:border-neutral-500 hover:text-foreground transition-colors inline-flex items-center justify-center gap-2"

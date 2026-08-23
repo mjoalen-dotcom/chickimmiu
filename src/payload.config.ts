@@ -372,6 +372,9 @@ export default buildConfig({
           case 'celebrity-features':
             // 藝人牆固定顯示在 ckmu-on-show 頁
             return `${base}/pages/ckmu-on-show`
+          case 'categories':
+            // 分類形象圖/描述 → 對應商品列表頁
+            return `${base}/products?category=${(data as Record<string, unknown> | undefined)?.id ?? ''}`
           default:
             return `${base}/`
         }
@@ -381,7 +384,7 @@ export default buildConfig({
         { label: '平板', name: 'tablet', width: 768, height: 1024 },
         { label: '桌機', name: 'desktop', width: 1440, height: 900 },
       ],
-      collections: ['pages', 'podcasts', 'blog-posts', 'products', 'site-themes', 'celebrity-features'],
+      collections: ['pages', 'podcasts', 'blog-posts', 'products', 'site-themes', 'celebrity-features', 'categories'],
       globals: [
         'homepage-settings',
         'about-page-settings',
@@ -534,101 +537,107 @@ export default buildConfig({
     withOperatorManage(BlogCategories),
     // ① 訂單與物流 — 每日營運最高頻：訂單 / 發票在前；退貨 → 換貨 → 退款
     // 照客服處理流程排列；物流方式設定極少動放最後。
+    // （2026-08-24 依營運頻率重排：每日處理 → 設定 → 資料紀錄）
     withOperatorManage(Orders),
-    withOperatorManage(Invoices),
     withOperatorManage(Returns),
     withOperatorManage(Exchanges),
     withOperatorManage(Refunds),
+    withOperatorManage(Invoices), // 紀錄類：開立後查閱為主
     ShippingMethods,
-    // ② 商品管理 — Products 最常用放最前；進銷存三件套殿後。
+    // ② 商品管理 — 商品/分類/審核在前；進貨盤點次之；異動流水（紀錄）殿後。
     withOperatorManage(Products),
     withOperatorManage(Categories),
-    withOperatorManage(SizeCharts),
     withOperatorManage(ProductReviews),
-    withOperatorManage(InventoryTransactions), // 進銷存：庫存異動流水
     withOperatorManage(PurchaseOrders), // 進銷存：進貨單
     withOperatorManage(StockTakes), // 進銷存：盤點
+    withOperatorManage(SizeCharts),
+    withOperatorManage(InventoryTransactions), // 紀錄類：庫存異動流水
     // ③ 會員與 CRM — 會員核心 → 訂閱 → 點數回饋 → 錢包 → 收藏 →
     // 客服對話 → 行為事件（同類相鄰，高頻在前）。
-    Users,
-    // APP-API-001 步驟16：從 Users 分離出來的獨立顧客 auth collection，
-    // 緊接 Users 之後方便後台對照。
-    Customers,
+    // （2026-08-24 重排）每日處理：顧客 / 客服對話 / 站內通知 / 退現與兌換審核
+    Customers, // APP-API-001 步驟16 分離的顧客 auth collection — 營運主體放最前
+    Users, // 後台人員帳號
+    Conversations, // 客服中心 v1：所有 channel 對話 thread
+    Notifications, // 會員訊息信箱 v1：站內通知 feed，web 信箱 + App 推播共用
+    WalletWithdrawals, // 待審核：儲值金退現申請
+    PointsRedemptions, // 待履行：點數兌換
+    // 設定與方案（低頻）
+    UserSubscriptions,
+    SubscriptionPlans,
     MembershipTiers,
     MemberSegments,
-    SubscriptionPlans,
-    UserSubscriptions,
-    PointsTransactions,
-    PointsRedemptions,
     UserRewards,
-    CreditScoreHistory,
-    WalletTransactions, // Phase 2 C：購物金/儲值金帳本
-    WalletWithdrawals, // Phase 2 C：儲值金退現申請
-    WishlistItems, // Phase 2 B：會員收藏清單 DB 持久化（跨裝置）
-    Notifications, // 會員訊息信箱 v1（2026-08-22 需求 ③）：站內通知 feed，web 信箱 + App 推播共用
-    // 客服中心 v1 Phase 1A — Conversations + Messages 是 ③ 會員 CRM 的延伸
-    Conversations,
-    Messages,
+    WishlistItems, // 會員收藏清單 DB 持久化（跨裝置）
+    // 資料紀錄（查閱為主，殿後）
+    Messages, // 對話內訊息（thread 內容，從 Conversations 進入為主）
     MessageTags,
+    PointsTransactions,
+    WalletTransactions, // 購物金/儲值金帳本
+    CreditScoreHistory,
     ConversationActivities,
     ProductViewEvents, // PR-B：UTM 商品瀏覽事件流
     BehaviorEvents, // 消費者分析：點擊 / 加購 / 瀏覽 / 停留
     // ④ 行銷推廣 — 促銷工具（最常動）→ 檔期活動 → 自動化 → 訊息/名單 →
     // 廣告與市場情報（低頻查閱類殿後）。
-    Coupons,
-    CouponRedemptions,
-    AddOnProducts,
-    GiftRules,
-    Bundles,
+    // （2026-08-24 重排）檔期與促銷工具（最常動）
     MarketingCampaigns,
-    CampaignActivities,
     PromotionRules, // Campaign Engine：版本化促銷規則（活動 Root 的子規則）
-    PromotionApplications, // Campaign Engine：促銷套用不可變交易紀錄
-    PromotionDropClaims, // Campaign Engine：限量券包／神秘禮物的領取憑據（每人 1 次 + 回沖依據）
+    Coupons,
+    GiftRules,
+    AddOnProducts,
+    Bundles,
     FestivalTemplates,
     BirthdayCampaigns,
     AutomationJourneys,
-    AutomationLogs,
-    ABTests,
-    MarketingExecutionLogs,
-    MessageTemplates,
+    MarketingContentDrafts, // 內容草稿工作區
     EmailTemplates, // 交易信模板（歡迎 / 訂單通知 / 驗證信）— 後台可編輯 / 預覽 / 測試寄送
-    NewsletterSubscribers, // Phase 2 B：電子報訂閱名單（前台訂閱表單寫入）
+    MessageTemplates,
+    NewsletterSubscribers, // 電子報訂閱名單（前台訂閱表單寫入）
+    ABTests,
+    // 廣告與市場情報（查閱類）
     UTMCampaigns, // PR-B：集中管理 UTM 活動 slug
     AdAudiences, // PR-E：DPA Retargeting Custom Audience 定義
     SearchConsoleKeywords,
     CompetitorPriceRecords,
-    MarketingContentDrafts,
+    // 資料紀錄（不可變流水，殿後）
+    CampaignActivities,
+    CouponRedemptions,
+    PromotionApplications, // Campaign Engine：促銷套用不可變交易紀錄
+    PromotionDropClaims, // Campaign Engine：限量券包／神秘禮物領取憑據
+    MarketingExecutionLogs,
+    AutomationLogs,
     // ⑤ 互動體驗 — 客服工單 / VIP 管家在前（第一線每日處理）；
     // 聯盟與 UGC 次之；遊戲系統照玩法聚類殿後。
-    CustomerServiceTickets,
-    ConciergeServiceRequests,
+    // （2026-08-24 重排）每日審核/處理在前
+    UGCPosts, // 穿搭牆投稿審核
+    ConciergeServiceRequests, // VIP 管家申請
     Affiliates,
-    UGCPosts,
+    // 遊戲營運設定/內容
     PrizePools,
+    CollectibleCardTemplates,
+    CollectibleCardEvents,
+    DailyHoroscopes,
+    CustomerServiceTickets, // v0 已被 Conversations 取代（admin.hidden）
+    // 玩家資料紀錄（殿後）
     MiniGameRecords,
     CardBattles,
     GameLeaderboard,
-    CollectibleCardTemplates,
     CollectibleCards,
-    CollectibleCardEvents,
     StyleSubmissions,
     StyleGameRooms,
     StyleVotes,
     StyleWishes,
-    DailyHoroscopes,
     // ⑥ 內容與頁面
     // 順序原則：核心內容（最常編輯）→ 樣式（少動）→ 資源池（最少動）。
     // 部落格已移至 Ⓚ 金老佛爺部落格專區；Media 放最後因為 admin 通常透過
     // Products / BlogPosts 上傳介面間接用 Media，少直接點；媒體資料夾已隱藏。
+    // （2026-08-24 重排）AI 行動提案是每日收件匣，提到 ⑥ 最前
+    OpsActions, // 營運 AI 助理：AI 只能寫 pending，admin 核准後才執行
     withOperatorManage(Pages),
-    withOperatorManage(CelebrityFeatures),
     withOperatorManage(Podcasts),
+    withOperatorManage(CelebrityFeatures),
     withOperatorManage(SiteThemes),
     withOperatorManage(Media),
-    // 營運 AI 助理：行動提案稽核軌跡（AI 只能寫 pending，admin 核准後才執行）。
-    // 群組落點比照 CKMUSystemToolsNavGroup 注入的系統工具連結（⑥ 底部）。
-    OpsActions,
     // Ⓦ 牆聚 WallGather — wall.ckmu.co 獨立 SaaS 資料域。
     // 訂閱、授權與用量不與服飾會員方案混用；Meta token 只存祕密參照。
     SocialWallConnections,

@@ -37,6 +37,7 @@ type WallRow = {
   mediaThird: MediaRef | null
   heading: string | null
   caption: string | null
+  link: string
 }
 
 /** chuu 式區塊大標（列上方，字重 400、留白大） */
@@ -114,6 +115,7 @@ export function CoverView({
         mediaThird: resolveMedia(row.mediaThird),
         heading: (row.heading as string | null) || null,
         caption: (row.caption as string | null) || null,
+        link: ((row.link as string | null) || '').trim() || ENTER,
       }
     })
     .filter((r): r is WallRow => r !== null)
@@ -129,6 +131,7 @@ export function CoverView({
   const heroVideoDesktop = getMediaUrl(coverPage.heroVideo) || '/videos/home-hero-16x9.mp4'
   const heroVideoMobile = getMediaUrl(coverPage.heroVideoMobile) || '/videos/home-hero-9x16.mp4'
   const heroImageUrl = getMediaUrl(coverPage.heroImage) || heroImages[0] || null
+  const heroLink = ((coverPage.heroLink as string | null) || '').trim() || ENTER
 
   const sideImageUrl =
     getMediaUrl(coverPage.sideImage) || heroImages[1] || fallbackProductImage || null
@@ -148,12 +151,12 @@ export function CoverView({
           mobileSrc={heroVideoMobile}
           desktopPoster="/videos/home-hero-16x9-poster.jpg"
           mobilePoster="/videos/home-hero-9x16-poster.jpg"
-          href={ENTER}
+          href={heroLink}
           tag="CHIC KIM & MIU"
           ctaText="進入賣場 · ENTER"
         />
       ) : heroImageUrl ? (
-        <Link href={ENTER} className="group relative block h-[78vh] md:h-[92vh] overflow-hidden bg-cream-100">
+        <Link href={heroLink} className="group relative block h-[78vh] md:h-[92vh] overflow-hidden bg-cream-100">
           <Image
             src={heroImageUrl}
             alt="CHIC KIM & MIU"
@@ -187,7 +190,7 @@ export function CoverView({
                 {[row.media, row.mediaRight, row.mediaThird]
                   .filter((m): m is MediaRef => m !== null)
                   .map((m, ci) => (
-                    <Link key={ci} href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
+                    <Link key={ci} href={row.link} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
                       <WallCell media={m} variant="cell" />
                       {ci === 0 && <Caption text={row.caption} />}
                     </Link>
@@ -195,19 +198,19 @@ export function CoverView({
               </div>
             ) : row.layout === 'split' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
-                <Link href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
+                <Link href={row.link} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
                   <WallCell media={row.media} variant="cell" />
                   <Caption text={row.caption} />
                 </Link>
                 {row.mediaRight && (
-                  <Link href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
+                  <Link href={row.link} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
                     <WallCell media={row.mediaRight} variant="cell" />
                   </Link>
                 )}
               </div>
             ) : (
               <Link
-                href={ENTER}
+                href={row.link}
                 className={`group relative block overflow-hidden bg-cream-100 ${
                   row.media.isVideo ? '' : 'h-[70vh] md:h-[92vh]'
                 }`}
