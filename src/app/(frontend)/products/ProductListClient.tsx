@@ -49,13 +49,13 @@ interface Props {
 const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', '4XL', 'F', 'FREE', '均碼']
 
 function getTagOptions(t: (key: string) => string) {
+  // 2026-08-24 精簡：韓星同款/金風格兩個 tag 與「精選企劃 Collections」
+  // 概念重複（韓劇同款/金老佛爺推薦企劃已取代），移除減少導覽雜訊
   return [
     { value: '', label: t('tagAll') },
     { value: 'new', label: t('tagNew') },
     { value: 'hot', label: t('tagHot') },
     { value: 'sale', label: t('tagSale') },
-    { value: 'korean-celebrity', label: t('tagKoreanCelebrity') },
-    { value: 'jin-style', label: t('tagJinStyle') },
   ]
 }
 
