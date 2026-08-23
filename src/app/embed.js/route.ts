@@ -25,10 +25,17 @@ const loader = String.raw`(() => {
   };
 
   window.addEventListener('message', (event) => {
-    if (event.origin !== source.origin || !event.data || event.data.type !== 'wallgather:resize') return;
+    if (event.origin !== source.origin || event.source !== frame.contentWindow || !event.data) return;
     if (event.data.widget !== widget) return;
-    const height = Number(event.data.height);
-    if (Number.isFinite(height) && height >= 120 && height <= 10000) frame.style.height = Math.ceil(height) + 'px';
+    if (event.data.type === 'wallgather:resize') {
+      const height = Number(event.data.height);
+      if (Number.isFinite(height) && height >= 120 && height <= 10000) frame.style.height = Math.ceil(height) + 'px';
+    }
+    if (event.data.type === 'wallgather:interaction') {
+      window.dispatchEvent(new CustomEvent('wallgather:interaction', {
+        detail: { widget, action: event.data.action, itemId: event.data.itemId },
+      }));
+    }
   });
 
   fetch(source.origin + '/api/social-wall/embed-token?widget=' + encodeURIComponent(widget) + '&host=' + encodeURIComponent(host), {

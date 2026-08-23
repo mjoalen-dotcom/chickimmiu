@@ -28,6 +28,7 @@ test('iframe 一律沿用 embed.js 的公開來源，不信任反向代理產生
     body: target,
     createElement(tagName: string) {
       return {
+        contentWindow: {},
         tagName,
         style: {},
         setAttribute() {},
@@ -90,8 +91,8 @@ test('允許安裝碼指定接近 SnapWidget 的緊湊初始高度，並限制�
     const document = {
       currentScript: script,
       body: target,
-      createElement(tagName: string) {
-        return { tagName, style: {}, setAttribute() {} }
+    createElement(tagName: string) {
+        return { tagName, contentWindow: {}, style: {}, setAttribute() {} }
       },
     }
     const window = {

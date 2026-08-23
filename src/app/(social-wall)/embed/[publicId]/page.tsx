@@ -54,7 +54,7 @@ export default async function SocialWallEmbedPage({ params, searchParams }: Embe
   const theme = query.theme ?? 'light'
   const wall =
     publicId === 'kim-lafayette-demo' ? (
-      <SnapStyleWall feed={await loadKimWallFeed()} theme={theme} />
+      <SnapStyleWall feed={await loadKimWallFeed()} theme={theme} widgetId={publicId} />
     ) : (
       <DemoWall settings={{ ...defaultDemoWallSettings, theme }} />
     )

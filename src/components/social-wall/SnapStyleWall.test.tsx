@@ -30,7 +30,7 @@ const feed = {
   ],
 }
 
-test('輸出可點擊貼文、真實追蹤連結、資料來源與左右切換控制', () => {
+test('輸出可點擊貼文、hover 社群分享、資料來源與左右切換控制', () => {
   const html = renderToStaticMarkup(createElement(SnapStyleWall, { feed }))
 
   assert.match(html, /data-wall-layout="snap-compact"/)
@@ -42,6 +42,10 @@ test('輸出可點擊貼文、真實追蹤連結、資料來源與左右切換�
   assert.match(html, /aria-label="上一組貼文"/)
   assert.match(html, /aria-label="下一組貼文"/)
   assert.match(html, /aria-label="影片"/)
+  assert.match(html, /aria-label="分享到 Facebook"/)
+  assert.match(html, /aria-label="分享到 LINE"/)
+  assert.match(html, /aria-label="分享到 X"/)
+  assert.match(html, /aria-label="複製貼文連結"/)
   assert.doesNotMatch(html, /<button[^>]*>追蹤<\/button>/)
 })
 
@@ -57,7 +61,7 @@ test('沒有資料時明確顯示狀態且不產生假貼文', () => {
   assert.doesNotMatch(html, /sw-snap-wall__item/)
 })
 
-test('桌機與手機都維持貼近 SnapWidget 的八欄雙列比例', async () => {
+test('桌機與手機都維持緊湊八欄雙列比例並提供鍵盤分享狀態', async () => {
   const css = await readFile(
     path.join(process.cwd(), 'src/app/(social-wall)/social-wall.css'),
     'utf8',
@@ -66,4 +70,5 @@ test('桌機與手機都維持貼近 SnapWidget 的八欄雙列比例', async ()
   assert.match(css, /--sw-snap-tile:\s*calc\(\(100vw - 7px\) \/ 8\)/)
   assert.match(css, /\.sw-snap-wall__track\s*\{[\s\S]*?gap:\s*1px;/)
   assert.match(css, /\.sw-snap-wall__footer\s*\{[\s\S]*?min-height:\s*41px;/)
+  assert.match(css, /\.sw-snap-wall__item:focus-within \.sw-snap-wall__share/)
 })
