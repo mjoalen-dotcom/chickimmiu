@@ -17,6 +17,7 @@ import * as migration_20260824_100000_add_cover_grid3 from './20260824_100000_ad
 import * as migration_20260824_120000_add_card_style from './20260824_120000_add_card_style';
 import * as migration_20260824_150000_add_cover_links from './20260824_150000_add_cover_links';
 import * as migration_20260824_170000_add_is_collection from './20260824_170000_add_is_collection';
+import * as migration_20260824_190000_add_catalog_push_controls from './20260824_190000_add_catalog_push_controls';
 
 export const migrations = [
   {
@@ -114,5 +115,10 @@ export const migrations = [
     up: migration_20260824_170000_add_is_collection.up,
     down: migration_20260824_170000_add_is_collection.down,
     name: '20260824_170000_add_is_collection',
+  },
+  {
+    up: migration_20260824_190000_add_catalog_push_controls.up,
+    down: migration_20260824_190000_add_catalog_push_controls.down,
+    name: '20260824_190000_add_catalog_push_controls',
   },
 ];

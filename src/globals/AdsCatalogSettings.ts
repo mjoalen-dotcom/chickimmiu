@@ -258,6 +258,29 @@ export const AdsCatalogSettings: GlobalConfig = {
               '純 feed 模式不需要這個 token（僅管理員可見）。',
           },
         },
+        {
+          name: 'catalogPushEnabled',
+          label: '啟用商品即時推送（Catalog Batch API）',
+          type: 'checkbox',
+          defaultValue: true,
+          admin: {
+            description:
+              '開啟時，每次商品存檔／刪除會即時推一份到上面那個 Catalog ID（比 feed 爬取快）。' +
+              '關閉只停即時推送，feed 照常輸出、Meta 仍會定時爬。' +
+              'Meta 端憑證或目錄權限沒處理好時可以先關掉，避免每次存檔都打一發必敗的 API。',
+          },
+        },
+        {
+          name: 'lastPushStatus',
+          label: '最近推送狀態',
+          type: 'text',
+          admin: {
+            readOnly: true,
+            description:
+              '由系統自動填寫。出現「已熔斷」表示連續失敗已暫停推送，訊息裡會寫要去 Meta 後台做什麼；' +
+              '改上面的 Catalog ID 或 Token 存檔後會立刻重試。',
+          },
+        },
       ],
     },
 
