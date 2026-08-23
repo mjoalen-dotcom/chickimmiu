@@ -107,8 +107,9 @@ export function ProductCard({
   return (
     <Link href={`/products/${slug}`} className="group block">
       {/* Image */}
+      {/* 2026-08-24 LV/Dior 化：去圓角/邊框/彩色 pill，黑白小標籤、素色排版 */}
       <div
-        className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-cream-100 border border-cream-200 mb-3"
+        className="relative aspect-[3/4] overflow-hidden bg-cream-100 mb-3"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -129,17 +130,17 @@ export function ProductCard({
         {/* Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5">
           {isNew && (
-            <span className="px-2 py-0.5 bg-gold-500 text-white text-[10px] rounded-full tracking-wider font-medium">
+            <span className="px-2 py-0.5 bg-white/90 text-neutral-900 text-[10px] tracking-[0.18em]">
               {t('badgeNew')}
             </span>
           )}
           {isHot && (
-            <span className="px-2 py-0.5 bg-red-500 text-white text-[10px] rounded-full tracking-wider font-medium">
+            <span className="px-2 py-0.5 bg-white/90 text-neutral-900 text-[10px] tracking-[0.18em]">
               {t('badgeHot')}
             </span>
           )}
           {discountPercent && (
-            <span className="px-2 py-0.5 bg-blush-200 text-red-600 text-[10px] rounded-full tracking-wider font-medium">
+            <span className="px-2 py-0.5 bg-neutral-900 text-white text-[10px] tracking-[0.18em]">
               -{discountPercent}%
             </span>
           )}
@@ -168,7 +169,7 @@ export function ProductCard({
         >
           <button
             onClick={handleAddToCart}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-foreground/90 text-cream-50 text-xs rounded-lg backdrop-blur-sm hover:bg-foreground transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-neutral-900/90 text-white text-xs tracking-[0.12em] backdrop-blur-sm hover:bg-neutral-900 transition-colors"
           >
             <ShoppingBag size={14} />
             {tCommon('addToCart')}
@@ -176,7 +177,7 @@ export function ProductCard({
           {onQuickView && (
             <button
               onClick={handleQuickView}
-              className="w-10 flex items-center justify-center bg-white/90 text-foreground rounded-lg backdrop-blur-sm hover:bg-white transition-colors"
+              className="w-10 flex items-center justify-center bg-white/90 text-foreground backdrop-blur-sm hover:bg-white transition-colors"
               aria-label={t('quickView')}
             >
               <Eye size={14} />
@@ -200,7 +201,7 @@ export function ProductCard({
 
       {/* Info */}
       <div className="space-y-1.5">
-        <p className="text-sm font-medium truncate group-hover:text-gold-600 transition-colors">
+        <p className="text-[13px] leading-snug truncate group-hover:opacity-60 transition-opacity">
           {name}
         </p>
 
@@ -225,9 +226,9 @@ export function ProductCard({
 
         {/* Price */}
         <div className="flex items-baseline gap-2">
-          <Price twd={salePrice ?? price} className="text-sm font-medium text-gold-600" />
+          <Price twd={salePrice ?? price} className="text-[13px] text-foreground" />
           {salePrice && salePrice < price && (
-            <Price twd={price} className="text-xs text-muted-foreground line-through" />
+            <Price twd={price} className="text-xs text-neutral-400 line-through" />
           )}
         </div>
 

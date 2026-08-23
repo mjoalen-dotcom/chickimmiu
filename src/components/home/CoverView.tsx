@@ -31,9 +31,10 @@ function resolveMedia(val: unknown): MediaRef | null {
 }
 
 type WallRow = {
-  layout: 'full' | 'split'
+  layout: 'full' | 'split' | 'grid3'
   media: MediaRef
   mediaRight: MediaRef | null
+  mediaThird: MediaRef | null
   heading: string | null
   caption: string | null
 }
@@ -102,10 +103,15 @@ export function CoverView({
     .map((row) => {
       const media = resolveMedia(row.media)
       if (!media) return null
+      const layout =
+        row.layout === 'split' ? ('split' as const)
+        : row.layout === 'grid3' ? ('grid3' as const)
+        : ('full' as const)
       return {
-        layout: row.layout === 'split' ? ('split' as const) : ('full' as const),
+        layout,
         media,
         mediaRight: resolveMedia(row.mediaRight),
+        mediaThird: resolveMedia(row.mediaThird),
         heading: (row.heading as string | null) || null,
         caption: (row.caption as string | null) || null,
       }
@@ -173,9 +179,21 @@ export function CoverView({
         wallRows.map((row, ri) => (
           // 2026-08-24 Alan 拍板（v4 參考錄影）：格與格、列與列完全貼合零間隙；
           // 只有帶大標的列上方留呼吸空間
-          <section key={ri} className={row.heading ? 'pt-12 md:pt-20' : ''}>
+          <section key={ri} className={row.heading ? 'pt-12 md:pt-20' : row.layout === 'grid3' ? 'mt-3 md:mt-6' : ''}>
             <RowHeading text={row.heading} />
-            {row.layout === 'split' ? (
+            {row.layout === 'grid3' ? (
+              // chuu 下方 lookbook 手法：三欄微間距（水平 12px / 垂直 24px）
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-6 px-3">
+                {[row.media, row.mediaRight, row.mediaThird]
+                  .filter((m): m is MediaRef => m !== null)
+                  .map((m, ci) => (
+                    <Link key={ci} href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
+                      <WallCell media={m} variant="cell" />
+                      {ci === 0 && <Caption text={row.caption} />}
+                    </Link>
+                  ))}
+              </div>
+            ) : row.layout === 'split' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
                 <Link href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
                   <WallCell media={row.media} variant="cell" />

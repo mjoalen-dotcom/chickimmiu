@@ -92,12 +92,13 @@ export const HomepageSettings: GlobalConfig = {
               defaultValue: 'full',
               options: [
                 { label: '整幅（一格滿版）', value: 'full' },
-                { label: '左右雙欄（兩格）', value: 'split' },
+                { label: '左右雙欄（兩格，貼合）', value: 'split' },
+                { label: '三欄（三格，微間距）', value: 'grid3' },
               ],
             },
             {
               name: 'media',
-              label: '素材（整幅／雙欄左）',
+              label: '素材（整幅／第 1 格）',
               type: 'upload',
               relationTo: 'media',
               required: true,
@@ -105,12 +106,23 @@ export const HomepageSettings: GlobalConfig = {
             },
             {
               name: 'mediaRight',
-              label: '素材（雙欄右）',
+              label: '素材（第 2 格）',
               type: 'upload',
               relationTo: 'media',
               admin: {
-                description: '版型選「左右雙欄」時使用',
-                condition: (_data, siblingData) => siblingData?.layout === 'split',
+                description: '雙欄／三欄時使用',
+                condition: (_data, siblingData) =>
+                  siblingData?.layout === 'split' || siblingData?.layout === 'grid3',
+              },
+            },
+            {
+              name: 'mediaThird',
+              label: '素材（第 3 格）',
+              type: 'upload',
+              relationTo: 'media',
+              admin: {
+                description: '三欄時使用',
+                condition: (_data, siblingData) => siblingData?.layout === 'grid3',
               },
             },
             {

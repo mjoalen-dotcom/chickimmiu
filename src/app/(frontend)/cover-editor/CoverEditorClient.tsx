@@ -27,11 +27,19 @@ type MediaDoc = {
 }
 
 type Row = {
-  layout: 'full' | 'split'
+  layout: 'full' | 'split' | 'grid3'
   media: MediaDoc | null
   mediaRight: MediaDoc | null
+  mediaThird: MediaDoc | null
   heading: string
   caption: string
+}
+
+const LAYOUT_CYCLE: Row['layout'][] = ['full', 'split', 'grid3']
+const LAYOUT_LABEL: Record<Row['layout'], string> = {
+  full: '整幅',
+  split: '雙欄（貼合）',
+  grid3: '三欄（微間距）',
 }
 
 type CoverState = {
@@ -297,9 +305,10 @@ export function CoverEditorClient() {
         sideImage: asMediaDoc(cp.sideImage),
         sideVideo: asMediaDoc(cp.sideVideo),
         rows: rawSections.map((s) => ({
-          layout: s.layout === 'split' ? 'split' : 'full',
+          layout: s.layout === 'split' ? 'split' as const : s.layout === 'grid3' ? 'grid3' as const : 'full' as const,
           media: asMediaDoc(s.media),
           mediaRight: asMediaDoc(s.mediaRight),
+          mediaThird: asMediaDoc(s.mediaThird),
           heading: (s.heading as string) || '',
           caption: (s.caption as string) || '',
         })),
@@ -346,7 +355,8 @@ export function CoverEditorClient() {
             .map((r) => ({
               layout: r.layout,
               media: r.media!.id,
-              mediaRight: r.layout === 'split' ? (r.mediaRight?.id ?? null) : null,
+              mediaRight: r.layout !== 'full' ? (r.mediaRight?.id ?? null) : null,
+              mediaThird: r.layout === 'grid3' ? (r.mediaThird?.id ?? null) : null,
               heading: r.heading || null,
               caption: r.caption || null,
             })),
@@ -498,14 +508,16 @@ export function CoverEditorClient() {
                 onClick={() =>
                   mutate((s) => {
                     const rows = [...s.rows]
-                    rows[i] = { ...rows[i], layout: rows[i].layout === 'full' ? 'split' : 'full' }
+                    const next = LAYOUT_CYCLE[(LAYOUT_CYCLE.indexOf(rows[i].layout) + 1) % LAYOUT_CYCLE.length]
+                    rows[i] = { ...rows[i], layout: next }
                     return { ...s, rows }
                   })
                 }
                 className="inline-flex items-center gap-1.5 text-[11px] border border-cream-200 px-3 py-1.5 hover:border-neutral-500 transition-colors"
+                title="點擊循環切換版型"
               >
-                {row.layout === 'full' ? <Columns2 size={12} /> : <RectangleHorizontal size={12} />}
-                {row.layout === 'full' ? '切成雙欄' : '切成整幅'}
+                {row.layout === 'full' ? <RectangleHorizontal size={12} /> : <Columns2 size={12} />}
+                {LAYOUT_LABEL[row.layout]} → {LAYOUT_LABEL[LAYOUT_CYCLE[(LAYOUT_CYCLE.indexOf(row.layout) + 1) % LAYOUT_CYCLE.length]]}
               </button>
               <button onClick={() => moveRow(i, -1)} disabled={i === 0} aria-label="上移" className="p-1.5 border border-cream-200 disabled:opacity-30 hover:border-neutral-500 transition-colors">
                 <ArrowUp size={12} />
@@ -538,8 +550,8 @@ export function CoverEditorClient() {
                 <CellPreview doc={row.media} emptyHint="點擊選擇素材" />
               </button>
             ) : (
-              <div className="grid grid-cols-2 gap-0">
-                {(['media', 'mediaRight'] as const).map((k) => (
+              <div className={row.layout === 'grid3' ? 'grid grid-cols-3 gap-1' : 'grid grid-cols-2 gap-0'}>
+                {(row.layout === 'grid3' ? (['media', 'mediaRight', 'mediaThird'] as const) : (['media', 'mediaRight'] as const)).map((k) => (
                   <button
                     key={k}
                     onClick={() =>
@@ -553,7 +565,7 @@ export function CoverEditorClient() {
                     }
                     className="relative aspect-[3/4] bg-cream-100 hover:opacity-90 transition-opacity"
                   >
-                    <CellPreview doc={row[k]} emptyHint={k === 'media' ? '左格素材' : '右格素材'} />
+                    <CellPreview doc={row[k]} emptyHint={k === 'media' ? '第 1 格' : k === 'mediaRight' ? '第 2 格' : '第 3 格'} />
                   </button>
                 ))}
               </div>
@@ -593,7 +605,7 @@ export function CoverEditorClient() {
           onClick={() =>
             mutate((s) => ({
               ...s,
-              rows: [...s.rows, { layout: 'full', media: null, mediaRight: null, heading: '', caption: '' }],
+              rows: [...s.rows, { layout: 'full', media: null, mediaRight: null, mediaThird: null, heading: '', caption: '' }],
             }))
           }
           className="w-full border-2 border-dashed border-neutral-300 py-5 text-xs text-neutral-500 hover:border-neutral-500 hover:text-foreground transition-colors inline-flex items-center justify-center gap-2"
