@@ -43,6 +43,15 @@ function requestOriginMatchesHost(request: NextRequest, origin: string | null, e
   }
 }
 
+function publicRequestOrigin(request: NextRequest): string {
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim()
+  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim()
+  if (forwardedHost && /^[a-z0-9.-]+(?::\d{1,5})?$/i.test(forwardedHost)) {
+    return `${forwardedProto === 'http' ? 'http' : 'https'}://${forwardedHost}`
+  }
+  return request.nextUrl.origin
+}
+
 export function OPTIONS(request: NextRequest) {
   return new NextResponse(null, { status: 204, headers: corsHeaders(request.headers.get('origin')) })
 }
@@ -142,7 +151,7 @@ export async function GET(request: NextRequest) {
     now: Math.floor(Date.now() / 1000),
     ttlSeconds: 300,
   })
-  const embedUrl = new URL(`/embed/${encodeURIComponent(widgetId)}`, request.nextUrl.origin)
+  const embedUrl = new URL(`/embed/${encodeURIComponent(widgetId)}`, publicRequestOrigin(request))
   embedUrl.searchParams.set('token', token)
   embedUrl.searchParams.set('host', requestedHost)
 
