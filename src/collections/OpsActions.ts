@@ -29,8 +29,14 @@ export const OpsActions: CollectionConfig = {
     useAsTitle: 'summary',
     defaultColumns: ['summary', 'actionType', 'risk', 'status', 'createdAt'],
     description:
-      '營運 AI 助理產生的行動提案與執行紀錄。AI 只能建立 pending 提案，' +
-      '真正的寫入一律要 admin 在此核准後才會發生。',
+      '📋 這是什麼：營運 AI 助理（Ops Copilot）產生的「行動提案」收件匣與執行紀錄。' +
+      'AI 掃描營運訊號（低庫存/滯銷/信用異常等）後只能建立 pending 提案，真正寫入一律要 admin 核准。｜' +
+      '🕹️ 怎麼用：主要操作走「/admin/ops-copilot 指揮艙」逐條核准/駁回；此列表是稽核軌跡。' +
+      '每筆提案看三個欄位下決定 — summary（按下去會發生什麼）、risk（high=動錢動價，先看 previewSnapshot 預覽差異）、' +
+      'input（AI 給的參數，執行前系統會再 validate + 熔斷檢查）。核准後 status 變 executed，' +
+      '結果寫在 resultMessage / affected；失敗看 error。｜' +
+      '✍️ 手動建立：一般不需要 — 若要手動派工給 AI 執行鏈，actionType 選好、input 填 JSON 參數、' +
+      'risk 照實標，存成 pending 後照同一核准流程走。過期未處理的提案會自動標 expired。',
   },
   access: {
     read: isAdmin,

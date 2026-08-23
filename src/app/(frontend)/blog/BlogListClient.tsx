@@ -66,7 +66,8 @@ interface Props {
 }
 
 export function BlogListClient({ initialPosts, categories, featuredPost }: Props) {
-  const posts = initialPosts.length > 0 ? initialPosts : DEMO_POSTS
+  // 2026-08-23：移除 DEMO_POSTS fallback（空資料放假文章 = 「後台刪了前台還在」假象）
+  const posts = initialPosts
   const cats = categories && categories.length > 0 ? categories : FALLBACK_CATEGORIES
   const labelByValue: Record<string, string> = Object.fromEntries(cats.map((c) => [c.value, c.label]))
   const [activeCategory, setActiveCategory] = useState('all')

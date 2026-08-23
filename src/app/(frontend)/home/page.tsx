@@ -542,37 +542,11 @@ export default async function HomePage() {
                   )
                 })
               ) : (
-                /* Fallback: hardcoded sample posts when no blog posts exist */
-                [
-                  { title: '夏日約會穿搭指南：名媛風洋裝這樣搭', category: '穿搭教學', date: '2026.04.01' },
-                  { title: '職場穿搭新定義：優雅又專業的通勤造型', category: '時尚趨勢', date: '2026.03.25' },
-                  { title: '春夏必備單品：百搭直筒褲的 5 種穿法', category: '穿搭教學', date: '2026.03.18' },
-                ].map((post, i) => {
-                  const fallbackImage = heroBanners[i] || heroBanners[0] || null
-                  return (
-                    <Link key={i} href="/blog" className="group bg-white rounded-2xl overflow-hidden border border-cream-200">
-                      <div className="aspect-[16/10] relative overflow-hidden bg-cream-100">
-                        {fallbackImage && (
-                          <Image
-                            src={fallbackImage}
-                            alt={post.title}
-                            fill
-                            className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
-                            sizes="(max-width: 768px) 100vw, 33vw"
-                            unoptimized
-                          />
-                        )}
-                      </div>
-                      <div className="p-5">
-                        <p className="text-[10px] tracking-widest text-gold-500 mb-2">{post.category}</p>
-                        <h3 className="text-sm font-medium mb-2 group-hover:text-gold-600 transition-colors">
-                          {post.title}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">{post.date}</p>
-                      </div>
-                    </Link>
-                  )
-                })
+                /* 2026-08-23：移除硬編假文章 fallback（demo 反模式清理）——
+                   沒有已發布文章時顯示空狀態，不再出現刪不掉的範例卡 */
+                <p className="col-span-full text-center text-sm text-muted-foreground py-10">
+                  穿搭誌籌備中，敬請期待
+                </p>
               )}
             </div>
           </div>

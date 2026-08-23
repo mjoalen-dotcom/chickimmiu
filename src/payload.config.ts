@@ -366,6 +366,12 @@ export default buildConfig({
             return `${base}/blog/${slug ?? ''}`
           case 'products':
             return `${base}/products/${slug ?? ''}`
+          case 'site-themes':
+            // 主題影響 /home hero 版型與配色
+            return `${base}/home`
+          case 'celebrity-features':
+            // 藝人牆固定顯示在 ckmu-on-show 頁
+            return `${base}/pages/ckmu-on-show`
           default:
             return `${base}/`
         }
@@ -375,7 +381,7 @@ export default buildConfig({
         { label: '平板', name: 'tablet', width: 768, height: 1024 },
         { label: '桌機', name: 'desktop', width: 1440, height: 900 },
       ],
-      collections: ['pages', 'podcasts', 'blog-posts', 'products'],
+      collections: ['pages', 'podcasts', 'blog-posts', 'products', 'site-themes', 'celebrity-features'],
       globals: [
         'homepage-settings',
         'about-page-settings',
