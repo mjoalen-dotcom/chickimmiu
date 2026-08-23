@@ -202,6 +202,22 @@ async function main() {
       const bySlug = await payload.find({ collection: 'categories', where: { slug: { equals: node.slug } }, limit: 1, depth: 0 })
       if (bySlug.docs[0]) id = relId(bySlug.docs[0])
     }
+    // slug 有 unique 約束：若目標 slug 被「別的」列占用（Shopline 殭屍），
+    // 先把占用者改名讓位（該列稍後會被停用）
+    {
+      const holder = await payload.find({ collection: 'categories', where: { slug: { equals: node.slug } }, limit: 1, depth: 0 })
+      const holderId = holder.docs[0] ? relId(holder.docs[0]) : null
+      if (holderId != null && holderId !== id) {
+        await payload.update({
+          collection: 'categories',
+          id: holderId,
+          data: { slug: `${node.slug}-legacy-${holderId}` } as never,
+          overrideAccess: true,
+          depth: 0,
+        })
+        log(`  · slug「${node.slug}」原被 id=${holderId} 占用，已改名讓位`)
+      }
+    }
     if (id != null) {
       await payload.update({ collection: 'categories', id, data: data as never, overrideAccess: true, depth: 0 })
     } else {
