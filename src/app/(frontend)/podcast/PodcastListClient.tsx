@@ -111,7 +111,9 @@ function formatDate(d?: string): string {
 }
 
 export function PodcastListClient({ initialEpisodes }: Props) {
-  const episodes = initialEpisodes.length > 0 ? initialEpisodes : DEMO_EPISODES
+  // 2026-08-23 修：不再 fallback DEMO_EPISODES — 後台刪光節目時前台曾顯示
+  // 3 集假資料，看起來像「刪除沒同步」。空清單就老實顯示空狀態。
+  const episodes = initialEpisodes
   const [activeCategory, setActiveCategory] = useState('全部')
 
   const filtered = useMemo(() => {

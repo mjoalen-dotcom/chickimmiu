@@ -48,7 +48,7 @@ export const HomepageSettings: GlobalConfig = {
       type: 'group',
       admin: {
         description:
-          '進站第一眼的展示封面（cn.chuu 式）：極簡 header + 大圖或大影片，點任何區域進 /home 賣場首頁。素材未設定時自動用內建品牌影片與輪播圖，不會開天窗。',
+          '進站第一眼的展示封面：極簡 header + 大圖或大影片，點任何區域進 /home 賣場首頁。素材未設定時自動用內建品牌影片與輪播圖，不會開天窗。🎨 推薦用「畫布編輯器」直接在版面上點著改：/cover-editor（需以後台帳號登入）。',
       },
       fields: [
         {
@@ -142,7 +142,7 @@ export const HomepageSettings: GlobalConfig = {
           label: '預設雙欄：影片（右）',
           type: 'upload',
           relationTo: 'media',
-          admin: { description: '預設雙欄影片；未設定用內建 ckmu_hero_v4 影片' },
+          admin: { description: '預設雙欄影片；未設定用內建品牌直式影片' },
         },
       ],
     },

@@ -112,7 +112,9 @@ export function CoverView({
 
   const sideImageUrl =
     getMediaUrl(coverPage.sideImage) || heroImages[1] || fallbackProductImage || null
-  const sideVideoUrl = getMediaUrl(coverPage.sideVideo) || '/videos/ckmu-hero-v4.mp4'
+  // ⚠️ 2026-08-23：原內建 ckmu-hero-v4.mp4 實為 chuu 官網螢幕錄影（參考素材，
+  // 版權不屬我方）已整檔移除；預設改用品牌直式影片（Alan 指定的自家 Reel）
+  const sideVideoUrl = getMediaUrl(coverPage.sideVideo) || '/videos/home-hero-9x16.mp4'
   const editorialImageUrl = bannerImage || heroImages[2] || heroImages[0] || null
 
   return (
