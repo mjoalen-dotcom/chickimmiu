@@ -335,6 +335,59 @@ export default buildConfig({
     importMap: {
       baseDir: path.resolve(dirname),
     },
+    // ── 即時預覽（2026-08-23 Alan：⑥ 內容與頁面全部要能預覽切換）──
+    // 頂層一次註冊，免動各 collection/global 檔（Pages/CelebrityFeatures 屬
+    // 保護檔）。前台 layout 掛 RefreshRouteOnSave：admin 預覽 iframe 內
+    // 儲存即刷新；/ 封面另有 useLivePreview 做到打字即同步（CoverView）。
+    livePreview: {
+      url: ({ data, collectionConfig, globalConfig }) => {
+        const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com'
+        if (globalConfig) {
+          const map: Record<string, string> = {
+            'homepage-settings': '/',
+            'about-page-settings': '/about',
+            'collections-page-settings': '/collections',
+            'faq-page-settings': '/faq',
+            'packaging-page-settings': '/packaging',
+            'policy-pages-settings': '/return-policy',
+            'product-list-settings': '/products',
+            'navigation-settings': '/home',
+            'global-settings': '/home',
+          }
+          return `${base}${map[globalConfig.slug] ?? '/'}`
+        }
+        const slug = (data as Record<string, unknown> | undefined)?.slug
+        switch (collectionConfig?.slug) {
+          case 'pages':
+            return `${base}/pages/${slug ?? ''}`
+          case 'podcasts':
+            return `${base}/podcast/${slug ?? ''}`
+          case 'blog-posts':
+            return `${base}/blog/${slug ?? ''}`
+          case 'products':
+            return `${base}/products/${slug ?? ''}`
+          default:
+            return `${base}/`
+        }
+      },
+      breakpoints: [
+        { label: '手機', name: 'mobile', width: 390, height: 844 },
+        { label: '平板', name: 'tablet', width: 768, height: 1024 },
+        { label: '桌機', name: 'desktop', width: 1440, height: 900 },
+      ],
+      collections: ['pages', 'podcasts', 'blog-posts', 'products'],
+      globals: [
+        'homepage-settings',
+        'about-page-settings',
+        'collections-page-settings',
+        'faq-page-settings',
+        'packaging-page-settings',
+        'policy-pages-settings',
+        'product-list-settings',
+        'navigation-settings',
+        'global-settings',
+      ],
+    },
     meta: {
       titleSuffix: '｜CHIC KIM & MIU 後台',
       description: 'CHIC KIM & MIU 靚秀國際｜品牌管理後台',

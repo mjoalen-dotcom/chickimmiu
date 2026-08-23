@@ -11,6 +11,7 @@ import { getCurrentUser } from '@/lib/auth/getCurrentUser'
 import { Providers } from '@/components/layout/Providers'
 import { BootBeaconCleanup } from '@/components/layout/BootBeaconCleanup'
 import { Navbar } from '@/components/layout/Navbar'
+import { LivePreviewRefresh } from '@/components/layout/LivePreviewRefresh'
 import { Footer } from '@/components/layout/Footer'
 import { FloatingChatButton } from '@/components/ui/FloatingChatButton'
 import { FloatingQuickMenu } from '@/components/ui/FloatingQuickMenu'
@@ -398,6 +399,8 @@ export default async function FrontendLayout({
               url={siteUrl}
             />
 
+            {/* admin 即時預覽 iframe 內儲存即刷新（不在 iframe 時零作用） */}
+            <LivePreviewRefresh serverURL={process.env.NEXT_PUBLIC_SITE_URL || ''} />
             <Navbar
               announcementText={(announcementBar.enabled !== false && announcementBar.text) ? (announcementBar.text as string) : undefined}
               announcementLink={announcementBar.link as string | undefined}

@@ -15,17 +15,8 @@ export const HomepageSettings: GlobalConfig = {
   admin: {
     group: '⑥ 內容與頁面',
     description: '管理首頁所有區塊的內容與顯示設定。「即時預覽」分頁 = 左邊改、右邊立刻看到歡迎頁效果。',
-    // 所改即所見（2026-08-23 Alan 需求）：admin 開「即時預覽」分頁，
-    // 右側 iframe 載入 / 封面，欄位一改畫面即時更新（前台 CoverView 的
-    // useLivePreview 收 postMessage）。支援手機/桌機斷點切換。
-    livePreview: {
-      url: () => `${process.env.NEXT_PUBLIC_SITE_URL || 'https://pre.chickimmiu.com'}/`,
-      breakpoints: [
-        { label: '手機', name: 'mobile', width: 390, height: 844 },
-        { label: '平板', name: 'tablet', width: 768, height: 1024 },
-        { label: '桌機', name: 'desktop', width: 1440, height: 900 },
-      ],
-    },
+    // livePreview 統一在 payload.config.ts 頂層 admin.livePreview 註冊
+    // （⑥ 內容與頁面全數納入）；/ 封面的打字級同步在 CoverView useLivePreview。
   },
   access: {
     read: () => true,
@@ -121,6 +112,12 @@ export const HomepageSettings: GlobalConfig = {
                 description: '版型選「左右雙欄」時使用',
                 condition: (_data, siblingData) => siblingData?.layout === 'split',
               },
+            },
+            {
+              name: 'heading',
+              label: '區塊標題（選填）',
+              type: 'text',
+              admin: { description: 'chuu 式大標，顯示在該列上方（例：New In / Editorial / Lookbook）' },
             },
             {
               name: 'caption',

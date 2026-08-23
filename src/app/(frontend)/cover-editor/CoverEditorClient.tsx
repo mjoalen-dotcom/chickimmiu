@@ -30,6 +30,7 @@ type Row = {
   layout: 'full' | 'split'
   media: MediaDoc | null
   mediaRight: MediaDoc | null
+  heading: string
   caption: string
 }
 
@@ -299,6 +300,7 @@ export function CoverEditorClient() {
           layout: s.layout === 'split' ? 'split' : 'full',
           media: asMediaDoc(s.media),
           mediaRight: asMediaDoc(s.mediaRight),
+          heading: (s.heading as string) || '',
           caption: (s.caption as string) || '',
         })),
       })
@@ -345,6 +347,7 @@ export function CoverEditorClient() {
               layout: r.layout,
               media: r.media!.id,
               mediaRight: r.layout === 'split' ? (r.mediaRight?.id ?? null) : null,
+              heading: r.heading || null,
               caption: r.caption || null,
             })),
         },
@@ -556,7 +559,19 @@ export function CoverEditorClient() {
               </div>
             )}
 
-            <div className="px-4 py-2.5 border-t border-cream-200">
+            <div className="px-4 py-2.5 border-t border-cream-200 grid gap-2 sm:grid-cols-2">
+              <input
+                value={row.heading}
+                onChange={(e) =>
+                  mutate((s) => {
+                    const rows = [...s.rows]
+                    rows[i] = { ...rows[i], heading: e.target.value }
+                    return { ...s, rows }
+                  })
+                }
+                placeholder="區塊大標（選填，chuu 式，顯示在列上方）"
+                className="w-full text-xs border border-cream-200 px-3 py-2 focus:outline-none focus:border-neutral-500"
+              />
               <input
                 value={row.caption}
                 onChange={(e) =>
@@ -578,7 +593,7 @@ export function CoverEditorClient() {
           onClick={() =>
             mutate((s) => ({
               ...s,
-              rows: [...s.rows, { layout: 'full', media: null, mediaRight: null, caption: '' }],
+              rows: [...s.rows, { layout: 'full', media: null, mediaRight: null, heading: '', caption: '' }],
             }))
           }
           className="w-full border-2 border-dashed border-neutral-300 py-5 text-xs text-neutral-500 hover:border-neutral-500 hover:text-foreground transition-colors inline-flex items-center justify-center gap-2"

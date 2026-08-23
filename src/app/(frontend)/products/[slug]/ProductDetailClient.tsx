@@ -250,6 +250,9 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
   const [selectedSize, setSelectedSize] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [currentImage, setCurrentImage] = useState(0)
+  // 韓系長圖（高寬比 >1.6）改 chuu 詳情頁手法：固定框內部可上下滑動，
+  // 不再被 object-cover 硬裁。載入時記各圖比例，一般圖維持原本裁切。
+  const [tallImages, setTallImages] = useState<Record<string, boolean>>({})
   const [showSizeGuide, setShowSizeGuide] = useState(false)
   const [activeTab, setActiveTab] = useState<TabId>('description')
   const [showStickyBar, setShowStickyBar] = useState(false)
@@ -557,14 +560,40 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
               )}
               <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-cream-100 border border-cream-200">
                 {images[currentImage]?.image?.url ? (
-                  <Image
-                    src={images[currentImage].image!.url!}
-                    alt={images[currentImage].image!.alt || (product.name as string)}
-                    fill
-                    className="object-cover"
-                    priority
-                    unoptimized
-                  />
+                  tallImages[images[currentImage].image!.url!] ? (
+                    <>
+                      {/* 長圖：框內滑動（chuu-detail 手法） */}
+                      <div className="absolute inset-0 overflow-y-auto overscroll-contain">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={images[currentImage].image!.url!}
+                          alt={images[currentImage].image!.alt || (product.name as string)}
+                          className="w-full h-auto"
+                        />
+                      </div>
+                      <span className="absolute bottom-3 right-3 px-2.5 py-1 bg-neutral-900/80 text-white text-[10px] tracking-[0.15em] rounded-full pointer-events-none">
+                        ↕ 圖片可滑動
+                      </span>
+                    </>
+                  ) : (
+                    <Image
+                      src={images[currentImage].image!.url!}
+                      alt={images[currentImage].image!.alt || (product.name as string)}
+                      fill
+                      className="object-cover"
+                      priority
+                      unoptimized
+                      onLoad={(e) => {
+                        const el = e.currentTarget
+                        // key 用 attribute 原始值（unoptimized 下 = 資料庫 url），
+                        // currentSrc 是絕對網址會跟查表 key 對不上
+                        const key = el.getAttribute('src')
+                        if (key && el.naturalWidth > 0 && el.naturalHeight / el.naturalWidth > 1.6) {
+                          setTallImages((prev) => ({ ...prev, [key]: true }))
+                        }
+                      }}
+                    />
+                  )
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
                     {product.name as string}

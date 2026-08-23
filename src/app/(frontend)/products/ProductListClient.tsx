@@ -208,27 +208,44 @@ export function ProductListClient({
   const start = totalDocs === 0 ? 0 : (currentPage - 1) * pageSize + 1
   const end = Math.min(currentPage * pageSize, totalDocs)
 
+  // LV/Dior 式頁首：大標直接顯示目前所在分類/標籤，而非固定「全部商品」
+  const activeCategoryName = (() => {
+    if (!activeCategory) return null
+    for (const parent of categoryTree.topLevel) {
+      if (String(parent.id) === activeCategory) return parent.name
+      const kids = categoryTree.childrenMap.get(String(parent.id)) || []
+      const hit = kids.find((c) => String(c.id) === activeCategory)
+      if (hit) return hit.name
+    }
+    return null
+  })()
+  const activeTagLabel = TAG_OPTIONS.find((o) => o.value && o.value === activeTag)?.label || null
+  const pageTitle = activeCategoryName || activeTagLabel || t('title')
+
   return (
-    <main className="bg-cream-50 min-h-screen">
-      {/* Header */}
-      <div className="bg-gradient-to-b from-cream-100 to-cream-50 border-b border-cream-200">
-        <div className="container py-8 md:py-12">
-          <p className="text-xs tracking-[0.3em] text-gold-500 mb-2">{t('eyebrow')}</p>
-          <h1 className="text-2xl md:text-3xl font-serif">{t('title')}</h1>
+    <main className="bg-white min-h-screen">
+      {/* Header — 大標=所在分類（LV/Dior 系列頁手法），白底 hairline */}
+      <div className="bg-white border-b border-cream-200">
+        <div className="container py-10 md:py-14">
+          <p className="text-[11px] tracking-[0.35em] text-neutral-400 uppercase mb-3">{t('eyebrow')}</p>
+          <h1 className="text-3xl md:text-4xl font-serif leading-tight">{pageTitle}</h1>
+          <p className="text-xs text-neutral-400 mt-3">
+            {totalDocs.toLocaleString()} ITEMS
+          </p>
         </div>
       </div>
 
       <div className="container py-6 md:py-10">
-        {/* Tag tabs */}
-        <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide">
+        {/* Tag tabs — 極簡文字列（underline active，去 pill） */}
+        <div className="flex items-center gap-6 mb-6 overflow-x-auto scrollbar-hide">
           {TAG_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               onClick={() => updateParams({ tag: opt.value || null })}
-              className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${
+              className={`text-xs tracking-[0.18em] uppercase whitespace-nowrap pb-1 border-b-2 transition-colors ${
                 activeTag === opt.value
-                  ? 'bg-foreground text-cream-50'
-                  : 'bg-white border border-cream-200 text-foreground/70 hover:border-gold-400'
+                  ? 'border-foreground text-foreground font-medium'
+                  : 'border-transparent text-neutral-500 hover:text-foreground'
               }`}
             >
               {opt.label}
@@ -236,18 +253,15 @@ export function ProductListClient({
           ))}
         </div>
 
-        {/* ── Category Navigation (always visible) ── */}
-        <div className="bg-white rounded-2xl border border-cream-200 p-4 md:p-5 mb-6">
-          <p className="text-xs font-medium text-muted-foreground mb-3 tracking-wider">
-            {t('categoryHeading')}
-          </p>
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-2">
+        {/* ── Category Navigation — LV/Dior 式純文字導覽（去卡片/金色 pill） ── */}
+        <div className="mb-8 border-b border-cream-200">
+          <div className="flex items-center gap-6 overflow-x-auto scrollbar-hide pb-3">
             <button
               onClick={() => updateParams({ category: null })}
-              className={`px-3.5 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors border ${
+              className={`text-sm whitespace-nowrap pb-1 border-b-2 transition-colors ${
                 !activeCategory
-                  ? 'bg-gold-500 text-white border-gold-500'
-                  : 'bg-cream-50 border-cream-200 text-foreground/70 hover:border-gold-400 hover:text-foreground'
+                  ? 'border-foreground text-foreground font-medium'
+                  : 'border-transparent text-foreground/60 hover:text-foreground'
               }`}
             >
               {t('categoryAll')}
@@ -260,10 +274,10 @@ export function ProductListClient({
                 <button
                   key={String(parent.id)}
                   onClick={() => updateParams({ category: String(parent.id) })}
-                  className={`px-3.5 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors border ${
+                  className={`text-sm whitespace-nowrap pb-1 border-b-2 transition-colors ${
                     isParentActive || isChildActive
-                      ? 'bg-gold-500 text-white border-gold-500'
-                      : 'bg-cream-50 border-cream-200 text-foreground/70 hover:border-gold-400 hover:text-foreground'
+                      ? 'border-foreground text-foreground font-medium'
+                      : 'border-transparent text-foreground/60 hover:text-foreground'
                   }`}
                 >
                   {parent.name}
@@ -272,7 +286,7 @@ export function ProductListClient({
             })}
           </div>
 
-          {/* Subcategories — show when a parent with children is active */}
+          {/* Subcategories — 次階文字列 */}
           {(() => {
             const activeParentId = categoryTree.topLevel.find((p) => {
               if (String(p.id) === activeCategory) return true
@@ -287,14 +301,14 @@ export function ProductListClient({
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="flex items-center gap-2 mt-3 pt-3 border-t border-cream-100 overflow-x-auto scrollbar-hide"
+                className="flex items-center gap-5 pb-3 overflow-x-auto scrollbar-hide"
               >
                 <button
                   onClick={() => updateParams({ category: String(activeParentId.id) })}
-                  className={`px-3 py-1 rounded-full text-xs whitespace-nowrap transition-colors border ${
+                  className={`text-xs whitespace-nowrap transition-colors ${
                     activeCategory === String(activeParentId.id)
-                      ? 'bg-foreground/10 border-foreground/20 text-foreground font-medium'
-                      : 'bg-cream-50 border-cream-100 text-foreground/60 hover:text-foreground'
+                      ? 'text-foreground font-medium underline underline-offset-4'
+                      : 'text-foreground/50 hover:text-foreground'
                   }`}
                 >
                   {t('categoryAllPrefix')}
@@ -304,10 +318,10 @@ export function ProductListClient({
                   <button
                     key={String(child.id)}
                     onClick={() => updateParams({ category: String(child.id) })}
-                    className={`px-3 py-1 rounded-full text-xs whitespace-nowrap transition-colors border ${
+                    className={`text-xs whitespace-nowrap transition-colors ${
                       activeCategory === String(child.id)
-                        ? 'bg-foreground/10 border-foreground/20 text-foreground font-medium'
-                        : 'bg-cream-50 border-cream-100 text-foreground/60 hover:text-foreground'
+                        ? 'text-foreground font-medium underline underline-offset-4'
+                        : 'text-foreground/50 hover:text-foreground'
                     }`}
                   >
                     {child.name}

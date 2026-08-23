@@ -34,7 +34,20 @@ type WallRow = {
   layout: 'full' | 'split'
   media: MediaRef
   mediaRight: MediaRef | null
+  heading: string | null
   caption: string | null
+}
+
+/** chuu 式區塊大標（列上方，字重 400、留白大） */
+function RowHeading({ text }: { text: string | null }) {
+  if (!text) return null
+  return (
+    <div className="container">
+      <h2 className="text-2xl md:text-[32px] font-serif font-normal leading-tight mb-5 md:mb-7">
+        {text}
+      </h2>
+    </div>
+  )
 }
 
 function WallCell({ media, variant }: { media: MediaRef; variant: 'full' | 'cell' }) {
@@ -93,6 +106,7 @@ export function CoverView({
         layout: row.layout === 'split' ? ('split' as const) : ('full' as const),
         media,
         mediaRight: resolveMedia(row.mediaRight),
+        heading: (row.heading as string | null) || null,
         caption: (row.caption as string | null) || null,
       }
     })
@@ -156,32 +170,35 @@ export function CoverView({
 
       {/* ── 2. 展示媒體牆（後台逐列策展；LV collection 式） ── */}
       {wallRows.length > 0 ? (
-        wallRows.map((row, ri) =>
-          row.layout === 'split' ? (
-            <div key={ri} className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-              <Link href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
-                <WallCell media={row.media} variant="cell" />
+        wallRows.map((row, ri) => (
+          // chuu 式節奏：列與列之間留白大（有標題時更明顯），雙欄內部縫 3px
+          <section key={ri} className="mt-10 md:mt-16">
+            <RowHeading text={row.heading} />
+            {row.layout === 'split' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Link href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
+                  <WallCell media={row.media} variant="cell" />
+                  <Caption text={row.caption} />
+                </Link>
+                {row.mediaRight && (
+                  <Link href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
+                    <WallCell media={row.mediaRight} variant="cell" />
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <Link
+                href={ENTER}
+                className={`group relative block overflow-hidden bg-cream-100 ${
+                  row.media.isVideo ? '' : 'h-[70vh] md:h-[92vh]'
+                }`}
+              >
+                <WallCell media={row.media} variant="full" />
                 <Caption text={row.caption} />
               </Link>
-              {row.mediaRight && (
-                <Link href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
-                  <WallCell media={row.mediaRight} variant="cell" />
-                </Link>
-              )}
-            </div>
-          ) : (
-            <Link
-              key={ri}
-              href={ENTER}
-              className={`group relative block overflow-hidden bg-cream-100 mt-3 ${
-                row.media.isVideo ? '' : 'h-[70vh] md:h-[92vh]'
-              }`}
-            >
-              <WallCell media={row.media} variant="full" />
-              <Caption text={row.caption} />
-            </Link>
-          ),
-        )
+            )}
+          </section>
+        ))
       ) : (
         <>
           {/* ── 預設精簡版：一邊照片一邊影片 + 形象大圖 ── */}
@@ -223,7 +240,7 @@ export function CoverView({
       )}
 
       {/* ── 3. End card：品牌一句話 + 進入賣場 ── */}
-      <Link href={ENTER} className="group block bg-neutral-950 text-white mt-3">
+      <Link href={ENTER} className="group block bg-neutral-950 text-white mt-10 md:mt-16">
         <div className="container py-20 md:py-28 text-center">
           <p className="text-[11px] tracking-[0.35em] text-white/60 mb-5 uppercase">Chic Kim &amp; Miu</p>
           <h2 className="text-2xl md:text-4xl font-serif leading-snug mb-8">
