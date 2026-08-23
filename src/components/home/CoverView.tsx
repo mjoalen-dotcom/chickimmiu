@@ -171,11 +171,12 @@ export function CoverView({
       {/* ── 2. 展示媒體牆（後台逐列策展；LV collection 式） ── */}
       {wallRows.length > 0 ? (
         wallRows.map((row, ri) => (
-          // chuu 式節奏：列與列之間留白大（有標題時更明顯），雙欄內部縫 3px
-          <section key={ri} className="mt-10 md:mt-16">
+          // 2026-08-24 Alan 拍板（v4 參考錄影）：格與格、列與列完全貼合零間隙；
+          // 只有帶大標的列上方留呼吸空間
+          <section key={ri} className={row.heading ? 'pt-12 md:pt-20' : ''}>
             <RowHeading text={row.heading} />
             {row.layout === 'split' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
                 <Link href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
                   <WallCell media={row.media} variant="cell" />
                   <Caption text={row.caption} />
@@ -201,8 +202,8 @@ export function CoverView({
         ))
       ) : (
         <>
-          {/* ── 預設精簡版：一邊照片一邊影片 + 形象大圖 ── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+          {/* ── 預設精簡版：一邊照片一邊影片 + 形象大圖（零間隙貼合） ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
             {sideImageUrl && (
               <Link href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
                 <Image
@@ -225,7 +226,7 @@ export function CoverView({
             </Link>
           </div>
           {editorialImageUrl && (
-            <Link href={ENTER} className="group relative block h-[70vh] md:h-[92vh] overflow-hidden bg-cream-100 mt-3">
+            <Link href={ENTER} className="group relative block h-[70vh] md:h-[92vh] overflow-hidden bg-cream-100">
               <Image
                 src={editorialImageUrl}
                 alt="CHIC KIM & MIU EDITORIAL"
@@ -239,8 +240,8 @@ export function CoverView({
         </>
       )}
 
-      {/* ── 3. End card：品牌一句話 + 進入賣場 ── */}
-      <Link href={ENTER} className="group block bg-neutral-950 text-white mt-10 md:mt-16">
+      {/* ── 3. End card：品牌一句話 + 進入賣場（與牆貼合） ── */}
+      <Link href={ENTER} className="group block bg-neutral-950 text-white">
         <div className="container py-20 md:py-28 text-center">
           <p className="text-[11px] tracking-[0.35em] text-white/60 mb-5 uppercase">Chic Kim &amp; Miu</p>
           <h2 className="text-2xl md:text-4xl font-serif leading-snug mb-8">

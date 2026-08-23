@@ -538,7 +538,7 @@ export function CoverEditorClient() {
                 <CellPreview doc={row.media} emptyHint="點擊選擇素材" />
               </button>
             ) : (
-              <div className="grid grid-cols-2 gap-1.5 p-1.5">
+              <div className="grid grid-cols-2 gap-0">
                 {(['media', 'mediaRight'] as const).map((k) => (
                   <button
                     key={k}

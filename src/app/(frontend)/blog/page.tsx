@@ -58,10 +58,21 @@ export default async function BlogPage() {
           limit: 100,
           depth: 0,
         })
-        categories = (catRes.docs as unknown as Array<Record<string, unknown>>).map((c) => ({
-          value: String(c.value),
-          label: String(c.name),
-        }))
+        // 2026-08-24 修：同 value 分類 store/kim 兩站各有一筆（08-14 分表遺產），
+        // 全撈不去重會讓「穿搭教學」等出現兩次 — 以 value 去重（沿 displayOrder
+        // 排序取先出現者，兩站同名語意相同）
+        const seenValues = new Set<string>()
+        categories = (catRes.docs as unknown as Array<Record<string, unknown>>)
+          .filter((c) => {
+            const v = String(c.value)
+            if (seenValues.has(v)) return false
+            seenValues.add(v)
+            return true
+          })
+          .map((c) => ({
+            value: String(c.value),
+            label: String(c.name),
+          }))
       } catch {
         // blog-categories 表尚未 migrate — 用後備
       }
