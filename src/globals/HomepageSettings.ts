@@ -71,19 +71,67 @@ export const HomepageSettings: GlobalConfig = {
           relationTo: 'media',
           admin: { description: '型式選「大圖」時使用；未設定 fallback 下方輪播橫幅第一張' },
         },
+        // ── 展示媒體牆（LV collection 式，2026-08-23 需求）──
+        {
+          name: 'sections',
+          label: '展示媒體牆（由上而下）',
+          type: 'array',
+          maxRows: 20,
+          admin: {
+            description:
+              'Hero 下方的展示區塊，像 LV 系列頁那樣一列一列排。每列選「整幅」放 1 格、或「左右雙欄」放 2 格；每格都可以放圖片或影片（自動判別）。沒設定任何列時，會用下面的「預設雙欄」+ 形象 banner 圖組出精簡版。',
+            initCollapsed: true,
+          },
+          fields: [
+            {
+              name: 'layout',
+              label: '版型',
+              type: 'select',
+              defaultValue: 'full',
+              options: [
+                { label: '整幅（一格滿版）', value: 'full' },
+                { label: '左右雙欄（兩格）', value: 'split' },
+              ],
+            },
+            {
+              name: 'media',
+              label: '素材（整幅／雙欄左）',
+              type: 'upload',
+              relationTo: 'media',
+              required: true,
+              admin: { description: '圖片或影片皆可（影片自動靜音循環播放）' },
+            },
+            {
+              name: 'mediaRight',
+              label: '素材（雙欄右）',
+              type: 'upload',
+              relationTo: 'media',
+              admin: {
+                description: '版型選「左右雙欄」時使用',
+                condition: (_data, siblingData) => siblingData?.layout === 'split',
+              },
+            },
+            {
+              name: 'caption',
+              label: '疊字（選填）',
+              type: 'text',
+              admin: { description: '顯示在該列左下角的小字，例如系列名稱' },
+            },
+          ],
+        },
         {
           name: 'sideImage',
-          label: '下方雙欄：照片（左）',
+          label: '預設雙欄：照片（左）',
           type: 'upload',
           relationTo: 'media',
-          admin: { description: '「一邊照片一邊影片」區塊；未設定用輪播第二張或新品圖' },
+          admin: { description: '上面媒體牆沒設定列時的預設雙欄照片；未設定用輪播第二張或新品圖' },
         },
         {
           name: 'sideVideo',
-          label: '下方雙欄：影片（右）',
+          label: '預設雙欄：影片（右）',
           type: 'upload',
           relationTo: 'media',
-          admin: { description: '未設定用內建 ckmu_hero_v4 影片' },
+          admin: { description: '預設雙欄影片；未設定用內建 ckmu_hero_v4 影片' },
         },
       ],
     },

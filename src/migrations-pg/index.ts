@@ -11,6 +11,7 @@ import * as migration_20260821_150000_add_customer_nickname from './20260821_150
 import * as migration_20260821_170000_users_customers_cutover from './20260821_170000_users_customers_cutover';
 import * as migration_20260822_150000_add_notifications from './20260822_150000_add_notifications';
 import * as migration_20260823_120000_add_cover_page_settings from './20260823_120000_add_cover_page_settings';
+import * as migration_20260823_140000_add_cover_wall_sections from './20260823_140000_add_cover_wall_sections';
 
 export const migrations = [
   {
@@ -78,5 +79,10 @@ export const migrations = [
     up: migration_20260823_120000_add_cover_page_settings.up,
     down: migration_20260823_120000_add_cover_page_settings.down,
     name: '20260823_120000_add_cover_page_settings',
+  },
+  {
+    up: migration_20260823_140000_add_cover_wall_sections.up,
+    down: migration_20260823_140000_add_cover_wall_sections.down,
+    name: '20260823_140000_add_cover_wall_sections',
   },
 ];

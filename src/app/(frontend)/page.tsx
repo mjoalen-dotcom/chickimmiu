@@ -4,118 +4,159 @@ import { ArrowRight } from 'lucide-react'
 import { HeroVideo } from '@/components/home/HeroVideo'
 import { AutoplayVideo } from '@/components/home/AutoplayVideo'
 import { getPayload } from 'payload'
-import { getMediaUrl, normalizeMediaUrl } from '@/lib/media-url'
+import { getMediaUrl } from '@/lib/media-url'
 import config from '@payload-config'
 
 /**
- * `/` 歡迎頁（展示封面）v4 — 2026-08-23 Alan 拍板
+ * `/` 歡迎頁（展示封面）v5 — 2026-08-23 Alan 二修
  * ────────────────────────────────────────────────
- * - Header 極簡（Navbar 在 / 自動收掉公告帶+功能導覽列，見 Navbar.tsx）
- * - 主視覺：大影片或大圖，後台「首頁設定 → 歡迎頁」自選（heroMode）
- * - 往下拉：一邊照片一邊影片（cn.chuu 雙欄 cell 手法），素材同樣後台可換
+ * - Header 極簡（Navbar 在 / 收掉公告帶+導覽列，見 Navbar.tsx）
+ * - 主視覺：大影片或大圖，後台「首頁設定 → 歡迎頁」自選
+ * - 中段：LV collection 式「展示媒體牆」— 後台逐列設定（整幅或左右雙欄，
+ *   每格圖片/影片自動判別）。沒設定列時走精簡預設（雙欄照片|影片 + 形象大圖）。
+ * - 自動商品 LOOK 卡已移除（Alan：「目前有很多LOOK」→ 封面內容全由後台策展）
  * - 點任何區域 → /home（原完整首頁）
- * 素材未設定時全部走內建 fallback（品牌影片 / 輪播圖 / 商品圖），不開天窗。
  */
 
 export const revalidate = 300
 
 const ENTER = '/home'
 
-function getProductImage(product: Record<string, unknown>): string | undefined {
-  const images = product.images as { image?: { url?: string } | number }[] | undefined
-  if (!images?.length) return undefined
-  const img = images[0]?.image
-  if (typeof img === 'object' && img !== null) return normalizeMediaUrl(img.url)
-  return undefined
+type MediaRef = { url: string; isVideo: boolean }
+
+function resolveMedia(val: unknown): MediaRef | null {
+  if (!val || typeof val !== 'object') return null
+  const url = getMediaUrl(val)
+  if (!url) return null
+  const mime = String((val as Record<string, unknown>).mimeType ?? '')
+  return { url, isVideo: mime.startsWith('video/') || /\.(mp4|webm)$/i.test(url) }
+}
+
+type WallRow = {
+  layout: 'full' | 'split'
+  media: MediaRef
+  mediaRight: MediaRef | null
+  caption: string | null
 }
 
 async function fetchCoverData() {
   const defaults = {
     coverPage: {} as Record<string, unknown>,
+    wallRows: [] as WallRow[],
     heroImages: [] as string[],
     bannerImage: null as string | null,
-    lookProducts: [] as { name: string; price: number; image: string }[],
-    gridImages: [] as { name: string; image: string }[],
+    fallbackProductImage: null as string | null,
   }
   if (!process.env.DATABASE_URI) return defaults
 
   try {
     const payload = await getPayload({ config })
 
-    const [homepage, newDocs, hotDocs] = await Promise.all([
+    const [homepage, newDocs] = await Promise.all([
       payload
         .findGlobal({ slug: 'homepage-settings', depth: 2 })
         .then((r) => r as unknown as Record<string, unknown>)
         .catch(() => null as Record<string, unknown> | null),
       payload
-        .find({ collection: 'products', sort: '-createdAt', limit: 2, depth: 1 })
-        .then((r) => r.docs as unknown as Record<string, unknown>[])
-        .catch(() => [] as Record<string, unknown>[]),
-      payload
-        .find({ collection: 'products', where: { isHot: { equals: true } }, sort: '-createdAt', limit: 6, depth: 1 })
+        .find({ collection: 'products', sort: '-createdAt', limit: 1, depth: 1 })
         .then((r) => r.docs as unknown as Record<string, unknown>[])
         .catch(() => [] as Record<string, unknown>[]),
     ])
 
-    // 熱銷不足 6 件用最新品補滿圖牆
-    let gridDocs = hotDocs
-    if (gridDocs.length < 6) {
-      try {
-        const fallback = await payload.find({ collection: 'products', sort: '-createdAt', limit: 8, depth: 1 })
-        const seen = new Set(gridDocs.map((d) => String(d.id)))
-        gridDocs = [
-          ...gridDocs,
-          ...(fallback.docs as unknown as Record<string, unknown>[]).filter((d) => !seen.has(String(d.id))),
-        ].slice(0, 6)
-      } catch { /* 有幾張算幾張 */ }
-    }
+    const coverPage = (homepage?.coverPage as Record<string, unknown>) || {}
+
+    const rawSections = (coverPage.sections as Array<Record<string, unknown>> | undefined) || []
+    const wallRows: WallRow[] = rawSections
+      .map((row) => {
+        const media = resolveMedia(row.media)
+        if (!media) return null
+        return {
+          layout: row.layout === 'split' ? ('split' as const) : ('full' as const),
+          media,
+          mediaRight: resolveMedia(row.mediaRight),
+          caption: (row.caption as string | null) || null,
+        }
+      })
+      .filter((r): r is WallRow => r !== null)
 
     const cmsBanners = (homepage?.heroBanners as Array<Record<string, unknown>> | undefined) || []
     const heroImages = cmsBanners
       .map((b) => getMediaUrl(b.image))
       .filter((u): u is string => Boolean(u))
     const brandBanner = (homepage?.brandBanner as Record<string, unknown>) || {}
-    const bannerImage = getMediaUrl(brandBanner.image)
 
-    const lookProducts = newDocs
-      .map((p) => {
-        const image = getProductImage(p)
-        if (!image) return null
-        return { name: p.name as string, price: p.price as number, image }
-      })
-      .filter((p): p is { name: string; price: number; image: string } => p !== null)
-
-    const gridImages = gridDocs
-      .map((p) => {
-        const image = getProductImage(p)
-        if (!image) return null
-        return { name: p.name as string, image }
-      })
-      .filter((p): p is { name: string; image: string } => p !== null)
+    const firstProduct = newDocs[0]
+    const productImages = firstProduct?.images as { image?: { url?: string } | number }[] | undefined
+    const firstImg = productImages?.[0]?.image
+    const fallbackProductImage =
+      typeof firstImg === 'object' && firstImg !== null ? getMediaUrl(firstImg) || null : null
 
     return {
-      coverPage: (homepage?.coverPage as Record<string, unknown>) || {},
+      coverPage,
+      wallRows,
       heroImages,
-      bannerImage: bannerImage || null,
-      lookProducts,
-      gridImages,
+      bannerImage: getMediaUrl(brandBanner.image) || null,
+      fallbackProductImage,
     }
   } catch {
     return defaults
   }
 }
 
-export default async function CoverPage() {
-  const { coverPage, heroImages, bannerImage, lookProducts, gridImages } = await fetchCoverData()
+/* ── 媒體牆單格（圖片或影片） ── */
+function WallCell({
+  media,
+  variant,
+  priorityImage = false,
+}: {
+  media: MediaRef
+  variant: 'full' | 'cell'
+  priorityImage?: boolean
+}) {
+  if (media.isVideo) {
+    return variant === 'full' ? (
+      <AutoplayVideo src={media.url} className="w-full h-auto max-h-[94vh] object-cover" />
+    ) : (
+      <AutoplayVideo src={media.url} className="absolute inset-0 w-full h-full object-cover" />
+    )
+  }
+  return (
+    <Image
+      src={media.url}
+      alt="CHIC KIM & MIU"
+      fill
+      className="object-cover object-top group-hover:scale-[1.02] transition-transform duration-700"
+      sizes={variant === 'full' ? '100vw' : '(max-width: 768px) 100vw, 50vw'}
+      priority={priorityImage}
+      unoptimized
+    />
+  )
+}
 
-  // ── 後台歡迎頁設定解析（未設定全走 fallback） ──
+function Caption({ text }: { text: string | null }) {
+  if (!text) return null
+  return (
+    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/40 to-transparent pt-16 pb-5 px-6 pointer-events-none">
+      <p className="text-[11px] tracking-[0.3em] text-white/90 uppercase">{text}</p>
+    </div>
+  )
+}
+
+export default async function CoverPage() {
+  const { coverPage, wallRows, heroImages, bannerImage, fallbackProductImage } =
+    await fetchCoverData()
+
+  // ── 主視覺設定解析（未設定全走 fallback） ──
   const heroMode = (coverPage.heroMode as string) === 'image' ? 'image' : 'video'
   const heroVideoDesktop = getMediaUrl(coverPage.heroVideo) || '/videos/home-hero-16x9.mp4'
   const heroVideoMobile = getMediaUrl(coverPage.heroVideoMobile) || '/videos/home-hero-9x16.mp4'
   const heroImageUrl = getMediaUrl(coverPage.heroImage) || heroImages[0] || null
+
+  // ── 預設精簡版素材（媒體牆沒設定列時用） ──
   const sideImageUrl =
-    getMediaUrl(coverPage.sideImage) || heroImages[1] || lookProducts[0]?.image || null
+    getMediaUrl(coverPage.sideImage) || heroImages[1] || fallbackProductImage || null
   const sideVideoUrl = getMediaUrl(coverPage.sideVideo) || '/videos/ckmu-hero-v4.mp4'
+  const editorialImageUrl = bannerImage || heroImages[2] || heroImages[0] || null
 
   return (
     <main className="bg-white">
@@ -152,87 +193,74 @@ export default async function CoverPage() {
         </Link>
       ) : null}
 
-      {/* ── 2. 一邊照片一邊影片（cn.chuu 雙欄 cell） ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-        {sideImageUrl && (
-          <Link href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
-            <Image
-              src={sideImageUrl}
-              alt="CHIC KIM & MIU LOOK"
-              fill
-              className="object-cover object-top group-hover:scale-[1.03] transition-transform duration-700"
-              sizes="(max-width: 768px) 100vw, 50vw"
-              unoptimized
-            />
-          </Link>
-        )}
-        <Link href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-neutral-950">
-          <AutoplayVideo
-            src={sideVideoUrl}
-            className="absolute inset-0 w-full h-full object-cover"
-            label="CHIC KIM & MIU FILM"
-          />
-        </Link>
-      </div>
-
-      {/* ── 3. LOOK 2 欄大卡（新品前 2 件） ── */}
-      {lookProducts.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-          {lookProducts.map((p, i) => (
-            <Link key={p.name} href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
-              <Image
-                src={p.image}
-                alt={p.name}
-                fill
-                className="object-cover object-top group-hover:scale-[1.04] transition-transform duration-700"
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/45 to-transparent pt-20 pb-6 px-6 pointer-events-none">
-                <p className="text-[10px] tracking-[0.3em] text-white/85 mb-2">
-                  NEW IN · LOOK {String(i + 1).padStart(2, '0')}
-                </p>
-                <p className="text-sm md:text-base text-white font-medium truncate">{p.name}</p>
-              </div>
+      {/* ── 2. 展示媒體牆（後台逐列策展；LV collection 式） ── */}
+      {wallRows.length > 0 ? (
+        wallRows.map((row, ri) =>
+          row.layout === 'split' ? (
+            <div key={ri} className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+              <Link href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
+                <WallCell media={row.media} variant="cell" />
+                <Caption text={row.caption} />
+              </Link>
+              {row.mediaRight && (
+                <Link href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
+                  <WallCell media={row.mediaRight} variant="cell" />
+                </Link>
+              )}
+            </div>
+          ) : (
+            <Link
+              key={ri}
+              href={ENTER}
+              className={`group relative block overflow-hidden bg-cream-100 mt-3 ${
+                row.media.isVideo ? '' : 'h-[70vh] md:h-[92vh]'
+              }`}
+            >
+              <WallCell media={row.media} variant="full" />
+              <Caption text={row.caption} />
             </Link>
-          ))}
-        </div>
-      )}
-
-      {/* ── 4. 全幅編輯大圖（形象 banner 圖或輪播第三張） ── */}
-      {(bannerImage || heroImages[2] || heroImages[0]) && (
-        <Link href={ENTER} className="group relative block h-[70vh] md:h-[92vh] overflow-hidden bg-cream-100 mt-3">
-          <Image
-            src={(bannerImage || heroImages[2] || heroImages[0])!}
-            alt="CHIC KIM & MIU EDITORIAL"
-            fill
-            className="object-cover object-top group-hover:scale-[1.02] transition-transform duration-700"
-            sizes="100vw"
-            unoptimized
-          />
-        </Link>
-      )}
-
-      {/* ── 5. six-grid 商品圖牆 ── */}
-      {gridImages.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
-          {gridImages.map((p, i) => (
-            <Link key={`${p.name}-${i}`} href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
-              <Image
-                src={p.image}
-                alt={p.name}
-                fill
-                className="object-cover object-top group-hover:scale-[1.04] transition-transform duration-700"
-                sizes="(max-width: 768px) 50vw, 33vw"
+          ),
+        )
+      ) : (
+        <>
+          {/* ── 預設精簡版：一邊照片一邊影片 + 形象大圖 ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+            {sideImageUrl && (
+              <Link href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-cream-100">
+                <Image
+                  src={sideImageUrl}
+                  alt="CHIC KIM & MIU LOOK"
+                  fill
+                  className="object-cover object-top group-hover:scale-[1.03] transition-transform duration-700"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  unoptimized
+                />
+              </Link>
+            )}
+            <Link href={ENTER} className="group relative block aspect-[3/4] overflow-hidden bg-neutral-950">
+              <AutoplayVideo
+                src={sideVideoUrl}
+                className="absolute inset-0 w-full h-full object-cover"
+                label="CHIC KIM & MIU FILM"
               />
-              <span className="absolute top-3 left-3 px-2 py-0.5 bg-white/90 text-neutral-900 text-[10px] tracking-[0.18em] pointer-events-none">
-                LOOK {String(i + 1).padStart(2, '0')}
-              </span>
             </Link>
-          ))}
-        </div>
+          </div>
+          {editorialImageUrl && (
+            <Link href={ENTER} className="group relative block h-[70vh] md:h-[92vh] overflow-hidden bg-cream-100 mt-3">
+              <Image
+                src={editorialImageUrl}
+                alt="CHIC KIM & MIU EDITORIAL"
+                fill
+                className="object-cover object-top group-hover:scale-[1.02] transition-transform duration-700"
+                sizes="100vw"
+                unoptimized
+              />
+            </Link>
+          )}
+        </>
       )}
 
-      {/* ── 6. End card：品牌一句話 + 進入賣場 ── */}
+      {/* ── 3. End card：品牌一句話 + 進入賣場 ── */}
       <Link href={ENTER} className="group block bg-neutral-950 text-white mt-3">
         <div className="container py-20 md:py-28 text-center">
           <p className="text-[11px] tracking-[0.35em] text-white/60 mb-5 uppercase">Chic Kim &amp; Miu</p>
