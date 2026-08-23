@@ -10,6 +10,13 @@ import { auth as nextAuth } from '@/auth'
  * visited /account to trigger the bridge), falls back to NextAuth session
  * and looks up the Payload user by email. Rejects unverified users.
  *
+ * Only `customers` accounts are accepted as the API user: payload.auth()
+ * authenticates every auth-enabled collection, so an admin logged into
+ * /admin (users collection) would otherwise pass through and their users.id
+ * would be written into customer relationships (player/user FKs → customers
+ * after the 16-7 cutover), violating the FK. Admins with a same-email
+ * customer account still resolve via the NextAuth fallback below.
+ *
  * Returns { payload, user } or { payload, user: null }.
  */
 export async function resolveApiUser(
@@ -19,7 +26,7 @@ export async function resolveApiUser(
   const hdrs = headers ?? (await nextHeaders())
 
   const { user } = await payload.auth({ headers: hdrs })
-  if (user) return { payload, user }
+  if (user && user.collection === 'customers') return { payload, user }
 
   // Fallback: OAuth session without Payload cookie
   try {
@@ -33,7 +40,9 @@ export async function resolveApiUser(
       if (docs.length > 0) {
         const doc = docs[0] as unknown as { _verified?: boolean }
         if (doc._verified !== false) {
-          return { payload, user: docs[0] as TypedUser }
+          // find() docs lack the `collection` discriminator payload.auth() adds;
+          // attach it so downstream `user.collection === 'customers'` checks pass.
+          return { payload, user: { ...docs[0], collection: 'customers' } as TypedUser }
         }
       }
     }
