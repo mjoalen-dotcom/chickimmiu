@@ -4,6 +4,13 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'Facebook 登入資料刪除說明',
   description: '申請移除 CHIC KIM & MIU 保存的 Facebook 登入連結與會員資料。',
+  alternates: { canonical: '/facebook-data-deletion' },
+  openGraph: {
+    type: 'website',
+    title: 'Facebook 登入資料刪除說明',
+    description: '申請移除 CHIC KIM & MIU 保存的 Facebook 登入連結與會員資料。',
+    url: '/facebook-data-deletion',
+  },
 }
 
 export default function FacebookDataDeletionPage() {

@@ -23,6 +23,13 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: data.seoTitle || '隱私權政策',
     description: data.seoDescription || 'CHIC KIM & MIU 隱私權政策 — 了解我們如何收集、使用及保護您的個人資料。',
+    alternates: { canonical: '/privacy-policy' },
+    openGraph: {
+      type: 'website',
+      title: data.seoTitle || '隱私權政策',
+      description: data.seoDescription || 'CHIC KIM & MIU 隱私權政策 — 了解我們如何收集、使用及保護您的個人資料。',
+      url: '/privacy-policy',
+    },
   }
 }
 

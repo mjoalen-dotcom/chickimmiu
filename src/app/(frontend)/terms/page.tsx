@@ -22,6 +22,13 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: data.seoTitle || '服務條款',
     description: data.seoDescription || 'CHIC KIM & MIU 服務條款 — 使用本網站及相關服務之法律協議。',
+    alternates: { canonical: '/terms' },
+    openGraph: {
+      type: 'website',
+      title: data.seoTitle || '服務條款',
+      description: data.seoDescription || 'CHIC KIM & MIU 服務條款 — 使用本網站及相關服務之法律協議。',
+      url: '/terms',
+    },
   }
 }
 
