@@ -6,6 +6,7 @@ import config from '@payload-config'
 
 import SettingsClient, { type SettingsInitial } from './SettingsClient'
 import { isPlaceholderEmail } from '@/lib/auth/social'
+import { getEnabledSocialProviders } from '@/lib/auth/socialProviders'
 
 export const metadata: Metadata = {
   title: '帳號設定',
@@ -53,12 +54,16 @@ export default async function SettingsPage() {
 
   const body = (userDoc.bodyProfile as LooseRecord | undefined) ?? {}
   const invoice = (userDoc.invoiceInfo as LooseRecord | undefined) ?? {}
+  const social = (userDoc.socialLogins as LooseRecord | undefined) ?? {}
+  const providers = await getEnabledSocialProviders()
 
   const initial: SettingsInitial = {
     userId: String(sessionUser.id),
     name: (userDoc.name as string) ?? '',
     email: (userDoc.email as string) ?? '',
     emailIsPlaceholder: isPlaceholderEmail(userDoc.email as string),
+    facebookLoginAvailable: providers.facebook,
+    facebookConnected: Boolean(social.facebookId && social.facebookAppId),
     phone: (userDoc.phone as string) ?? '',
     birthday: toDateInputValue(userDoc.birthday),
     birthTime: toStr(userDoc.birthTime),

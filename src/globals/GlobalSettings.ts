@@ -449,7 +449,7 @@ export const GlobalSettings: GlobalConfig = {
           type: 'text',
           admin: {
             description:
-              'developers.facebook.com → 應用程式設定 → 基本資料。App 記得切「上線」模式，否則只有 app 角色能登入',
+              'developers.facebook.com → Facebook Login 應用程式。須啟用 API 並具備一般使用者登入資格；僅顯示「上線」但遭停用仍無法使用。詳見 docs/adr/ADR-20260831-facebook-member-and-horizon-readiness.md',
           },
         },
         {
@@ -457,7 +457,7 @@ export const GlobalSettings: GlobalConfig = {
           label: 'Facebook 應用程式密鑰（App Secret）',
           type: 'text',
           access: { read: isAdminFieldLevel },
-          admin: { description: '基本資料頁按「顯示」取得，32 碼（僅管理員可見）' },
+          admin: { description: '32 碼（僅管理員可見）。App ID 與 Secret 必須同一組且一起填妥；兩欄都留空才讀伺服器環境，填一半不會混用。' },
         },
         { name: 'enableLine', label: '啟用 LINE 登入', type: 'checkbox', defaultValue: true },
         {

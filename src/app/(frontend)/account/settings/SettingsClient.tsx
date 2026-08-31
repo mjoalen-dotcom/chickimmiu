@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
+import { signIn } from 'next-auth/react'
+import { useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/navigation'
 import { User, Mail, Phone, Calendar, Clock, Lock, Ruler, FileText } from 'lucide-react'
 
@@ -11,6 +13,8 @@ export type SettingsInitial = {
   email: string
   /** 無 email 社群帳號（LINE 常見）建檔時掛 placeholder → 顯示「綁定 Email」UI */
   emailIsPlaceholder: boolean
+  facebookLoginAvailable: boolean
+  facebookConnected: boolean
   phone: string
   birthday: string
   birthTime: string
@@ -47,6 +51,7 @@ function strOrNull(v: string): string | null {
 
 export default function SettingsClient({ initial }: { initial: SettingsInitial }) {
   const router = useRouter()
+  const search = useSearchParams()
   const [isPending, startTransition] = useTransition()
 
   const [form, setForm] = useState({
@@ -64,6 +69,33 @@ export default function SettingsClient({ initial }: { initial: SettingsInitial }
   const [bindEmail, setBindEmail] = useState('')
   const [bindBusy, setBindBusy] = useState(false)
   const [bindMessage, setBindMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+  const [facebookBusy, setFacebookBusy] = useState(false)
+  const [facebookMessage, setFacebookMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(() => {
+    const result = search.get('facebook')
+    if (result === 'linked' && initial.facebookConnected) return { kind: 'ok', text: 'Facebook 已連結到這個會員帳號。' }
+    if (result === 'failed') return { kind: 'err', text: 'Facebook 連結失敗或請求已過期，請重新操作。' }
+    return null
+  })
+
+  async function handleFacebookLink() {
+    setFacebookBusy(true)
+    setFacebookMessage(null)
+    try {
+      const response = await fetch('/api/auth/facebook/link', {
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}',
+      })
+      const data = await response.json().catch(() => ({})) as { error?: string }
+      if (!response.ok) {
+        setFacebookMessage({ kind: 'err', text: data.error || '無法開始 Facebook 連結' })
+        return
+      }
+      await signIn('facebook', { redirectTo: '/account/settings' })
+    } catch {
+      setFacebookMessage({ kind: 'err', text: '網路錯誤，請稍後再試' })
+    } finally {
+      setFacebookBusy(false)
+    }
+  }
 
   async function handleBindEmail() {
     setBindMessage(null)
@@ -430,6 +462,40 @@ export default function SettingsClient({ initial }: { initial: SettingsInitial }
           >
             {isPending ? '儲存中…' : '儲存變更'}
           </button>
+        </div>
+      </div>
+
+      {/* Social login connections */}
+      <div className="bg-white rounded-2xl border border-cream-200 p-6 space-y-4">
+        <div>
+          <h3 className="font-medium">登入方式與未來體驗</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            先登入這個原會員再連結 Facebook，可保留原有訂單、點數、會員等級與收藏。
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-cream-200 px-4 py-3">
+          <div>
+            <div className="text-sm font-medium">Facebook</div>
+            <div className="text-xs text-muted-foreground">
+              {initial.facebookConnected ? '已連結' : initial.facebookLoginAvailable ? '尚未連結' : '目前尚未開放'}
+            </div>
+          </div>
+          {initial.facebookConnected ? (
+            <span className="text-xs rounded-full bg-green-50 text-green-700 border border-green-200 px-3 py-1.5">已連結</span>
+          ) : initial.facebookLoginAvailable ? (
+            <button type="button" onClick={handleFacebookLink} disabled={facebookBusy}
+              className="px-4 py-2 rounded-xl bg-[#1877F2] text-white text-sm disabled:opacity-50">
+              {facebookBusy ? '連線中…' : '連結 Facebook'}
+            </button>
+          ) : null}
+        </div>
+        {facebookMessage && (
+          <p role="alert" className={`text-xs rounded-xl px-4 py-2 ${facebookMessage.kind === 'ok' ? 'text-green-700 bg-green-50 border border-green-200' : 'text-red-600 bg-red-50 border border-red-200'}`}>
+            {facebookMessage.text}
+          </p>
+        )}
+        <div className="rounded-xl bg-cream-50 px-4 py-3 text-xs text-muted-foreground leading-relaxed">
+          Meta Horizon／Quest 是另一種身分授權。將來若推出空間體驗，會用同一個 CKMU 會員識別承接點數、等級與內容權益，並由您另外同意連結；現在不會先收集 VR 身分或裝置資料。
         </div>
       </div>
 
