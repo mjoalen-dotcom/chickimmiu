@@ -71,6 +71,7 @@ import { default as default_dad6df07f5ce6091043bf2907b451c8b } from '@/component
 import { default as default_2d9516e76c36d74134ebee4f781829f6 } from '@/components/admin/CategoryRecountButton'
 import { default as default_ebf9d2025b92d97c921799c47cf282d1 } from '@/components/admin/CategoryTreeView'
 import { default as default_d2746e9e6f495518bc9065149bb91ef4 } from '@/components/admin/PersonalityAvatarField'
+import { default as default_98d501b67e899581d235318fb5b55cb5 } from '@/components/admin/MemberGameRecordsPanel'
 import { default as default_2155efc8584149395a6a7408e7342b75 } from '@/components/admin/MemberTreasureBoxPanel'
 import { default as default_f9f3bd50e8c71daeaf79c761e8047d29 } from '@/components/admin/ShoplineCustomerImporter'
 import { default as default_35c860dac7cd35087c887518997aff75 } from '@/components/admin/PageTemplatePicker'
@@ -185,6 +186,7 @@ export const importMap = {
   "@/components/admin/CategoryRecountButton#default": default_2d9516e76c36d74134ebee4f781829f6,
   "@/components/admin/CategoryTreeView#default": default_ebf9d2025b92d97c921799c47cf282d1,
   "@/components/admin/PersonalityAvatarField#default": default_d2746e9e6f495518bc9065149bb91ef4,
+  "@/components/admin/MemberGameRecordsPanel#default": default_98d501b67e899581d235318fb5b55cb5,
   "@/components/admin/MemberTreasureBoxPanel#default": default_2155efc8584149395a6a7408e7342b75,
   "@/components/admin/ShoplineCustomerImporter#default": default_f9f3bd50e8c71daeaf79c761e8047d29,
   "@/components/admin/PageTemplatePicker#default": default_35c860dac7cd35087c887518997aff75,

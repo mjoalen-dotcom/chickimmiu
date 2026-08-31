@@ -476,7 +476,10 @@ export const Customers: CollectionConfig = {
               name: 'membership',
               label: '付費訂閱會員',
               type: 'group',
-              admin: { description: '訂閱系統自動維護（勿手動改），來源 = 會員訂閱 collection' },
+              admin: {
+                description:
+                  '唯讀快照，由訂閱系統自動維護。要改方案 / 狀態 / 到期日請到「③ 會員與 CRM → 會員訂閱」開該會員的訂閱紀錄修改，存檔後這裡會自動同步。',
+              },
               fields: [
                 {
                   type: 'row',
@@ -798,10 +801,19 @@ export const Customers: CollectionConfig = {
               ],
             },
             {
+              name: 'gameRecordsPanel',
+              type: 'ui',
+              admin: {
+                components: { Field: '@/components/admin/MemberGameRecordsPanel' },
+              },
+            },
+            {
               name: 'gameActivity',
-              label: '遊樂場活動記錄',
+              label: '遊樂場活動記錄（舊欄位）',
               type: 'group',
-              admin: { description: '記錄會員在遊樂場中參與過的遊戲與獲得的獎勵' },
+              // 全站沒有任何寫入點，永遠是 0 / 空白 → 隱藏，改由上方 MemberGameRecordsPanel
+              // 直接讀 mini-game-records。欄位保留以免動到 DB schema。
+              admin: { hidden: true, description: '已停用，請看上方「遊樂場活動記錄」面板' },
               fields: [
                 {
                   type: 'row',

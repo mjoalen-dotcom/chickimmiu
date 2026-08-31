@@ -622,8 +622,8 @@ export async function playMBTIQuiz(
     return { success: false as const, message: '答案不完整，請完成所有題目' }
   }
 
-  // 3. 終身限制（最重要）：除非 allowRetake，否則 user.mbtiProfile.mbtiType
-  //    一旦寫入就拒絕重測（個性是穩定特質，重複測無意義）
+  // 3. 一次性限制：allowRetake 關閉時，user.mbtiProfile.mbtiType 一旦寫入就拒絕重測。
+  //    開啟時改由下方的每日上限把關。
   const user = await payload.findByID({ collection: 'customers', id: userId }) as unknown as Record<string, unknown>
   const allowRetake = Boolean(mbtiSettings.allowRetake)
   const existingProfile = user.mbtiProfile as Record<string, unknown> | null | undefined
@@ -631,7 +631,7 @@ export async function playMBTIQuiz(
   if (existingType && !allowRetake) {
     return {
       success: false as const,
-      message: `你已測過 MBTI（${existingType}），個性測驗每位會員終身限 1 次。可至會員中心查看你的結果與推薦商品 ✨`,
+      message: `你已測過 MBTI（${existingType}），目前不開放重測。可至會員中心查看你的結果與推薦商品 ✨`,
     }
   }
 

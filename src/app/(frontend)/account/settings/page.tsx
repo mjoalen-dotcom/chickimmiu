@@ -67,6 +67,7 @@ export default async function SettingsPage() {
     phone: (userDoc.phone as string) ?? '',
     birthday: toDateInputValue(userDoc.birthday),
     birthTime: toStr(userDoc.birthTime),
+    gender: toStr(userDoc.gender),
     // 身體資料（AI 尺寸推薦用）
     bodyProfile: {
       height: toNumStr(body.height),

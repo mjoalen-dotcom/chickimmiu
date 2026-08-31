@@ -214,7 +214,7 @@ export const GAME_DEFS: GameDef[] = [
     name: 'MBTI 個性穿搭測驗',
     icon: '🧠',
     color: 'from-indigo-400 to-purple-600',
-    description: '28 題專業測驗，終身限 1 次！',
+    description: '28 題專業測驗，找出你的個性穿搭風格！',
     category: 'creative',
     categoryLabel: '個性測驗',
     implementationStatus: 'ready',

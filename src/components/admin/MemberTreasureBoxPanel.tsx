@@ -207,14 +207,17 @@ function effectiveRewardState(r: RewardRow): RewardState {
 }
 
 const MemberTreasureBoxPanel: React.FC = () => {
-  const { id } = useDocumentInfo()
+  const { id, collectionSlug } = useDocumentInfo()
+  // user-rewards.user / points-transactions.user 都 relationTo customers。
+  // 在別的 collection（如後台員工 users）用同一個 id 去查，會拿到別人的資料或空表格。
+  const isCustomer = collectionSlug === 'customers'
   const [rewards, setRewards] = useState<RewardRow[] | null>(null)
   const [txns, setTxns] = useState<TxnRow[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    if (!id) return
+    if (!id || !isCustomer) return
     setLoading(true)
     setError(null)
     try {
@@ -239,7 +242,7 @@ const MemberTreasureBoxPanel: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id, isCustomer])
 
   useEffect(() => {
     load()
@@ -273,6 +276,18 @@ const MemberTreasureBoxPanel: React.FC = () => {
     }
     return base
   }, [txns])
+
+  if (!isCustomer) {
+    return (
+      <div style={panel}>
+        <h4 style={h4}>寶物箱 & 點數紀錄</h4>
+        <p style={hint}>
+          獎項（user-rewards）與點數流水（points-transactions）都掛在「顧客」collection 上。
+          這裡是後台員工帳號，不會有會員獎項或點數紀錄。請到「顧客」中開啟對應的會員資料查看。
+        </p>
+      </div>
+    )
+  }
 
   if (!id) {
     return (

@@ -36,7 +36,7 @@ export async function recordWalletTxn(payload: Payload, input: WalletTxnInput): 
   let balance = input.balanceOverride
   if (balance == null) {
     const user = (await payload.findByID({
-      collection: 'users',
+      collection: 'customers',
       id: input.userId,
       depth: 0,
     })) as unknown as Record<string, unknown>
@@ -72,7 +72,7 @@ export async function adjustWallet(
 ): Promise<AdjustResult> {
   const field = WALLET_FIELD[input.wallet]
   const user = (await payload.findByID({
-    collection: 'users',
+    collection: 'customers',
     id: input.userId,
     depth: 0,
   })) as unknown as Record<string, unknown>
@@ -83,7 +83,7 @@ export async function adjustWallet(
   }
   const newBal = Math.max(0, next)
   await payload.update({
-    collection: 'users',
+    collection: 'customers',
     id: input.userId,
     data: { [field]: newBal } as never,
     overrideAccess: true,

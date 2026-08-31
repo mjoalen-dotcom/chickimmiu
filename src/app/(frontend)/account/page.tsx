@@ -199,7 +199,7 @@ export default async function AccountPage() {
     ? `再消費 NT$ ${remainingToNext.toLocaleString()} 即可升級為「${nextTierName}」`
     : '已達最高等級，感謝您的支持'
 
-  // MBTI 個性測驗結果（每位會員終身限 1 次，存在 customers.mbtiProfile）
+  // MBTI 個性測驗結果（存在 customers.mbtiProfile）
   const mbtiProfile = (user.mbtiProfile as LooseRecord | null | undefined) ?? null
   const storedMbtiType = mbtiProfile?.mbtiType
   const storedPrimaryOccasion = mbtiProfile?.primaryOccasion
@@ -420,7 +420,7 @@ export default async function AccountPage() {
 
             {mbtiTakenAtRaw && (
               <p className="text-[11px] text-muted-foreground mb-3">
-                測驗時間：{formatDate(mbtiTakenAtRaw)}（每位會員終身限 1 次）
+                測驗時間：{formatDate(mbtiTakenAtRaw)}
               </p>
             )}
 
@@ -438,7 +438,6 @@ export default async function AccountPage() {
             <p className="text-sm text-foreground/80 mb-2 leading-relaxed">
               28 題專業 MBTI 測驗，找出你的個性穿搭風格，獲得 16 型專屬商品推薦。
             </p>
-            <p className="text-xs text-amber-700 mb-4">⚠️ 每位會員終身限測 1 次，請慎選作答時機</p>
             <Link
               href="/games/mbti-style"
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-sm hover:opacity-90 transition-opacity"

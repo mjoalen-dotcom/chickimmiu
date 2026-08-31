@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/navigation'
-import { User, Mail, Phone, Calendar, Clock, Lock, Ruler, FileText } from 'lucide-react'
+import { User, Users2, Mail, Phone, Calendar, Clock, Lock, Ruler, FileText } from 'lucide-react'
 
 export type SettingsInitial = {
   userId: string
@@ -18,6 +18,7 @@ export type SettingsInitial = {
   phone: string
   birthday: string
   birthTime: string
+  gender: string
   bodyProfile: {
     height: string
     weight: string
@@ -49,6 +50,17 @@ function strOrNull(v: string): string | null {
   return t === '' ? null : t
 }
 
+/** Customers.gender 的合法值；PG enum 欄位收到清單外的字串會硬報錯，故白名單寫死在程式碼 */
+const GENDER_OPTIONS = [
+  { value: 'female', label: '女性' },
+  { value: 'male', label: '男性' },
+  { value: 'other', label: '其他 / 不透露' },
+] as const
+
+function genderOrNull(v: string): string | null {
+  return GENDER_OPTIONS.some((o) => o.value === v) ? v : null
+}
+
 export default function SettingsClient({ initial }: { initial: SettingsInitial }) {
   const router = useRouter()
   const search = useSearchParams()
@@ -59,6 +71,7 @@ export default function SettingsClient({ initial }: { initial: SettingsInitial }
     phone: initial.phone,
     birthday: initial.birthday,
     birthTime: initial.birthTime,
+    gender: initial.gender,
   })
   const [body, setBody] = useState({ ...initial.bodyProfile })
   const [invoice, setInvoice] = useState({ ...initial.invoiceInfo })
@@ -136,6 +149,7 @@ export default function SettingsClient({ initial }: { initial: SettingsInitial }
         form.birthTime && /^([01]\d|2[0-3]):[0-5]\d$/.test(form.birthTime)
           ? form.birthTime
           : null,
+      gender: genderOrNull(form.gender),
       bodyProfile: {
         height: numOrNull(body.height),
         weight: numOrNull(body.weight),
@@ -259,6 +273,27 @@ export default function SettingsClient({ initial }: { initial: SettingsInitial }
                 className={inputCls}
               />
             </div>
+          </div>
+          <div>
+            <label className={labelCls}>性別</label>
+            <div className="flex items-center gap-2">
+              <Users2 size={14} className="text-muted-foreground shrink-0" />
+              <select
+                value={form.gender}
+                onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                className={inputCls}
+              >
+                <option value="">不指定</option>
+                {GENDER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              會影響會員等級稱號與個性穿搭推薦的呈現方式。
+            </p>
           </div>
           <div>
             <label className={labelCls}>

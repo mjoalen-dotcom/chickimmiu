@@ -11,7 +11,6 @@ import { repeatPurchaseEndpoint } from '../endpoints/repeatPurchaseAnalytics'
 import { consumerInsightsEndpoint } from '../endpoints/consumerInsights'
 import { shoplineCustomerImportEndpoint } from '../endpoints/shoplineCustomerImport'
 import { generateUniqueReferralCode } from '../lib/referralCode'
-import { grantRegistrationReferralReward } from '../lib/referral/registrationReward'
 
 const userFieldMappings: FieldMapping[] = [
   { key: 'name', label: '姓名' },
@@ -219,21 +218,9 @@ export const Users: CollectionConfig = {
           // ignore
         }
       },
-      // 推薦註冊獎勵「先註冊後驗證」補發路徑：能登入即代表已通過 email 驗證
-      // （Payload 擋未驗證登入）。helper 內含冪等旗標 + referredBy / 設定 gating，
-      // 已發放或無推薦人時 early-return。失敗不擋登入。
-      async ({ req, user }) => {
-        try {
-          const u = user as unknown as Record<string, unknown>
-          if (!u?.referredBy || u.registrationReferralRewarded === true) return
-          await grantRegistrationReferralReward(req.payload, u.id as string | number)
-        } catch (e) {
-          console.error(
-            '[users.afterLogin] registration referral reward failed:',
-            e instanceof Error ? e.message : String(e),
-          )
-        }
-      },
+      // 推薦註冊獎勵補發路徑只留在 Customers.afterLogin：users 是後台員工帳號，
+      // 錢包 / 點數帳本（wallet-transactions、points-transactions）全部 relationTo
+      // customers，拿 users id 發獎會寫到同 id 的別人帳上。
     ],
   },
   fields: [
@@ -762,7 +749,10 @@ export const Users: CollectionConfig = {
               name: 'membership',
               label: '付費訂閱會員',
               type: 'group',
-              admin: { description: '訂閱系統自動維護（勿手動改），來源 = 會員訂閱 collection' },
+              admin: {
+                description:
+                  '唯讀快照。付費訂閱掛在「顧客」collection，後台員工帳號不會有值；請到「③ 會員與 CRM → 顧客」開對應會員查看。',
+              },
               fields: [
                 {
                   type: 'row',
@@ -1249,10 +1239,19 @@ export const Users: CollectionConfig = {
               ],
             },
             {
+              name: 'gameRecordsPanel',
+              type: 'ui',
+              admin: {
+                components: { Field: '@/components/admin/MemberGameRecordsPanel' },
+              },
+            },
+            {
               name: 'gameActivity',
-              label: '遊樂場活動記錄',
+              label: '遊樂場活動記錄（舊欄位）',
               type: 'group',
-              admin: { description: '記錄會員在遊樂場中參與過的遊戲與獲得的獎勵' },
+              // 全站沒有任何寫入點，永遠是 0 / 空白 → 隱藏。遊戲紀錄掛在 customers，
+              // 面板會在這裡（後台員工帳號）顯示指引。欄位保留以免動到 DB schema。
+              admin: { hidden: true, description: '已停用，請看上方「遊樂場活動記錄」面板' },
               fields: [
                 {
                   type: 'row',

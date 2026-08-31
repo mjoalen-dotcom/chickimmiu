@@ -69,7 +69,9 @@ export function MBTIStyleGame({ settings }: { settings: Record<string, unknown> 
   const s = settings as Settings
   const pointsCost = s.pointsCostPerPlay ?? 50
   const dailyLimit = s.dailyLimit ?? 1
-  const allowRetake = s.allowRetake !== false
+  // 與 server（gameActions.playMBTIQuiz）一致：未設定 = 不開放重測。
+  // 舊寫法 `!== false` 讓 undefined 變 true，UI 會顯示 server 會拒絕的「可重複測驗」。
+  const allowRetake = Boolean(s.allowRetake)
 
   const [phase, setPhase] = useState<Phase>('intro')
   const [questionIdx, setQuestionIdx] = useState(0) // 0..31
@@ -556,18 +558,6 @@ export function MBTIStyleGame({ settings }: { settings: Record<string, unknown> 
         </ul>
       </div>
 
-      {!allowRetake && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-6 text-left flex items-start gap-2">
-          <span className="text-amber-600 text-base leading-none mt-0.5">⚠️</span>
-          <div>
-            <p className="text-xs font-medium text-amber-700">每位會員終身限測 1 次</p>
-            <p className="text-[11px] text-amber-700/80 leading-relaxed mt-0.5">
-              個性是穩定特質，請在心情平靜時誠實作答；測完結果會永久顯示在你的會員中心。
-            </p>
-          </div>
-        </div>
-      )}
-
       <button
         onClick={handleStart}
         className="w-full py-3.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-sm tracking-wide hover:opacity-90 transition-opacity shadow-md"
@@ -578,7 +568,7 @@ export function MBTIStyleGame({ settings }: { settings: Record<string, unknown> 
       <p className="text-xs text-muted-foreground mt-3">
         {allowRetake
           ? (dailyLimit > 0 ? `每日限 ${dailyLimit} 次 · 可重複測驗` : '無次數限制 · 可重複測驗')
-          : '每位會員終身限 1 次'}
+          : '目前不開放重測'}
       </p>
     </div>
   )

@@ -33,6 +33,72 @@ export const UserSubscriptions: CollectionConfig = {
     update: isAdmin,
     delete: isAdmin,
   },
+  hooks: {
+    // 後台手改方案 / 狀態 / 到期日後，把 customers.membership.* 快照同步過去。
+    // 沒有這個 hook 時 syncUserMembership 只在綠界 callback 內被呼叫，
+    // 管理員在後台改的方案永遠不會反映到會員身上。
+    afterChange: [
+      async ({ doc, previousDoc, req }) => {
+        const { payload } = req
+        const relId = (v: unknown): number | string | undefined => {
+          if (v === null || v === undefined) return undefined
+          if (typeof v === 'object') return (v as { id?: number | string }).id
+          return v as number | string
+        }
+        // 權益成立 = 狀態為訂閱中 / 已取消（權益至期末），且尚未過期
+        const entitled = (d: Record<string, unknown> | undefined): boolean => {
+          if (!d) return false
+          const status = d.status as string
+          if (status !== 'active' && status !== 'cancelled') return false
+          const end = d.currentPeriodEnd ? new Date(d.currentPeriodEnd as string).getTime() : 0
+          return Number.isFinite(end) && end > Date.now()
+        }
+
+        const { syncUserMembership } = await import('../lib/subscription/activate')
+        const userId = relId(doc.user)
+        const prevUserId = relId(previousDoc?.user)
+
+        try {
+          // 換綁到別的會員時，先清掉舊會員身上指著這筆的快照
+          if (prevUserId !== undefined && String(prevUserId) !== String(userId)) {
+            const prev = (await payload.findByID({
+              collection: 'customers',
+              id: prevUserId,
+              depth: 0,
+            })) as unknown as Record<string, unknown>
+            const prevSnap = prev?.membership as Record<string, unknown> | undefined
+            if (String(relId(prevSnap?.activeSubscription) ?? '') === String(doc.id)) {
+              await syncUserMembership(payload, prevUserId, null)
+            }
+          }
+
+          if (userId === undefined) return
+
+          if (entitled(doc as Record<string, unknown>)) {
+            await syncUserMembership(payload, userId, doc as never)
+            return
+          }
+
+          // 權益不成立：只在快照正指著這筆訂閱時才清空，避免蓋掉另一筆有效訂閱
+          const customer = (await payload.findByID({
+            collection: 'customers',
+            id: userId,
+            depth: 0,
+          })) as unknown as Record<string, unknown>
+          const snap = customer?.membership as Record<string, unknown> | undefined
+          if (String(relId(snap?.activeSubscription) ?? '') === String(doc.id)) {
+            await syncUserMembership(payload, userId, null)
+          }
+        } catch (e) {
+          // best-effort：同步失敗不擋訂閱存檔
+          console.error(
+            '[user-subscriptions.afterChange] membership sync failed:',
+            e instanceof Error ? e.message : String(e),
+          )
+        }
+      },
+    ],
+  },
   fields: [
     {
       type: 'row',
