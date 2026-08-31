@@ -18,7 +18,16 @@ export default function robots(): MetadataRoute.Robots {
     host.startsWith('staging.')
   if (noIndex) {
     return {
-      rules: [{ userAgent: '*', disallow: '/' }],
+      rules: [
+        {
+          // Facebook Login validates its public policy URLs through this crawler.
+          // All other pre pages remain blocked, including account and API paths.
+          userAgent: 'facebookexternalhit',
+          allow: ['/facebook-data-deletion', '/privacy-policy', '/terms'],
+          disallow: '/',
+        },
+        { userAgent: '*', disallow: '/' },
+      ],
     }
   }
 
