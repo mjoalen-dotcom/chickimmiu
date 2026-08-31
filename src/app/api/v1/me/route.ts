@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { Where } from 'payload'
 import { resolveBearerUser, UNAUTHORIZED_RESPONSE } from '@/lib/auth/resolveBearerUser'
+import { memberIdentitySummary } from '@/lib/memberIdentity'
 
 /**
  * GET /api/v1/me
@@ -25,7 +26,7 @@ import { resolveBearerUser, UNAUTHORIZED_RESPONSE } from '@/lib/auth/resolveBear
  */
 export async function GET(req: NextRequest) {
   const { payload, user } = await resolveBearerUser(req)
-  if (!user) {
+  if (!user || user.collection !== 'customers') {
     return NextResponse.json(UNAUTHORIZED_RESPONSE, { status: 401 })
   }
 
@@ -123,6 +124,9 @@ export async function GET(req: NextRequest) {
       },
       rewards,
       gameTerms,
+      // Provider-neutral member reference for future web/app/spatial clients.
+      // It is an identifier, not an authentication credential or a public DID.
+      identity: memberIdentitySummary(userData),
     },
-  })
+  }, { headers: { 'Cache-Control': 'private, no-store' } })
 }

@@ -5,6 +5,7 @@ import config from '@payload-config'
 import { auth as nextAuth } from '@/auth'
 import { PROVIDER_SOCIAL_FIELD } from '@/lib/auth/social'
 import { safeInternalRedirect } from '@/lib/auth/safeRedirect'
+import { facebookIdentityWhere } from '@/lib/auth/facebook'
 
 // Setting `payload-token` from inside the NextAuth `signIn` callback doesn't
 // work — Auth.js v5 builds its own redirect Response and `cookies().set()`
@@ -94,6 +95,7 @@ export async function GET(request: Request) {
       email?: string | null
       provider?: string
       providerAccountId?: string
+      providerAppId?: string
       /** provider 是否驗證過該 email（auth.ts jwt callback 寫入） */
       providerEmailVerified?: boolean
     }
@@ -114,10 +116,11 @@ export async function GET(request: Request) {
   // 未經 provider 驗證的 email 不得用來找 Payload user —— 否則攻擊者在 provider 端
   // 掛一個受害者 email 的帳號，即使 signIn callback 已拒絕綁定，bridge 這關仍會
   // 用同一個 email 找到受害者會員並簽出 session（帳號接管）。
-  const emailTrusted = session?.user?.providerEmailVerified === true
+  const emailTrusted = session?.user?.provider !== 'facebook' && session?.user?.providerEmailVerified === true
   const sessionEmail = emailTrusted ? session?.user?.email?.toLowerCase() || null : null
   const provider = session?.user?.provider
   const providerAccountId = session?.user?.providerAccountId
+  const providerAppId = session?.user?.providerAppId
   const socialField = provider ? PROVIDER_SOCIAL_FIELD[provider] : undefined
   if (!sessionEmail && !(socialField && providerAccountId)) {
     return NextResponse.redirect(new URL('/login?redirect=' + encodeURIComponent(next), base))
@@ -128,11 +131,21 @@ export async function GET(request: Request) {
   // 也能對回同一個會員；找不到再 fallback email 匹配
   let docs: Array<{ id: string | number }> = []
   if (socialField && providerAccountId) {
+    let where
+    try {
+      where = provider === 'facebook'
+        ? facebookIdentityWhere(providerAccountId, providerAppId || '')
+        : { [`socialLogins.${socialField}`]: { equals: providerAccountId } }
+    } catch {
+      return clearStaleAuthCookies(NextResponse.redirect(new URL('/login?error=session_invalid', base)), cookieHeader)
+    }
     const bySocial = await payload.find({
       collection: 'customers',
-      where: { [`socialLogins.${socialField}`]: { equals: providerAccountId } },
-      limit: 1,
+      where,
+      limit: 2,
+      depth: 0,
     })
+    if (bySocial.docs.length > 1) return NextResponse.redirect(new URL('/login?error=AccessDenied', base))
     docs = bySocial.docs
   }
   if (docs.length === 0 && sessionEmail) {
