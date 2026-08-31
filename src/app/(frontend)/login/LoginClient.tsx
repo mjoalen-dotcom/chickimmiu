@@ -32,9 +32,7 @@ export default function LoginClient({ socialProviders }: { socialProviders: Soci
     if (urlError === 'session_invalid')
       return '社群登入連線過期，已清除舊登入資料；請重新點選下方社群按鈕登入。'
     if (urlError === 'session_bridge_failed')
-      return '建立會員登入狀態失敗；請確認允許本網站的 Cookie 後重試，若持續失敗請聯繫客服。'
-    if (urlError === 'AccessDenied')
-      return '無法安全確認會員身分；請重試或使用原登入方式，若持續失敗請聯繫客服。'
+      return '建立登入狀態失敗（可能是 cookie 被瀏覽器擋下）；請確認允許第三方 cookie 後重試。'
     if (urlError === 'user_not_found')
       return '社群帳號未對應到任何會員；請改用 email/密碼登入或重新註冊。'
     if (urlError === 'auth_config_missing')

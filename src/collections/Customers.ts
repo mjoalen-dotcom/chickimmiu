@@ -51,7 +51,6 @@ export const Customers: CollectionConfig = {
   // 顧客已被訂單、分群、點數等稽核資料引用時不可安全 hard delete，跟
   // Users 同樣的 trash 設計。
   trash: true,
-  indexes: [{ fields: ['socialLogins.facebookAppId', 'socialLogins.facebookId'], unique: true }],
   admin: {
     hidden: ({ user }) => user?.role !== 'admin',
     useAsTitle: 'email',
@@ -678,24 +677,16 @@ export const Customers: CollectionConfig = {
               name: 'socialLogins',
               label: '社群帳號綁定',
               type: 'group',
-              access: { create: isAdminFieldLevel, update: isAdminFieldLevel },
               admin: { description: '透過 NextAuth v5（網頁）或原生 SDK（APP）綁定的社群帳號' },
               fields: [
                 {
                   type: 'row',
                   fields: [
                     { name: 'googleId', label: 'Google ID', type: 'text', admin: { width: '25%' } },
-                    { name: 'facebookId', label: 'Facebook ID', type: 'text', access: { create: isAdminFieldLevel, update: isAdminFieldLevel }, admin: { width: '25%', readOnly: true } },
+                    { name: 'facebookId', label: 'Facebook ID', type: 'text', admin: { width: '25%' } },
                     { name: 'lineId', label: 'LINE ID', type: 'text', admin: { width: '25%' } },
                     { name: 'appleId', label: 'Apple ID', type: 'text', admin: { width: '25%' } },
                   ],
-                },
-                {
-                  name: 'facebookAppId',
-                  label: 'Facebook App ID（身分範圍）',
-                  type: 'text',
-                  access: { create: isAdminFieldLevel, update: isAdminFieldLevel },
-                  admin: { readOnly: true, description: '由已驗證的 Facebook 登入流程寫入。不同 App 的 Facebook ID 不可互相配對；Meta Horizon 需另外取得同意及綁定。' },
                 },
               ],
             },

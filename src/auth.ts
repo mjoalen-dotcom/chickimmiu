@@ -1,13 +1,8 @@
 import NextAuth, { type NextAuthConfig } from 'next-auth'
 import Google from 'next-auth/providers/google'
+import Facebook from 'next-auth/providers/facebook'
 import Line from 'next-auth/providers/line'
 import Apple from 'next-auth/providers/apple'
-import { headers } from 'next/headers'
-import { getPayload } from 'payload'
-import config from '@payload-config'
-import { createFacebookProvider } from '@/lib/auth/facebookProvider'
-import { completeFacebookLink } from '@/lib/auth/facebookLink'
-import { FACEBOOK_LINK_COOKIE, readCookie } from '@/lib/auth/facebookLinkIntent'
 import { resolveSocialAuth } from '@/lib/auth/socialCredentials'
 import { linkOrCreateSocialUser } from '@/lib/auth/socialIdentity'
 import { isProviderEmailVerified, trustedEmailFrom } from '@/lib/auth/emailTrust'
@@ -15,7 +10,7 @@ import { isProviderEmailVerified, trustedEmailFrom } from '@/lib/auth/emailTrust
 /**
  * NextAuth v5 — Google / Facebook / LINE / Apple
  *
- * OAuth 成功後解析 Payload Customers（social ID 優先；僅可信 email 可匹配）。
+ * OAuth 成功後 upsert Payload Users collection（email 匹配 → 綁定社群 ID；否則建立）。
  *
  * Payload session cookie (`payload-token`) 不在這裡寫 — Auth.js v5 在 callback
  * 內回自己組的 redirect Response，`cookies().set()` 不會被序列化進 headers。
@@ -28,7 +23,7 @@ import { isProviderEmailVerified, trustedEmailFrom } from '@/lib/auth/emailTrust
  * 同一份判斷，永遠一致。沒有任何憑證時 providers 為空，不影響網站運作。
  */
 
-const createSharedConfig = (facebookAppId?: string) => ({
+const sharedConfig = {
   pages: {
     signIn: '/login',
     error: '/login',
@@ -37,21 +32,6 @@ const createSharedConfig = (facebookAppId?: string) => ({
     async signIn({ user, account, profile }) {
       if (!account) return false
       try {
-        if (account.provider === 'facebook') {
-          if (!facebookAppId) return false
-          const requestHeaders = await headers()
-          if (readCookie(requestHeaders, FACEBOOK_LINK_COOKIE)) {
-            try {
-              const payload = await getPayload({ config })
-              await completeFacebookLink(payload, requestHeaders, facebookAppId, account.providerAccountId)
-              // The customer already has a valid Payload session. Do not replace
-              // it with another account/session when linking a login method.
-              return '/api/auth/facebook/link-complete?result=linked'
-            } catch {
-              return '/api/auth/facebook/link-complete?result=failed'
-            }
-          }
-        }
         // 未驗證的 provider email 不可拿來匹配既有會員 —— 否則在該 provider 註冊
         // 一個掛受害者 email 的帳號就能接管 CKMU 會員（判定規則見 emailTrust.ts，
         // 與 App 端 /api/v1/auth/social 的 trustedEmail 同一套語意）。
@@ -65,15 +45,14 @@ const createSharedConfig = (facebookAppId?: string) => ({
         const linked = await linkOrCreateSocialUser({
           provider: account.provider,
           providerAccountId: account.providerAccountId,
-          providerAppId: account.provider === 'facebook' ? facebookAppId : undefined,
           email: trustedEmail,
           name: user.name,
         })
         // null = 不認得的 provider 又沒 email，無從建檔
         return linked !== null
       } catch (error) {
-        console.error('[NextAuth] customer sign-in failed', { provider: account.provider, errorType: error instanceof Error ? error.name : 'unknown' })
-        return false // Never issue a usable social session when member resolution failed.
+        console.error('[NextAuth] signIn callback error:', error)
+        return true // OAuth 已成功，Payload upsert 失敗不擋 NextAuth session
       }
     },
     async jwt({ token, account, profile }) {
@@ -82,7 +61,6 @@ const createSharedConfig = (facebookAppId?: string) => ({
       if (account) {
         token.provider = account.provider
         token.providerAccountId = account.providerAccountId
-        token.providerAppId = account.provider === 'facebook' ? facebookAppId : undefined
         // email 是否經 provider 驗證，一併帶進 JWT —— bridge 用 email 找 Payload user
         // 時必須套同一道門檻，否則未驗證 email 仍能在 bridge 這關接管既有會員。
         token.providerEmailVerified = isProviderEmailVerified(
@@ -99,12 +77,11 @@ const createSharedConfig = (facebookAppId?: string) => ({
       const u = session.user as unknown as Record<string, unknown>
       if (typeof token?.provider === 'string') u.provider = token.provider
       if (typeof token?.providerAccountId === 'string') u.providerAccountId = token.providerAccountId
-      if (typeof token?.providerAppId === 'string') u.providerAppId = token.providerAppId
       u.providerEmailVerified = token?.providerEmailVerified === true
       return session
     },
   },
-} satisfies Omit<NextAuthConfig, 'providers'>)
+} satisfies Omit<NextAuthConfig, 'providers'>
 
 export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
   const { creds, enabled } = await resolveSocialAuth()
@@ -120,7 +97,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
   }
 
   if (enabled.facebook && creds.facebook) {
-    providers.push(createFacebookProvider(creds.facebook))
+    providers.push(
+      Facebook({
+        clientId: creds.facebook.clientId,
+        clientSecret: creds.facebook.clientSecret,
+      }),
+    )
   }
 
   if (enabled.line && creds.line) {
@@ -146,5 +128,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
     )
   }
 
-  return { ...createSharedConfig(creds.facebook?.clientId), providers }
+  return { ...sharedConfig, providers }
 })

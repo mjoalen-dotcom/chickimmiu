@@ -1,7 +1,6 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { createHash, createPrivateKey, sign } from 'node:crypto'
-import { facebookCredentials } from './facebook'
 
 /**
  * 社群登入憑證解析（server-only）
@@ -141,7 +140,7 @@ export async function resolveSocialAuth(): Promise<ResolvedSocialAuth> {
   }
 
   const google = pair(sl.googleClientId, sl.googleClientSecret, process.env.AUTH_GOOGLE_ID, process.env.AUTH_GOOGLE_SECRET)
-  const facebook = facebookCredentials(sl.facebookAppId, sl.facebookAppSecret, process.env.AUTH_FACEBOOK_ID, process.env.AUTH_FACEBOOK_SECRET)
+  const facebook = pair(sl.facebookAppId, sl.facebookAppSecret, process.env.AUTH_FACEBOOK_ID, process.env.AUTH_FACEBOOK_SECRET)
   const line = pair(sl.lineChannelId, sl.lineChannelSecret, process.env.AUTH_LINE_CHANNEL_ID, process.env.AUTH_LINE_CHANNEL_SECRET)
 
   // Apple：後台四欄齊 → runtime 簽 JWT；不齊 → .env fallback
