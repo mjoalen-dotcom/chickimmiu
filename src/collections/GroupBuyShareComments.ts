@@ -35,7 +35,7 @@ export const GroupBuyShareComments: CollectionConfig = {
         const changedVisibility =
           operation === 'create' ? now === 'published' : was !== now
         if (!changedVisibility) return doc
-        await recount(req.payload, doc.review)
+        await recount(req.payload, doc.review, req)
         return doc
       },
     ],
@@ -91,7 +91,7 @@ export const GroupBuyShareComments: CollectionConfig = {
 }
 
 /** 重算某篇分享的 published 留言數 */
-async function recount(payload: unknown, review: unknown): Promise<void> {
+async function recount(payload: unknown, review: unknown, req?: unknown): Promise<void> {
   const reviewId =
     typeof review === 'object' && review !== null
       ? (review as { id?: string | number }).id
@@ -112,6 +112,8 @@ async function recount(payload: unknown, review: unknown): Promise<void> {
       id: reviewId,
       data: { commentCount: res.totalDocs },
       overrideAccess: true,
+      // 帶 req 沿用外層交易（afterDelete 沒有可用的 req 就省略）
+      ...(req ? { req } : {}),
     })
   } catch (e) {
     console.error(

@@ -36,10 +36,19 @@ export const GroupBuyShares: CollectionConfig = {
     afterChange: [
       async ({ doc, previousDoc, operation, req, context }) => {
         if (operation !== 'update') return doc
+        // ⚠️ 本 hook 內所有寫入都要帶 req（沿用外層交易）：afterChange 執行時
+        // 外層交易仍持有這一列的鎖，另開交易去改同一列會互等到 timeout。
+        // 發點同理用 req.transactionID，順便滿足工單「加點與帳本同一交易」。
         // 本 hook 自己觸發的更新不再進來一次
         if (context?.groupBuyFeaturedHook) return doc
 
         const payload = req.payload
+        // req.transactionID 型別含 Promise（Payload 內部延遲建立），只取已解析的純值；
+        // 沒有就讓 awardActivityPoints 自己開一個交易。
+        const txID =
+          typeof req.transactionID === 'string' || typeof req.transactionID === 'number'
+            ? req.transactionID
+            : undefined
         const nowFeatured = doc.isFeatured === true
         const wasFeatured = previousDoc?.isFeatured === true
         const nowApproved = doc.status === 'approved'
@@ -54,6 +63,7 @@ export const GroupBuyShares: CollectionConfig = {
               id: doc.id,
               data: { isFeatured: false } as never,
               overrideAccess: true,
+              req,
               context: { groupBuyFeaturedHook: true },
             })
             .catch((e: unknown) =>
@@ -98,6 +108,7 @@ export const GroupBuyShares: CollectionConfig = {
                 amount: points,
                 source: 'product_review',
                 description: '團購好物分享獎勵',
+                existingTransactionID: txID,
               })
             }
             // 不論有無實際發點都標記 rewarded，避免每次通過審核都重跑判定
@@ -106,6 +117,7 @@ export const GroupBuyShares: CollectionConfig = {
               id: doc.id,
               data: { rewarded: true } as never,
               overrideAccess: true,
+              req,
               context: { groupBuyFeaturedHook: true },
             })
           } catch (e) {
@@ -138,6 +150,7 @@ export const GroupBuyShares: CollectionConfig = {
                 amount: points,
                 source: 'product_review_featured',
                 description: '團購好物分享．金金精選加碼',
+                existingTransactionID: txID,
               })
             }
             // featuredAt 一經寫入不覆蓋（冪等依據）
@@ -146,6 +159,7 @@ export const GroupBuyShares: CollectionConfig = {
               id: doc.id,
               data: { featuredAt: new Date().toISOString() } as never,
               overrideAccess: true,
+              req,
               context: { groupBuyFeaturedHook: true },
             })
           } catch (e) {
