@@ -258,11 +258,11 @@ export function ProductListClient({
           <div className="absolute inset-x-0 bottom-0 pb-8 md:pb-10">
             <div className="container">
               <p className="text-[11px] tracking-[0.35em] text-white/80 uppercase mb-2">{t('eyebrow')}</p>
-              <h1 className="text-3xl md:text-4xl font-serif leading-tight text-white">{pageTitle}</h1>
+              <h1 className="text-4xl md:text-5xl font-serif font-normal leading-tight text-white">{pageTitle}</h1>
               {catDescription && (
                 <p className="text-sm text-white/85 mt-2 max-w-xl">{catDescription}</p>
               )}
-              <p className="text-xs text-white/60 mt-2">{totalDocs.toLocaleString()} ITEMS</p>
+              <p className="text-xs text-white/60 mt-2">{totalDocs.toLocaleString()}&nbsp;ITEMS</p>
             </div>
           </div>
         </div>
@@ -270,10 +270,10 @@ export function ProductListClient({
         <div className="bg-white border-b border-cream-200">
           <div className="container py-10 md:py-14">
             <p className="text-[11px] tracking-[0.35em] text-neutral-400 uppercase mb-3">{t('eyebrow')}</p>
-            <h1 className="text-3xl md:text-4xl font-serif leading-tight">{pageTitle}</h1>
+            <h1 className="text-4xl md:text-5xl font-serif font-normal leading-tight">{pageTitle}</h1>
             {catDescription && <p className="text-sm text-neutral-500 mt-3 max-w-xl">{catDescription}</p>}
             <p className="text-xs text-neutral-400 mt-3">
-              {totalDocs.toLocaleString()} ITEMS
+              {totalDocs.toLocaleString()}&nbsp;ITEMS
             </p>
           </div>
         </div>

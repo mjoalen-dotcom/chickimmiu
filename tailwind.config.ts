@@ -95,7 +95,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['var(--font-noto-sans-tc)', 'system-ui', 'sans-serif'],
-        serif: ['var(--font-noto-serif-tc)', 'serif'],
+        serif: ['var(--font-didone)', 'var(--font-noto-serif-tc)', 'serif'],
       },
       keyframes: {
         'accordion-down': {

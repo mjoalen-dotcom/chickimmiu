@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
-import { Noto_Sans_TC, Noto_Serif_TC } from 'next/font/google'
+import { Noto_Sans_TC, Noto_Serif_TC, Bodoni_Moda } from 'next/font/google'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import './globals.css'
@@ -38,6 +38,16 @@ const notoSerifTC = Noto_Serif_TC({
   subsets: ['latin'],
   weight: ['400', '500', '700', '900'],
   variable: '--font-noto-serif-tc',
+  display: 'swap',
+})
+
+// VOGUE/Dior 語感（2026-09-01 Alan）：西文/數字用 Didone 高反差襯線，
+// 中文 fallback Noto Serif TC — serif stack 前置即可全站生效
+const bodoniModa = Bodoni_Moda({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  style: ['normal', 'italic'],
+  variable: '--font-didone',
   display: 'swap',
 })
 
@@ -204,7 +214,7 @@ export default async function FrontendLayout({
   const htmlLang = locale === 'zh-TW' ? 'zh-Hant-TW' : locale === 'zh-CN' ? 'zh-Hans-CN' : locale
 
   return (
-    <html lang={htmlLang} className={`${notoSansTC.variable} ${notoSerifTC.variable}`}>
+    <html lang={htmlLang} className={`${notoSansTC.variable} ${notoSerifTC.variable} ${bodoniModa.variable}`}>
       <head>
         {/* Active SiteThemes preset → :root CSS variables. Sits at the very
             top of <head> so the rest of the page renders with the right

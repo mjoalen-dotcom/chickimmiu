@@ -45,10 +45,10 @@ function RowHeading({ text, index }: { text: string | null; index: number }) {
   if (!text) return null
   return (
     <div className="container">
-      <p className="text-[10px] tracking-[0.45em] text-neutral-400 mb-2.5">
+      <p className="text-[10px] tracking-[0.5em] text-neutral-400 mb-3">
         {String(index).padStart(2, '0')}
       </p>
-      <h2 className="text-[26px] md:text-[34px] font-serif font-normal leading-tight mb-6 md:mb-8">
+      <h2 className="text-[30px] md:text-[42px] font-serif font-normal leading-[1.15] mb-7 md:mb-10">
         {text}
       </h2>
     </div>
@@ -195,7 +195,7 @@ export function CoverView({
             return (
           // 2026-08-24 Alan 拍板（v4 參考錄影）：格與格、列與列完全貼合零間隙；
           // 只有帶大標的列上方留呼吸空間
-          <section key={ri} className={row.heading ? 'pt-12 md:pt-20' : row.layout === 'grid3' ? 'mt-3 md:mt-6' : ''}>
+          <section key={ri} className={row.heading ? 'pt-16 md:pt-28' : row.layout === 'grid3' ? 'mt-3 md:mt-6' : ''}>
             <RowHeading text={row.heading} index={currentNo} />
             {row.layout === 'grid3' ? (
               // chuu 下方 lookbook 手法：三欄微間距（水平 12px / 垂直 24px）
@@ -280,7 +280,7 @@ export function CoverView({
       <Link href={ENTER} className="group block bg-neutral-950 text-white">
         <div className="container py-24 md:py-32 text-center">
           <p className="text-[10px] tracking-[0.5em] text-white/50 mb-6 uppercase">Chic Kim &amp; Miu</p>
-          <h2 className="text-[28px] md:text-[40px] font-serif font-normal leading-snug mb-10">
+          <h2 className="text-[30px] md:text-[46px] font-serif font-normal leading-snug mb-12">
             優雅，是妳本來的樣子。
           </h2>
           <span className="inline-flex items-center gap-2.5 border border-white/60 px-12 py-4 text-[11px] tracking-[0.35em] uppercase group-hover:bg-white group-hover:text-neutral-900 transition-colors">
