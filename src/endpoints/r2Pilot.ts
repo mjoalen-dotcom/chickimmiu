@@ -1,5 +1,7 @@
 import type { Endpoint, PayloadRequest } from 'payload'
 
+import { resolveProductMediaFolder } from '@/lib/products/mediaFolder'
+
 /**
  * POST /api/products/r2-pilot
  * ───────────────────────────
@@ -125,7 +127,7 @@ export const r2PilotEndpoint: Endpoint = {
     }
 
     /* ── 找商品 ── */
-    type ProductLite = { id: number; slug?: string; images?: unknown[] }
+    type ProductLite = { id: number; name?: string; slug?: string; images?: unknown[] }
     let productDoc: ProductLite | null = null
     if (typeof productSlugOrId === 'number' || /^\d+$/.test(String(productSlugOrId))) {
       try {
@@ -159,6 +161,9 @@ export const r2PilotEndpoint: Endpoint = {
     // 給後續 closure 用 — non-null narrowed alias
     const product: ProductLite = productDoc
 
+    /* ── 媒體庫資料夾：商品 / <商品名>（解析失敗回 null，圖照上傳只是沒歸檔） ── */
+    const folderId = await resolveProductMediaFolder(req.payload, product.name)
+
     /* ── 對每張 URL 跑 fetch + create media ── */
     const startedAll = Date.now()
     type PilotResult = {
@@ -184,7 +189,11 @@ export const r2PilotEndpoint: Endpoint = {
         const uploadStarted = Date.now()
         const media = await req.payload.create({
           collection: 'media',
-          data: { alt: `pilot ${i + 1}`, caption: '' },
+          data: {
+            alt: `pilot ${i + 1}`,
+            caption: '',
+            ...(folderId == null ? {} : { folder: folderId }),
+          },
           file: {
             data,
             mimetype: contentType.split(';')[0].trim(),

@@ -26,6 +26,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { resolveProductMediaFolder } from '@/lib/products/mediaFolder'
 import fs from 'fs'
 import path from 'path'
 import https from 'https'
@@ -206,6 +207,8 @@ export async function POST(req: NextRequest) {
         })
 
         const mediaIds: number[] = []
+        // 媒體庫資料夾：商品 / <商品名>（解析失敗回 null，圖照匯只是沒歸檔）
+        const folderId = await resolveProductMediaFolder(payload, productRec.name)
 
         for (const imgId of item.imageIds) {
           // Try both URL patterns
@@ -232,6 +235,7 @@ export async function POST(req: NextRequest) {
                 data: {
                   alt: item.name,
                   caption: item.name,
+                  ...(folderId == null ? {} : { folder: folderId }),
                 },
                 file: {
                   data: fs.readFileSync(tmpFile),
@@ -344,10 +348,22 @@ async function migrateSingleImage(payload: Awaited<ReturnType<typeof getPayload>
       throw new Error('下載的圖片太小，可能無效')
     }
 
+    // 先撈商品：既有圖片要 append，商品名要拿來解析媒體庫資料夾
+    const existing = await payload.findByID({ collection: 'products', id: productId, depth: 0 })
+    const existingImages = ((existing as unknown as Record<string, unknown>).images as { image: number }[]) || []
+    const folderId = await resolveProductMediaFolder(
+      payload,
+      (existing as unknown as Record<string, unknown>).name,
+    )
+
     const isWebp = imageUrl.includes('.webp')
     const media = await (payload.create as Function)({
       collection: 'media',
-      data: { alt: `Product ${productId}`, caption: '' },
+      data: {
+        alt: `Product ${productId}`,
+        caption: '',
+        ...(folderId == null ? {} : { folder: folderId }),
+      },
       file: {
         data: fs.readFileSync(tmpFile),
         mimetype: isWebp ? 'image/webp' : 'image/png',
@@ -355,10 +371,6 @@ async function migrateSingleImage(payload: Awaited<ReturnType<typeof getPayload>
         size: stats.size,
       },
     })
-
-    // Get existing images
-    const existing = await payload.findByID({ collection: 'products', id: productId, depth: 0 })
-    const existingImages = ((existing as unknown as Record<string, unknown>).images as { image: number }[]) || []
 
     await (payload.update as Function)({
       collection: 'products',
