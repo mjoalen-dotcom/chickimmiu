@@ -2,7 +2,9 @@
 
 > 對應文件：Google Doc「App 第三方登入：需網站端處理的設定與問題發現」（2026-08-27，
 > doc id `1H6fXTcpfS3OmcKa_t5VSSLdil3bkziI6`）
-> 程式變更：commit `6e7a572`，已部署 pre。
+> 程式變更：commit `6e7a572`＋`1f77894`，已部署 pre。
+> **2026-09-01 更新：Google Cloud Console 三組原生 OAuth 用戶端已建立完成**（client ID
+> 見第二節），LINE Console 兩項仍待 Alan。
 
 **先講結論**
 
@@ -13,9 +15,10 @@
 | 二 | Google `aud` 處理方式請確認 | ✅ **確認你們的方案正確**，後端不需新增 audience |
 | 二 | 「Android Client ID 欄位比對 aud 不會成立」 | ✅ **你們是對的**，已改欄位說明為備查用途 |
 | 三 | Apple 設定 | ✅ 已複核：後台 Bundle ID 已生效，網頁不受影響 |
+| 二 | 建立 iOS／Android OAuth 用戶端 | ✅ **已建立三組**（iOS／Android release／Android debug），client ID 見第二節 |
+| — | 軟刪除會員再次社群登入 | ✅ **已改為自動復原原帳號**（Alan 09-01 拍板，commit `1f77894`） |
 | 一 | LINE channel 2009827245 啟用 Mobile app | ⛔ **需 Alan 到 LINE Console 操作**（見文末待辦） |
 | 一 | LINE Email scope 是否已核准 | ⛔ **需 Alan 到 LINE Console 確認**（後端查不到；但不影響登入可用性，見一之三） |
-| 二 | 建立 iOS／Android OAuth 用戶端 | ⛔ **需 Alan 到 Google Cloud Console 操作** |
 
 ---
 
@@ -102,10 +105,13 @@
 `apple_<sub>@noemail.invalid` placeholder 不改名就重測，下次同一個 Apple 帳號登入會
 在建帳時撞唯一鍵。
 
-延伸的既有行為（非本次變更造成，先讓你們知道）：**已被軟刪除的會員若再次社群登入，
-目前會建帳失敗**（查詢會排除已刪除紀錄 → 走建新帳 → 撞 email 唯一鍵）。實務上要 admin
-先刪過該會員才會遇到。要改成「自動復原原帳號」還是「明確擋下並提示聯絡客服」屬於
-帳號生命週期政策，已列給 Alan 決定，不在本次範圍。
+延伸的既有行為（非本次變更造成）：**已被軟刪除的會員若再次社群登入，原本會建帳失敗**
+（查詢會排除已刪除紀錄 → 走建新帳 → 撞 email 唯一鍵）。
+
+**這條 Alan 已於 2026-09-01 拍板：改為自動復原原帳號**（commit `1f77894`）。現在的行為是
+以同一個 social id 再次登入時，會連同已軟刪除的紀錄一起查，找到就把 `deletedAt` 清空、
+沿用原本的會員（點數、訂單、推薦關係全部保留），並視為**回訪登入**（`isNewUser: false`、
+不重發註冊禮）。你們測試時把帳號改名再刪的做法仍然有效，只是現在即使不改名也不會撞唯一鍵。
 
 ---
 
@@ -135,14 +141,37 @@
 作為 `aud`，Android client ID 不會出現在 `aud` 裡，所以後台那欄對 Android 這條路徑
 不成立。已把欄位說明改成備查用途，避免下一個人照著填卻以為那是生效條件。
 
-後台「Google iOS / Android Client ID（App 用）」兩欄**維持空白即可**。唯一需要填的
-情形：iOS 端沒有設定 serverClientID、直接讓 `aud` 落在 iOS client ID 上 —— 那就把
-iOS client ID 填進去（現在可多組）。你們採用 server client ID 方案的話不需要。
+後台「Google iOS / Android Client ID（App 用）」兩欄，我**已經先幫你們填好了**（原本
+說可以留空）。理由：留空只有在「iOS 端確實有設定 serverClientID」時才安全；填上去則
+兩種寫法都會通過，而且填的都是同一個 Google 專案自己的 client ID，不會放寬到別人的
+token。這樣你們 iOS 端要不要設 serverClientID 就變成純粹的實作選擇，不會踩到後端。
 
-### 需要 Alan 建立的 OAuth 用戶端
+### OAuth 用戶端 —— 已建立完成 ✅
 
-我沒有 Google Cloud Console 的操作權限，這步要 Alan 做（清單見文末）。iOS 那組建立後
-請把 client ID 提供給 App 團隊（他們要拿 `REVERSED_CLIENT_ID` 寫進 Info.plist）。
+專案 `useful-figure-424117-s9`（與網站現有 Web client 同專案），2026-09-01 建立：
+
+| 名稱 | 類型 | Client ID |
+|---|---|---|
+| KimLafayette iOS | iOS | `517050786415-7d71je3ehvsth70p21i3tj22cd8oie7l.apps.googleusercontent.com` |
+| KimLafayette Android (release) | Android | `517050786415-oi1qjlm44j5eg2j8ru9g1mvo27la4n6a.apps.googleusercontent.com` |
+| KimLafayette Android (debug) | Android | `517050786415-c0sgvm1l3okk6dkduo437d4kkvvvon0d.apps.googleusercontent.com` |
+| CHIC KIM & MIU Web（既有，即 server client ID） | 網頁 | `517050786415-0vh6ftjdk15ckggqcob5ceivgsm8e82a.apps.googleusercontent.com` |
+
+**iOS 端寫 Info.plist 用的 `REVERSED_CLIENT_ID`**：
+
+```
+com.googleusercontent.apps.517050786415-7d71je3ehvsth70p21i3tj22cd8oie7l
+```
+
+建立時填入的參數：iOS Bundle ID `com.jingshow.kimlafayette` ＋ Team ID `29793LNX3V`；
+Android package `com.jingshow.kimlafayette`。
+
+⚠️ **Android 一組 client 只吃一個 SHA-1**，所以正式與開發憑證各建一組（不是同一組填兩行）。
+上架 Google Play 啟用 Play 應用程式簽署後，還要再建第三組（Google 簽署金鑰的 SHA-1）。
+
+後端已把上表四個 client ID 全部登記為合法 `aud`，並在 pre 實際跑 `resolveSocialAuth()`
+確認四個都在允許清單內。OAuth 同意畫面狀態為「實際運作中／外部」，只要 scope 停留在
+`openid email profile`（非敏感範圍）就不需要送審，一般使用者可直接登入。
 
 ---
 
@@ -184,7 +213,10 @@ email scope 沒核准的情況下，登入照樣走得通，只是會員 email �
 
 ---
 
-## ⛔ 需要 Alan 操作的事項（我無法代為登入外部 console）
+## ⛔ 還沒完成的事項
+
+只剩 LINE Console 兩項。Google Cloud Console 三組用戶端已於 2026-09-01 建立完成（見第二節），
+LINE Developers Console 因為需要 LINE Business ID 登入而無法代為操作。
 
 ### 1. LINE Developers Console — channel `2009827245`
 
@@ -204,20 +236,17 @@ email scope 沒核准的情況下，登入照樣走得通，只是會員 email �
 同一個 channel 確認 email 權限是否已核准（未申請的話需送出申請）。
 不阻擋上線，但沒核准的話 LINE 會員的 email 會是 placeholder。
 
-### 3. Google Cloud Console — 建立兩組原生 OAuth 用戶端
+### ~~3. Google Cloud Console — 建立原生 OAuth 用戶端~~ ✅ 已完成
 
-| 類型 | 需要的資訊 |
-|---|---|
-| iOS | Bundle ID `com.jingshow.kimlafayette` |
-| Android | Package `com.jingshow.kimlafayette` ＋ SHA-1（正式）`80:D9:FB:33:F4:0A:0A:E9:6E:5F:3E:A0:D2:68:33:EB:4E:4C:45:91`、（開發）`C2:7F:12:3F:FB:A7:5B:1C:5D:BE:5C:16:CF:74:27:1F:B2:2B:BC:33` |
+2026-09-01 建立 iOS／Android release／Android debug 共三組，client ID 與
+`REVERSED_CLIENT_ID` 見第二節，後端允許清單已同步登記並驗證。
 
-建立後**把 iOS 那組 client ID 給 App 團隊**。兩組都不必填進我們後台（理由見第二節）。
-
-### 4. 上架 Google Play 後（提醒，非現在）
+### 3. 上架 Google Play 後（提醒，非現在）
 
 啟用 Play 應用程式簽署後，最終 APK 由 Google 的金鑰簽署，那組 SHA-1 也要補登記到
-LINE 與 Google 兩邊，只登記本地上傳金鑰不夠 —— 你們文件裡已經寫到這點，我們同意，
-屆時同欄位換行加入即可。
+LINE 與 Google 兩邊，只登記本地上傳金鑰不夠 —— 你們文件裡已經寫到這點，我們同意。
+LINE 那邊同欄位換行加入即可；**Google 那邊要再建一組新的 Android client**（一組只吃
+一個 SHA-1），建好後告訴我，我補進後端允許清單。
 
 ---
 
