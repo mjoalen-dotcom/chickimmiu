@@ -1,9 +1,12 @@
 import { createClient } from '@libsql/client'
 import { createHash } from 'node:crypto'
 import { mkdir, stat, writeFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 
 const SOURCE_ORIGIN = 'https://www.chickimmiu.com'
+// 媒體庫資料夾樹的根：後台「部落格」資料夾（payload_folders 裡 folder_id IS NULL 那筆）
+const BLOG_ROOT_FOLDER_NAME = '部落格'
 const POST_IDS = [
   '260422',
   '260415',
@@ -336,6 +339,77 @@ async function fetchPost(postId) {
   return extractPost(await res.text(), postId)
 }
 
+/**
+ * 依 dbUrl scheme 建雙方言連線（file:/libsql → SQLite、postgres(ql):// → PG）。
+ * 兩個 driver 都收斂成 { dialect, execute({sql,args}) → {rows}, close() }，
+ * SQL 一律寫 `?` 佔位符，PG 端在這裡轉成 $1..$n（本腳本的 SQL 字串裡沒有
+ * 字面 `?`，可以安全整串替換）。
+ */
+async function createDb() {
+  if (/^postgres(ql)?:/i.test(dbUrl)) {
+    // pg 不是直接依賴，但 @payloadcms/db-postgres 一定帶著——照
+    // scripts/migrate-sqlite-to-pg.ts 的解析法借用，不另外裝套件。
+    const require = createRequire(import.meta.url)
+    const pgPath = require.resolve('pg', { paths: [require.resolve('@payloadcms/db-postgres')] })
+    const { Client } = require(pgPath)
+    const client = new Client({ connectionString: dbUrl })
+    await client.connect()
+    return {
+      dialect: 'pg',
+      async execute(statement) {
+        const { sql, args } = normalizeStatement(statement)
+        let index = 0
+        const res = await client.query(sql.replace(/\?/g, () => `$${++index}`), args)
+        return { rows: res.rows }
+      },
+      close: () => client.end(),
+    }
+  }
+
+  const client = createClient({ url: dbUrl })
+  await client.execute('PRAGMA busy_timeout = 30000')
+  return {
+    dialect: 'sqlite',
+    execute: (statement) => client.execute(statement),
+    close: async () => client.close(),
+  }
+}
+
+function normalizeStatement(statement) {
+  return typeof statement === 'string'
+    ? { sql: statement, args: [] }
+    : { sql: statement.sql, args: statement.args || [] }
+}
+
+/**
+ * upsert 一個 Payload 原生媒體資料夾，回傳 folder id（dry-run 且不存在時回 null）。
+ * 直接寫 payload_folders / payload_folders_folder_type，跟本腳本其他 SQL 同一條路。
+ * folder_type 只在新建時補 value='media'（PG 端該欄是 enum
+ * enum_payload_folders_folder_type，參數繫結會依欄位型別 cast，不用手寫 ::cast；
+ * 既有資料夾不回填 folder_type，與線上既況一致）。
+ */
+async function ensureFolder(db, name, parentId) {
+  const found = await dbExecute(db, {
+    sql: `SELECT id FROM payload_folders WHERE name = ? AND ${
+      parentId == null ? 'folder_id IS NULL' : 'folder_id = ?'
+    } ORDER BY id LIMIT 1`,
+    args: parentId == null ? [name] : [name, parentId],
+  })
+  if (found.rows[0]) return Number(found.rows[0].id)
+  if (!apply) return null
+
+  const inserted = await dbExecute(db, {
+    sql: 'INSERT INTO payload_folders (name, folder_id, updated_at, created_at) VALUES (?, ?, ?, ?) RETURNING id',
+    args: [name, parentId, now, now],
+  })
+  const id = Number(inserted.rows[0].id)
+  await dbExecute(db, {
+    sql: 'INSERT INTO payload_folders_folder_type ("order", parent_id, value) VALUES (1, ?, ?)',
+    args: [id, 'media'],
+  })
+  return id
+}
+
 async function getAuthorId(db) {
   const byEmail = await dbExecute(db, {
     sql: 'SELECT id FROM users WHERE email = ? AND role = ? LIMIT 1',
@@ -348,7 +422,7 @@ async function getAuthorId(db) {
   throw new Error('No admin author found')
 }
 
-async function upsertMedia(db, { postId, title, image, index }) {
+async function upsertMedia(db, { postId, title, image, index, folderId }) {
   const filename = mediaFilename(postId, index, image.url)
   const mimeType = mimeFromFilename(filename)
   const alt = image.alt || `${title} ${index + 1}`
@@ -361,8 +435,8 @@ async function upsertMedia(db, { postId, title, image, index }) {
     const id = existing.rows[0].id
     if (apply) {
       await dbExecute(db, {
-        sql: 'UPDATE media SET alt = ?, url = ?, mime_type = ?, width = ?, height = ?, folder_name = ?, updated_at = ? WHERE id = ?',
-        args: [alt, image.url, mimeType, image.width, image.height, 'ckmu-blog-import', now, id],
+        sql: 'UPDATE media SET alt = ?, url = ?, mime_type = ?, width = ?, height = ?, folder_name = ?, folder_id = ?, updated_at = ? WHERE id = ?',
+        args: [alt, image.url, mimeType, image.width, image.height, 'ckmu-blog-import', folderId, now, id],
       })
       await ensureMediaFile({ url: image.url, filename })
     }
@@ -385,12 +459,12 @@ async function upsertMedia(db, { postId, title, image, index }) {
   const inserted = await dbExecute(db, {
     sql: `
       INSERT INTO media
-        (alt, caption, updated_at, created_at, url, filename, mime_type, filesize, width, height, focal_x, focal_y, folder_name)
+        (alt, caption, updated_at, created_at, url, filename, mime_type, filesize, width, height, focal_x, focal_y, folder_name, folder_id)
       VALUES
-        (?, NULL, ?, ?, ?, ?, ?, NULL, ?, ?, 50, 50, ?)
+        (?, NULL, ?, ?, ?, ?, ?, NULL, ?, ?, 50, 50, ?, ?)
       RETURNING id
     `,
-    args: [alt, now, now, image.url, filename, mimeType, image.width, image.height, 'ckmu-blog-import'],
+    args: [alt, now, now, image.url, filename, mimeType, image.width, image.height, 'ckmu-blog-import', folderId],
   })
   await ensureMediaFile({ url: image.url, filename })
   return { id: inserted.rows[0].id, alt, url: image.url, filename, mimeType, width: image.width, height: image.height, action: 'create' }
@@ -465,7 +539,7 @@ async function upsertPost(db, post, authorId, mediaDocs) {
             (title, slug, excerpt, content, featured_image_id, author_id, category, status,
              published_at, seo_meta_title, seo_meta_description, updated_at, created_at, featured)
           VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           RETURNING id
         `,
         args: [
@@ -482,6 +556,8 @@ async function upsertPost(db, post, authorId, mediaDocs) {
           excerpt,
           now,
           now,
+          // featured 在 SQLite 是 integer 0/1、在 PG 是 boolean——字面值 0 在 PG 會硬報錯
+          db.dialect === 'pg' ? false : 0,
         ],
       })
       postRowId = inserted.rows[0].id
@@ -511,34 +587,45 @@ async function upsertPost(db, post, authorId, mediaDocs) {
 }
 
 async function main() {
-  const db = createClient({ url: dbUrl })
-  await dbExecute(db, 'PRAGMA busy_timeout = 30000')
-  const authorId = await getAuthorId(db)
-  const posts = []
+  const db = await createDb()
+  try {
+    const authorId = await getAuthorId(db)
+    // 媒體庫資料夾樹：「部落格 / <文章標題>」。media 除了 legacy folder_name
+    // 文字標籤外，還要掛 folder_id 關聯，否則後台媒體庫顯示「無資料夾」。
+    const blogRootFolderId = await ensureFolder(db, BLOG_ROOT_FOLDER_NAME, null)
+    const posts = []
 
-  for (const postId of POST_IDS) {
-    const post = await fetchPost(postId)
-    const images = collectImages(post.contentHtml)
-    const mediaDocs = []
-    for (const [index, image] of images.entries()) {
-      mediaDocs.push(await upsertMedia(db, { postId, title: post.title, image, index }))
+    for (const postId of POST_IDS) {
+      const post = await fetchPost(postId)
+      const folderId =
+        blogRootFolderId == null ? null : await ensureFolder(db, post.title, blogRootFolderId)
+      const images = collectImages(post.contentHtml)
+      const mediaDocs = []
+      for (const [index, image] of images.entries()) {
+        mediaDocs.push(await upsertMedia(db, { postId, title: post.title, image, index, folderId }))
+      }
+      posts.push({ ...(await upsertPost(db, post, authorId, mediaDocs)), folderId })
     }
-    posts.push(await upsertPost(db, post, authorId, mediaDocs))
-  }
 
-  const summary = {
-    mode: dryRun ? 'dry-run' : 'apply',
-    dbUrl,
-    authorId,
-    downloadMedia,
-    mediaDir,
-    posts: posts.length,
-    creates: posts.filter((p) => p.action === 'create').length,
-    updates: posts.filter((p) => p.action === 'update').length,
-    images: posts.reduce((sum, p) => sum + p.imageCount, 0),
-    detail: posts,
+    const summary = {
+      mode: dryRun ? 'dry-run' : 'apply',
+      dialect: db.dialect,
+      // PG 連線字串帶密碼，落 log 前遮掉
+      dbUrl: dbUrl.replace(/(:\/\/[^:/@]+):[^@]+@/, '$1:***@'),
+      authorId,
+      downloadMedia,
+      mediaDir,
+      blogRootFolderId,
+      posts: posts.length,
+      creates: posts.filter((p) => p.action === 'create').length,
+      updates: posts.filter((p) => p.action === 'update').length,
+      images: posts.reduce((sum, p) => sum + p.imageCount, 0),
+      detail: posts,
+    }
+    console.log(JSON.stringify(summary, null, 2))
+  } finally {
+    await db.close()
   }
-  console.log(JSON.stringify(summary, null, 2))
 }
 
 async function dbExecute(db, statement, attempt = 0) {

@@ -34,6 +34,9 @@ interface Options {
   skipExisting: boolean
 }
 
+// 媒體庫資料夾樹的根：後台「部落格」資料夾（parent 為空的那筆）
+const BLOG_ROOT_FOLDER_NAME = '部落格'
+
 const CATEGORY_VALUES: Record<string, string> = {
   穿搭教學: 'styling',
   新品介紹: 'new-arrivals',
@@ -133,6 +136,46 @@ function uploadFilename(
   extension: string,
 ): string {
   return `kim-pixnet-${slug}-${String(index + 1).padStart(3, '0')}${extension}`
+}
+
+/**
+ * upsert 一個 Payload 原生媒體資料夾（payload-folders collection）。
+ * media 除了 legacy `folderName` 文字標籤外，還要掛真正的 `folder` 關聯，
+ * 否則後台媒體庫一律顯示「無資料夾」。folderType=['media'] 對應 PG 端的
+ * enum enum_payload_folders_folder_type / SQLite 端的 text，方言差異由
+ * Payload adapter 處理。dry-run 且資料夾不存在時回 { id: null }。
+ */
+async function ensureMediaFolder(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  name: string,
+  parentId: number | string | null,
+  dryRun: boolean,
+): Promise<{ created: boolean; id: number | string | null }> {
+  const existing = await payload.find({
+    collection: 'payload-folders',
+    where: {
+      and: [
+        { name: { equals: name } },
+        parentId == null ? { folder: { exists: false } } : { folder: { equals: parentId } },
+      ],
+    },
+    sort: 'createdAt',
+    limit: 1,
+    depth: 0,
+  })
+  const found = existing.docs[0]
+  if (found) return { created: false, id: found.id }
+  if (dryRun) return { created: false, id: null }
+
+  const created = await payload.create({
+    collection: 'payload-folders',
+    data: {
+      name,
+      folderType: ['media'],
+      ...(parentId == null ? {} : { folder: parentId }),
+    } as never,
+  })
+  return { created: true, id: created.id }
 }
 
 async function validateSource(options: Options) {
@@ -265,9 +308,32 @@ async function main() {
   const mediaBySource = new Map<string, number | string>()
   const gallery: Array<number | string> = []
   const createdMedia: Array<number | string> = []
+  const createdFolders: Array<number | string> = []
+  let articleFolderId: number | string | null = null
   let reusedMedia = 0
 
   try {
+    // 媒體庫資料夾樹：「部落格 / <文章標題>」
+    const rootFolder = await ensureMediaFolder(
+      payload,
+      BLOG_ROOT_FOLDER_NAME,
+      null,
+      options.dryRun,
+    )
+    if (rootFolder.created && rootFolder.id != null) createdFolders.push(rootFolder.id)
+    if (rootFolder.id != null) {
+      const articleFolder = await ensureMediaFolder(
+        payload,
+        post.title,
+        rootFolder.id,
+        options.dryRun,
+      )
+      if (articleFolder.created && articleFolder.id != null) {
+        createdFolders.push(articleFolder.id)
+      }
+      articleFolderId = articleFolder.id
+    }
+
     for (let index = 0; index < post.images.length; index += 1) {
       const image = post.images[index]!
       const filePath = mediaPaths[index]!
@@ -287,6 +353,14 @@ async function main() {
       const filename = uploadFilename(post.slug, index, extension)
       const reused = existingByFilename.get(filename)
       if (reused) {
+        // 舊匯入（或中斷後重跑）留下的同名 media 若還沒掛資料夾，順手補上
+        if (!options.dryRun && articleFolderId != null && !reused.folder) {
+          await payload.update({
+            collection: 'media',
+            id: reused.id,
+            data: { folder: articleFolderId } as never,
+          })
+        }
         mediaBySource.set(image.src, reused.id)
         gallery.push(reused.id)
         reusedMedia += 1
@@ -304,7 +378,8 @@ async function main() {
         data: {
           alt: String(image.alt || `文章相片 ${index + 1}`).slice(0, 160),
           folderName,
-        },
+          ...(articleFolderId != null ? { folder: articleFolderId } : {}),
+        } as never,
         filePath,
         file: {
           data,
@@ -341,6 +416,10 @@ async function main() {
       reusedMedia,
       createdMedia: createdMedia.length,
       pendingMedia: options.dryRun ? gallery.length - reusedMedia : 0,
+      // dry-run 且資料夾尚不存在時為 null（實際匯入時會建立）
+      mediaFolder: `${BLOG_ROOT_FOLDER_NAME} / ${post.title}`,
+      mediaFolderId: articleFolderId,
+      createdFolders: createdFolders.length,
       nodeCounts: converted.nodeCounts,
     }
     if (options.dryRun) {
@@ -393,6 +472,23 @@ async function main() {
         } catch (rollbackError) {
           console.error(
             `failed to roll back media ${id}: ${
+              rollbackError instanceof Error
+                ? rollbackError.message
+                : String(rollbackError)
+            }`,
+          )
+        }
+      }
+    }
+    // media 都刪掉後資料夾已空；反序（先子後父）回滾本次新建的資料夾
+    if (!options.dryRun && createdFolders.length > 0) {
+      console.error(`rolling back ${createdFolders.length} newly created media folders`)
+      for (const id of createdFolders.reverse()) {
+        try {
+          await payload.delete({ collection: 'payload-folders', id })
+        } catch (rollbackError) {
+          console.error(
+            `failed to roll back folder ${id}: ${
               rollbackError instanceof Error
                 ? rollbackError.message
                 : String(rollbackError)
