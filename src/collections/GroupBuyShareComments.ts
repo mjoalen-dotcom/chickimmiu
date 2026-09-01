@@ -100,12 +100,15 @@ async function recount(payload: unknown, review: unknown, req?: unknown): Promis
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const p = payload as any
+    // ⚠️ count 也必須帶 req：不帶就是在交易外查，看不到當前這筆尚未提交的異動，
+    // 結果會固定慢一拍（新增 published 後算成 0、隱藏後反而算成 1）。
     const res = await p.count({
       collection: 'group-buy-share-comments',
       where: {
         and: [{ review: { equals: reviewId } }, { status: { equals: 'published' } }],
       },
       overrideAccess: true,
+      ...(req ? { req } : {}),
     })
     await p.update({
       collection: 'group-buy-shares',
