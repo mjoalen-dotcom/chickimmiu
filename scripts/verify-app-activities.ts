@@ -20,6 +20,8 @@ import { randomUUID } from 'node:crypto'
 
 import { tpeToday, tpeWeekId } from '../src/lib/app-activities/common'
 import { awardActivityPoints } from '../src/lib/app-activities/award'
+import { runSql } from '../src/lib/db/dialectSafeSql'
+import { sql } from '@payloadcms/db-postgres'
 
 type Loose = Record<string, unknown>
 
@@ -325,15 +327,42 @@ async function main() {
   }
 
   // 清理
+  //
+  // ⚠️ payload.delete 對有 FK 參照的列會失敗（本活動的 article/user 皆為必填，
+  // FK 又是 ON DELETE SET NULL → 刪父列時會違反 NOT NULL）。所以依相依順序
+  // 用一次 SQL 清乾淨；否則測試資料會殘留（實測殘留過 26 個會員與 2 篇
+  // published+publishToKimLafayette 的測試文章，那會出現在 App 選單與部落格）。
   console.log('')
-  for (const id of shareIds) {
-    await payload.delete({ collection: 'group-buy-shares', id, overrideAccess: true }).catch(() => {})
+  const ids = madeCustomers.map((v) => Number(v)).filter(Number.isFinite)
+  const idList = ids.length ? ids.join(',') : '-1'
+  const artId = Number(articleId)
+  const raw = async (q: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await runSql(payload, (sql as any).raw(q))
   }
-  if (article) await payload.delete({ collection: 'blog-posts', id: article.id as never, overrideAccess: true }).catch(() => {})
-  for (const id of madeCustomers) {
-    await payload.delete({ collection: 'customers', id: id as never, overrideAccess: true }).catch(() => {})
+  try {
+    await raw(`DELETE FROM content_reports WHERE reporter_id IN (${idList}) OR target_user_id IN (${idList})`)
+    await raw(`DELETE FROM group_buy_share_comments WHERE user_id IN (${idList})`)
+    await raw(`DELETE FROM group_buy_shares_photos WHERE _parent_id IN (SELECT id FROM group_buy_shares WHERE user_id IN (${idList}))`)
+    await raw(`DELETE FROM group_buy_shares WHERE user_id IN (${idList})`)
+    await raw(`DELETE FROM group_buy_order_claims WHERE user_id IN (${idList})`)
+    await raw(`DELETE FROM travel_read_rewards WHERE user_id IN (${idList})`)
+    await raw(`DELETE FROM step_daily_records WHERE user_id IN (${idList})`)
+    await raw(`DELETE FROM step_weekly_records WHERE user_id IN (${idList})`)
+    await raw(`DELETE FROM points_transactions WHERE user_id IN (${idList})`)
+    await raw(`DELETE FROM wallet_transactions WHERE user_id IN (${idList})`)
+    await raw(`DELETE FROM member_segments WHERE user_id IN (${idList})`)
+    await raw(`DELETE FROM customers_sessions WHERE _parent_id IN (${idList})`)
+    await raw(`DELETE FROM customers WHERE id IN (${idList})`)
+    if (Number.isFinite(artId)) {
+      await raw(`DELETE FROM blog_posts_rels WHERE parent_id = ${artId}`)
+      await raw(`DELETE FROM blog_posts WHERE id = ${artId}`)
+    }
+    console.log(`已清理 ${ids.length} 個測試會員、測試文章與所有活動紀錄`)
+  } catch (e) {
+    console.log('⚠️ 清理失敗，請手動確認殘留：', e instanceof Error ? e.message.slice(0, 200) : '')
+    failures++
   }
-  console.log(`已清理 ${madeCustomers.length} 個測試會員、${shareIds.length} 篇分享`)
 
   if (failures === 0) {
     console.log('\n🎉 全部 pass')
