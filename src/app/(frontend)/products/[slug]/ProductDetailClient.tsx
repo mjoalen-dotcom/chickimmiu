@@ -22,6 +22,7 @@ import {
   Star,
   MessageSquare,
   Zap,
+  AlertCircle,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useCartStore } from '@/stores/cartStore'
@@ -294,10 +295,16 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
   const { toggleItem, isInWishlist } = useWishlistStore()
   const inWishlist = isInWishlist(product.id as unknown as string)
   const addToCartRef = useRef<HTMLDivElement>(null)
+  // 未選款式時要能捲回去並閃一下的目標
+  const colorPickerRef = useRef<HTMLDivElement>(null)
+  const sizePickerRef = useRef<HTMLDivElement>(null)
+  const [highlightOption, setHighlightOption] = useState<'color' | 'size' | null>(null)
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     return () => {
       if (cartToastTimerRef.current) clearTimeout(cartToastTimerRef.current)
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
     }
   }, [])
 
@@ -371,6 +378,35 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
   const selectedVariantOutOfStock = Boolean(selectedVariant && selectedVariant.stock === 0)
   const isPreorderItem = selectedVariantOutOfStock && allowPreOrder
 
+  /* ─── 買不下去時要講出原因 ───────────────────────────────────────────
+   * 原本按鈕只是 disabled，顧客按不動也不知道為什麼——尤其 Free size 這種
+   * 只有一個尺寸的商品，大家會以為不用選。這裡分三種情況給不同的話：
+   *   ① 全款缺貨且不開放預購 → 講缺貨，不要叫人去選一個選不了的尺寸
+   *   ② 這個顏色的尺寸全缺   → 叫人換顏色
+   *   ③ 單純還沒選           → 講清楚缺哪一項
+   */
+  const isSizeBlocked = (size: string) => {
+    const v = variants.find((x) => x.colorName === selectedColor && x.size === size)
+    return Boolean(v && v.stock === 0 && !allowPreOrder)
+  }
+  const selectableSizes = sizes.filter((s) => !isSizeBlocked(s))
+  const allSoldOut =
+    variants.length > 0 && !allowPreOrder && variants.every((v) => v.stock === 0)
+  const colorSoldOut = !allSoldOut && sizes.length > 0 && selectableSizes.length === 0
+  const missingOptions = [
+    uniqueColors.length > 0 && !selectedColor ? '顏色' : null,
+    sizes.length > 0 && !selectedSize ? '尺寸' : null,
+  ].filter((x): x is string => x != null)
+  const selectionHint = canAddToCart
+    ? null
+    : allSoldOut
+      ? '本商品目前缺貨，可先加入追蹤清單'
+      : colorSoldOut
+        ? '此顏色目前缺貨，請換一個顏色'
+        : missingOptions.length > 0
+          ? `請先選擇${missingOptions.join('與')}`
+          : '請先選擇商品款式'
+
   /* ─── Quick Win D2: 韓系電商 social proof + 韓星同款 + 金老佛爺穿過 三種徽章 ─── */
   const totalSold = (product.totalSold as number) ?? 0
   // 50/100/300/500/1000+ 階梯顯示，避免冷啟動 "5 件" 不夠氣勢
@@ -442,6 +478,46 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
     const ok = handleAddToCart()
     if (ok) router.push('/checkout')
   }, [handleAddToCart, router])
+
+  /**
+   * 款式沒選完時，把「按不動」換成「按了有話說」：跳提示 + 捲回選項 + 閃一下。
+   * 選完了才真的執行加入購物車／立即購買。
+   */
+  const runWithSelectionGuard = useCallback(
+    (action: () => void) => {
+      if (canAddToCart) {
+        action()
+        return
+      }
+      setCartToast(selectionHint)
+      if (cartToastTimerRef.current) clearTimeout(cartToastTimerRef.current)
+      cartToastTimerRef.current = setTimeout(() => setCartToast(null), 2600)
+
+      if (allSoldOut) return // 真的沒貨，捲去哪都沒用
+      const target =
+        colorSoldOut || missingOptions[0] === '顏色' ? 'color' : 'size'
+      const node = (target === 'color' ? colorPickerRef : sizePickerRef).current
+      if (node) {
+        // 手機視窗實測 smooth 捲動不一定會動（html 有 scroll-behavior:smooth，
+        // 部分瀏覽器把程式化 smooth 捲動吃掉）→ 先試 smooth，沒動就硬跳。
+        const top = Math.max(node.getBoundingClientRect().top + window.scrollY - 120, 0)
+        window.scrollTo({ top, behavior: 'smooth' })
+        // 判斷「有沒有到目標」而不是「有沒有移動」——sticky bar 一出現會讓版面
+        // 位移幾十 px，用「有移動」判斷會誤以為捲動已生效。
+        // 另外兩參數的 scrollTo(0, y) 會沿用 CSS scroll-behavior:smooth，
+        // 連 fallback 都會被吃掉，所以明確指定 instant。
+        setTimeout(() => {
+          if (Math.abs(window.scrollY - top) > 24) {
+            window.scrollTo({ top, behavior: 'instant' as ScrollBehavior })
+          }
+        }, 500)
+      }
+      setHighlightOption(target)
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+      highlightTimerRef.current = setTimeout(() => setHighlightOption(null), 2600)
+    },
+    [canAddToCart, selectionHint, missingOptions, allSoldOut, colorSoldOut],
+  )
 
   const handleWishlist = () => {
     toggleItem({
@@ -739,7 +815,14 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
 
             {/* Color selector */}
             {uniqueColors.length > 0 && (
-              <div>
+              <div
+                ref={colorPickerRef}
+                className={`rounded-xl transition-all ${
+                  highlightOption === 'color'
+                    ? 'ring-2 ring-gold-500 ring-offset-4 ring-offset-cream-50'
+                    : ''
+                }`}
+              >
                 <p className="text-sm mb-3">
                   顏色：<span className="text-gold-600">{selectedColor}</span>
                 </p>
@@ -763,9 +846,21 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
 
             {/* Size selector */}
             {sizes.length > 0 && (
-              <div>
+              <div
+                ref={sizePickerRef}
+                className={`rounded-xl transition-all ${
+                  highlightOption === 'size'
+                    ? 'ring-2 ring-gold-500 ring-offset-4 ring-offset-cream-50'
+                    : ''
+                }`}
+              >
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm">尺寸{selectedSize && `：${selectedSize}`}</p>
+                  <p className="text-sm">
+                    尺寸{selectedSize ? `：${selectedSize}` : ''}
+                    {!selectedSize && selectableSizes.length > 0 && (
+                      <span className="ml-1 text-gold-600">（請選擇）</span>
+                    )}
+                  </p>
                   <button
                     onClick={() => setShowSizeGuide(!showSizeGuide)}
                     className="flex items-center gap-1 text-xs text-gold-600 hover:underline"
@@ -908,6 +1003,12 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
                   🕒 本商品開放預購{preOrderNote ? `：${preOrderNote}` : '，下單後將依到貨時程為您安排出貨'}
                 </div>
               )}
+              {selectionHint && (
+                <div className="flex items-center gap-2 rounded-xl border border-gold-600 bg-gold-500/10 px-3 py-2 text-sm text-gold-700">
+                  <AlertCircle size={16} className="flex-shrink-0" />
+                  {selectionHint}
+                </div>
+              )}
               {cartToast && (
                 <div className="rounded-xl border border-cream-200 bg-white px-3 py-2 text-sm text-foreground/80 shadow-sm">
                   {cartToast}
@@ -915,17 +1016,21 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
               )}
               <div className="flex gap-3">
                 <button
-                  onClick={handleAddToCart}
-                  disabled={!canAddToCart}
-                  className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-foreground text-cream-50 rounded-xl text-sm tracking-wide hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={() => runWithSelectionGuard(handleAddToCart)}
+                  aria-disabled={!canAddToCart}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3.5 bg-foreground text-cream-50 rounded-xl text-sm tracking-wide transition-colors ${
+                    canAddToCart ? 'hover:bg-foreground/90' : 'opacity-40'
+                  }`}
                 >
                   <ShoppingBag size={18} />
                   {isPreorderItem ? '預購加入購物車' : '加入購物車'}
                 </button>
                 <button
-                  onClick={handleBuyNow}
-                  disabled={!canAddToCart}
-                  className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-[#f4aaa4] text-white rounded-xl text-sm tracking-wide hover:bg-[#e89d97] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={() => runWithSelectionGuard(handleBuyNow)}
+                  aria-disabled={!canAddToCart}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3.5 bg-[#f4aaa4] text-white rounded-xl text-sm tracking-wide transition-colors ${
+                    canAddToCart ? 'hover:bg-[#e89d97]' : 'opacity-40'
+                  }`}
                 >
                   <Zap size={18} />
                   {isPreorderItem ? '立即預購' : '立即購買'}
@@ -1373,22 +1478,33 @@ export function ProductDetailClient({ product, relatedProducts, initialReviews =
             style={{ bottom: 'var(--consent-h, 0px)' }}
             className="fixed left-0 right-0 z-50 bg-white border-t border-cream-200 shadow-lg px-4 py-3 flex items-center gap-3 md:hidden"
           >
+            {/* 手機：提示要跟著這條購買列走，桌機那條提示在畫面外看不到 */}
+            {(cartToast || selectionHint) && (
+              <div className="absolute bottom-full left-0 right-0 mx-4 mb-2 flex items-center gap-2 rounded-xl border border-gold-600 bg-white px-3 py-2 text-sm text-gold-700 shadow-lg">
+                {!cartToast && <AlertCircle size={16} className="flex-shrink-0" />}
+                {cartToast || selectionHint}
+              </div>
+            )}
             <div className="flex-shrink-0">
               <p className="text-xs text-foreground/50 leading-none">價格</p>
               <Price twd={currentPrice} className="text-lg font-medium text-gold-600 leading-tight block" />
             </div>
             <button
-              onClick={handleAddToCart}
-              disabled={!canAddToCart}
-              className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-foreground text-cream-50 rounded-xl text-sm disabled:opacity-40"
+              onClick={() => runWithSelectionGuard(handleAddToCart)}
+              aria-disabled={!canAddToCart}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-3 bg-foreground text-cream-50 rounded-xl text-sm ${
+                canAddToCart ? '' : 'opacity-40'
+              }`}
             >
               <ShoppingBag size={16} />
               加入購物車
             </button>
             <button
-              onClick={handleBuyNow}
-              disabled={!canAddToCart}
-              className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-[#f4aaa4] text-white rounded-xl text-sm disabled:opacity-40"
+              onClick={() => runWithSelectionGuard(handleBuyNow)}
+              aria-disabled={!canAddToCart}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-3 bg-[#f4aaa4] text-white rounded-xl text-sm ${
+                canAddToCart ? '' : 'opacity-40'
+              }`}
             >
               <Zap size={16} />
               立即購買
