@@ -198,6 +198,14 @@ export const PointsTransactions: CollectionConfig = {
         { label: '升等贈點', value: 'tier_upgrade' },
         { label: '銷毀造型卡', value: 'card_burn' },
         { label: '金老佛爺部落格閱讀', value: 'kim_blog_read' },
+        // ── App 專屬三項活動（工單 2026-08-25 第五章）──
+        // 刻意不併進既有的 kim_blog_read / review：那兩個各有既有活動在用，
+        // 併了帳會混在一起、之後也拆不開。
+        { label: '愛旅遊文章閱讀', value: 'travel_article_read' },
+        { label: '散步趣（每日）', value: 'step_activity' },
+        { label: '散步趣（每週）', value: 'step_activity_weekly' },
+        { label: '團購好物分享', value: 'product_review' },
+        { label: '團購好物分享．金金精選加碼', value: 'product_review_featured' },
       ],
     },
     {

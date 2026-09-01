@@ -117,6 +117,15 @@ import { LoginAttempts } from './collections/LoginAttempts'
 import { Coupons } from './collections/Coupons'
 import { CouponRedemptions } from './collections/CouponRedemptions'
 import { DailyHoroscopes } from './collections/DailyHoroscopes'
+// App 專屬三項活動（工單 2026-08-25）
+import { TravelReadRewards } from './collections/TravelReadRewards'
+import { StepDailyRecords } from './collections/StepDailyRecords'
+import { StepWeeklyRecords } from './collections/StepWeeklyRecords'
+import { GroupBuyShares } from './collections/GroupBuyShares'
+import { GroupBuyShareComments } from './collections/GroupBuyShareComments'
+import { GroupBuyOrderClaims } from './collections/GroupBuyOrderClaims'
+import { ContentReports } from './collections/ContentReports'
+import { AppActivitySettings } from './globals/AppActivitySettings'
 // 客服中心 v1 Phase 1A
 import { Conversations } from './collections/Conversations'
 import { Messages } from './collections/Messages'
@@ -630,6 +639,14 @@ export default buildConfig({
     StyleGameRooms,
     StyleVotes,
     StyleWishes,
+    // App 專屬三項活動的紀錄（工單 2026-08-25）：愛旅遊閱讀 / 團購好物分享 / 散步趣
+    GroupBuyShares,
+    GroupBuyShareComments,
+    ContentReports,
+    GroupBuyOrderClaims,
+    TravelReadRewards,
+    StepDailyRecords,
+    StepWeeklyRecords,
     // ⑥ 內容與頁面
     // 順序原則：核心內容（最常編輯）→ 樣式（少動）→ 資源池（最少動）。
     // 部落格已移至 Ⓚ 金老佛爺部落格專區；Media 放最後因為 admin 通常透過
@@ -676,6 +693,7 @@ export default buildConfig({
     adminOnlyGlobal(AdsCatalogSettings),
     // ⑤ 互動體驗
     adminOnlyGlobal(GameSettings),
+    AppActivitySettings, // App 專屬三項活動設定（read 開放給 App，update admin-only）
     // ⑥ 內容與頁面
     // 順序原則：全站最常動 → 各頁面設定 → 規範類靜態頁。NavigationSettings
     // 涵蓋公告 bar / 主選單 / 頁尾，幾乎每週要動，放最上面；首頁 / 合集頁
