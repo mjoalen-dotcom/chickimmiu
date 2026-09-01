@@ -9,6 +9,7 @@ import {
   type IdTokenProvider,
 } from '@/lib/auth/verifyIdToken'
 import { linkOrCreateSocialUser } from '@/lib/auth/socialIdentity'
+import { onboardNewCustomer } from '@/lib/auth/newCustomerOnboarding'
 import { issuePayloadToken } from '@/lib/auth/issuePayloadToken'
 
 /**
@@ -31,8 +32,12 @@ import { issuePayloadToken } from '@/lib/auth/issuePayloadToken'
  *     "provider": "google" | "apple" | "line",
  *     "idToken":  "<SDK 拿到的 id_token>",
  *     "nonce":    "<發起授權時用的 nonce 原文，可選但強烈建議>",
- *     "name":     "<Apple 首次登入才拿得到全名，可選>"
+ *     "name":     "<Apple 首次登入才拿得到全名，可選>",
+ *     "referralCode": "<邀請人的推薦碼，可選；與 /api/customers/register 同語意>"
  *   }
+ *
+ * 新註冊（回應的 isNewUser=true）會跑與 Email 註冊同一份上線流程：推薦碼綁定 →
+ * 新會員註冊禮 → 推薦註冊獎勵，結果回在 data.onboarding。
  *
  * Response 200: 與 /api/v1/auth/login 同格式，另加 `isNewUser`。
  *
@@ -55,6 +60,8 @@ export async function POST(req: NextRequest) {
       id_token?: string
       nonce?: string
       name?: string
+      /** 邀請人的推薦碼（選填）——與 POST /api/customers/register 同語意 */
+      referralCode?: string
     }
 
     const provider = (body.provider || '').trim().toLowerCase() as SupportedProvider
@@ -106,22 +113,27 @@ export async function POST(req: NextRequest) {
     const trustedEmail = identity.emailVerified ? identity.email : null
 
     const payload = await getPayload({ config })
-    // isNewUser 給 App 判斷要不要跑新手引導 —— 在 link 之前先問一次「這個社群 ID 見過嗎」
-    const before = await payload.find({
-      collection: 'customers',
-      where: { [`socialLogins.${provider}Id`]: { equals: identity.sub } },
-      limit: 1,
-    })
-    const isNewUser = before.docs.length === 0
 
-    const user = await linkOrCreateSocialUser({
+    const linked = await linkOrCreateSocialUser({
       provider,
       providerAccountId: identity.sub,
       email: trustedEmail,
       name: (body.name || '').trim() || identity.name,
     })
-    if (!user) {
+    if (!linked) {
       return fail(401, '無法建立會員（provider 未回傳可用的識別資訊）', 'UNAUTHORIZED')
+    }
+    const { user, created: isNewUser } = linked
+
+    // 新註冊 → 推薦碼綁定 + 註冊禮 + 推薦註冊獎勵（與 Email 註冊同一份實作）。
+    // 2026-08-27 App 團隊實測回報：社群註冊 referredBy=null、points=0，就是這段缺漏。
+    // best-effort：onboarding 失敗不擋登入（helper 內已全部 try/catch）。
+    let onboarding: Awaited<ReturnType<typeof onboardNewCustomer>> | null = null
+    if (isNewUser) {
+      onboarding = await onboardNewCustomer(payload, {
+        userId: user.id,
+        referralCode: body.referralCode ?? null,
+      })
     }
 
     const { token, expiresIn } = await issuePayloadToken(payload, user)
@@ -138,7 +150,19 @@ export async function POST(req: NextRequest) {
       data: {
         token,
         expiresIn,
+        // created=true 才算新註冊。既有 email 會員第一次改用社群登入不是新會員
+        // （2026-08-27 前的版本只看「socialId 沒見過」，那種情況會誤判為新用戶）
         isNewUser,
+        ...(onboarding
+          ? {
+              onboarding: {
+                referralBound: onboarding.referredBy !== undefined,
+                signupPoints: onboarding.signupPoints,
+                signupCredit: onboarding.signupCredit,
+                referralRewardGranted: onboarding.referralRewardGranted,
+              },
+            }
+          : {}),
         user: {
           id: fresh.id,
           email: fresh.email,

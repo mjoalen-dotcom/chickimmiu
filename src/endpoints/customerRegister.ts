@@ -1,6 +1,5 @@
 import type { Endpoint, PayloadRequest, RequiredDataFromCollectionSlug } from 'payload'
-import { recordWalletTxn } from '../lib/wallet/server'
-import { grantRegistrationReferralReward } from '../lib/referral/registrationReward'
+import { onboardNewCustomer } from '../lib/auth/newCustomerOnboarding'
 import { sendWelcomeEmail } from '../lib/email/welcome'
 
 /**
@@ -180,80 +179,15 @@ export const customerRegisterEndpoint: Endpoint = {
         ...(requireVerification ? {} : { disableVerificationEmail: true }),
       })
 
-      // 新會員註冊禮（best-effort，失敗不擋註冊）
-      try {
-        const loyalty = (await req.payload.findGlobal({
-          slug: 'loyalty-settings',
-          depth: 0,
-        })) as
-          | {
-              signupReward?: {
-                enabled?: boolean
-                points?: number
-                shoppingCredit?: number
-                description?: string
-              }
-            }
-          | undefined
-        const reward = loyalty?.signupReward
-        const rewardPoints = Math.max(0, Math.floor(Number(reward?.points ?? 0)))
-        const rewardCredit = Math.max(0, Math.floor(Number(reward?.shoppingCredit ?? 0)))
-        if (reward?.enabled !== false && (rewardPoints > 0 || rewardCredit > 0)) {
-          const desc = (reward?.description || '新會員註冊禮').trim()
-          if (rewardPoints > 0 || rewardCredit > 0) {
-            await req.payload.update({
-              collection: 'customers',
-              id: newUser.id,
-              data: {
-                ...(rewardPoints > 0 ? { points: rewardPoints } : {}),
-                ...(rewardCredit > 0 ? { shoppingCredit: rewardCredit } : {}),
-              } as unknown as RequiredDataFromCollectionSlug<'customers'>,
-              overrideAccess: true,
-            })
-          }
-          if (rewardPoints > 0) {
-            await req.payload.create({
-              collection: 'points-transactions',
-              data: {
-                user: newUser.id,
-                type: 'earn',
-                amount: rewardPoints,
-                balance: rewardPoints,
-                source: 'welcome',
-                description: desc,
-              } as unknown as RequiredDataFromCollectionSlug<'points-transactions'>,
-              overrideAccess: true,
-            })
-          }
-          if (rewardCredit > 0) {
-            // 錢包帳本：新會員購物金註冊禮（新帳號 shoppingCredit 從 0 起，餘額即 rewardCredit）
-            await recordWalletTxn(req.payload, {
-              userId: newUser.id,
-              wallet: 'shoppingCredit',
-              amount: rewardCredit,
-              type: 'earn',
-              source: 'signup',
-              description: desc,
-              balanceOverride: rewardCredit,
-            })
-          }
-        }
-      } catch (rewardErr) {
-        const msg = rewardErr instanceof Error ? rewardErr.message : String(rewardErr)
-        console.error('[customerRegister] signup reward failed:', msg)
-      }
-
-      // 推薦註冊獎勵（在 signup reward 之後呼叫 → adjustWallet 以增量入帳，不被絕對值覆蓋）。
-      // helper 內含冪等旗標 + email 驗證 gating：需驗證但尚未驗證時 defer，待首次登入由
-      // Users.afterLogin 補發。best-effort，失敗不擋註冊。
-      if (referredById !== undefined) {
-        try {
-          await grantRegistrationReferralReward(req.payload, newUser.id)
-        } catch (refErr) {
-          const msg = refErr instanceof Error ? refErr.message : String(refErr)
-          console.error('[customerRegister] registration referral reward failed:', msg)
-        }
-      }
+      // 新會員上線流程：註冊禮 → 推薦註冊獎勵（referredBy 已在 create 時寫入，
+      // helper 會沿用既有值不重綁）。與 App 社群註冊、網頁社群註冊共用同一份實作
+      // （lib/auth/newCustomerOnboarding.ts）—— 2026-08-27 App 團隊回報「社群註冊
+      // 沒有推薦綁定與註冊禮」的根因，就是這段以前只寫在這支 endpoint 裡。
+      // 全程 best-effort，失敗不擋註冊。
+      await onboardNewCustomer(req.payload, {
+        userId: newUser.id,
+        referralCode: referralCodeInput || null,
+      })
 
       // 會員歡迎信（best-effort，fire-and-forget，不擋註冊；兩種驗證分支都寄）。
       // 缺 RESEND_API_KEY 時走 console-fallback，不會誤寄。

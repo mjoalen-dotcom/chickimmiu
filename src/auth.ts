@@ -10,6 +10,7 @@ import { completeFacebookLink } from '@/lib/auth/facebookLink'
 import { FACEBOOK_LINK_COOKIE, readCookie } from '@/lib/auth/facebookLinkIntent'
 import { resolveSocialAuth } from '@/lib/auth/socialCredentials'
 import { linkOrCreateSocialUser } from '@/lib/auth/socialIdentity'
+import { onboardNewCustomer } from '@/lib/auth/newCustomerOnboarding'
 import { isProviderEmailVerified, trustedEmailFrom } from '@/lib/auth/emailTrust'
 
 /**
@@ -70,7 +71,17 @@ const createSharedConfig = (facebookAppId?: string) => ({
           name: user.name,
         })
         // null = 不認得的 provider 又沒 email，無從建檔
-        return linked !== null
+        if (!linked) return false
+
+        // 網頁社群「首次註冊」也要發新會員註冊禮 —— 與 Email 註冊、App 社群註冊
+        // 同一份實作（lib/auth/newCustomerOnboarding.ts）。網頁 OAuth 轉址流程帶不到
+        // 推薦碼，故只發註冊禮；推薦綁定由 Email 註冊與 App 社群註冊涵蓋。
+        // best-effort：helper 內全程 try/catch，失敗不擋登入。
+        if (linked.created) {
+          const payload = await getPayload({ config })
+          await onboardNewCustomer(payload, { userId: linked.user.id })
+        }
+        return true
       } catch (error) {
         console.error('[NextAuth] customer sign-in failed', { provider: account.provider, errorType: error instanceof Error ? error.name : 'unknown' })
         return false // Never issue a usable social session when member resolution failed.

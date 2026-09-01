@@ -162,10 +162,22 @@ export async function resolveSocialAuth(): Promise<ResolvedSocialAuth> {
     apple = pair(undefined, undefined, process.env.AUTH_APPLE_ID, process.env.AUTH_APPLE_SECRET)
   }
 
-  // 原生 App 的 id_token aud 是 iOS/Android 各自的 client id，跟網頁那組不同 ——
-  // 三組都收進允許清單（去重、去空）。
-  const dedupe = (list: Array<string | undefined>): string[] =>
-    [...new Set(list.map((v) => str(v)).filter(Boolean))]
+  // 原生 App 的 id_token aud 跟網頁那組不同 —— 全部收進允許清單（去重、去空）。
+  //
+  // 多 App 共用同一批會員（CKMU App + KimLafayette App，2026-08-27 App 團隊提出）：
+  // 每個 App 有各自的 Bundle ID / Package name / OAuth client ID，但後台是單值文字
+  // 欄位。改成「一格可填多組」——用逗號、分號或換行分隔即可，不必為此加 migration，
+  // 既有單值設定原樣繼續有效。Google 官方對「多個 client 共用同一後端」的建議也是
+  // 由後端自行比對 aud，正是這份允許清單在做的事。
+  const splitMulti = (v: string | undefined): string[] =>
+    str(v)
+      .split(/[\s,;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+
+  const dedupe = (list: Array<string | undefined>): string[] => [
+    ...new Set(list.flatMap((v) => splitMulti(v))),
+  ]
 
   const value: ResolvedSocialAuth = {
     creds: { google, facebook, line, apple },

@@ -47,17 +47,20 @@ const customer = async (extra: Record<string, unknown> = {}) => payload.create({
 try {
   await payload.updateGlobal({ slug: 'global-settings', data: { socialLogin: { enableFacebook: true, facebookAppId: appId, facebookAppSecret: appSecret } } })
   const victim = await customer()
-  const first = await linkOrCreateSocialUser({ provider: 'facebook', providerAccountId: facebookId, providerAppId: appId, email: victim.email })
-  assert.ok(first)
+  const firstLink = await linkOrCreateSocialUser({ provider: 'facebook', providerAccountId: facebookId, providerAppId: appId, email: victim.email })
+  assert.ok(firstLink)
+  assert.equal(firstLink.created, true)
+  const first = firstLink.user
   assert.notEqual(first.id, victim.id)
   assert.match(first.email || '', /@noemail\.invalid$/)
   assert.equal((first.socialLogins as Record<string, unknown>).facebookAppId, appId)
   pass('new Facebook member is app-scoped and never merges by an untrusted email')
 
   const returning = await linkOrCreateSocialUser({ provider: 'facebook', providerAccountId: facebookId, providerAppId: appId })
-  assert.equal(returning?.id, first.id)
+  assert.equal(returning?.user.id, first.id)
+  assert.equal(returning?.created, false, 'repeat login must not be reported as a new registration')
   const otherApp = await linkOrCreateSocialUser({ provider: 'facebook', providerAccountId: facebookId, providerAppId: otherAppId })
-  assert.notEqual(otherApp?.id, first.id)
+  assert.notEqual(otherApp?.user.id, first.id)
   await assert.rejects(linkOrCreateSocialUser({ provider: 'facebook', providerAccountId: facebookId }))
   pass('repeat login keeps one customer; another app and missing app scope cannot take over')
 
@@ -68,7 +71,9 @@ try {
   assert.equal(preserved.points, 700)
   assert.equal(preserved.shoppingCredit, 120)
   assert.equal(preserved.socialLogins?.googleId, owner.socialLogins?.googleId)
-  assert.equal((await linkOrCreateSocialUser({ provider: 'facebook', providerAppId: appId, providerAccountId: '987654321000002' }))?.id, owner.id)
+  const ownerLink = await linkOrCreateSocialUser({ provider: 'facebook', providerAppId: appId, providerAccountId: '987654321000002' })
+  assert.equal(ownerLink?.user.id, owner.id)
+  assert.equal(ownerLink?.created, false, 'linking an existing customer is not a new registration')
   pass('linking an existing customer preserves ID, balance and other login methods')
 
   await assert.rejects(linkFacebookToCustomer(payload, other.id, appId, '987654321000002'))

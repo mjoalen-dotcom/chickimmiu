@@ -20,6 +20,15 @@ import { facebookIdentityWhere, requireFacebookId } from '@/lib/auth/facebook'
 
 export type PayloadUserDoc = { id: string | number; email?: string } & Record<string, unknown>
 
+/**
+ * created = 這次真的新建了 customers 紀錄（而非找到既有會員綁上社群 ID）。
+ *
+ * 呼叫端用它決定要不要跑新會員上線流程（註冊禮 / 推薦綁定）——只看「這個
+ * socialId 沒見過」會誤判：既有 email 會員第一次改用社群登入時同樣是首見，
+ * 但那不是新註冊。
+ */
+export type LinkOrCreateResult = { user: PayloadUserDoc; created: boolean }
+
 export type SocialIdentityInput = {
   /** 'google' | 'facebook' | 'line' | 'apple' */
   provider: string
@@ -36,11 +45,13 @@ export type SocialIdentityInput = {
 /**
  * 找出（或建立）對應的 Payload 會員，並把社群 ID 綁上去。
  * 回傳 null = 無從辨識（不認得的 provider 又沒 email）。
+ * 回傳 { user, created } —— created=true 代表這次真的新建帳號，呼叫端據此
+ * 決定要不要跑新會員上線流程（見 lib/auth/newCustomerOnboarding.ts）。
  * 丟出例外 = DB 或身分解析出錯；Web 與 App 均拒絕登入。
  */
 export async function linkOrCreateSocialUser(
   input: SocialIdentityInput,
-): Promise<PayloadUserDoc | null> {
+): Promise<LinkOrCreateResult | null> {
   const socialField = PROVIDER_SOCIAL_FIELD[input.provider]
   if (!Object.hasOwn(PROVIDER_SOCIAL_FIELD, input.provider) || !input.providerAccountId || input.providerAccountId.length > 255) return null
   const facebookAppId = input.provider === 'facebook' ? requireFacebookId(input.providerAppId) : null
@@ -90,6 +101,9 @@ export async function linkOrCreateSocialUser(
     // email 驗證（placeholder 則本來就不可投遞），Payload 不必再寄信。沒帶這兩個
     // 欄位會讓新帳號 _verified=false → /api/auth/bridge 雖能簽 JWT，但 payload.auth()
     // 在 verify 開啟時會拒絕未驗證 user，造成 /account → bridge → /account 無限循環。
+    // 併發搶建時走 catch 內的 re-read 分支 → 那筆不是我們建的，onboarding 由
+    // 勝出的那個請求負責，這裡必須回報 created=false 以免註冊禮發兩次。
+    let wasCreated = true
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const created = await (payload as any).create({
       collection: 'customers',
@@ -106,11 +120,14 @@ export async function linkOrCreateSocialUser(
       // constraint. Re-read exactly that identity; never fall back to email.
       if (facebookAppId) {
         const concurrent = await payload.find({ collection: 'customers', where: socialWhere, limit: 2, depth: 0 })
-        if (concurrent.docs.length === 1) return concurrent.docs[0]
+        if (concurrent.docs.length === 1) {
+          wasCreated = false
+          return concurrent.docs[0]
+        }
       }
       throw error
     })
-    return created as PayloadUserDoc
+    return { user: created as PayloadUserDoc, created: wasCreated }
   }
 
   const currentSocial = (existing.socialLogins || {}) as Record<string, unknown>
@@ -148,8 +165,8 @@ export async function linkOrCreateSocialUser(
       id: existing.id,
       data: updateData,
     })
-    return (updated || existing) as PayloadUserDoc
+    return { user: (updated || existing) as PayloadUserDoc, created: false }
   }
 
-  return existing
+  return { user: existing, created: false }
 }

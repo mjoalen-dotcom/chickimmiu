@@ -515,33 +515,38 @@ export const GlobalSettings: GlobalConfig = {
           },
         },
         // ── 手機 App 原生登入（POST /api/v1/auth/social）──
-        // App 用系統 SDK 拿到的 id_token，其 aud 是 iOS/Android 各自的 client id，
-        // 跟上面網頁那組不同；沒填這裡的話 App 登入會被擋在 audience 檢查。
+        // App 用系統 SDK 拿到的 id_token，其 aud 跟上面網頁那組不同；沒填這裡的話
+        // App 登入會被擋在 audience 檢查。
+        // 多個 App 共用同一批會員時（CKMU App + KimLafayette App），以下三欄都可以
+        // 填多組值 —— 用逗號或換行分隔即可（socialCredentials.ts 會拆開逐一比對）。
         {
           name: 'googleIosClientId',
-          label: 'Google iOS Client ID（App 用）',
-          type: 'text',
+          label: 'Google iOS Client ID（App 用，可多組）',
+          type: 'textarea',
           admin: {
             description:
-              'Google Cloud Console → 憑證 → OAuth 用戶端 ID，類型選「iOS」。手機 App 走 /api/v1/auth/social 才需要，純網站可留空',
+              'Google Cloud Console → 憑證 → OAuth 用戶端 ID，類型選「iOS」。多個 App 各有一組時，用逗號或換行分隔全部填進來。純網站可留空',
           },
         },
         {
           name: 'googleAndroidClientId',
-          label: 'Google Android Client ID（App 用）',
-          type: 'text',
+          label: 'Google Android Client ID（App 用，可多組）',
+          type: 'textarea',
           admin: {
             description:
-              'Google Cloud Console → 憑證 → OAuth 用戶端 ID，類型選「Android」（需 SHA-1 憑證指紋）。純網站可留空',
+              'Google Cloud Console → 憑證 → OAuth 用戶端 ID，類型選「Android」（需 SHA-1 憑證指紋）。' +
+              '⚠️ Android 的 id_token aud 是「server client ID（網頁那組）」，不會是 Android client ID —— ' +
+              '此欄僅作登記備查，Android 登入能不能過取決於上面的 Google Client ID。多組請用逗號或換行分隔',
           },
         },
         {
           name: 'appleAppBundleId',
-          label: 'Apple App Bundle ID（App 用）',
-          type: 'text',
+          label: 'Apple App Bundle ID（App 用，可多組）',
+          type: 'textarea',
           admin: {
             description:
-              'iOS App 的 Bundle ID（如 com.chickimmiu.app）。原生 Sign in with Apple 的 id_token audience 是 Bundle ID 不是 Services ID，兩者都要登記',
+              'iOS App 的 Bundle ID（如 com.chickimmiu.app）。原生 Sign in with Apple 的 id_token audience 是 Bundle ID 不是 Services ID，兩者都要登記。' +
+              '多個 App 各有一組時，用逗號或換行分隔全部填進來',
           },
         },
       ],
