@@ -20,6 +20,8 @@ import * as migration_20260824_170000_add_is_collection from './20260824_170000_
 import * as migration_20260824_190000_add_catalog_push_controls from './20260824_190000_add_catalog_push_controls';
 import * as migration_20260824_200000_add_blog_page_settings from './20260824_200000_add_blog_page_settings';
 import * as migration_20260831_140000_facebook_identity_scope from './20260831_140000_facebook_identity_scope';
+import * as migration_20260901_120000_app_activities_enums from './20260901_120000_app_activities_enums';
+import * as migration_20260901_120100_app_activities_schema from './20260901_120100_app_activities_schema';
 
 export const migrations = [
   {
@@ -132,5 +134,16 @@ export const migrations = [
     up: migration_20260831_140000_facebook_identity_scope.up,
     down: migration_20260831_140000_facebook_identity_scope.down,
     name: '20260831_140000_facebook_identity_scope',
+  },
+  {
+    up: migration_20260901_120000_app_activities_enums.up,
+    down: migration_20260901_120000_app_activities_enums.down,
+    name: '20260901_120000_app_activities_enums',
+  },
+  // ⚠️ 順序不可對調：ADD VALUE 必須先單獨 commit，新值才能被下一支使用
+  {
+    up: migration_20260901_120100_app_activities_schema.up,
+    down: migration_20260901_120100_app_activities_schema.down,
+    name: '20260901_120100_app_activities_schema',
   },
 ];
