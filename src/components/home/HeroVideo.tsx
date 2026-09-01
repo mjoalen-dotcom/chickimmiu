@@ -82,7 +82,7 @@ export function HeroVideo({
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/45 to-transparent pt-24 pb-8 md:pb-12 pointer-events-none">
         <div className="container">
           {tag && (
-            <p className="text-[11px] tracking-[0.35em] text-white/85 mb-3 uppercase">{tag}</p>
+            <p className="text-[10px] tracking-[0.5em] text-white/80 mb-3.5 uppercase">{tag}</p>
           )}
           {title && (
             <h1 className="text-3xl md:text-5xl font-serif text-white leading-tight mb-4 whitespace-pre-line">
@@ -90,8 +90,8 @@ export function HeroVideo({
             </h1>
           )}
           {ctaText && (
-            <span className="inline-flex items-center gap-2 text-xs tracking-[0.3em] uppercase text-white border-b border-white/70 pb-1 group-hover:border-white transition-colors">
-              {ctaText} <ArrowRight size={13} />
+            <span className="inline-flex items-center gap-2 text-[11px] tracking-[0.35em] uppercase text-white/95 border-b border-white/60 pb-1.5 group-hover:border-white transition-colors">
+              {ctaText} <ArrowRight size={12} />
             </span>
           )}
         </div>

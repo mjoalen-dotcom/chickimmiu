@@ -40,12 +40,15 @@ type WallRow = {
   link: string
 }
 
-/** chuu 式區塊大標（列上方，字重 400、留白大） */
-function RowHeading({ text }: { text: string | null }) {
+/** chuu 式區塊大標：編號 eyebrow + serif 大標（時尚編輯級 typography） */
+function RowHeading({ text, index }: { text: string | null; index: number }) {
   if (!text) return null
   return (
     <div className="container">
-      <h2 className="text-2xl md:text-[32px] font-serif font-normal leading-tight mb-5 md:mb-7">
+      <p className="text-[10px] tracking-[0.45em] text-neutral-400 mb-2.5">
+        {String(index).padStart(2, '0')}
+      </p>
+      <h2 className="text-[26px] md:text-[34px] font-serif font-normal leading-tight mb-6 md:mb-8">
         {text}
       </h2>
     </div>
@@ -75,8 +78,11 @@ function WallCell({ media, variant }: { media: MediaRef; variant: 'full' | 'cell
 function Caption({ text }: { text: string | null }) {
   if (!text) return null
   return (
-    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/40 to-transparent pt-16 pb-5 px-6 pointer-events-none">
-      <p className="text-[11px] tracking-[0.3em] text-white/90 uppercase">{text}</p>
+    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/40 to-transparent pt-16 pb-6 px-6 pointer-events-none">
+      <p className="flex items-center gap-3 text-[10px] tracking-[0.35em] text-white/90 uppercase">
+        <span className="inline-block w-6 h-px bg-white/70" aria-hidden="true" />
+        {text}
+      </p>
     </div>
   )
 }
@@ -129,7 +135,9 @@ export function CoverView({
 
   const heroMode = (coverPage.heroMode as string) === 'image' ? 'image' : 'video'
   const heroVideoDesktop = getMediaUrl(coverPage.heroVideo) || '/videos/home-hero-16x9.mp4'
-  const heroVideoMobile = getMediaUrl(coverPage.heroVideoMobile) || '/videos/home-hero-9x16.mp4'
+  // 手機 hero 預設 = 蒙太奇直式版（品牌 Reel 留給媒體牆 FILM 格，
+  // 避免手機上同一支直式影片出現兩次 — 2026-09-01 Alan 反映）
+  const heroVideoMobile = getMediaUrl(coverPage.heroVideoMobile) || '/videos/home-hero-9x16-montage.mp4'
   const heroImageUrl = getMediaUrl(coverPage.heroImage) || heroImages[0] || null
   const heroLink = ((coverPage.heroLink as string | null) || '').trim() || ENTER
 
@@ -179,11 +187,16 @@ export function CoverView({
 
       {/* ── 2. 展示媒體牆（後台逐列策展；LV collection 式） ── */}
       {wallRows.length > 0 ? (
-        wallRows.map((row, ri) => (
+        (() => {
+          let headingNo = 0
+          return wallRows.map((row, ri) => {
+            if (row.heading) headingNo += 1
+            const currentNo = headingNo
+            return (
           // 2026-08-24 Alan 拍板（v4 參考錄影）：格與格、列與列完全貼合零間隙；
           // 只有帶大標的列上方留呼吸空間
           <section key={ri} className={row.heading ? 'pt-12 md:pt-20' : row.layout === 'grid3' ? 'mt-3 md:mt-6' : ''}>
-            <RowHeading text={row.heading} />
+            <RowHeading text={row.heading} index={currentNo} />
             {row.layout === 'grid3' ? (
               // chuu 下方 lookbook 手法：三欄微間距（水平 12px / 垂直 24px）
               <div className="grid grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-6 px-3">
@@ -220,7 +233,9 @@ export function CoverView({
               </Link>
             )}
           </section>
-        ))
+            )
+          })
+        })()
       ) : (
         <>
           {/* ── 預設精簡版：一邊照片一邊影片 + 形象大圖（零間隙貼合） ── */}
@@ -263,13 +278,13 @@ export function CoverView({
 
       {/* ── 3. End card：品牌一句話 + 進入賣場（與牆貼合） ── */}
       <Link href={ENTER} className="group block bg-neutral-950 text-white">
-        <div className="container py-20 md:py-28 text-center">
-          <p className="text-[11px] tracking-[0.35em] text-white/60 mb-5 uppercase">Chic Kim &amp; Miu</p>
-          <h2 className="text-2xl md:text-4xl font-serif leading-snug mb-8">
+        <div className="container py-24 md:py-32 text-center">
+          <p className="text-[10px] tracking-[0.5em] text-white/50 mb-6 uppercase">Chic Kim &amp; Miu</p>
+          <h2 className="text-[28px] md:text-[40px] font-serif font-normal leading-snug mb-10">
             優雅，是妳本來的樣子。
           </h2>
-          <span className="inline-flex items-center gap-2 border border-white/70 px-10 py-4 text-xs tracking-[0.3em] uppercase group-hover:bg-white group-hover:text-neutral-900 transition-colors">
-            進入賣場 · ENTER <ArrowRight size={14} />
+          <span className="inline-flex items-center gap-2.5 border border-white/60 px-12 py-4 text-[11px] tracking-[0.35em] uppercase group-hover:bg-white group-hover:text-neutral-900 transition-colors">
+            進入賣場 · ENTER <ArrowRight size={13} />
           </span>
         </div>
       </Link>
