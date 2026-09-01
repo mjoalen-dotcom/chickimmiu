@@ -180,6 +180,36 @@ async function main() {
     expect((await pointsOf(existing.id as string | number)) === 500, '既有會員點數未受影響')
   }
 
+  console.log('\n[6] 軟刪除會員再次社群登入 → 自動復原原帳號（Alan 2026-09-01 拍板）')
+  {
+    const sub = `apple-restore-${randomUUID()}`
+    const link1 = await linkOrCreateSocialUser({ provider: 'apple', providerAccountId: sub, email: null, name: '待復原會員' })
+    const uid = link1!.user.id
+    created.push(uid)
+    // 給他一些餘額，驗證復原後資產仍在
+    await (payload.update as unknown as (a: Loose) => Promise<Loose>)({
+      collection: 'customers', id: uid, data: { points: 456 }, overrideAccess: true,
+    })
+    // 軟刪除（等同 admin 在後台刪除：Payload 對 trash 集合是寫 deletedAt，
+    // 不是 payload.delete —— 後者一律永久刪除）
+    await (payload.update as unknown as (a: Loose) => Promise<Loose>)({
+      collection: 'customers',
+      id: uid,
+      data: { deletedAt: new Date().toISOString() },
+      overrideAccess: true,
+    })
+    const gone = await payload.find({ collection: 'customers', where: { id: { equals: uid } }, limit: 1, overrideAccess: true })
+    expect(gone.docs.length === 0, '軟刪除後一般查詢已查不到')
+
+    const link2 = await linkOrCreateSocialUser({ provider: 'apple', providerAccountId: sub, email: null })
+    expect(link2 !== null, '再次登入沒有 throw（舊行為會撞 email 唯一索引）')
+    expect(String(link2?.user.id) === String(uid), '復原的是同一個帳號（不是開新帳）', { was: uid, now: link2?.user.id })
+    expect(link2?.created === false, 'created=false（復原不是新註冊 → 不會再發一次註冊禮）')
+    const back = (await findByID({ collection: 'customers', id: uid, depth: 0 })) as Loose
+    expect(!back.deletedAt, 'deletedAt 已清空（帳號回到啟用狀態）', back.deletedAt)
+    expect(Number(back.points) === 456, '原有點數保留', back.points)
+  }
+
   // 清理
   console.log('')
   for (const id of created) {

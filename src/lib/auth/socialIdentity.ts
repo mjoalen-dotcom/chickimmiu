@@ -91,6 +91,58 @@ export async function linkOrCreateSocialUser(
     }
   }
 
+  // 2.5) 軟刪除的原帳號 → 自動復原（Alan 2026-09-01 拍板）
+  //
+  // 為什麼需要這條：customers 只做軟刪除（deletedAt），而一般查詢會排除它們。
+  // 沒有這段時，被刪過的會員再次社群登入會走到「建新帳」，然後撞 email 唯一索引
+  // （軟刪除的列仍占用 email）→ 登入直接 500。復原原帳號同時保住他的點數、
+  // 訂單與等級，比開新帳合理。
+  //
+  // ⚠️ 要永久擋一個人請用 isSuspended / isBlacklisted，不要用刪除 —— 刪除語意
+  // 在這裡是「可復原的封存」，不是黑名單。
+  if (!existing) {
+    const trashedWhere = socialField ? socialWhere : null
+    let trashed: PayloadUserDoc | null = null
+
+    if (trashedWhere) {
+      const bySocialTrashed = await payload.find({
+        collection: 'customers',
+        where: trashedWhere,
+        limit: 1,
+        depth: 0,
+        trash: true,
+      })
+      const hit = bySocialTrashed.docs.find((d) => (d as { deletedAt?: unknown }).deletedAt)
+      if (hit) trashed = hit as unknown as PayloadUserDoc
+    }
+    if (!trashed && email) {
+      const byEmailTrashed = await payload.find({
+        collection: 'customers',
+        where: { email: { equals: email } },
+        limit: 1,
+        depth: 0,
+        trash: true,
+      })
+      const hit = byEmailTrashed.docs.find((d) => (d as { deletedAt?: unknown }).deletedAt)
+      if (hit) trashed = hit as unknown as PayloadUserDoc
+    }
+
+    if (trashed) {
+      console.warn(
+        `[socialIdentity] 復原軟刪除會員 ${trashed.id}（${input.provider} 登入）`,
+      )
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const restored = await (payload.update as any)({
+        collection: 'customers',
+        id: trashed.id,
+        data: { deletedAt: null },
+        trash: true,
+        overrideAccess: true,
+      })
+      existing = (restored || trashed) as PayloadUserDoc
+    }
+  }
+
   if (!existing) {
     // 3) 全新社群使用者 → 建立 Users 紀錄。
     //    無 email（LINE 常見）→ 合成 placeholder email（noemail.invalid）過 Payload
