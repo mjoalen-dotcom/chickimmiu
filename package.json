@@ -22,6 +22,8 @@
     "seed:brand:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedBrandAssets.ts -- --dry-run",
     "seed:about": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedAboutDefaults.ts",
     "seed:about:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedAboutDefaults.ts -- --dry-run",
+    "seed:faq": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedFaqDefaults.ts",
+    "seed:faq:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedFaqDefaults.ts -- --dry-run",
     "seed:demo": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedDemoData.ts",
     "seed:demo:dry": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedDemoData.ts -- --dry-run",
     "seed:journeys": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/seedAutomationJourneys.ts",

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getPayload, type RequiredDataFromCollectionSlug } from 'payload'
+import { getPayload } from 'payload'
 import config from '@payload-config'
+
+import { textToRichText } from '@/lib/cs/messageBody'
 
 /**
  * POST /api/contact
@@ -9,7 +11,7 @@ import config from '@payload-config'
  *
  * 流程：
  *   1. 驗 name/email/message required + email 格式
- *   2. 建 CustomerServiceTickets 一筆（channel=web_form, status=open）
+ *   2. 建 Conversations + Messages 各一筆（channel=web_form, status=open）
  *   3. Fire-and-forget 寄 admin 通知信（讀 GlobalSettings.businessInfo.email 收件）
  *   4. 回 { ok: true, ticketNumber }
  *
@@ -28,7 +30,7 @@ const SUBJECT_LABELS: Record<string, string> = {
   other: '其他',
 }
 
-// 對應 CustomerServiceTickets.category 允許的 enum 值
+// 對應 Conversations.category 允許的 enum 值（PG enum，字面值錯會硬報錯）
 const CATEGORY_MAP: Record<string, string> = {
   general: 'other',
   order: 'order_inquiry',
@@ -65,44 +67,45 @@ export async function POST(req: NextRequest) {
 
   const payload = await getPayload({ config })
 
-  // 產一個簡單工單編號：CS + YYYYMMDD + 4 位隨機
-  const now = new Date()
-  const yyyymmdd =
-    now.getFullYear().toString() +
-    String(now.getMonth() + 1).padStart(2, '0') +
-    String(now.getDate()).padStart(2, '0')
-  const rand = Math.floor(Math.random() * 10000)
-    .toString()
-    .padStart(4, '0')
-  const ticketNumber = `CS${yyyymmdd}${rand}`
-
   const subjectLabel = SUBJECT_LABELS[subject] || '一般諮詢'
 
-  // 建工單 — overrideAccess 繞 access.create=isAdmin
-  // 客戶訊息塞 messages 陣列第 1 則（sender=customer），聯絡資料放開頭兩行
-  const contactHeader = `【聯絡人】${name}\n【信箱】${email}${phone ? `\n【電話】${phone}` : ''}\n\n`
+  // 建對話 —— 客服中心 v1 的 conversations/messages（v0 的 customer-service-tickets
+  // 已 deprecated，兩邊並存會讓客服有兩個收件匣、漏回訊息）。
+  // ticketNumber 由 Conversations 的 beforeChange hook 產（CS-YYYY-NNNNN）。
+  let ticketNumber = ''
   try {
-    await payload.create({
-      collection: 'customer-service-tickets',
+    const conversation = (await payload.create({
+      collection: 'conversations',
       overrideAccess: true,
+      depth: 0,
       data: {
-        ticketNumber,
         channel: 'web_form',
         status: 'open',
         priority: 'normal',
+        unread: true,
         category: CATEGORY_MAP[subject] ?? 'other',
         subject: `${subjectLabel} — ${name}`,
-        messages: [
-          {
-            sender: 'customer',
-            content: contactHeader + message,
-            timestamp: now.toISOString(),
-          },
-        ],
-      } as unknown as RequiredDataFromCollectionSlug<'customer-service-tickets'>,
+        guestName: name,
+        guestEmail: email,
+        ...(phone ? { guestPhone: phone } : {}),
+      } as never,
+    })) as unknown as { id: string | number; ticketNumber?: string }
+
+    ticketNumber = conversation.ticketNumber || String(conversation.id)
+
+    await payload.create({
+      collection: 'messages',
+      overrideAccess: true,
+      depth: 0,
+      data: {
+        conversation: conversation.id,
+        direction: 'in',
+        sender: 'customer',
+        body: textToRichText(message),
+      } as never,
     })
   } catch (err) {
-    payload.logger.error({ err, msg: 'contact: 建立工單失敗' })
+    payload.logger.error({ err, msg: 'contact: 建立對話失敗' })
     return NextResponse.json({ error: '系統忙碌中，請稍後再試' }, { status: 500 })
   }
 
@@ -135,7 +138,7 @@ export async function POST(req: NextRequest) {
   <div>類別：${escapeHtml(subjectLabel)}</div>
 </div>
 <div style="margin-top:16px;padding:16px;border:1px solid #eee;border-radius:8px;font-size:14px;line-height:1.8;white-space:pre-wrap">${escapeHtml(message)}</div>
-<p style="color:#999;font-size:12px;margin-top:16px">請至後台「客服管理 → 客服工單」處理此工單。</p>
+<p style="color:#999;font-size:12px;margin-top:16px">請至後台「③ 會員與 CRM → 對話」處理此工單。</p>
 </body></html>`,
       })
     } catch (err) {

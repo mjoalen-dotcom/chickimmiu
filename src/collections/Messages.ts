@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
+import { richTextToPlain } from '../lib/cs/messageBody'
 
 /**
  * Messages Collection（客服中心 v1 Phase 1A）
@@ -93,14 +94,11 @@ export const Messages: CollectionConfig = {
       hooks: {
         beforeChange: [
           ({ siblingData }) => {
-            // 取 body 前 60 字當 preview（list view 顯示用）
+            // 取 body 前 60 字當 preview（list view 顯示用）。
+            // body 是 Lexical 物件，直接 JSON.stringify 會讓後台收件匣整欄都是
+            // {"root":{"type":"root"... —— 必須抽出純文字節點。
             const body = (siblingData as { body?: unknown })?.body
-            const text =
-              typeof body === 'string'
-                ? body
-                : body
-                  ? JSON.stringify(body).slice(0, 200)
-                  : ''
+            const text = typeof body === 'string' ? body : richTextToPlain(body)
             return text
               .replace(/<[^>]+>/g, '')
               .replace(/\s+/g, ' ')

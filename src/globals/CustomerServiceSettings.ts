@@ -10,9 +10,14 @@ import { isAdmin } from '../access/isAdmin'
  * 部分欄位 Phase 1A 先建好但 hook 還沒接：
  * - sla → Phase 1B+ 計算 slaDueAt + cron 偵測 breach
  * - autoAssignMode + defaultAssignee → Phase 5B 接
- * - businessHours.offHourAutoReply → Phase 5E 接
- * - antiSpam.maxMessagesPerMinute → Phase 1C / 10A 接
+ * - businessHours.offHourAutoReply → Phase 5E 接（AI 客服轉真人時已在用）
+ * - antiSpam.maxMessagesPerMinute → Phase 1C / 10A 接（web chat 已在用）
  * - csat → Phase 8 接
+ *
+ * 站內 AI 客服（Phase 6）的參數刻意「不」放這裡：Alan 2026-09-02 決定先不加
+ * 設定欄，避免為了幾個開關動 cs_settings schema。轉真人說法、免責文字、
+ * 總開關改看 src/lib/cs/settings.ts 的常數（可用環境變數覆寫）。
+ * 之後若要後台可調，再補 ai group + 一支純加欄 migration 即可。
  *
  * scope：v1 單店、單時區（Asia/Taipei）；多店多時區屬 v2。
  */
@@ -93,8 +98,9 @@ export const CustomerServiceSettings: GlobalConfig = {
           name: 'offHourAutoReply',
           label: '離線自動回覆',
           type: 'textarea',
+          // 時段對齊 global-settings.businessInfo.businessHours（週一至週五 09:30-18:00）
           defaultValue:
-            '感謝您的訊息！目前是非營業時段，我們會在下次營業時間（週一至週五 10:00–18:00）盡快回覆您。',
+            '感謝您的訊息！目前是非營業時段，我們會在下次營業時間（週一至週五 09:30–18:00）盡快回覆您。',
         },
       ],
     },

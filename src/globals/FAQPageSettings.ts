@@ -2,6 +2,7 @@ import type { GlobalConfig } from 'payload'
 
 import { isAdmin } from '../access/isAdmin'
 import { safeRevalidate } from '../lib/revalidate'
+import { invalidateKnowledgeBase } from '../lib/cs/knowledgeBase'
 
 /**
  * FAQ 頁面設定
@@ -23,6 +24,8 @@ export const FAQPageSettings: GlobalConfig = {
     afterChange: [
       () => {
         safeRevalidate(['/faq'])
+        // 這份同時是 AI 客服的知識庫；不清快取的話後台改完最久要等 5 分鐘才生效
+        invalidateKnowledgeBase()
       },
     ],
   },
