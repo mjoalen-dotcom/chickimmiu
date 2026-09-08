@@ -239,7 +239,9 @@ export async function GET(request: Request) {
 
   const response = NextResponse.redirect(new URL(next, base))
   response.cookies.set({
-    name: `${cookiePrefix}-token`,
+    // 2026-09-08 cookie 分家：OAuth 會員憑證寫入專屬 cookie，
+    // 不再佔用（也不再踢掉）後台的 payload-token
+    name: 'ckmu-member-token',
     value: token,
     httpOnly: true,
     path: '/',

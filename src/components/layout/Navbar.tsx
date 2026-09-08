@@ -142,7 +142,7 @@ export function Navbar({ announcementText, announcementLink, announcementStyle =
     setIsLoggingOut(true)
     setIsUserMenuOpen(false)
     try {
-      await fetch('/api/users/logout', { method: 'POST', credentials: 'include' })
+      await fetch('/api/member/logout', { method: 'POST', credentials: 'include' })
     } catch {
       // ignore network errors — still proceed to clear NextAuth + refresh
     }

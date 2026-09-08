@@ -180,7 +180,8 @@ export async function POST(req: Request) {
             ? 'strict'
             : 'lax'
       response.cookies.set({
-        name: `${cookiePrefix}-token`,
+        // 2026-09-08 cookie 分家：會員 session 一律走 ckmu-member-token
+        name: 'ckmu-member-token',
         value: sessionToken,
         httpOnly: true,
         path: '/',

@@ -11,7 +11,8 @@ import { safeInternalRedirect } from '@/lib/auth/safeRedirect'
 /**
  * 客戶登入頁（client 端）
  * ---------
- * Email/Password：POST `/api/customers/login`（Payload 內建，cookie-based session；步驟16 顧客拆分後會員走 customers collection）
+ * Email/Password：POST `/api/member/login`（自訂端點包 payload.login，寫入專屬
+ * ckmu-member-token cookie — 與後台 payload-token 分家，互不相踢；2026-09-08）
  *   成功 → redirect 到 ?redirect 參數或 /account
  * OAuth：next-auth v5 signIn('google'|...)，按鈕顯示由 server wrapper
  *   （page.tsx → getEnabledSocialProviders）決定：後台開關 AND env 憑證齊全。
@@ -59,7 +60,7 @@ export default function LoginClient({ socialProviders }: { socialProviders: Soci
     setError(null)
     setSubmitting(true)
     try {
-      const res = await fetch('/api/customers/login', {
+      const res = await fetch('/api/member/login', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

@@ -271,7 +271,9 @@ export async function POST(req: Request) {
             ? 'strict'
             : 'lax'
       response.cookies.set({
-        name: `${cookiePrefix}-token`,
+        // 2026-09-08 cookie 分家：訪客結帳的臨時會員 session 走專屬會員 cookie，
+        // 不再覆蓋（踢掉）同瀏覽器後台管理員的 payload-token
+        name: 'ckmu-member-token',
         value: token,
         httpOnly: true,
         path: '/',

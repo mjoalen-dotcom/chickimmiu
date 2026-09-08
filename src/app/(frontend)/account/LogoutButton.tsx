@@ -9,7 +9,8 @@ import { signOut as nextAuthSignOut } from 'next-auth/react'
  * 登出按鈕（client island）
  * ----------------------
  * 兩套 session 都得清：
- *   1. Payload cookie `payload-token`（/api/users/logout 端點）
+ *   1. 會員 cookie `ckmu-member-token`＋legacy `payload-token`（/api/member/logout；
+ *      cookie 分家 2026-09-08 — legacy 只在確認是 customers token 時才清）
  *   2. NextAuth session cookie（signOut，若使用者是 OAuth 登入）
  * 最後 router.push('/login') 再 refresh，讓 layout 的 SSR auth gate 重跑。
  */
@@ -22,7 +23,7 @@ export function LogoutButton() {
     setPending(true)
     try {
       // 先清 Payload cookie（API fetch 必 include credentials）
-      await fetch('/api/users/logout', { method: 'POST', credentials: 'include' })
+      await fetch('/api/member/logout', { method: 'POST', credentials: 'include' })
     } catch {
       // 離線/伺服器錯不擋登出體感
     }

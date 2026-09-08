@@ -8,9 +8,12 @@ import { useState, type FormEvent } from 'react'
  * 重設密碼頁
  * ---------
  * 從 `/forgot-password` 寄出的 email 連結點進來，URL 帶 `?token=...`
- * POST `/api/customers/reset-password`（Payload 內建；會員在 customers collection）
- *   body: { token, password }
- *   成功 → Payload 會一併 login + 下 cookie → redirect /account
+ * 雙軌（2026-09-08）：會員與管理員的忘記密碼信都導到本頁 —
+ *   1. 先 POST `/api/customers/reset-password`（會員；Payload 內建）
+ *      成功 → auto-login 下 cookie → redirect /account
+ *   2. token 對不上 customers 時 fallback POST `/api/users/reset-password`
+ *      （管理員；Users.ts 的 forgotPassword resetUrl 也指到本頁）
+ *      成功 → redirect /admin
  */
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -47,8 +50,20 @@ export default function ResetPasswordPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, password }),
       })
-      const data = (await res.json().catch(() => ({}))) as { errors?: Array<{ message?: string }>; message?: string }
       if (!res.ok) {
+        // token 不屬於 customers → 可能是管理員（users）的重設信，走 fallback
+        const adminRes = await fetch('/api/users/reset-password', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, password }),
+        })
+        if (adminRes.ok) {
+          router.replace('/admin')
+          router.refresh()
+          return
+        }
+        const data = (await res.json().catch(() => ({}))) as { errors?: Array<{ message?: string }>; message?: string }
         const raw = data.errors?.[0]?.message || data.message || ''
         setError(raw.includes('token') || raw.includes('expired') ? '重設連結已過期，請重新申請' : raw || '重設失敗，請稍後再試')
         return

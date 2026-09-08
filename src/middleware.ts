@@ -93,10 +93,58 @@ async function checkProductExists(
   }
 }
 
+/**
+ * 會員/管理員 cookie 分家（2026-09-08 Alan「根治登入兩次」）
+ * ────────────────────────────────────────────────────────
+ * 兩套 auth collection（users 後台 / customers 會員）原共用 payload-token，
+ * 互登互踢。根治：會員憑證改存 `ckmu-member-token`（由 /api/member/login
+ * 與 OAuth bridge 寫入），middleware 在「非後台」請求把它注入成
+ * payload-token 轉發 — 站內 78 個既有 payload.auth 呼叫點零改動，
+ * 後台面板（/admin 頁面與其發出的 API 請求，用 referer 判斷）不注入，
+ * 管理員的 payload-token 完好。判斷失誤的最壞情況是「該請求視同未登入」
+ * （fail-closed），不存在權限升級路徑。
+ * 舊 member session（payload-token=customers、無新 cookie）不注入、照舊可用。
+ */
+const MEMBER_COOKIE = 'ckmu-member-token'
+
+/**
+ * 這些路由的工作是「讀瀏覽器真實的 cookie 狀態來決定清哪些」——
+ * 注入會讓它們把 member token 誤認成瀏覽器的 payload-token，
+ * 進而誤清管理員憑證，必須跳過注入。
+ */
+const INJECTION_EXEMPT_PREFIXES = ['/api/member/', '/api/sso/logout', '/api/users/logout']
+
+function isAdminOriginRequest(req: NextRequest): boolean {
+  if (req.nextUrl.pathname.startsWith('/admin')) return true
+  const referer = req.headers.get('referer') || ''
+  try {
+    const refUrl = new URL(referer)
+    return refUrl.origin === req.nextUrl.origin && refUrl.pathname.startsWith('/admin')
+  } catch {
+    return false
+  }
+}
+
+function memberForwardHeaders(req: NextRequest): Headers | null {
+  const member = req.cookies.get(MEMBER_COOKIE)?.value
+  if (!member) return null
+  if (isAdminOriginRequest(req)) return null
+  if (INJECTION_EXEMPT_PREFIXES.some((p) => req.nextUrl.pathname.startsWith(p))) return null
+  const headers = new Headers(req.headers)
+  const raw = headers.get('cookie') || ''
+  const kept = raw.split(/;\s*/).filter((c) => c && !c.startsWith('payload-token='))
+  kept.push(`payload-token=${member}`)
+  headers.set('cookie', kept.join('; '))
+  return headers
+}
+
 export async function middleware(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith('/admin')) {
     return adminBasicAuth(req) || NextResponse.next()
   }
+
+  const fwdHeaders = memberForwardHeaders(req)
+  const forward = fwdHeaders ? { request: { headers: fwdHeaders } } : undefined
 
   const segments = req.nextUrl.pathname.split('/').filter(Boolean)
   if (segments.length === 2 && segments[0] === 'products') {
@@ -108,13 +156,16 @@ export async function middleware(req: NextRequest) {
       }
       return NextResponse.rewrite(
         new URL(`/products/__notfound__/${encodeURIComponent(slug)}`, req.url),
+        forward,
       )
     }
   }
 
-  return NextResponse.next()
+  return NextResponse.next(forward)
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/products/:path*'],
+  // /admin gate + 商品存在檢查 + 會員 cookie 注入（全站頁面與 API；
+  // 排除 next 靜態資產與帶副檔名的檔案請求）
+  matcher: ['/admin/:path*', '/products/:path*', '/((?!_next/|favicon|.*\\..*).*)'],
 }
