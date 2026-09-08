@@ -119,7 +119,10 @@ function isAdminOriginRequest(req: NextRequest): boolean {
   const referer = req.headers.get('referer') || ''
   try {
     const refUrl = new URL(referer)
-    return refUrl.origin === req.nextUrl.origin && refUrl.pathname.startsWith('/admin')
+    // 只比 host 不比 origin：nginx 後面 req.nextUrl 的 proto 可能是 http、
+    // referer 卻是 https，比 origin 會誤判成非後台而對後台 API 注入
+    const host = req.headers.get('host') || req.nextUrl.host
+    return refUrl.host === host && refUrl.pathname.startsWith('/admin')
   } catch {
     return false
   }
