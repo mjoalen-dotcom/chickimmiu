@@ -137,6 +137,16 @@ const nextConfig = {
         ],
       },
       {
+        // Only this public loader may be embedded by the existing SHOPLINE store.
+        // API CORS is separately limited to www.chickimmiu.com in its handler.
+        source: '/shopline-assistant.js',
+        headers: [
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Cache-Control', value: 'no-store' },
+        ],
+      },
+      {
         // HTML pages — always fetch fresh so iPad/Safari never serves
         // stale HTML referencing dead webpack chunk hashes (white-screen bug).
         // Excludes /_next/static (immutable bundles) and /api/* (handled below).
