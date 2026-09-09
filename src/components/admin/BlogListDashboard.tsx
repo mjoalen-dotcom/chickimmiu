@@ -1,6 +1,5 @@
 'use client'
 
-import { ExternalLink, FilePenLine, FileText, FolderTree, Images, Sparkles, Store } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { BLOG_STATUS_UPDATED_EVENT } from './BlogQuickStatusSelect'
@@ -28,57 +27,6 @@ const emptyCounts: Counts = {
 
 const listHref = (filter: string) =>
   `/admin/collections/blog-posts?${filter}&sort=-updatedAt`
-
-const quickLinks = [
-  {
-    href: listHref('where[publishToKimLafayette][equals]=true'),
-    label: 'Kim 文章',
-    icon: FileText,
-  },
-  {
-    href: listHref('where[publishToKimLafayette][not_equals]=true'),
-    label: '購物網站文章',
-    icon: Store,
-  },
-  {
-    href: '/admin/collections/blog-posts/create',
-    label: '寫文章',
-    icon: FilePenLine,
-    primary: true,
-  },
-  {
-    href: '/admin/blog-studio/albums',
-    label: 'Kim 相簿',
-    icon: Images,
-  },
-  {
-    href: '/admin/collections/blog-categories?where[site][equals]=kim&sort=displayOrder',
-    label: 'Kim 分類',
-    icon: FolderTree,
-  },
-  {
-    href: '/admin/collections/blog-categories?where[site][equals]=store&sort=displayOrder',
-    label: '購物網站分類',
-    icon: FolderTree,
-  },
-  {
-    href: '/admin/tools/blog-ai-draft',
-    label: '自動文章',
-    icon: Sparkles,
-  },
-  {
-    href: 'https://blog.kimlafayette.com/',
-    label: 'Kim 前台',
-    icon: ExternalLink,
-    external: true,
-  },
-  {
-    href: 'https://pre.chickimmiu.com/blog',
-    label: '購物站前台',
-    icon: ExternalLink,
-    external: true,
-  },
-]
 
 const statusLinks = [
   {
@@ -188,66 +136,22 @@ export default function BlogListDashboard() {
           background: 'var(--theme-elevation-0, #fff)',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 16,
-            padding: '18px 0',
-          }}
-        >
-          <div>
-            <p
-              style={{
-                margin: '0 0 4px',
-                color: '#a25e5e',
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: 0,
-                textTransform: 'uppercase',
-              }}
-            >
-              CHIC KIM &amp; MIU × Lafayette Kim
-            </p>
-            <h2 id="blog-workspace-title" style={{ margin: 0, fontSize: 22, fontWeight: 650 }}>
-              文章工作台：兩個網站的文章與分類分開管理
-            </h2>
-          </div>
-
-          <nav aria-label="文章管理捷徑" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {quickLinks.map((item) => {
-              const Icon = item.icon
-              return (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  target={item.external ? '_blank' : undefined}
-                  rel={item.external ? 'noopener noreferrer' : undefined}
-                  style={{
-                    display: 'inline-flex',
-                    minHeight: 38,
-                    alignItems: 'center',
-                    gap: 7,
-                    padding: '8px 12px',
-                    border: item.primary
-                      ? '1px solid #1f2937'
-                      : '1px solid var(--theme-elevation-200, #ddd)',
-                    borderRadius: 6,
-                    background: item.primary ? '#1f2937' : 'var(--theme-elevation-0, #fff)',
-                    color: item.primary ? '#fff' : 'var(--theme-text, #1f2937)',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    textDecoration: 'none',
-                  }}
-                >
-                  <Icon aria-hidden size={16} strokeWidth={1.8} />
-                  {item.label}
-                </a>
-              )
-            })}
-          </nav>
+        <div style={{ padding: '18px 0' }}>
+          <p
+            style={{
+              margin: '0 0 4px',
+              color: '#a25e5e',
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: 0,
+              textTransform: 'uppercase',
+            }}
+          >
+            CHIC KIM &amp; MIU × Lafayette Kim
+          </p>
+          <h2 id="blog-workspace-title" style={{ margin: 0, fontSize: 22, fontWeight: 650 }}>
+            文章工作台：兩個網站的文章與分類分開管理
+          </h2>
         </div>
 
         <div
